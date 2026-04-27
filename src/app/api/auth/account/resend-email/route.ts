@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
+import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 import User from "@/models/User";
 import {
   EMAIL_VERIFY_TTL_MS,
@@ -9,6 +10,15 @@ import {
 import { sendAccountEmailVerificationEmail } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(`resend-email:${ip}`, AuthRateLimits.resendEmail.limit, AuthRateLimits.resendEmail.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     const body = await req.json();
     const email = (body.email as string | undefined)?.toLowerCase().trim();

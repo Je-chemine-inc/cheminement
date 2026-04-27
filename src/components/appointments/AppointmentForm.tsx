@@ -436,59 +436,8 @@ const AppointmentForm = ({
           </div>
         </div>
 
-        {/* Approaches */}
-        <div className="border-b pb-6">
-          <Label>Approches recommandées</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-            {[
-              "TCC",
-              "ACT",
-              "Psychodynamique",
-              "Humaniste",
-              "Systémique",
-              "Hypnose",
-              "Pleine conscience",
-            ].map((approach) => (
-              <label key={approach} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={formData.approaches.includes(approach)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      updateField("approaches", [
-                        ...formData.approaches,
-                        approach,
-                      ]);
-                    } else {
-                      updateField(
-                        "approaches",
-                        formData.approaches.filter((a) => a !== approach),
-                      );
-                    }
-                  }}
-                  className="rounded"
-                />
-                <span className="text-sm">{approach}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Motif Search */}
-        <div>
-          <Label>Motif</Label>
-          <MotifSearch
-            value={formData.selectedMotifs[0] || ""}
-            onChange={(value) => {
-              const motifs = Array.isArray(value) ? value : value ? [value] : [];
-              updateField("selectedMotifs", motifs);
-            }}
-            placeholder="Tapez vos motifs ex: anxiété, burnout..."
-          />
-        </div>
-
         <Button type="submit" className="w-full">
-          Soumettre
+          Envoyer la demande
         </Button>
       </form>
     );
@@ -608,6 +557,28 @@ const AppointmentForm = ({
               </Select>
             </div>
           </div>
+        </div>
+
+        {/* Modality */}
+        <div>
+          <Label>Modalité</Label>
+          <RadioGroup
+            value={formData.modality}
+            onValueChange={(value) => updateField("modality", value)}
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="in-person" id="loved-in-person" />
+              <Label htmlFor="loved-in-person">Présentiel</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="remote" id="loved-remote" />
+              <Label htmlFor="loved-remote">À distance</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="both" id="loved-both" />
+              <Label htmlFor="loved-both">Ouvert aux deux</Label>
+            </div>
+          </RadioGroup>
         </div>
 
         {/* Session Type */}

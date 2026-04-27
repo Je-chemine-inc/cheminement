@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
-import { sendPaymentGuaranteeDay1Reminder } from "@/lib/notifications";
+import { sendJumelageSuccessEmail } from "@/lib/notifications";
+import User from "@/models/User";
 
 function getBaseUrl(): string {
   return (
@@ -92,17 +93,29 @@ export async function POST(
       .populate("professionalId", "firstName lastName email phone");
 
     if (updatedAppointment && updatedAppointment.clientId) {
-      const client = updatedAppointment.clientId as any;
-      const billingUrl = `${getBaseUrl()}/client/dashboard/billing`;
+      const client = updatedAppointment.clientId as unknown as {
+        _id: { toString: () => string };
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+      const professional = updatedAppointment.professionalId as {
+        firstName?: string;
+        lastName?: string;
+      } | null;
+      const professionalName = professional
+        ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
+        : undefined;
 
-      // Trigger Day 1 payment guarantee reminder
-      await sendPaymentGuaranteeDay1Reminder({
+      const clientUser = await User.findById(client._id).select("language").lean();
+      const locale: "fr" | "en" = (clientUser as { language?: string } | null)?.language === "fr" ? "fr" : "en";
+
+      void sendJumelageSuccessEmail({
         clientName: `${client.firstName} ${client.lastName}`.trim(),
         clientEmail: client.email,
-        billingUrl,
-      }).catch((err) => 
-        console.error("Error sending payment guarantee reminder:", err)
-      );
+        professionalName,
+        locale,
+      }).catch((err) => console.error("Error sending jumelage success email:", err));
     }
 
     // TODO: Send notification to other proposed professionals that appointment is taken

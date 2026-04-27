@@ -42,47 +42,33 @@ export function EndSessionDialog({
 }: EndSessionDialogProps) {
   const t = useTranslations("Dashboard.sessions.sessionClosure");
   const [act, setAct] = useState("");
+  const [actOther, setActOther] = useState("");
   const [outcome, setOutcome] = useState("");
-  const [nextDate, setNextDate] = useState("");
-  const [nextTime, setNextTime] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setAct("");
+      setActOther("");
       setOutcome("");
-      setNextDate("");
-      setNextTime("");
     }
   }, [open, appointmentId]);
 
   const handleSubmit = async () => {
     if (!act || !outcome) return;
 
-    if (outcome === "rescheduled_agreed" && (!nextDate || !nextTime)) {
-      window.alert(t("needNextWhenRescheduled"));
-      return;
-    }
-
-    if ((nextDate && !nextTime) || (!nextDate && nextTime)) {
-      window.alert(t("needBothDateTime"));
-      return;
-    }
-
     try {
       setSaving(true);
       const payload: {
         sessionActNature: string;
+        sessionActNatureOther?: string;
         sessionOutcome: string;
-        nextAppointmentDate?: string;
-        nextAppointmentTime?: string;
       } = {
         sessionActNature: act,
         sessionOutcome: outcome,
       };
-      if (nextDate && nextTime) {
-        payload.nextAppointmentDate = nextDate;
-        payload.nextAppointmentTime = nextTime;
+      if (actOther.trim()) {
+        payload.sessionActNatureOther = actOther.trim();
       }
       const apt = await appointmentsAPI.completeSession(appointmentId, payload);
       onCompleted(apt);
@@ -105,22 +91,6 @@ export function EndSessionDialog({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>{t("actNatureLabel")}</Label>
-            <Select value={act || undefined} onValueChange={setAct}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("actPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {SESSION_ACT_NATURE_VALUES.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {t(`acts.${v}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label>{t("outcomeLabel")}</Label>
             <Select value={outcome || undefined} onValueChange={setOutcome}>
               <SelectTrigger>
@@ -137,30 +107,31 @@ export function EndSessionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>{t("nextLabel")}</Label>
-            <p className="text-xs text-muted-foreground">{t("nextHint")}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-normal text-muted-foreground">
-                  {t("nextDate")}
-                </Label>
-                <Input
-                  type="date"
-                  value={nextDate}
-                  onChange={(e) => setNextDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-normal text-muted-foreground">
-                  {t("nextTime")}
-                </Label>
-                <Input
-                  type="time"
-                  value={nextTime}
-                  onChange={(e) => setNextTime(e.target.value)}
-                />
-              </div>
-            </div>
+            <Label>{t("actNatureLabel")}</Label>
+            <Select value={act || undefined} onValueChange={setAct}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("actPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {SESSION_ACT_NATURE_VALUES.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {t(`acts.${v}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="font-normal text-muted-foreground">
+              {t("actNatureOtherLabel")}
+            </Label>
+            <Input
+              value={actOther}
+              onChange={(e) => setActOther(e.target.value)}
+              placeholder={t("actNatureOtherPlaceholder")}
+              maxLength={200}
+            />
           </div>
         </div>
         <DialogFooter>

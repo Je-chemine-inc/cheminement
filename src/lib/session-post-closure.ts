@@ -87,11 +87,13 @@ export async function runSessionClosureSideEffects(
 
   const profile = await Profile.findOne({ userId: professional._id }).lean();
   const license = profile?.license?.trim();
+  const specialty = profile?.specialty?.trim();
 
   const pdfInput = buildFiscalReceiptInputFromPopulatedAppointment(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     appointment.toObject() as any,
     license,
+    specialty,
   );
   pdfInput.issuedAt = new Date();
 

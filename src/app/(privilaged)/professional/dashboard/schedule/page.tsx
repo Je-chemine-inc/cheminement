@@ -638,23 +638,22 @@ export default function SchedulePage() {
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
               {selectedAppointment?.meetingLink
-                ? "Update Meeting Link"
-                : "Add Meeting Link"}
+                ? t("meetingLink.titleUpdate")
+                : t("meetingLink.titleAdd")}
             </DialogTitle>
             <DialogDescription>
-              Provide an external meeting link for this video appointment (Zoom,
-              Google Meet, Microsoft Teams, etc.)
+              {t("meetingLink.desc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="meeting-link" className="text-sm font-light">
-                Meeting Link URL
+                {t("meetingLink.urlLabel")}
               </Label>
               <Input
                 id="meeting-link"
                 type="url"
-                placeholder="https://zoom.us/j/123456789"
+                placeholder={t("meetingLink.urlPlaceholder")}
                 value={meetingLink}
                 onChange={(e) => setMeetingLink(e.target.value)}
                 className="font-light"
@@ -663,7 +662,7 @@ export default function SchedulePage() {
             {selectedAppointment && (
               <div className="rounded-lg bg-muted/50 p-3 space-y-2">
                 <p className="text-xs text-muted-foreground font-light">
-                  Appointment Details
+                  {t("meetingLink.appointmentDetails")}
                 </p>
                 <p className="text-sm font-light">
                   {selectedAppointment.clientId.firstName}{" "}
@@ -671,18 +670,18 @@ export default function SchedulePage() {
                 </p>
                 <p className="text-xs text-muted-foreground font-light">
                   {new Date(selectedAppointment.date).toLocaleDateString(
-                    "en-US",
+                    undefined,
                     {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
                     },
                   )}{" "}
-                  at {selectedAppointment.time}
+                  {t("meetingLink.at")} {selectedAppointment.time}
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <span className="text-xs text-muted-foreground font-light">
-                    Payment:
+                    {t("meetingLink.payment")}
                   </span>
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -695,15 +694,7 @@ export default function SchedulePage() {
                             : "bg-yellow-100 text-yellow-700"
                     }`}
                   >
-                    {selectedAppointment.payment?.status === "paid"
-                      ? "Paid"
-                      : selectedAppointment.payment?.status === "failed"
-                        ? "Failed"
-                        : selectedAppointment.payment?.status === "refunded"
-                          ? "Refunded"
-                          : selectedAppointment.payment?.status === "processing"
-                            ? "Processing"
-                            : "Pending"}
+                    {t(`paymentStatus.${selectedAppointment.payment?.status ?? "pending"}`)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     ${selectedAppointment.payment?.price?.toFixed(2) || "0.00"}{" "}
@@ -724,14 +715,14 @@ export default function SchedulePage() {
               }}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("meetingLink.cancel")}
             </Button>
             <Button
               type="button"
               onClick={handleSaveMeetingLink}
               disabled={!meetingLink || isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save Link"}
+              {isSubmitting ? t("meetingLink.saving") : t("meetingLink.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

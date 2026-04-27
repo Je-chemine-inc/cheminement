@@ -13,7 +13,8 @@ export interface IPayment {
     | "paid"
     | "failed"
     | "refunded"
-    | "cancelled";
+    | "cancelled"
+    | "overdue";
   method?: "card" | "transfer" | "direct_debit";
   stripePaymentIntentId?: string;
   /** Encrypted at rest when FIELD_ENCRYPTION_KEY is set (see `encryptPaymentMethodReference`). */
@@ -130,6 +131,8 @@ export interface IAppointment extends Document {
 
   /** Nature de l'acte (clôture professionnelle). */
   sessionActNature?: string;
+  /** Précision libre sur la raison de consultation (apparaît sur le reçu). */
+  sessionActNatureOther?: string;
   /** Issue de la rencontre (clôture). */
   sessionOutcome?: string;
   /** Prochain RDV convenu (information). */
@@ -137,6 +140,17 @@ export interface IAppointment extends Document {
   sessionCompletedAt?: Date;
   /** Reçu fiscal émis (PDF envoyé / disponible). */
   fiscalReceiptIssuedAt?: Date;
+
+  /**
+   * Rappel post-séance envoyé au client quand aucun mode de paiement n'était
+   * configuré avant la date de rencontre. Admin alerté en même temps.
+   */
+  postMeetingPaymentReminderSent?: boolean;
+
+  /** Relance automatique Interac J+1 (24h après transferDueAt sans paiement). */
+  interacReminder24hSent?: boolean;
+  /** Relance automatique Interac J+2 (48h après transferDueAt sans paiement). */
+  interacReminder48hSent?: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -169,6 +183,7 @@ const PaymentSchema = new Schema<IPayment>(
         "failed",
         "refunded",
         "cancelled",
+        "overdue",
       ],
       default: "pending",
     },
@@ -360,7 +375,13 @@ const AppointmentSchema = new Schema<IAppointment>(
     guarantee48hClientReminderSent: { type: Boolean, default: false },
     guarantee48hProfessionalAlertSent: { type: Boolean, default: false },
 
+    postMeetingPaymentReminderSent: { type: Boolean, default: false },
+
+    interacReminder24hSent: { type: Boolean, default: false },
+    interacReminder48hSent: { type: Boolean, default: false },
+
     sessionActNature: { type: String, required: false },
+    sessionActNatureOther: { type: String, required: false },
     sessionOutcome: { type: String, required: false },
     nextAppointmentAt: { type: Date, required: false },
     sessionCompletedAt: { type: Date, required: false },

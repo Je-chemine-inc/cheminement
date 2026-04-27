@@ -5,6 +5,25 @@ import bcrypt from "bcryptjs";
 import connectToDatabase from "./mongodb";
 import clientPromise from "./mongodbClient";
 import User from "@/models/User";
+import AuthAuditLog, { type AuthAuditAction } from "@/models/AuthAuditLog";
+
+async function logAuthEvent(
+  email: string,
+  action: AuthAuditAction,
+  userId?: string,
+) {
+  try {
+    await AuthAuditLog.create({
+      email,
+      userId: userId || undefined,
+      action,
+      ip: "server",
+      userAgent: "",
+    });
+  } catch {
+    // Non-fatal — never let audit logging break authentication
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise) as any,
@@ -25,6 +44,7 @@ export const authOptions: NextAuthOptions = {
         const user = await User.findOne({ email: credentials.email });
 
         if (!user || !user.password) {
+          void logAuthEvent(credentials.email, "login_failed");
           throw new Error("Invalid credentials");
         }
 
@@ -34,6 +54,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
+          void logAuthEvent(credentials.email, "login_failed", user._id.toString());
           throw new Error("Invalid credentials");
         }
 
@@ -44,9 +65,11 @@ export const authOptions: NextAuthOptions = {
         const sec = user.accountSecurityVersion ?? 0;
         if (sec >= 1 && (user.role === "client" || user.role === "professional")) {
           if (!user.emailVerified) {
+            void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
             throw new Error("AUTH_EMAIL_NOT_VERIFIED");
           }
           if (!user.phoneVerifiedAt) {
+            void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
             throw new Error("AUTH_PHONE_NOT_VERIFIED");
           }
         }
@@ -55,8 +78,11 @@ export const authOptions: NextAuthOptions = {
           user.role === "professional" &&
           user.professionalLicenseStatus === "rejected"
         ) {
+          void logAuthEvent(credentials.email, "login_blocked_rejected", user._id.toString());
           throw new Error("AUTH_LICENSE_REJECTED");
         }
+
+        void logAuthEvent(credentials.email, "login_success", user._id.toString());
 
         return {
           id: user._id.toString(),
@@ -73,6 +99,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 60, // 30 minutes — refreshed on each server request
   },
   callbacks: {
     async jwt({ token, user }) {

@@ -507,11 +507,9 @@ export async function POST(req: NextRequest) {
         sendAppointmentConfirmation(emailData),
         sendProfessionalNotification(emailData),
       ]).catch((err) => console.error("Error sending notifications:", err));
-    } else if (
-      populatedAppointment.bookingFor === "loved-one" &&
-      populatedAppointment.accountActivationStatus === "sent_to_requester"
-    ) {
-      // Child: send onboarding link to the requester immediately
+    } else {
+      // No professional assigned yet — send automatic acknowledgement to the requester.
+      // Covers: self, patient, loved-one (child onboarding) and adult loved-one pending admin.
       const requester = await User.findById(session.user.id).select(
         "firstName lastName email language",
       );
@@ -520,7 +518,7 @@ export async function POST(req: NextRequest) {
           toName: `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() || "Client",
           toEmail: requester.email,
           locale: requester.language === "fr" ? "fr" : "en",
-        }).catch((err) => console.error("Error sending service request onboarding:", err));
+        }).catch((err) => console.error("Error sending acknowledgement email:", err));
       }
     }
 

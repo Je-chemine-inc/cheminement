@@ -5,7 +5,7 @@ import { ShieldCheck, Globe, Lock, Fingerprint } from "lucide-react";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 
 export default function TrustIndicators() {
-  const t = useTranslations("HeroSection.trustMentions");
+  const t = useTranslations("HeroSection.trustIcons");
 
   const indicators = [
     {
@@ -37,7 +37,7 @@ export default function TrustIndicators() {
               delayMs={index * 100} 
               duration={600}
             >
-              <div className="flex items-center gap-4 group">
+              <div className="flex items-center gap-4 group justify-center sm:justify-start">
                 <div className="p-3 rounded-2xl bg-muted/50 border border-muted-foreground/10 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all duration-300">
                   <item.icon className="h-6 w-6 text-primary" strokeWidth={1.5} />
                 </div>

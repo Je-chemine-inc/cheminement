@@ -98,17 +98,22 @@ export async function ensureLegalDocumentSeeded(
     );
   }
 
-  const doc = await LegalDocument.create({
-    documentKey: key,
-    locale,
+  const data = {
     title: seed.title,
     subtitle: seed.subtitle,
     lastUpdated: seed.lastUpdated,
     version: LEGAL_VERSIONS[key],
     contentHtml: buildContentHtml(seed),
-  });
+  };
 
-  return doc;
+  // Use upsert to avoid duplicate key errors under concurrent requests
+  const doc = await LegalDocument.findOneAndUpdate(
+    { documentKey: key, locale },
+    { $setOnInsert: { documentKey: key, locale, ...data } },
+    { upsert: true, new: true },
+  );
+
+  return doc!;
 }
 
 export async function getLegalDocument(
@@ -132,7 +137,7 @@ export async function getLegalDocument(
 export async function listLegalDocuments() {
   await connectToDatabase();
 
-  const keys: LegalDocumentKey[] = ["terms", "privacy", "professionalTerms"];
+  const keys: LegalDocumentKey[] = ["terms", "privacy", "professionalTerms", "cookies"];
   const locales: LegalDocumentLocale[] = ["fr", "en"];
 
   const results = [];
@@ -163,11 +168,13 @@ export async function getLegalTitles(locale: LegalDocumentLocale) {
     "terms",
     "privacy",
     "professionalTerms",
+    "cookies",
   ];
   const titles: Record<LegalDocumentKey, string> = {
     terms: "",
     privacy: "",
     professionalTerms: "",
+    cookies: "",
   };
   await Promise.all(
     keys.map(async (key) => {

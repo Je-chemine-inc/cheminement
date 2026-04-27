@@ -84,11 +84,13 @@ export async function GET(req: NextRequest) {
       userId: professional._id,
     }).lean();
     const license = profile?.license?.trim();
+    const specialty = profile?.specialty?.trim();
 
     const pdfInput = buildFiscalReceiptInputFromPopulatedAppointment(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       appointment.toObject() as any,
       license,
+      specialty,
     );
 
     // Professionals never see the client's gross amount or the platform fee.

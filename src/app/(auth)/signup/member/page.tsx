@@ -57,6 +57,10 @@ import {
 } from "@/components/auth";
 import { MotifSearch } from "@/components/ui/MotifSearch";
 import { ClinicalAvailabilityGrid } from "@/components/ui/ClinicalAvailabilityGrid";
+import {
+  APPROACHES_ET_THERAPIES,
+  APPROACHES_ET_THERAPIES_EN,
+} from "@/data/approaches";
 
 interface FormData {
   // User fields
@@ -158,17 +162,6 @@ const MEMBER_SIGNUP_MEDICATION_OPTIONS = [
   { value: "Sleep aids", msgKey: "sleepAids" },
   { value: "Pain medication", msgKey: "painMedication" },
   { value: "Other", msgKey: "other" },
-] as const;
-
-const MEMBER_SIGNUP_THERAPY_APPROACH_OPTIONS = [
-  { value: "CBT", msgKey: "cbt" },
-  { value: "Psychodynamic", msgKey: "psychodynamic" },
-  { value: "Mindfulness", msgKey: "mindfulness" },
-  { value: "Solution-focused", msgKey: "solutionFocused" },
-  { value: "Family therapy", msgKey: "familyTherapy" },
-  { value: "Group therapy", msgKey: "groupTherapy" },
-  { value: "Art therapy", msgKey: "artTherapy" },
-  { value: "No Preference", msgKey: "noPreference" },
 ] as const;
 
 const EXCLUSIVE_MULTISELECT_VALUES = new Set([
@@ -565,13 +558,6 @@ export default function MemberSignupPage() {
       case 6:
         if (formData.availability.length === 0) {
           setError(t("errors.availabilityRequired"));
-          return false;
-        }
-        if (
-          !formData.emergencyContactEmail.trim() ||
-          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emergencyContactEmail)
-        ) {
-          setError(t("errors.emergencyEmailRequired"));
           return false;
         }
         return true;
@@ -971,7 +957,7 @@ export default function MemberSignupPage() {
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 {t("location")} / {t("postalCode")}
@@ -1603,7 +1589,6 @@ export default function MemberSignupPage() {
                 multiSelect
                 maxSelections={10}
                 placeholder={t("objectivesPlaceholder")}
-                items={t.raw("therapyObjectives") as string[]}
               />
             </div>
 
@@ -1620,9 +1605,7 @@ export default function MemberSignupPage() {
                 multiSelect
                 maxSelections={3}
                 placeholder={t("therapyApproachOptional")}
-                items={MEMBER_SIGNUP_THERAPY_APPROACH_OPTIONS.map(
-                  ({ msgKey }) => t(`therapyApproachOptions.${msgKey}`),
-                )}
+                items={locale === "fr" ? APPROACHES_ET_THERAPIES : Object.values(APPROACHES_ET_THERAPIES_EN)}
               />
             </div>
 
@@ -1714,72 +1697,6 @@ export default function MemberSignupPage() {
               />
             </div>
 
-            <div className="pt-2 border-t border-border/50 space-y-6">
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  {t("profileModal.step7.subtitle")}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyContactName">
-                    {t("profileModal.step7.emergencyContactName")}
-                  </Label>
-                  <Input
-                    id="emergencyContactName"
-                    name="emergencyContactName"
-                    value={formData.emergencyContactName}
-                    onChange={handleChange}
-                    placeholder={t("profileModal.step7.emergencyContactNamePlaceholder")}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyContactPhone">
-                    {t("profileModal.step7.emergencyContactPhone")}
-                  </Label>
-                  <Input
-                    id="emergencyContactPhone"
-                    name="emergencyContactPhone"
-                    type="tel"
-                    value={formData.emergencyContactPhone}
-                    onChange={handleChange}
-                    placeholder={t("profileModal.step7.emergencyContactPhonePlaceholder")}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyContactEmail">
-                    {t("profileModal.step7.emergencyContactEmail")} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="emergencyContactEmail"
-                    name="emergencyContactEmail"
-                    type="email"
-                    required
-                    value={formData.emergencyContactEmail}
-                    onChange={handleChange}
-                    placeholder={t("profileModal.step7.emergencyContactEmailPlaceholder")}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyContactRelation">
-                    {t("profileModal.step7.emergencyContactRelation")}
-                  </Label>
-                  <Input
-                    id="emergencyContactRelation"
-                    name="emergencyContactRelation"
-                    value={formData.emergencyContactRelation}
-                    onChange={handleChange}
-                    placeholder={t("profileModal.step7.emergencyContactRelationPlaceholder")}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         );
 
@@ -1993,7 +1910,7 @@ export default function MemberSignupPage() {
                   className="text-sm leading-relaxed cursor-pointer"
                 >
                   {t("termsAcceptBefore")}
-                  <Link href="/terms" className="text-primary hover:underline">
+                  <Link href="/terms" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                     {t("termsOfService")}
                   </Link>
                   {t("termsAcceptAfter")} {t("agreeToTermsSuffix")}
@@ -2019,6 +1936,8 @@ export default function MemberSignupPage() {
                     <Link
                       href="/privacy"
                       className="text-primary hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       {t("privacyPolicy")}
                     </Link>

@@ -43,6 +43,10 @@ export interface IUser extends Document {
   termsAcceptedAt?: Date;
   /** Version des CG acceptées (ex. "2026-04-13"). */
   termsVersion?: string;
+  /** Consentement aux conditions spécifiques professionnels (post-login, si mise à jour). */
+  professionalTermsAcceptedAt?: Date;
+  /** Version des conditions professionnelles acceptées (ex. "2026-04-13"). */
+  professionalTermsVersion?: string;
   image?: string;
   stripeCustomerId?: string; // For clients to store payment methods
   /**
@@ -148,6 +152,8 @@ const UserSchema = new Schema<IUser>(
     privacyPolicyVersion: String,
     termsAcceptedAt: Date,
     termsVersion: String,
+    professionalTermsAcceptedAt: Date,
+    professionalTermsVersion: String,
     image: String,
     stripeCustomerId: String, // For clients to store payment methods
     paymentGuaranteeStatus: {

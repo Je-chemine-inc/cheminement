@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type LegalDocumentKey = "terms" | "privacy" | "professionalTerms";
+export type LegalDocumentKey = "terms" | "privacy" | "professionalTerms" | "cookies";
 export type LegalDocumentLocale = "fr" | "en";
 
 export interface ILegalDocument extends Document {
@@ -23,7 +23,7 @@ const LegalDocumentSchema = new Schema<ILegalDocument>(
   {
     documentKey: {
       type: String,
-      enum: ["terms", "privacy", "professionalTerms"],
+      enum: ["terms", "privacy", "professionalTerms", "cookies"],
       required: true,
     },
     locale: {

@@ -17,37 +17,50 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
+    const paymentMethod = searchParams.get("paymentMethod") || "all";
+    const dateFrom = searchParams.get("dateFrom") || "";
+    const dateTo = searchParams.get("dateTo") || "";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    // Build query for appointments (which represent billable sessions)
-    const query: any = {
+    const query: Record<string, unknown> = {
       status: { $in: ["completed", "scheduled", "cancelled", "no-show"] },
     };
 
+    // Date range filter (appointment date)
+    if (dateFrom || dateTo) {
+      const dateFilter: Record<string, Date> = {};
+      if (dateFrom) dateFilter.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.$lte = end;
+      }
+      query.date = dateFilter;
+    }
+
+    // Payment method filter
+    if (paymentMethod !== "all") {
+      query["payment.method"] = paymentMethod;
+    }
+
+    // Status filter
     if (status !== "all") {
       if (status === "paid") {
-        query.status = "completed"; // Assuming completed sessions are paid
+        query["payment.status"] = "paid";
+      } else if (status === "overdue") {
+        query["payment.status"] = "overdue";
       } else if (status === "pending") {
-        query.status = { $in: ["scheduled"] }; // Upcoming sessions
+        query["payment.status"] = { $in: ["pending", "processing"] };
+        query.status = "scheduled";
       } else if (status === "upcoming") {
         query.status = "scheduled";
-        query.date = { $gte: new Date() };
+        query.date = { ...(query.date as object ?? {}), $gte: new Date() };
       } else if (status === "processing") {
-        query.status = "completed"; // Recently completed, processing payment
-        query.updatedAt = { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }; // Last 24 hours
-      } else if (status === "overdue") {
-        query.status = "completed";
-        query.date = { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }; // Over 30 days old
+        query["payment.status"] = "processing";
       }
     }
 
-    // Add search functionality
-    if (search.trim()) {
-      // We need to search in populated fields, so we'll handle this after population
-    }
-
-    // Get appointments with pagination
     const skip = (page - 1) * limit;
     const appointments = await Appointment.find(query)
       .populate("clientId", "firstName lastName email")
@@ -57,63 +70,59 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .lean();
 
-    // Filter by search if provided
     let filteredAppointments = appointments;
     if (search.trim()) {
+      const term = search.toLowerCase();
       filteredAppointments = appointments.filter((appointment) => {
-        const client = appointment.clientId as any;
-        const professional = appointment.professionalId as any;
-        const searchTerm = search.toLowerCase();
-        const generatedSessionId = `SES-${appointment._id.toString().slice(-6).toUpperCase()}`;
-
+        const client = appointment.clientId as {
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+        };
+        const professional = appointment.professionalId as {
+          firstName?: string;
+          lastName?: string;
+        };
+        const sessionId = `SES-${appointment._id.toString().slice(-6).toUpperCase()}`;
         return (
-          client?.firstName?.toLowerCase().includes(searchTerm) ||
-          client?.lastName?.toLowerCase().includes(searchTerm) ||
-          client?.email?.toLowerCase().includes(searchTerm) ||
-          professional?.firstName?.toLowerCase().includes(searchTerm) ||
-          professional?.lastName?.toLowerCase().includes(searchTerm) ||
-          generatedSessionId.toLowerCase().includes(searchTerm)
+          client?.firstName?.toLowerCase().includes(term) ||
+          client?.lastName?.toLowerCase().includes(term) ||
+          client?.email?.toLowerCase().includes(term) ||
+          professional?.firstName?.toLowerCase().includes(term) ||
+          professional?.lastName?.toLowerCase().includes(term) ||
+          sessionId.toLowerCase().includes(term)
         );
       });
     }
 
-    // Get total count (approximate for search)
     const total = search.trim()
       ? filteredAppointments.length * 2
       : await Appointment.countDocuments(query);
 
-    // Transform to payment format
     const payments = filteredAppointments.map((appointment) => {
-      const client = appointment.clientId as any;
-      const professional = appointment.professionalId as any;
+      const client = appointment.clientId as {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+      };
+      const professional = appointment.professionalId as {
+        firstName?: string;
+        lastName?: string;
+      };
 
-      // Determine payment status based on appointment status and date
-      let paymentStatus:
-        | "paid"
-        | "pending"
-        | "upcoming"
-        | "processing"
-        | "overdue" = "pending";
+      // Derive display status from real payment.status, falling back to date-based logic
+      const rawPaymentStatus = appointment.payment?.status;
+      let paymentStatus: "paid" | "pending" | "upcoming" | "processing" | "overdue";
 
-      if (appointment.status === "completed") {
-        const appointmentDate = appointment.date
-          ? new Date(appointment.date)
-          : new Date();
-        const daysSinceAppointment =
-          (Date.now() - appointmentDate.getTime()) / (1000 * 60 * 60 * 24);
-
-        if (daysSinceAppointment > 30) {
-          paymentStatus = "overdue";
-        } else if (daysSinceAppointment < 1) {
-          paymentStatus = "processing";
-        } else {
-          paymentStatus = "paid";
-        }
-      } else if (appointment.status === "scheduled") {
-        const appointmentDate = appointment.date
-          ? new Date(appointment.date)
-          : new Date();
-        if (appointmentDate > new Date()) {
+      if (rawPaymentStatus === "paid") {
+        paymentStatus = "paid";
+      } else if (rawPaymentStatus === "overdue") {
+        paymentStatus = "overdue";
+      } else if (rawPaymentStatus === "processing") {
+        paymentStatus = "processing";
+      } else {
+        const appointmentDate = appointment.date ? new Date(appointment.date) : new Date();
+        if (appointment.status === "scheduled" && appointmentDate > new Date()) {
           paymentStatus = "upcoming";
         } else {
           paymentStatus = "pending";
@@ -124,51 +133,64 @@ export async function GET(req: NextRequest) {
         id: appointment._id.toString(),
         sessionId: `SES-${appointment._id.toString().slice(-6).toUpperCase()}`,
         client: client
-          ? `${client.firstName} ${client.lastName}`
-          : "Unknown Client",
+          ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
+          : "—",
         professional: professional
-          ? `${professional.firstName} ${professional.lastName}`
-          : "Unknown Professional",
+          ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
+          : "—",
         date: appointment.date
-          ? appointment.date.toISOString().split("T")[0]
+          ? new Date(appointment.date).toISOString().split("T")[0]
           : "N/A",
-        sessionDate: `${appointment.date ? appointment.date.toISOString().split("T")[0] : "N/A"} ${appointment.time || "N/A"}`,
-        amount: appointment.payment?.price || 120, // Use actual payment price or fallback
-        platformFee: appointment.payment?.platformFee || 12, // Use actual platform fee or fallback
-        professionalPayout: appointment.payment?.professionalPayout || 108, // Use actual payout or fallback
+        sessionDate: appointment.date
+          ? `${new Date(appointment.date).toISOString().split("T")[0]} ${appointment.time || ""}`.trim()
+          : "N/A",
+        amount: appointment.payment?.price ?? 120,
+        platformFee: appointment.payment?.platformFee ?? 12,
+        professionalPayout: appointment.payment?.professionalPayout ?? 108,
         status: paymentStatus,
-        paymentMethod: paymentStatus === "paid" ? "Various" : undefined,
-        invoiceUrl: paymentStatus === "paid" ? "#" : undefined,
-        paidDate:
-          paymentStatus === "paid"
-            ? appointment.date
-              ? appointment.date.toISOString().split("T")[0]
-              : undefined
-            : undefined,
+        paymentMethod: appointment.payment?.method ?? undefined,
+        paidDate: appointment.payment?.paidAt
+          ? new Date(appointment.payment.paidAt).toISOString().split("T")[0]
+          : undefined,
+        invoiceUrl: rawPaymentStatus === "paid" ? "#" : undefined,
+        // Interac-specific fields
+        interacReferenceCode: appointment.payment?.interacReferenceCode ?? undefined,
+        transferDueAt: appointment.payment?.transferDueAt
+          ? new Date(appointment.payment.transferDueAt).toISOString()
+          : undefined,
+        interacReminder24hSent: appointment.interacReminder24hSent ?? false,
+        interacReminder48hSent: appointment.interacReminder48hSent ?? false,
       };
     });
 
-    // Calculate summary stats using real payment data
+    // Summary stats
     const allAppointments = await Appointment.find({
       status: { $in: ["completed", "scheduled", "cancelled", "no-show"] },
-    }).lean();
-
-    const completedAppointments = allAppointments.filter((p) => p.status === "completed");
-    const pendingAppointments = allAppointments.filter(
-      (p) => p.status === "scheduled" || p.status === "completed",
-    );
+    })
+      .select("payment status date")
+      .lean();
 
     const stats = {
-      totalRevenue: completedAppointments.reduce((sum, apt) => sum + (apt.payment?.platformFee || 12), 0),
-      pendingRevenue: pendingAppointments.reduce((sum, apt) => sum + (apt.payment?.platformFee || 12), 0),
-      professionalPayouts: completedAppointments.reduce((sum, apt) => sum + (apt.payment?.professionalPayout || 108), 0),
-      totalTransactions: completedAppointments.length,
-      overdueCount: completedAppointments.filter((p) => {
-        const daysSince =
-          (Date.now() - new Date(p.date || Date.now()).getTime()) /
-          (1000 * 60 * 60 * 24);
-        return daysSince > 30;
-      }).length,
+      totalRevenue: allAppointments
+        .filter((p) => p.payment?.status === "paid")
+        .reduce((sum, apt) => sum + (apt.payment?.platformFee ?? 12), 0),
+      pendingRevenue: allAppointments
+        .filter((p) => p.payment?.status !== "paid" && p.payment?.status !== "refunded")
+        .reduce((sum, apt) => sum + (apt.payment?.platformFee ?? 12), 0),
+      professionalPayouts: allAppointments
+        .filter((p) => p.payment?.status === "paid")
+        .reduce((sum, apt) => sum + (apt.payment?.professionalPayout ?? 108), 0),
+      totalTransactions: allAppointments.filter((p) => p.payment?.status === "paid").length,
+      overdueCount: allAppointments.filter(
+        (p) => p.payment?.status === "overdue",
+      ).length,
+      interacPendingCount: allAppointments.filter(
+        (p) =>
+          p.payment?.method === "transfer" &&
+          p.payment?.status !== "paid" &&
+          p.payment?.status !== "refunded" &&
+          p.payment?.status !== "cancelled",
+      ).length,
     };
 
     return NextResponse.json({
@@ -181,12 +203,12 @@ export async function GET(req: NextRequest) {
         pages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin billing API error:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch billing data",
-        details: error instanceof Error ? error.message : error,
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     );

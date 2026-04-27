@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc *)",
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(xargs basename *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]"
+    ]
+  }
+}

@@ -49,6 +49,9 @@ export async function POST(
 
     const body = await req.json();
     const sessionActNature = body.sessionActNature as string | undefined;
+    const sessionActNatureOther = body.sessionActNatureOther as
+      | string
+      | undefined;
     const sessionOutcome = body.sessionOutcome as string | undefined;
     const nextAppointmentDate = body.nextAppointmentDate as string | undefined;
     const nextAppointmentTime = body.nextAppointmentTime as string | undefined;
@@ -80,16 +83,6 @@ export async function POST(
       nextAppointmentDate,
       nextAppointmentTime,
     );
-
-    if (outcome === "rescheduled_agreed" && !nextAt) {
-      return NextResponse.json(
-        {
-          error:
-            "nextAppointmentDate and nextAppointmentTime are required when rescheduling with agreement",
-        },
-        { status: 400 },
-      );
-    }
 
     const apt = await Appointment.findById(id);
     if (!apt) {
@@ -241,6 +234,10 @@ export async function POST(
       "payment.listPrice": apt.payment.listPrice ?? listPrice,
     };
 
+    if (sessionActNatureOther?.trim()) {
+      $set.sessionActNatureOther = sessionActNatureOther.trim();
+    }
+
     if (!paymentLocked) {
       $set["payment.price"] = price;
       $set["payment.platformFee"] = platformFee;
@@ -261,13 +258,10 @@ export async function POST(
       $set.nextAppointmentAt = nextAt;
     }
 
-    if (newStatus === "cancelled" && outcome === "rescheduled_agreed") {
-      $set.cancelReason = "rescheduled_by_professional_agreement";
+    if (newStatus === "cancelled") {
+      $set.cancelReason = "cancelled_48h_advance";
       $set.cancelledBy = "professional";
       $set.cancelledAt = now;
-      if (!paymentLocked && price <= 0) {
-        $set["payment.transferDueAt"] = null;
-      }
     }
 
     const shouldSetTransferDue =

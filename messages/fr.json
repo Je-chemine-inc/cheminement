@@ -170,7 +170,60 @@
     },
     "billing": {
       "title": "Tableau de Bord de Facturation",
-      "subtitle": "Gérer les finances et transactions de la plateforme"
+      "subtitle": "Gérer les finances et transactions de la plateforme",
+      "failedLoad": "Échec du chargement des données",
+      "tryAgain": "Réessayer",
+      "refresh": "Actualiser",
+      "exportReport": "Exporter le rapport",
+      "platformRevenue": "Revenus plateforme",
+      "pendingRevenue": "Revenus en attente",
+      "professionalPayouts": "Versements professionnels",
+      "overdue": "En retard",
+      "interacPending": "Interac en attente",
+      "dailyTracking": "Suivi quotidien",
+      "dailyTrackingDesc": "Filtrez par date de rendez-vous et mode de paiement pour suivre les transactions du jour.",
+      "searchPlaceholder": "Rechercher client, professionnel ou numéro de séance…",
+      "filterMethod": "Mode de paiement :",
+      "allMethods": "Tous les modes",
+      "methodCard": "Carte",
+      "methodInterac": "Interac",
+      "dateFrom": "Du",
+      "dateTo": "Au",
+      "allTransactions": "Toutes les transactions",
+      "transactions": "transaction",
+      "transactionsPlural": "transactions",
+      "noTransactions": "Aucune transaction trouvée",
+      "invoiceNumber": "N° séance",
+      "clientPayment": "Paiement client",
+      "platformFee": "Frais plateforme",
+      "professionalPayout": "Versement pro",
+      "paymentMethod": "Mode de paiement",
+      "paidDate": "Date paiement",
+      "transferDueAt": "Échéance Interac",
+      "interacCode": "Code de référence",
+      "downloadInvoice": "Télécharger le reçu",
+      "resend": "Relancer",
+      "resending": "Envoi…",
+      "resendSuccess": "Instructions renvoyées",
+      "resendError": "Erreur d'envoi",
+      "reminder24hSent": "Relance J+1 envoyée",
+      "reminder48hSent": "Relance J+2 envoyée",
+      "overdueAlert": "Paiement en retard — plus de 72 h sans virement reçu",
+      "filters": {
+        "all": "Tous",
+        "paid": "Payé",
+        "pending": "En attente",
+        "upcoming": "À venir",
+        "processing": "En traitement",
+        "overdue": "En retard"
+      },
+      "status": {
+        "paid": "Payé",
+        "pending": "En attente",
+        "upcoming": "À venir",
+        "processing": "En traitement",
+        "overdue": "En retard"
+      }
     },
     "accounting": {
       "title": "Comptabilité",
@@ -782,7 +835,6 @@
     "contact": "Contact",
     "ios": "Je Chemine pour iOS",
     "android": "Je Chemine pour Android",
-    "phone": "Je Chemine pour téléphone",
     "bookAppointment": "Prendre un rendez-vous",
     "exploreResources": "Explorez les ressources",
     "platformPress": "Plateforme Presse",
@@ -796,6 +848,7 @@
     "termsOfUse": "Conditions d'utilisation",
     "aoda": "AODA",
     "professionalTerms": "Conditions pour les professionnels",
+    "cookiePolicy": "Politique de témoins",
     "rightsAndResponsibilities": "Droits et responsabilités",
     "socialX": "Je Chemine sur X"
   },
@@ -820,7 +873,13 @@
     "back": "Retour",
     "personalizedCare": "Démarche personnalisée",
     "flexibleScheduling": "Planification flexible",
-    "confidentialSupport": "Soutien confidentiel"
+    "confidentialSupport": "Soutien confidentiel",
+    "trustIcons": {
+      "bill25": "Conforme à la Loi 25 (Québec)",
+      "canadaHosting": "Données hébergées au Canada",
+      "encryption": "Chiffrement de bout en bout",
+      "twoFactor": "Double authentification (2FA) obligatoire"
+    }
   },
   "ValueSection": {
     "title": "Plateforme spécialisée en santé mentale",
@@ -1981,7 +2040,7 @@
       "statusTier": {
         "tiers": {
           "gray": {
-            "label": "Nouveau prospect",
+            "label": "Nouveau client",
             "meaning": "Aucun RDV confirmé ou uniquement des demandes en attente.",
             "action": "Le professionnel doit appeler pour fixer le RDV."
           },
@@ -2108,34 +2167,36 @@
       "notesPlaceholder": "Entrez vos notes de séance ici...",
       "sessionClosure": {
         "title": "Fin de séance",
-        "description": "Validez la nature de l'acte, le statut de la rencontre et la prochaine étape. Cette action met à jour la facturation et le dossier.",
+        "description": "Confirmez l'issue de la rencontre et la raison de la consultation. Cette action met à jour la facturation et le dossier.",
         "cta": "Terminer la séance",
-        "actNatureLabel": "Nature de l'acte professionnel",
+        "outcomeLabel": "Issue de la rencontre",
+        "outcomePlaceholder": "Choisir une issue",
+        "outcomes": {
+          "completed": "Complété (100 % des frais)",
+          "cancelled_48h_plus": "Annulé plus de 48h à l'avance (0 frais)",
+          "absence_or_late_cancel": "Absence / Annulation moins de 48h (100 % des frais)"
+        },
+        "actNatureLabel": "Raison de la consultation",
         "actPlaceholder": "Choisir une option",
         "acts": {
-          "treatment": "Traitement / Psychothérapie",
-          "evaluation": "Évaluation / Diagnostic",
-          "consultation": "Conseil / Consultation ponctuelle",
-          "administrative": "Tâches administratives liées au client"
+          "parental_coaching": "Coaching parental",
+          "punctual_consultation": "Consultation ponctuelle / conseils",
+          "psychological_evaluation": "Évaluation psychologique/neuropsychologique",
+          "individual_psychotherapy": "Psychothérapie individuelle",
+          "couple_psychotherapy": "Psychothérapie de couple",
+          "family_psychotherapy": "Psychothérapie familiale",
+          "evaluation_report": "Rédaction rapport d'évaluation",
+          "notes_synthesis": "Rédaction notes, synthèse du dossier",
+          "work_stoppage": "Rédaction : arrêt de travail / plan de retour progressif au travail",
+          "psychological_follow_up": "Suivi psychologique",
+          "parent_support": "Soutien aux parents"
         },
-        "outcomeLabel": "Issue de la rencontre",
-        "outcomePlaceholder": "Quelle est l'issue ?",
-        "outcomes": {
-          "tracking_ongoing": "Suivi en cours (prochaine séance à planifier)",
-          "completed": "Mandat complété / Fin de suivi",
-          "rescheduled_agreed": "Reporté et planifié",
-          "referral_other": "Référence vers un autre professionnel",
-          "client_no_show": "Client absent (No-show)"
-        },
-        "nextLabel": "Prochaine étape",
-        "nextHint": "Si vous avez convenu d'un prochain rendez-vous, vous pouvez le noter ici pour votre calendrier.",
-        "nextDate": "Date",
-        "nextTime": "Heure",
+        "actNatureOtherLabel": "Autre précision (apparaîtra sur le reçu)",
+        "actNatureOtherPlaceholder": "Facultatif — ex. : sujet, contexte…",
         "cancel": "Annuler",
         "saving": "Enregistrement...",
-        "submit": "Dossier traité (clore)",
-        "needNextWhenRescheduled": "Veuillez indiquer la date et l'heure du nouveau rendez-vous.",
-        "needBothDateTime": "Veuillez remplir à la fois la date et l'heure."
+        "submit": "Terminer la rencontre",
+        "genericError": "Une erreur est survenue. Veuillez réessayer."
       }
     },
     "profileModal": {
@@ -2371,7 +2432,27 @@
       "new": "Nouveau",
       "weekOf": "Semaine du",
       "noSessionsScheduled": "Aucune séance planifiée",
-      "noRequestsPending": "Aucune demande en attente"
+      "noRequestsPending": "Aucune demande en attente",
+      "meetingLink": {
+        "titleUpdate": "Modifier le lien de réunion",
+        "titleAdd": "Ajouter un lien de réunion",
+        "desc": "Fournissez un lien de réunion externe pour ce rendez-vous vidéo (Zoom, Google Meet, Microsoft Teams, etc.)",
+        "urlLabel": "URL du lien de réunion",
+        "urlPlaceholder": "https://zoom.us/j/123456789",
+        "appointmentDetails": "Détails du rendez-vous",
+        "at": "à",
+        "payment": "Paiement :",
+        "cancel": "Annuler",
+        "saving": "Enregistrement…",
+        "save": "Enregistrer le lien"
+      },
+      "paymentStatus": {
+        "paid": "Payé",
+        "failed": "Échoué",
+        "refunded": "Remboursé",
+        "processing": "En traitement",
+        "pending": "En attente"
+      }
     },
     "analytics": {
       "badge": "Analytics",
@@ -3736,6 +3817,17 @@
       "cancel": "Annuler",
       "toBeScheduled": "À planifier",
       "concernLabel": "Préoccupation",
+      "lateChange": {
+        "title": "Délai de modification dépassé",
+        "message": "Ce rendez-vous a lieu dans moins de 48h. Pour annuler ou reporter, veuillez nous contacter ou joindre votre professionnel directement.",
+        "emailUs": "Nous écrire"
+      },
+      "rescheduleInfo": {
+        "title": "Comment reporter",
+        "message": "Pour reporter votre rendez-vous, veuillez contacter la plateforme ou votre professionnel directement.",
+        "emailUs": "Nous écrire",
+        "close": "Fermer"
+      },
       "cancelDialog": {
         "title": "Annuler le rendez-vous",
         "titleSuccess": "Rendez-vous annulé",
@@ -3826,7 +3918,13 @@
       "free": "Gratuit",
       "access": "Accéder",
       "purchase": "Obtenir l'accès",
-      "noResults": "Aucune ressource ne correspond à votre recherche. Essayez d'ajuster vos filtres ou explorez différentes catégories."
+      "noResults": "Aucune ressource ne correspond à votre recherche. Essayez d'ajuster vos filtres ou explorez différentes catégories.",
+      "myDocuments": {
+        "title": "Mes documents",
+        "subtitle": "Documents et ressources partagés par votre professionnel ou la plateforme",
+        "noDocuments": "Aucun document n'a encore été partagé avec vous.",
+        "noDocumentsDesc": "Lorsque votre professionnel partagera des documents, feuilles de travail ou ressources, ils apparaîtront ici."
+      }
     },
     "billing": {
       "title": "Facturation et paiements",
@@ -4403,7 +4501,8 @@
       "backToTop": "Retour en haut",
       "tableOfContents": "Sommaire",
       "readFullDocument": "Lire le document complet",
-      "contactUs": "Nous contacter"
+      "contactUs": "Nous contacter",
+      "backToForm": "Retour au formulaire d'inscription"
     },
     "terms": {
       "title": "Conditions d'utilisation",
@@ -4662,6 +4761,53 @@
         "submitting": "Envoi en cours…",
         "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
       }
+    },
+    "cookies": {
+      "title": "Politique de témoins de connexion",
+      "subtitle": "Votre vie privée sur Je chemine",
+      "lastUpdated": "27 avril 2026",
+      "intro": "Pour que votre expérience sur Je chemine soit la plus fluide et personnalisée possible, nous utilisons des « témoins de connexion » (mieux connus sous le nom de cookies). Cette page vous explique, en toute transparence, comment nous prenons soin de vos données, conformément à la Loi 25.",
+      "sections": [
+        {
+          "title": "Qu'est-ce qu'un « témoin » et pourquoi est-il là ?",
+          "blocks": [
+            { "paragraph": "Un témoin est une petite note que notre site laisse dans votre navigateur. Elle nous permet de vous reconnaître d'une page à l'autre. Sans elle, le site oublierait qui vous êtes dès que vous cliqueriez sur un nouveau module !" },
+            { "paragraph": "Nous utilisons deux types de témoins :" },
+            { "bullets": [
+              { "term": "Les passagers", "text": "ils s'effacent dès que vous fermez votre navigateur." },
+              { "term": "Les fidèles", "text": "ils restent un certain temps pour se souvenir de vos préférences lors de votre prochaine visite." }
+            ]}
+          ]
+        },
+        {
+          "title": "Comment nous utilisons ces témoins pour vous aider",
+          "blocks": [
+            { "paragraph": "Sur Je chemine, nos témoins ont des missions bien précises :" },
+            { "bullets": [
+              { "term": "Essentiels (sécurité et accès)", "text": "ils sont le moteur du site. Ils nous permettent de sécuriser votre compte, de valider votre connexion et de protéger vos informations contre les intrus. Sans eux, la plateforme ne peut tout simplement pas fonctionner." },
+              { "term": "Fonctionnalité (se souviennent de vous)", "text": "ils retiennent vos choix, comme votre langue préférée ou l'endroit où vous vous étiez arrêté dans votre parcours, pour vous éviter de tout recommencer." },
+              { "term": "Analyse (nous aident à nous améliorer)", "text": "nous utilisons des outils comme Google Analytics pour comprendre quelles sections de la plateforme sont les plus appréciées. Ces données nous parviennent de façon globale et anonyme afin de créer de meilleurs contenus pour vous." }
+            ]}
+          ]
+        },
+        {
+          "title": "Une protection supplémentaire : votre adresse IP",
+          "blocks": [
+            { "paragraph": "Pour protéger la communauté Je chemine contre les cyberattaques, nous surveillons les adresses IP. C'est un peu comme avoir un gardien à l'entrée : cela nous permet de bloquer les comportements malveillants tout en laissant la porte grande ouverte aux utilisateurs légitimes." }
+          ]
+        },
+        {
+          "title": "Vous gardez le contrôle de votre chemin",
+          "blocks": [
+            { "paragraph": "C'est votre parcours, et vous décidez des traces que vous laissez." },
+            { "bullets": [
+              { "term": "Voyager léger", "text": "vous pouvez bloquer les témoins dans les réglages de votre navigateur." },
+              { "term": "À noter", "text": "si vous désactivez tous les témoins, certains outils de Je chemine risquent de ne plus répondre correctement, comme le maintien de votre connexion." }
+            ]},
+            { "callout": "Pour toute question sur notre utilisation des témoins ou sur vos données personnelles, contactez-nous à info@jechemine.com." }
+          ]
+        }
+      ]
     }
   },
   "AdminLegalDocuments": {
@@ -4679,6 +4825,10 @@
       "professionalTerms": {
         "label": "Conditions pour les professionnels",
         "description": "Conditions d'utilisation spécifiques aux professionnels, acceptées à la finalisation du profil."
+      },
+      "cookies": {
+        "label": "Politique de témoins",
+        "description": "Politique de témoins de connexion de Je chemine – applicable à tous les utilisateurs."
       }
     },
     "localeFrench": "Français",

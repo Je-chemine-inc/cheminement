@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
+import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Profile from "@/models/Profile";
@@ -19,6 +20,15 @@ import {
 import { LEGAL_VERSIONS } from "@/lib/legal";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(`signup:${ip}`, AuthRateLimits.signup.limit, AuthRateLimits.signup.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     await connectToDatabase();
 

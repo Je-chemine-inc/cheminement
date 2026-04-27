@@ -72,11 +72,6 @@ export async function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-                  {t("phone")}
-                </Link>
-              </li>
-              <li>
                 <Link href="/contact" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
                   {t("contactUs")}
                 </Link>
@@ -168,6 +163,9 @@ export async function Footer() {
             </Link>
             <Link href="/professional-terms" className="hover:text-primary-foreground transition-colors uppercase">
               {legalTitles.professionalTerms || t("professionalTerms")}
+            </Link>
+            <Link href="/cookies" className="hover:text-primary-foreground transition-colors uppercase">
+              {legalTitles.cookies || t("cookiePolicy")}
             </Link>
           </div>
         </div>

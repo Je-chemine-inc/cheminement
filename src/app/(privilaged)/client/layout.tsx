@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import InactivityLogout from "@/components/auth/InactivityLogout";
 
 export default async function ClientLayout({
   children,
@@ -21,6 +22,7 @@ export default async function ClientLayout({
 
   return (
     <SidebarProvider>
+      <InactivityLogout />
       <div className="flex min-h-screen w-full">
         <ClientSidebar />
         <main className="flex-1 overflow-y-auto">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
+import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 import {
   EMAIL_VERIFY_TTL_MS,
   PHONE_STEP_TTL_MS,
@@ -19,6 +20,15 @@ function safeEqualHex(a: string, b: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(`verify-email:${ip}`, AuthRateLimits.verifyEmail.limit, AuthRateLimits.verifyEmail.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     const body = await req.json();
     const userId = body.userId as string | undefined;

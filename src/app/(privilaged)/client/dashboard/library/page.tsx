@@ -5,6 +5,7 @@ import {
   BookOpen,
   Download,
   Filter,
+  FolderOpen,
   Heart,
   Headphones,
   PlayCircle,
@@ -299,6 +300,32 @@ export default function ClientLibraryPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* My Documents */}
+      <section className="rounded-3xl border border-border/20 bg-card/80 p-7 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="rounded-full bg-primary/10 p-3">
+            <FolderOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-serif text-2xl font-light text-foreground">
+              {t("myDocuments.title")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("myDocuments.subtitle")}
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 rounded-2xl border border-dashed border-border/50 bg-muted/20 p-10 text-center">
+          <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground/40" />
+          <p className="mt-4 text-sm font-medium text-muted-foreground">
+            {t("myDocuments.noDocuments")}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/70">
+            {t("myDocuments.noDocumentsDesc")}
+          </p>
         </div>
       </section>
 

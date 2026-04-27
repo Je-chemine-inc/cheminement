@@ -13,6 +13,9 @@ import {
   Loader2,
   AlertCircle,
   Star,
+  Lock,
+  RefreshCw,
+  Mail,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,7 @@ export default function ClientAppointmentsPage() {
   const [appointmentToReview, setAppointmentToReview] =
     useState<AppointmentResponse | null>(null);
   const [managedAccountName, setManagedAccountName] = useState<string | null>(null);
+  const [rescheduleInfoId, setRescheduleInfoId] = useState<string | null>(null);
   const t = useTranslations("Client.appointments");
   const tManaged = useTranslations("managedAccounts");
   const locale = useLocale();
@@ -126,6 +130,15 @@ export default function ClientAppointmentsPage() {
     }
 
     return false;
+  };
+
+  const canModifyAppointment = (appointment: AppointmentResponse): boolean => {
+    if (!appointment.date || !appointment.time) return false;
+    const [hours, minutes] = appointment.time.split(":").map(Number);
+    const sessionStart = new Date(appointment.date);
+    sessionStart.setHours(hours, minutes, 0, 0);
+    const hoursUntil = (sessionStart.getTime() - Date.now()) / (1000 * 60 * 60);
+    return hoursUntil > 48;
   };
 
   const openReviewDialog = (appointment: AppointmentResponse) => {
@@ -402,41 +415,104 @@ export default function ClientAppointmentsPage() {
                   )}
 
                   {/* Actions */}
-                  <div className="flex flex-wrap gap-2">
-                    {activeTab === "upcoming" &&
-                      appointment.status === "scheduled" && (
-                        <>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      {activeTab === "upcoming" &&
+                        appointment.status === "scheduled" &&
+                        canModifyAppointment(appointment) && (
+                          <>
+                            <Button
+                              variant="outline"
+                              onClick={() => openCancelDialog(appointment)}
+                              className="gap-2 rounded-full text-red-600 hover:text-red-700"
+                            >
+                              {t("actions.cancel")}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() =>
+                                setRescheduleInfoId(
+                                  rescheduleInfoId === appointment._id
+                                    ? null
+                                    : appointment._id,
+                                )
+                              }
+                              className="gap-2 rounded-full"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              {t("actions.reschedule")}
+                            </Button>
+                          </>
+                        )}
+                      {activeTab === "upcoming" &&
+                        appointment.type === "video" &&
+                        canJoinSession(appointment) && (
+                          <Button
+                            onClick={() => handleJoinSession(appointment)}
+                            className="gap-2 rounded-full"
+                          >
+                            <Video className="h-4 w-4" />
+                            {t("actions.joinSession")}
+                          </Button>
+                        )}
+                      {activeTab === "past" &&
+                        appointment.status === "completed" && (
                           <Button
                             variant="outline"
-                            onClick={() => openCancelDialog(appointment)}
-                            className="gap-2 rounded-full text-red-600 hover:text-red-700"
+                            onClick={() => openReviewDialog(appointment)}
+                            className="gap-2 rounded-full"
                           >
-                            {t("actions.cancel")}
+                            <Star className="h-4 w-4" />
+                            {t("actions.review")}
                           </Button>
-                        </>
-                      )}
+                        )}
+                    </div>
+
+                    {/* 48h lock alert */}
                     {activeTab === "upcoming" &&
-                      appointment.type === "video" &&
-                      canJoinSession(appointment) && (
-                        <Button
-                          onClick={() => handleJoinSession(appointment)}
-                          className="gap-2 rounded-full"
-                        >
-                          <Video className="h-4 w-4" />
-                          {t("actions.joinSession")}
-                        </Button>
+                      appointment.status === "scheduled" &&
+                      !canModifyAppointment(appointment) && (
+                        <div className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-800/40 dark:bg-orange-950/20">
+                          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                              {t("lateChange.title")}
+                            </p>
+                            <p className="text-sm text-orange-700 dark:text-orange-300">
+                              {t("lateChange.message")}
+                            </p>
+                            <a
+                              href="mailto:contact@monimpression.com"
+                              className="inline-flex items-center gap-1 text-sm font-medium text-orange-700 underline hover:text-orange-900 dark:text-orange-300"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                              {t("lateChange.emailUs")}
+                            </a>
+                          </div>
+                        </div>
                       )}
-                    {activeTab === "past" &&
-                      appointment.status === "completed" && (
-                        <Button
-                          variant="outline"
-                          onClick={() => openReviewDialog(appointment)}
-                          className="gap-2 rounded-full"
-                        >
-                          <Star className="h-4 w-4" />
-                          {t("actions.review")}
-                        </Button>
-                      )}
+
+                    {/* Reschedule contact info panel */}
+                    {rescheduleInfoId === appointment._id && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/40 dark:bg-blue-950/20">
+                        <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            {t("rescheduleInfo.title")}
+                          </p>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            {t("rescheduleInfo.message")}
+                          </p>
+                          <a
+                            href="mailto:contact@monimpression.com"
+                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 underline hover:text-blue-900 dark:text-blue-300"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            {t("rescheduleInfo.emailUs")}
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

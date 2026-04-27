@@ -2,18 +2,21 @@ import jsPDF from "jspdf";
 import type { SessionActNature } from "@/lib/session-closure";
 
 const ACT_LABELS_FR: Record<SessionActNature, string> = {
-  treatment: "Traitement / Psychothérapie",
-  evaluation: "Évaluation / Diagnostic",
-  consultation: "Conseil / Consultation ponctuelle",
-  administrative: "Tâches administratives liées au client",
+  parental_coaching: "Coaching parental",
+  punctual_consultation: "Consultation ponctuelle / conseils",
+  psychological_evaluation: "Évaluation psychologique/neuropsychologique",
+  individual_psychotherapy: "Psychothérapie individuelle",
+  couple_psychotherapy: "Psychothérapie de couple",
+  family_psychotherapy: "Psychothérapie familiale",
+  evaluation_report: "Rédaction rapport d'évaluation",
+  notes_synthesis: "Rédaction notes, synthèse du dossier",
+  work_stoppage: "Rédaction : arrêt de travail / plan de retour progressif au travail",
+  psychological_follow_up: "Suivi psychologique",
+  parent_support: "Soutien aux parents",
 };
 
-export function getSessionActNatureLabelFr(
-  key: string | undefined,
-): string {
-  if (!key || !(key in ACT_LABELS_FR)) {
-    return key || "—";
-  }
+export function getSessionActNatureLabelFr(key: string | undefined): string {
+  if (!key || !(key in ACT_LABELS_FR)) return key || "—";
   return ACT_LABELS_FR[key as SessionActNature];
 }
 
@@ -22,10 +25,14 @@ export type ReceiptAudience = "client" | "professional" | "admin";
 export type FiscalReceiptPdfInput = {
   appointmentId: string;
   issuedAt: Date;
+  /** Service recipient (populated client name). May differ from billedTo when bookingFor !== "self". */
   clientName: string;
   clientEmail: string;
+  /** When booking is for a loved-one / patient, this is the person receiving the service. */
+  recipientName?: string;
   professionalName: string;
   professionalEmail: string;
+  professionalTitle?: string;
   professionalLicense?: string;
   appointmentDateLabel: string;
   sessionTime: string;
@@ -33,6 +40,9 @@ export type FiscalReceiptPdfInput = {
   sessionType: string;
   therapyTypeLabel: string;
   actNatureKey?: string;
+  actNatureOther?: string;
+  /** Determines dynamic description: absence_or_late_cancel → management/cancellation fees. */
+  sessionOutcome?: string;
   amountCad: number;
   platformFeeCad: number;
   professionalPayoutCad: number;
@@ -43,7 +53,6 @@ export type FiscalReceiptPdfInput = {
   audience?: ReceiptAudience;
 };
 
-/** Données appointment peuplées (clientId, professionalId) + champs payment. */
 export function buildFiscalReceiptInputFromPopulatedAppointment(
   appointment: {
     _id: string | { toString: () => string };
@@ -52,7 +61,12 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     duration: number;
     type?: string;
     therapyType?: string;
+    bookingFor?: string;
+    lovedOneInfo?: { firstName: string; lastName: string };
+    referralInfo?: { patientFirstName?: string; patientLastName?: string };
     sessionActNature?: string;
+    sessionActNatureOther?: string;
+    sessionOutcome?: string;
     payment: {
       price: number;
       platformFee: number;
@@ -66,6 +80,7 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     professionalId: unknown;
   },
   professionalLicense?: string,
+  professionalTitle?: string,
 ): FiscalReceiptPdfInput {
   const id =
     typeof appointment._id === "string"
@@ -98,6 +113,19 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     appointment.payment.method === "transfer" &&
     appointment.payment.status !== "paid";
 
+  // Determine if there's a separate service recipient (loved-one / referred patient)
+  let recipientName: string | undefined;
+  if (appointment.bookingFor === "loved-one" && appointment.lovedOneInfo) {
+    recipientName =
+      `${appointment.lovedOneInfo.firstName} ${appointment.lovedOneInfo.lastName}`.trim();
+  } else if (
+    appointment.bookingFor === "patient" &&
+    appointment.referralInfo?.patientFirstName
+  ) {
+    recipientName =
+      `${appointment.referralInfo.patientFirstName} ${appointment.referralInfo.patientLastName ?? ""}`.trim();
+  }
+
   return {
     appointmentId: id,
     issuedAt: appointment.payment.paidAt
@@ -105,8 +133,11 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
       : new Date(),
     clientName: `${client.firstName} ${client.lastName}`,
     clientEmail: client.email,
-    professionalName: `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim(),
+    recipientName,
+    professionalName:
+      `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim(),
     professionalEmail: professional.email ?? "",
+    professionalTitle,
     professionalLicense,
     appointmentDateLabel: dateLabel,
     sessionTime: appointment.time || "—",
@@ -130,6 +161,8 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
             ? "Groupe"
             : appointment.therapyType || "—",
     actNatureKey: appointment.sessionActNature,
+    actNatureOther: appointment.sessionActNatureOther,
+    sessionOutcome: appointment.sessionOutcome,
     amountCad: appointment.payment.price,
     platformFeeCad: appointment.payment.platformFee,
     professionalPayoutCad: appointment.payment.professionalPayout,
@@ -148,201 +181,268 @@ export function buildFiscalReceiptPdfBuffer(
   input: FiscalReceiptPdfInput,
 ): Buffer {
   const doc = new jsPDF();
+
   const primaryColor: [number, number, number] = [79, 70, 229];
   const textColor: [number, number, number] = [31, 41, 55];
+  const grayColor: [number, number, number] = [107, 114, 128];
   const lightGray: [number, number, number] = [243, 244, 246];
+  const MARGIN = 20;
+  const COL_RIGHT = 120;
+  const PAGE_RIGHT = 190;
+
   const { appointmentId } = input;
   const isProVariant = input.audience === "professional";
 
+  // ── HEADER BANNER ────────────────────────────────────────────────────────────
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 40, "F");
-
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("Je Cheminement", 20, 25);
-
+  doc.text("Je Chemine", MARGIN, 25);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("Plateforme de services en santé mentale", 20, 32);
+  doc.text("Plateforme de services en santé mentale", MARGIN, 33);
 
+  // ── TITLE & RECEIPT META ─────────────────────────────────────────────────────
+  let y = 52;
   doc.setTextColor(...textColor);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text(isProVariant ? "RELEVÉ DE REVENU" : "REÇU FISCAL", 20, 55);
+  doc.text(isProVariant ? "RELEVÉ DE REVENU" : "REÇU", MARGIN, y);
+  y += 10;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
+  doc.setTextColor(...grayColor);
   doc.text(
     `Reçu n° REC-${appointmentId.slice(-8).toUpperCase()}`,
-    20,
-    62,
+    MARGIN,
+    y,
   );
+  y += 6;
+  if (input.appointmentDateLabel && input.appointmentDateLabel !== "—") {
+    doc.text(`Date de la rencontre : ${input.appointmentDateLabel}`, MARGIN, y);
+    y += 6;
+  }
   doc.text(
     `Émis le : ${input.issuedAt.toLocaleDateString("fr-CA", {
       year: "numeric",
       month: "long",
       day: "numeric",
     })}`,
-    20,
-    68,
+    MARGIN,
+    y,
   );
+  y += 10;
 
+  // ── DIVIDER ──────────────────────────────────────────────────────────────────
   doc.setDrawColor(229, 231, 235);
-  doc.line(20, 75, 190, 75);
+  doc.line(MARGIN, y, PAGE_RIGHT, y);
+  y += 8;
 
+  // ── IDENTITY SECTION ─────────────────────────────────────────────────────────
+  const identityTopY = y;
+
+  // Left column — Client / Facturé à
   doc.setTextColor(...textColor);
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Client", 20, 85);
+  doc.text("Client", MARGIN, identityTopY);
 
+  let leftY = identityTopY + 7;
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(input.clientName, 20, 92);
-  doc.text(input.clientEmail, 20, 98);
+  doc.setTextColor(...grayColor);
 
-  doc.setTextColor(...textColor);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Professionnel", 120, 85);
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(input.professionalName, 120, 92);
-  doc.text(input.professionalEmail, 120, 98);
-  if (input.professionalLicense) {
-    doc.text(`N° permis : ${input.professionalLicense}`, 120, 104);
+  if (input.recipientName) {
+    doc.text(input.recipientName, MARGIN, leftY);
+    leftY += 6;
+    doc.setFontSize(9);
+    doc.text(`Facturé à : ${input.clientName}`, MARGIN, leftY);
+    leftY += 5;
+    doc.setFontSize(10);
+    doc.text(input.clientEmail, MARGIN, leftY);
+    leftY += 6;
+  } else {
+    doc.text(input.clientName, MARGIN, leftY);
+    leftY += 6;
+    doc.text(input.clientEmail, MARGIN, leftY);
+    leftY += 6;
   }
 
-  doc.line(20, 112, 190, 112);
-
+  // Right column — Professional
   doc.setTextColor(...textColor);
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Séance", 20, 122);
+  doc.text("Professionnel", COL_RIGHT, identityTopY);
+
+  let rightY = identityTopY + 7;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...grayColor);
+  doc.text(input.professionalName, COL_RIGHT, rightY);
+  rightY += 6;
+  if (input.professionalTitle) {
+    doc.text(input.professionalTitle, COL_RIGHT, rightY);
+    rightY += 6;
+  }
+  if (input.professionalLicense) {
+    doc.text(`N° permis : ${input.professionalLicense}`, COL_RIGHT, rightY);
+    rightY += 6;
+  }
+
+  y = Math.max(leftY, rightY) + 4;
+
+  // ── DIVIDER ──────────────────────────────────────────────────────────────────
+  doc.setDrawColor(229, 231, 235);
+  doc.line(MARGIN, y, PAGE_RIGHT, y);
+  y += 8;
+
+  // ── SÉANCE SECTION ───────────────────────────────────────────────────────────
+  doc.setTextColor(...textColor);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Séance", MARGIN, y);
+  y += 6;
+
+  const isAbsenceOrLateCancel = input.sessionOutcome === "absence_or_late_cancel";
+  const descriptionLine = isAbsenceOrLateCancel
+    ? "Frais de gestion de dossier / Annulation tardive"
+    : getSessionActNatureLabelFr(input.actNatureKey) +
+      (input.actNatureOther ? ` — ${input.actNatureOther}` : "");
+
+  // Wrap long description
+  const maxDescWidth = 155;
+  const descWrapped = doc.splitTextToSize(descriptionLine, maxDescWidth) as string[];
+  const BOX_PADDING = 8;
+  const LINE_H = 7;
+  const seanceInfoLines = [
+    `Durée : ${input.durationMinutes} min`,
+    `Type : ${input.sessionType} — ${input.therapyTypeLabel}`,
+  ];
+  const boxHeight =
+    BOX_PADDING +
+    seanceInfoLines.length * LINE_H +
+    8 + // spacing before description
+    descWrapped.length * 6 +
+    BOX_PADDING;
 
   doc.setFillColor(...lightGray);
-  doc.roundedRect(20, 127, 170, 48, 3, 3, "F");
+  doc.roundedRect(MARGIN, y, 170, boxHeight, 3, 3, "F");
 
+  let boxY = y + BOX_PADDING;
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...textColor);
-  const actLabel = getSessionActNatureLabelFr(input.actNatureKey);
-  doc.text(`Date / heure : ${input.appointmentDateLabel}`, 25, 135);
-  doc.text(`Heure (créneau) : ${input.sessionTime}`, 25, 142);
-  doc.text(`Durée : ${input.durationMinutes} minutes`, 25, 149);
-  doc.text(`Type : ${input.sessionType}`, 25, 156);
-  doc.text(`Modalité thérapie : ${input.therapyTypeLabel}`, 25, 163);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Nature de l'acte : ${actLabel}`, 25, 172);
 
-  doc.setTextColor(...textColor);
-  doc.setFontSize(12);
+  for (const line of seanceInfoLines) {
+    doc.text(line, MARGIN + 5, boxY);
+    boxY += LINE_H;
+  }
+  boxY += 4;
   doc.setFont("helvetica", "bold");
-  doc.text("Paiement", 20, 188);
+  if (isAbsenceOrLateCancel) {
+    doc.setTextColor(180, 83, 9); // amber for cancellation/no-show
+  }
+  doc.text(descWrapped, MARGIN + 5, boxY);
+
+  y += boxHeight + 10;
+
+  // ── PAIEMENT SECTION ─────────────────────────────────────────────────────────
+  doc.setTextColor(...textColor);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Paiement", MARGIN, y);
+  y += 6;
 
   doc.setFillColor(...lightGray);
-  doc.roundedRect(20, 193, 170, 10, 2, 2, "F");
-
+  doc.roundedRect(MARGIN, y, 170, 10, 2, 2, "F");
   doc.setFontSize(10);
-  doc.text("Description", 25, 200);
-  doc.text("Montant", 160, 200, { align: "right" });
+  doc.text("Description", MARGIN + 5, y + 7);
+  doc.text("Montant", PAGE_RIGHT, y + 7, { align: "right" });
+  y += 16;
 
-  let yPos = 210;
   doc.setFont("helvetica", "normal");
 
   if (isProVariant) {
-    // Professional sees only their net earnings — no gross, no platform fee.
-    doc.text("Revenu professionnel (séance)", 25, yPos);
-    doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, 160, yPos, {
+    doc.text("Revenu professionnel (séance)", MARGIN + 5, y);
+    doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, PAGE_RIGHT, y, {
       align: "right",
     });
-    yPos += 10;
+    y += 10;
   } else {
-    doc.text(`Prestation (séance)`, 25, yPos);
-    doc.text(`$${input.amountCad.toFixed(2)}`, 160, yPos, { align: "right" });
-    yPos += 10;
+    doc.text("Prestation (séance)", MARGIN + 5, y);
+    doc.text(`$${input.amountCad.toFixed(2)}`, PAGE_RIGHT, y, {
+      align: "right",
+    });
+    y += 10;
 
     if (input.platformFeeCad > 0) {
-      doc.setTextColor(107, 114, 128);
+      doc.setTextColor(...grayColor);
       doc.setFontSize(9);
-      doc.text("Frais plateforme", 30, yPos);
-      doc.text(`$${input.platformFeeCad.toFixed(2)}`, 160, yPos, {
+      doc.text("Frais plateforme", MARGIN + 8, y);
+      doc.text(`$${input.platformFeeCad.toFixed(2)}`, PAGE_RIGHT, y, {
         align: "right",
       });
-      yPos += 8;
-      doc.text("Montant net professionnel", 30, yPos);
-      doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, 160, yPos, {
+      y += 7;
+      doc.text("Montant net professionnel", MARGIN + 8, y);
+      doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, PAGE_RIGHT, y, {
         align: "right",
       });
-      yPos += 10;
+      y += 9;
     }
   }
 
   doc.setDrawColor(229, 231, 235);
-  doc.line(25, yPos, 185, yPos);
-  yPos += 8;
+  doc.line(MARGIN + 5, y, PAGE_RIGHT - 5, y);
+  y += 7;
 
   doc.setTextColor(...textColor);
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("Total", 25, yPos);
+  doc.text("Total", MARGIN + 5, y);
   const totalCad = isProVariant ? input.professionalPayoutCad : input.amountCad;
-  doc.text(`$${totalCad.toFixed(2)} CAD`, 160, yPos, {
-    align: "right",
-  });
-  yPos += 14;
+  doc.text(`$${totalCad.toFixed(2)} CAD`, PAGE_RIGHT, y, { align: "right" });
+  y += 12;
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(107, 114, 128);
-  doc.text(`Mode : ${input.paymentMethodLabel}`, 25, yPos);
-  yPos += 5;
+  doc.setTextColor(...grayColor);
+  doc.text(`Mode : ${input.paymentMethodLabel}`, MARGIN + 5, y);
+  y += 5;
   if (input.paymentStatus === "pending_transfer") {
     doc.setTextColor(180, 83, 9);
     doc.text(
       "Paiement en attente — virement Interac selon les instructions envoyées par courriel.",
-      25,
-      yPos,
+      MARGIN + 5,
+      y,
     );
-    yPos += 10;
+    y += 8;
   } else if (input.stripePaymentIntentId) {
-    doc.setTextColor(107, 114, 128);
+    doc.setTextColor(...grayColor);
     doc.text(
       `Réf. transaction : ${input.stripePaymentIntentId.slice(-18)}`,
-      25,
-      yPos,
+      MARGIN + 5,
+      y,
     );
-    yPos += 5;
+    y += 6;
   }
 
+  // ── FOOTER ───────────────────────────────────────────────────────────────────
+  const footerY = 265;
   doc.setDrawColor(229, 231, 235);
-  doc.line(20, 260, 190, 260);
-
+  doc.line(MARGIN, footerY, PAGE_RIGHT, footerY);
   doc.setFontSize(8);
-  doc.setTextColor(107, 114, 128);
-  doc.text(
-    "Merci d'avoir choisi Je Cheminement.",
-    105,
-    270,
-    { align: "center" },
-  );
-  doc.text(
-    "Questions : support@jecheminement.com",
-    105,
-    276,
-    { align: "center" },
-  );
+  doc.setTextColor(...grayColor);
+  doc.text("Merci d'avoir choisi Je Chemine.", 105, footerY + 8, {
+    align: "center",
+  });
+  doc.text("support@jechemine.ca", 105, footerY + 14, { align: "center" });
   doc.setFontSize(7);
-  doc.text(
-    "Document généré automatiquement.",
-    105,
-    285,
-    { align: "center" },
-  );
+  doc.text("Document généré automatiquement.", 105, footerY + 22, {
+    align: "center",
+  });
 
   return Buffer.from(doc.output("arraybuffer"));
 }

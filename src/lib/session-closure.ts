@@ -1,36 +1,39 @@
 import type { AppointmentStatus } from "@/types/api";
 
-/** Nature de l'acte (facturation / dossier). */
+/** Raison de la consultation (facturation / dossier). */
 export const SESSION_ACT_NATURE_VALUES = [
-  "treatment",
-  "evaluation",
-  "consultation",
-  "administrative",
+  "parental_coaching",
+  "punctual_consultation",
+  "psychological_evaluation",
+  "individual_psychotherapy",
+  "couple_psychotherapy",
+  "family_psychotherapy",
+  "evaluation_report",
+  "notes_synthesis",
+  "work_stoppage",
+  "psychological_follow_up",
+  "parent_support",
 ] as const;
 
 export type SessionActNature = (typeof SESSION_ACT_NATURE_VALUES)[number];
 
 /** Issue de la rencontre — détermine le statut du RDV et la fraction facturée. */
 export const SESSION_OUTCOME_VALUES = [
-  "tracking_ongoing",
   "completed",
-  "rescheduled_agreed",
-  "referral_other",
-  "client_no_show",
+  "cancelled_48h_plus",
+  "absence_or_late_cancel",
 ] as const;
 
 export type SessionOutcome = (typeof SESSION_OUTCOME_VALUES)[number];
 
 export function getBillingFraction(outcome: SessionOutcome): number {
   switch (outcome) {
-    case "tracking_ongoing":
     case "completed":
-    case "referral_other":
       return 1;
-    case "client_no_show":
-      return 1;
-    case "rescheduled_agreed":
+    case "cancelled_48h_plus":
       return 0;
+    case "absence_or_late_cancel":
+      return 1;
     default:
       return 1;
   }
@@ -40,14 +43,12 @@ export function getAppointmentStatusForOutcome(
   outcome: SessionOutcome,
 ): AppointmentStatus {
   switch (outcome) {
-    case "tracking_ongoing":
     case "completed":
-    case "referral_other":
       return "completed";
-    case "client_no_show":
-      return "no-show";
-    case "rescheduled_agreed":
+    case "cancelled_48h_plus":
       return "cancelled";
+    case "absence_or_late_cancel":
+      return "no-show";
     default:
       return "completed";
   }

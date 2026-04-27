@@ -7,6 +7,8 @@ import {
   sendPaymentGuaranteeDay1Reminder,
   sendPaymentGuarantee48hClientReminder,
   sendPaymentGuarantee48hProfessionalAlert,
+  sendPostMeetingPaymentReminder,
+  sendAdminNoPaymentBeforeMeetingAlert,
 } from "@/lib/notifications";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -44,6 +46,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
   day1Sent: number;
   h48ClientSent: number;
   h48ProSent: number;
+  postMeetingSent: number;
 }> {
   await connectToDatabase();
   const now = Date.now();
@@ -155,5 +158,53 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     }
   }
 
-  return { day1Sent, h48ClientSent, h48ProSent };
+  // Post-meeting: clients who had no payment method at the time of their session
+  let postMeetingSent = 0;
+  const postMeetingCandidates = await Appointment.find({
+    status: { $in: ["completed", "no-show"] },
+    postMeetingPaymentReminderSent: { $ne: true },
+    date: { $exists: true },
+  })
+    .populate("clientId", "firstName lastName email language")
+    .limit(200);
+
+  for (const apt of postMeetingCandidates) {
+    const clientPop = apt.clientId as unknown as {
+      _id: { toString: () => string };
+      firstName: string;
+      lastName: string;
+      email: string;
+      language?: string;
+    };
+    const user = await User.findById(clientPop._id);
+    if (!user) continue;
+    if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
+
+    const dateLabel = formatAppointmentDateLabel(apt);
+    const locale: "fr" | "en" = clientPop.language === "fr" ? "fr" : "en";
+
+    const [clientOk] = await Promise.all([
+      sendPostMeetingPaymentReminder({
+        clientName: `${clientPop.firstName} ${clientPop.lastName}`,
+        clientEmail: clientPop.email,
+        appointmentDateLabel: dateLabel,
+        locale,
+      }),
+      sendAdminNoPaymentBeforeMeetingAlert({
+        clientName: `${clientPop.firstName} ${clientPop.lastName}`,
+        clientEmail: clientPop.email,
+        appointmentDateLabel: dateLabel,
+        appointmentId: String(apt._id),
+      }),
+    ]);
+
+    if (clientOk) {
+      await Appointment.findByIdAndUpdate(apt._id, {
+        $set: { postMeetingPaymentReminderSent: true },
+      });
+      postMeetingSent++;
+    }
+  }
+
+  return { day1Sent, h48ClientSent, h48ProSent, postMeetingSent };
 }

@@ -170,7 +170,60 @@
     },
     "billing": {
       "title": "Billing Dashboard",
-      "subtitle": "Manage platform finances and transactions"
+      "subtitle": "Manage platform finances and transactions",
+      "failedLoad": "Failed to load data",
+      "tryAgain": "Try again",
+      "refresh": "Refresh",
+      "exportReport": "Export report",
+      "platformRevenue": "Platform revenue",
+      "pendingRevenue": "Pending revenue",
+      "professionalPayouts": "Professional payouts",
+      "overdue": "Overdue",
+      "interacPending": "Interac pending",
+      "dailyTracking": "Daily monitoring",
+      "dailyTrackingDesc": "Filter by appointment date and payment method to track today's transactions.",
+      "searchPlaceholder": "Search client, professional or session ID…",
+      "filterMethod": "Payment method:",
+      "allMethods": "All methods",
+      "methodCard": "Card",
+      "methodInterac": "Interac",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "allTransactions": "All transactions",
+      "transactions": "transaction",
+      "transactionsPlural": "transactions",
+      "noTransactions": "No transactions found",
+      "invoiceNumber": "Session ID",
+      "clientPayment": "Client payment",
+      "platformFee": "Platform fee",
+      "professionalPayout": "Pro payout",
+      "paymentMethod": "Payment method",
+      "paidDate": "Paid date",
+      "transferDueAt": "Interac due date",
+      "interacCode": "Reference code",
+      "downloadInvoice": "Download receipt",
+      "resend": "Resend",
+      "resending": "Sending…",
+      "resendSuccess": "Instructions resent",
+      "resendError": "Send error",
+      "reminder24hSent": "J+1 reminder sent",
+      "reminder48hSent": "J+2 reminder sent",
+      "overdueAlert": "Payment overdue — more than 72 h without transfer received",
+      "filters": {
+        "all": "All",
+        "paid": "Paid",
+        "pending": "Pending",
+        "upcoming": "Upcoming",
+        "processing": "Processing",
+        "overdue": "Overdue"
+      },
+      "status": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "upcoming": "Upcoming",
+        "processing": "Processing",
+        "overdue": "Overdue"
+      }
     },
     "accounting": {
       "title": "Accounting",
@@ -782,7 +835,6 @@
     "contact": "Contact",
     "ios": "Je Chemine for iOS",
     "android": "Je Chemine for Android",
-    "phone": "Je Chemine for Phone",
     "bookAppointment": "Book an Appointment",
     "exploreResources": "Explore Resources",
     "platformPress": "Platform Press",
@@ -796,6 +848,7 @@
     "termsOfUse": "Terms of Use",
     "aoda": "AODA",
     "professionalTerms": "Professional Terms",
+    "cookiePolicy": "Cookie Policy",
     "rightsAndResponsibilities": "Rights and Responsibilities",
     "socialX": "Je Chemine on X"
   },
@@ -820,7 +873,13 @@
     "back": "Back",
     "personalizedCare": "Personalized Care",
     "flexibleScheduling": "Flexible Scheduling",
-    "confidentialSupport": "Confidential Support"
+    "confidentialSupport": "Confidential Support",
+    "trustIcons": {
+      "bill25": "Bill 25 Compliant (Quebec)",
+      "canadaHosting": "Data Hosted in Canada",
+      "encryption": "End-to-End Encryption",
+      "twoFactor": "Mandatory 2FA Authentication"
+    }
   },
   "ValueSection": {
     "title": "Integrated Health Platform",
@@ -1981,7 +2040,7 @@
       "statusTier": {
         "tiers": {
           "gray": {
-            "label": "New prospect",
+            "label": "New client",
             "meaning": "No confirmed appointment yet, or only pending requests.",
             "action": "The professional should call to book the appointment."
           },
@@ -2108,34 +2167,36 @@
       "notesPlaceholder": "Enter your session notes here...",
       "sessionClosure": {
         "title": "End of session",
-        "description": "Confirm the type of service, encounter outcome, and next step. This action updates billing and the record.",
+        "description": "Confirm the encounter outcome and the reason for consultation. This action updates billing and the record.",
         "cta": "Complete session",
-        "actNatureLabel": "Nature of professional service",
+        "outcomeLabel": "Encounter outcome",
+        "outcomePlaceholder": "Choose an outcome",
+        "outcomes": {
+          "completed": "Completed (100% fees)",
+          "cancelled_48h_plus": "Cancelled more than 48h in advance (no fees)",
+          "absence_or_late_cancel": "Absence / Cancellation less than 48h (100% fees)"
+        },
+        "actNatureLabel": "Reason for consultation",
         "actPlaceholder": "Choose an option",
         "acts": {
-          "treatment": "Treatment / Psychotherapy",
-          "evaluation": "Evaluation / Diagnosis",
-          "consultation": "Counseling / One-time consultation",
-          "administrative": "Client-related administrative tasks"
+          "parental_coaching": "Parental coaching",
+          "punctual_consultation": "One-time consultation / advice",
+          "psychological_evaluation": "Psychological / neuropsychological evaluation",
+          "individual_psychotherapy": "Individual psychotherapy",
+          "couple_psychotherapy": "Couple psychotherapy",
+          "family_psychotherapy": "Family psychotherapy",
+          "evaluation_report": "Writing evaluation report",
+          "notes_synthesis": "Writing notes / case summary",
+          "work_stoppage": "Writing: sick leave / progressive return-to-work plan",
+          "psychological_follow_up": "Psychological follow-up",
+          "parent_support": "Parent support"
         },
-        "outcomeLabel": "Encounter outcome",
-        "outcomePlaceholder": "What is the outcome?",
-        "outcomes": {
-          "tracking_ongoing": "Ongoing follow-up (next session to be scheduled)",
-          "completed": "Mandate completed / End of follow-up",
-          "rescheduled_agreed": "Rescheduled and planned",
-          "referral_other": "Referral to another professional",
-          "client_no_show": "Client absent (No-show)"
-        },
-        "nextLabel": "Next step",
-        "nextHint": "If you have agreed on a next appointment, you can note it here for your calendar.",
-        "nextDate": "Date",
-        "nextTime": "Time",
+        "actNatureOtherLabel": "Additional note (will appear on the receipt)",
+        "actNatureOtherPlaceholder": "Optional — e.g. topic, context…",
         "cancel": "Cancel",
         "saving": "Saving...",
-        "submit": "Dossier processed (close)",
-        "needNextWhenRescheduled": "Please indicate the date and time of the new appointment.",
-        "needBothDateTime": "Please fill in both the date and the time."
+        "submit": "Close session",
+        "genericError": "An error occurred. Please try again."
       }
     },
     "profileModal": {
@@ -2371,7 +2432,27 @@
       "new": "New",
       "weekOf": "Week of",
       "noSessionsScheduled": "No sessions scheduled",
-      "noRequestsPending": "No requests pending"
+      "noRequestsPending": "No requests pending",
+      "meetingLink": {
+        "titleUpdate": "Update Meeting Link",
+        "titleAdd": "Add Meeting Link",
+        "desc": "Provide an external meeting link for this video appointment (Zoom, Google Meet, Microsoft Teams, etc.)",
+        "urlLabel": "Meeting Link URL",
+        "urlPlaceholder": "https://zoom.us/j/123456789",
+        "appointmentDetails": "Appointment Details",
+        "at": "at",
+        "payment": "Payment:",
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "save": "Save Link"
+      },
+      "paymentStatus": {
+        "paid": "Paid",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "processing": "Processing",
+        "pending": "Pending"
+      }
     },
     "analytics": {
       "badge": "Analytics",
@@ -3737,6 +3818,17 @@
       "with": "with",
       "toBeScheduled": "To be scheduled",
       "concernLabel": "Concern",
+      "lateChange": {
+        "title": "Modification window has passed",
+        "message": "This appointment is within 48 hours. To cancel or reschedule, please contact us or reach out directly to your professional.",
+        "emailUs": "Email us"
+      },
+      "rescheduleInfo": {
+        "title": "How to reschedule",
+        "message": "To reschedule your appointment, please contact the platform or reach out directly to your professional.",
+        "emailUs": "Email us",
+        "close": "Close"
+      },
       "cancelDialog": {
         "title": "Cancel Appointment",
         "titleSuccess": "Appointment cancelled",
@@ -3827,7 +3919,13 @@
       "free": "Free",
       "access": "Access",
       "purchase": "Get Access",
-      "noResults": "No resources match your search. Try adjusting your filters or explore different categories."
+      "noResults": "No resources match your search. Try adjusting your filters or explore different categories.",
+      "myDocuments": {
+        "title": "My Documents",
+        "subtitle": "Documents and resources shared by your professional or the platform",
+        "noDocuments": "No documents have been shared with you yet.",
+        "noDocumentsDesc": "When your professional shares documents, worksheets, or materials, they will appear here."
+      }
     },
     "billing": {
       "title": "Billing & Payments",
@@ -4404,7 +4502,8 @@
       "backToTop": "Back to top",
       "tableOfContents": "Contents",
       "readFullDocument": "Read the full document",
-      "contactUs": "Contact us"
+      "contactUs": "Contact us",
+      "backToForm": "Back to registration form"
     },
     "terms": {
       "title": "Terms of Use",
@@ -4663,6 +4762,53 @@
         "submitting": "Submitting…",
         "errorGeneric": "An error occurred. Please try again."
       }
+    },
+    "cookies": {
+      "title": "Cookie Policy",
+      "subtitle": "Your Privacy on Je chemine",
+      "lastUpdated": "April 27, 2026",
+      "intro": "To make your experience on Je chemine as smooth and personalized as possible, we use cookies (also known as connection tokens). This page explains, with full transparency, how we take care of your data in compliance with Quebec's Law 25.",
+      "sections": [
+        {
+          "title": "What is a cookie and why is it there?",
+          "blocks": [
+            { "paragraph": "A cookie is a small note that our site leaves in your browser. It allows us to recognize you from one page to the next. Without it, the site would forget who you are as soon as you click on a new module!" },
+            { "paragraph": "We use two types of cookies:" },
+            { "bullets": [
+              { "term": "Session cookies", "text": "they disappear as soon as you close your browser." },
+              { "term": "Persistent cookies", "text": "they remain for a period of time to remember your preferences on your next visit." }
+            ]}
+          ]
+        },
+        {
+          "title": "How we use cookies to help you",
+          "blocks": [
+            { "paragraph": "On Je chemine, our cookies have specific purposes:" },
+            { "bullets": [
+              { "term": "Essential (security and access)", "text": "they are the engine of the site. They allow us to secure your account, validate your login, and protect your information from intruders. Without them, the platform simply cannot function." },
+              { "term": "Functional (remember you)", "text": "they remember your choices, such as your preferred language or where you left off in your journey, so you don't have to start over." },
+              { "term": "Analytics (help us improve)", "text": "we use tools like Google Analytics to understand which sections of the platform are most appreciated. This data reaches us in an aggregated and anonymous form to help us create better content for you." }
+            ]}
+          ]
+        },
+        {
+          "title": "An extra layer of protection: your IP address",
+          "blocks": [
+            { "paragraph": "To protect the Je chemine community from cyberattacks, we monitor IP addresses. Think of it as having a security guard at the entrance: it allows us to block malicious behavior while keeping the door wide open for legitimate users." }
+          ]
+        },
+        {
+          "title": "You stay in control of your journey",
+          "blocks": [
+            { "paragraph": "It's your journey, and you decide what traces you leave." },
+            { "bullets": [
+              { "term": "Travel light", "text": "you can block cookies in your browser settings." },
+              { "term": "Please note", "text": "if you disable all cookies, some Je chemine features may no longer work correctly, such as keeping you logged in." }
+            ]},
+            { "callout": "For any questions about our use of cookies or your personal data, contact us at info@jechemine.com." }
+          ]
+        }
+      ]
     }
   },
   "AdminLegalDocuments": {
@@ -4680,6 +4826,10 @@
       "professionalTerms": {
         "label": "Professional Terms",
         "description": "Terms of Use specific to professionals, accepted when finalizing the profile."
+      },
+      "cookies": {
+        "label": "Cookie Policy",
+        "description": "Je chemine Cookie Policy – applies to all users."
       }
     },
     "localeFrench": "French",

@@ -4,6 +4,7 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { SMS_MAX_ATTEMPTS, hashVerificationSecret } from "@/lib/account-init";
 import { sendWelcomeEmail } from "@/lib/notifications";
+import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 
 function safeEqualHex(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -15,6 +16,15 @@ function safeEqualHex(a: string, b: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = rateLimit(`verify-phone:${ip}`, AuthRateLimits.verifyPhone.limit, AuthRateLimits.verifyPhone.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     const body = await req.json();
     const userId = body.userId as string | undefined;
