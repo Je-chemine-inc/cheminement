@@ -3,7 +3,9 @@
     "allow": [
       "Bash(xargs wc *)",
       "Bash(grep -E \"\\\\.ts$\")",
-      "Bash(xargs basename *)"
+      "Bash(xargs basename *)",
+      "Bash(pnpm build *)",
+      "Bash(git diff *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]"

@@ -259,7 +259,8 @@ export async function POST(
     }
 
     if (newStatus === "cancelled") {
-      $set.cancelReason = "cancelled_48h_advance";
+      $set.cancelReason =
+        outcome === "rescheduled" ? "rescheduled" : "cancelled_48h_advance";
       $set.cancelledBy = "professional";
       $set.cancelledAt = now;
     }

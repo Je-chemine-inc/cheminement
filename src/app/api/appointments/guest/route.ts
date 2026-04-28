@@ -8,6 +8,7 @@ import {
   sendGuestBookingConfirmation,
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
+  sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { isMinor } from "@/lib/guardian-utils";
@@ -152,30 +153,31 @@ export async function POST(req: NextRequest) {
 
     let isNewGuest = false;
 
-    // Find or create guest user
+    // Find or create prospect user (unauthenticated form submission).
+    // Also match existing guest accounts so returning users aren't duplicated.
     let guestUser = await User.findOne({
       email: email.toLowerCase(),
-      role: "guest",
+      role: { $in: ["prospect", "guest"] },
     });
 
     if (guestUser) {
-      // Update guest user information if they book again
+      // Update contact info if they submit the form again
       guestUser.firstName = firstName;
       guestUser.lastName = lastName;
       guestUser.phone = phone;
       guestUser.location = location;
       await guestUser.save();
     } else {
-      // Create new guest user
+      // Create new prospect profile (Étape 1 — profil Prospect)
       guestUser = new User({
         email: email.toLowerCase(),
         firstName,
         lastName,
         phone,
         location,
-        role: "guest",
+        role: "prospect",
         status: "active",
-        language: "en",
+        language: notificationLocale === "fr" ? "fr" : "en",
       });
       await guestUser.save();
       isNewGuest = true;
@@ -415,7 +417,16 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Automatically send onboarding invitation to new guests (Step 2 of the workflow)
+    // Notify admins of the new service request
+    void sendAdminNewServiceRequestAlert({
+      clientName: `${firstName} ${lastName}`,
+      clientEmail: email,
+      bookingFor: appointmentData.bookingFor || "self",
+      motifs: motifs as string[],
+      appointmentId: String(appointment._id),
+    }).catch((err) => console.error("Error sending admin alert:", err));
+
+    // Automatically send onboarding invitation to new prospects (Step 2 of the workflow)
     if (isNewGuest) {
       sendServiceRequestOnboardingEmail({
         toName: firstName,

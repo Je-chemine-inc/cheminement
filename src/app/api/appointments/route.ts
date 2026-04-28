@@ -10,6 +10,7 @@ import {
   sendAppointmentConfirmation,
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
+  sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { linkGuardian, isMinor } from "@/lib/guardian-utils";
@@ -38,8 +39,8 @@ export async function GET(req: NextRequest) {
       date?: { $gte?: Date; $lte?: Date };
     } = {};
 
-    // Filter by user role (guests are treated like clients)
-    if (session.user.role === "client" || session.user.role === "guest") {
+    // Filter by user role (guests and prospects are treated like clients)
+    if (session.user.role === "client" || session.user.role === "guest" || session.user.role === "prospect") {
       // If accountId is provided, verify user is guardian of that account
       if (accountId) {
         const { canAccessAccount } = await import("@/lib/guardian-utils");
@@ -129,8 +130,8 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
 
-    // Ensure the client is the current user if role is client or guest
-    if (session.user.role === "client" || session.user.role === "guest") {
+    // Ensure the client is the current user if role is client, guest, or prospect
+    if (session.user.role === "client" || session.user.role === "guest" || session.user.role === "prospect") {
       data.clientId = session.user.id;
     }
 
@@ -197,6 +198,14 @@ export async function POST(req: NextRequest) {
         { error: `Invalid motifs: ${invalidMotifs.join(", ")}` },
         { status: 400 },
       );
+    }
+
+    // Persist the validated motifs array and sync first motif to issueType for backwards-compat
+    if (motifs.length > 0) {
+      data.needs = motifs;
+      if (!data.issueType) {
+        data.issueType = motifs[0];
+      }
     }
 
     // Validate patient referral contact info when booking for a patient
@@ -451,6 +460,26 @@ export async function POST(req: NextRequest) {
 
     const appointment = new Appointment(data);
     await appointment.save();
+
+    // Notify admins of the new service request
+    void (async () => {
+      try {
+        const requester = await User.findById(session.user.id).select(
+          "firstName lastName email",
+        );
+        if (requester?.email) {
+          await sendAdminNewServiceRequestAlert({
+            clientName: `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() || "Client",
+            clientEmail: requester.email,
+            bookingFor: data.bookingFor || "self",
+            motifs: motifs as string[],
+            appointmentId: appointment._id.toString(),
+          });
+        }
+      } catch (e) {
+        console.error("Error sending admin new service request alert:", e);
+      }
+    })();
 
     // Route the appointment to professionals if no professional is assigned
     if (!data.professionalId) {

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
+import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
+import { sendRequestMovedToGeneralListEmail } from "@/lib/notifications";
 
 /**
  * POST /api/appointments/[id]/refuse
@@ -108,7 +110,32 @@ export async function POST(
       id,
       updateData,
       { new: true },
-    ).populate("clientId", "firstName lastName email phone location");
+    ).populate("clientId", "firstName lastName email phone location language");
+
+    // When all proposed pros have refused, notify the client their request is open to the full network
+    if (allRefused && updatedAppointment?.clientId) {
+      const c = updatedAppointment.clientId as unknown as {
+        _id: { toString: () => string };
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        language?: string;
+      };
+      if (c.email) {
+        const clientUser = await User.findById(c._id).select("language").lean();
+        const locale: "fr" | "en" =
+          (clientUser as { language?: string } | null)?.language === "fr"
+            ? "fr"
+            : "en";
+        void sendRequestMovedToGeneralListEmail({
+          clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
+          clientEmail: c.email,
+          locale,
+        }).catch((err) =>
+          console.error("[refuse] Failed to send general-list notification:", err),
+        );
+      }
+    }
 
     return NextResponse.json({
       message: allRefused

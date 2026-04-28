@@ -22,6 +22,7 @@ export const SESSION_OUTCOME_VALUES = [
   "completed",
   "cancelled_48h_plus",
   "absence_or_late_cancel",
+  "rescheduled",
 ] as const;
 
 export type SessionOutcome = (typeof SESSION_OUTCOME_VALUES)[number];
@@ -34,6 +35,8 @@ export function getBillingFraction(outcome: SessionOutcome): number {
       return 0;
     case "absence_or_late_cancel":
       return 1;
+    case "rescheduled":
+      return 0;
     default:
       return 1;
   }
@@ -49,6 +52,8 @@ export function getAppointmentStatusForOutcome(
       return "cancelled";
     case "absence_or_late_cancel":
       return "no-show";
+    case "rescheduled":
+      return "cancelled";
     default:
       return "completed";
   }

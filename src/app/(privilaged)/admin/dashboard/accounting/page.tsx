@@ -13,6 +13,8 @@ import {
   BookOpen,
   MinusCircle,
   Users,
+  Send,
+  ChevronDown,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AppointmentResponse } from "@/types/api";
 
 type CollectionsData = {
@@ -67,9 +76,7 @@ export default function AdminAccountingPage() {
   const [tab, setTab] = useState<
     "collections" | "anomalies" | "balances" | "exports" | "payout"
   >("collections");
-  const [collections, setCollections] = useState<CollectionsData | null>(
-    null,
-  );
+  const [collections, setCollections] = useState<CollectionsData | null>(null);
   const [anomalies, setAnomalies] = useState<AnomaliesData | null>(null);
   const [balances, setBalances] = useState<BalancesData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +90,7 @@ export default function AdminAccountingPage() {
   const [payoutNotes, setPayoutNotes] = useState("");
   const [payoutCycle, setPayoutCycle] = useState("");
   const [payoutSaving, setPayoutSaving] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const loadCollections = useCallback(async () => {
     const res = await fetch("/api/admin/accounting/collections");
@@ -112,11 +120,27 @@ export default function AdminAccountingPage() {
     } finally {
       setLoading(false);
     }
-  }, [loadCollections, loadAnomalies, t]);
+  }, [loadCollections, loadAnomalies, loadBalances, t]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const formatDate = (s: string | undefined) => {
+    if (!s) return "—";
+    return new Date(s).toLocaleDateString("fr-CA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const hoursAgo = (s: string | undefined): string => {
+    if (!s) return "—";
+    const h = Math.floor((Date.now() - new Date(s).getTime()) / 3_600_000);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}j ${h % 24}h`;
+  };
 
   const formatName = (apt: AppointmentResponse) => {
     const c = apt.clientId;
@@ -127,6 +151,25 @@ export default function AdminAccountingPage() {
     const p = apt.professionalId;
     if (!p) return "—";
     return `${p.firstName} ${p.lastName}`;
+  };
+
+  const handleResend = async (appointmentId: string) => {
+    try {
+      setResendingId(appointmentId);
+      const res = await fetch(
+        `/api/admin/appointments/${appointmentId}/resend-payment`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(typeof j.error === "string" ? j.error : "resend");
+      }
+      alert(t("resendOk"));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t("resendError"));
+    } finally {
+      setResendingId(null);
+    }
   };
 
   const submitPayoutDebit = async () => {
@@ -160,6 +203,8 @@ export default function AdminAccountingPage() {
     }
   };
 
+  const professionals = balances?.professionals ?? [];
+
   return (
     <div className="space-y-8 max-w-6xl">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -175,9 +220,7 @@ export default function AdminAccountingPage() {
           onClick={() => void refresh()}
           disabled={loading}
         >
-          <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           {t("refresh")}
         </Button>
       </div>
@@ -210,6 +253,16 @@ export default function AdminAccountingPage() {
             }`}
           >
             {label}
+            {k === "anomalies" &&
+              !loading &&
+              (anomalies?.counts.stripeFailures ?? 0) +
+                (anomalies?.counts.interacPendingTooLong ?? 0) >
+                0 && (
+                <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {anomalies!.counts.stripeFailures +
+                    anomalies!.counts.interacPendingTooLong}
+                </span>
+              )}
           </button>
         ))}
       </div>
@@ -220,6 +273,7 @@ export default function AdminAccountingPage() {
         </div>
       ) : (
         <>
+          {/* ── COLLECTIONS ─────────────────────────────────────────────── */}
           {tab === "collections" && collections && (
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
@@ -232,24 +286,39 @@ export default function AdminAccountingPage() {
                     {t("stripePaidDesc")} ({collections.counts.stripePaid})
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[420px] overflow-y-auto space-y-2 text-sm">
+                <CardContent className="max-h-[480px] overflow-y-auto space-y-2 text-sm">
                   {collections.stripePaid.length === 0 ? (
                     <p className="text-muted-foreground">{t("empty")}</p>
                   ) : (
                     collections.stripePaid.map((apt) => (
                       <div
                         key={apt._id}
-                        className="rounded-lg border border-border/30 bg-muted/20 px-3 py-2"
+                        className="rounded-lg border border-border/30 bg-muted/20 px-3 py-2 space-y-0.5"
                       >
-                        <p className="font-medium">{formatName(apt)}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium">{formatName(apt)}</p>
+                          <span className="text-xs font-semibold text-green-700 dark:text-green-400">
+                            {apt.payment.price.toFixed(2)} $
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {formatPro(apt)} · {apt.payment.price.toFixed(2)} $
+                          {formatPro(apt)}
                         </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{t("colSession")} : {formatDate(apt.date)}</span>
+                          {apt.payment.paidAt && (
+                            <>
+                              <span>·</span>
+                              <span>{t("colPaidAt")} : {formatDate(apt.payment.paidAt)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
                 </CardContent>
               </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -257,23 +326,60 @@ export default function AdminAccountingPage() {
                     {t("interacPendingTitle")}
                   </CardTitle>
                   <CardDescription>
-                    {t("interacPendingDesc")} (
-                    {collections.counts.interacPending})
+                    {t("interacPendingDesc")} ({collections.counts.interacPending})
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[420px] overflow-y-auto space-y-2 text-sm">
+                <CardContent className="max-h-[480px] overflow-y-auto space-y-2 text-sm">
                   {collections.interacPending.length === 0 ? (
                     <p className="text-muted-foreground">{t("empty")}</p>
                   ) : (
                     collections.interacPending.map((apt) => (
                       <div
                         key={apt._id}
-                        className="rounded-lg border border-border/30 bg-muted/20 px-3 py-2"
+                        className="rounded-lg border border-amber-200/40 bg-amber-50/40 px-3 py-2 space-y-0.5 dark:bg-amber-950/20"
                       >
-                        <p className="font-medium">{formatName(apt)}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium">{formatName(apt)}</p>
+                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            {apt.payment.price.toFixed(2)} $
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {formatPro(apt)} · {apt.payment.price.toFixed(2)} $
+                          {formatPro(apt)}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{t("colSession")} : {formatDate(apt.date)}</span>
+                          {apt.payment.transferDueAt && (
+                            <>
+                              <span>·</span>
+                              <span>{t("colDueAt")} : {formatDate(apt.payment.transferDueAt)}</span>
+                            </>
+                          )}
+                          {apt.payment.interacReferenceCode && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono">
+                                {t("colRef")} : {apt.payment.interacReferenceCode}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1.5 rounded-full text-xs"
+                            disabled={resendingId === apt._id}
+                            onClick={() => void handleResend(apt._id)}
+                          >
+                            {resendingId === apt._id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}
+                            {t("resendInterac")}
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -282,6 +388,7 @@ export default function AdminAccountingPage() {
             </div>
           )}
 
+          {/* ── ANOMALIES ───────────────────────────────────────────────── */}
           {tab === "anomalies" && anomalies && (
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="border-red-200/50 dark:border-red-900/40">
@@ -293,24 +400,36 @@ export default function AdminAccountingPage() {
                   </CardTitle>
                   <CardDescription>{t("stripeFailuresDesc")}</CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[360px] overflow-y-auto space-y-2 text-sm">
+                <CardContent className="max-h-[420px] overflow-y-auto space-y-2 text-sm">
                   {anomalies.stripeFailures.length === 0 ? (
                     <p className="text-muted-foreground">{t("noneOk")}</p>
                   ) : (
                     anomalies.stripeFailures.map((apt) => (
                       <div
                         key={apt._id}
-                        className="rounded-lg border border-red-200/40 bg-red-50/50 px-3 py-2 dark:bg-red-950/20"
+                        className="rounded-lg border border-red-200/40 bg-red-50/50 px-3 py-2 space-y-0.5 dark:bg-red-950/20"
                       >
-                        <p className="font-medium">{formatName(apt)}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium">{formatName(apt)}</p>
+                          <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+                            {apt.payment.price.toFixed(2)} $
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           {formatPro(apt)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("colSession")} : {formatDate(apt.date)}
+                          {apt.sessionCompletedAt && (
+                            <> · {t("colClosed")} : {formatDate(apt.sessionCompletedAt)}</>
+                          )}
                         </p>
                       </div>
                     ))
                   )}
                 </CardContent>
               </Card>
+
               <Card className="border-amber-200/50 dark:border-amber-900/40">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -320,19 +439,58 @@ export default function AdminAccountingPage() {
                   </CardTitle>
                   <CardDescription>{t("interac48Desc")}</CardDescription>
                 </CardHeader>
-                <CardContent className="max-h-[360px] overflow-y-auto space-y-2 text-sm">
+                <CardContent className="max-h-[420px] overflow-y-auto space-y-2 text-sm">
                   {anomalies.interacPendingTooLong.length === 0 ? (
                     <p className="text-muted-foreground">{t("noneOk")}</p>
                   ) : (
                     anomalies.interacPendingTooLong.map((apt) => (
                       <div
                         key={apt._id}
-                        className="rounded-lg border border-amber-200/40 bg-amber-50/50 px-3 py-2 dark:bg-amber-950/20"
+                        className="rounded-lg border border-amber-200/40 bg-amber-50/50 px-3 py-2 space-y-0.5 dark:bg-amber-950/20"
                       >
-                        <p className="font-medium">{formatName(apt)}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium">{formatName(apt)}</p>
+                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            {apt.payment.price.toFixed(2)} $
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                          {formatPro(apt)} · {apt.payment.price.toFixed(2)} $
+                          {formatPro(apt)}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          {apt.sessionCompletedAt && (
+                            <span>
+                              {t("colOverdue")} :{" "}
+                              <span className="font-semibold text-amber-700 dark:text-amber-400">
+                                {hoursAgo(apt.sessionCompletedAt)}
+                              </span>
+                            </span>
+                          )}
+                          {apt.payment.interacReferenceCode && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono">
+                                {t("colRef")} : {apt.payment.interacReferenceCode}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1.5 rounded-full text-xs border-amber-400/50 text-amber-800 hover:bg-amber-50 dark:text-amber-300"
+                            disabled={resendingId === apt._id}
+                            onClick={() => void handleResend(apt._id)}
+                          >
+                            {resendingId === apt._id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}
+                            {t("resendInterac")}
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -341,6 +499,7 @@ export default function AdminAccountingPage() {
             </div>
           )}
 
+          {/* ── BALANCES ────────────────────────────────────────────────── */}
           {tab === "balances" && balances && (
             <Card>
               <CardHeader>
@@ -352,7 +511,9 @@ export default function AdminAccountingPage() {
                     </CardTitle>
                     <CardDescription>{t("balancesDesc")}</CardDescription>
                   </div>
-                  <Badge variant="outline">Cycle: {balances.currentCycleKey}</Badge>
+                  <Badge variant="outline">
+                    {t("cycle")} : {balances.currentCycleKey}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -362,15 +523,24 @@ export default function AdminAccountingPage() {
                       <TableRow>
                         <TableHead>{t("colPro")}</TableHead>
                         <TableHead>{t("colStatus")}</TableHead>
-                        <TableHead className="text-right">{t("colCycleBalance")}</TableHead>
-                        <TableHead className="text-right">{t("colLifetimeBalance")}</TableHead>
-                        <TableHead className="text-right">{t("colActions")}</TableHead>
+                        <TableHead className="text-right">
+                          {t("colCycleBalance")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("colLifetimeBalance")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("colActions")}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {balances.professionals.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell
+                            colSpan={5}
+                            className="py-8 text-center text-muted-foreground"
+                          >
                             {t("empty")}
                           </TableCell>
                         </TableRow>
@@ -379,22 +549,45 @@ export default function AdminAccountingPage() {
                           <TableRow key={pro._id}>
                             <TableCell>
                               <div className="font-medium">{pro.name}</div>
-                              <div className="text-xs text-muted-foreground">{pro.email}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {pro.email}
+                              </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={pro.status === "active" ? "default" : "secondary"} className="capitalize">
+                              <Badge
+                                variant={
+                                  pro.status === "active"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                                className="capitalize"
+                              >
                                 {pro.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className={`text-right font-mono ${pro.balanceCurrentCycleCad > 0 ? "text-green-600" : ""}`}>
+                            <TableCell
+                              className={`text-right font-mono ${
+                                pro.balanceCurrentCycleCad > 0
+                                  ? "text-green-600"
+                                  : ""
+                              }`}
+                            >
                               {pro.balanceCurrentCycleCad.toFixed(2)} $
                             </TableCell>
-                            <TableCell className={`text-right font-mono ${pro.balanceLifetimeCad > 0 ? "text-green-600" : ""}`}>
+                            <TableCell
+                              className={`text-right font-mono ${
+                                pro.balanceLifetimeCad > 0
+                                  ? "text-green-600"
+                                  : ""
+                              }`}
+                            >
                               {pro.balanceLifetimeCad.toFixed(2)} $
                             </TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/admin/dashboard/professionals/${pro._id}?tab=ledger`}>
+                                <Link
+                                  href={`/admin/dashboard/professionals/${pro._id}?tab=ledger`}
+                                >
                                   {t("viewLedger")}
                                 </Link>
                               </Button>
@@ -409,6 +602,7 @@ export default function AdminAccountingPage() {
             </Card>
           )}
 
+          {/* ── EXPORTS ─────────────────────────────────────────────────── */}
           {tab === "exports" && (
             <Card>
               <CardHeader>
@@ -430,11 +624,7 @@ export default function AdminAccountingPage() {
                     max={2100}
                   />
                 </div>
-                <Button
-                  className="gap-2 rounded-full"
-                  variant="outline"
-                  asChild
-                >
+                <Button className="gap-2 rounded-full" variant="outline" asChild>
                   <a
                     href={`/api/admin/accounting/sales-journal?year=${encodeURIComponent(exportYear)}`}
                     download
@@ -456,6 +646,7 @@ export default function AdminAccountingPage() {
             </Card>
           )}
 
+          {/* ── PAYOUT ──────────────────────────────────────────────────── */}
           {tab === "payout" && (
             <Card>
               <CardHeader>
@@ -467,12 +658,40 @@ export default function AdminAccountingPage() {
               </CardHeader>
               <CardContent className="grid gap-4 max-w-md">
                 <div className="space-y-2">
-                  <Label>{t("payoutProId")}</Label>
-                  <Input
-                    value={payoutProId}
-                    onChange={(e) => setPayoutProId(e.target.value)}
-                    placeholder="MongoDB ObjectId"
-                  />
+                  <Label>{t("payoutPro")}</Label>
+                  {professionals.length > 0 ? (
+                    <Select
+                      value={payoutProId}
+                      onValueChange={setPayoutProId}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t("payoutProPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {professionals.map((p) => (
+                          <SelectItem key={p._id} value={p._id}>
+                            <span className="font-medium">{p.name}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {t("balanceCycleShort")} :{" "}
+                              {p.balanceCurrentCycleCad.toFixed(2)} $
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="space-y-1">
+                      <Input
+                        value={payoutProId}
+                        onChange={(e) => setPayoutProId(e.target.value)}
+                        placeholder="MongoDB ObjectId"
+                      />
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ChevronDown className="h-3 w-3" />
+                        {t("payoutProIdHint")}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>{t("payoutAmount")}</Label>
@@ -507,7 +726,7 @@ export default function AdminAccountingPage() {
                 <Button
                   className="rounded-full"
                   onClick={() => void submitPayoutDebit()}
-                  disabled={payoutSaving}
+                  disabled={payoutSaving || !payoutProId.trim()}
                 >
                   {payoutSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

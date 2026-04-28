@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { isFieldEncryptionEnabled } from "@/lib/field-encryption";
 import { mustMaskClientContactPII } from "@/lib/admin-rbac";
 import { maskPhoneForDisplay } from "@/lib/contact-mask";
+import { computeClientStatusTier } from "@/lib/client-status-tier";
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       role: { $in: string[] };
       status?: string;
       $or?: Record<string, unknown>[];
-    } = { role: { $in: ["client", "guest"] } };
+    } = { role: { $in: ["client", "guest", "prospect"] } };
 
     if (status !== "all") {
       query.status = status;
@@ -103,43 +104,31 @@ export async function GET(req: NextRequest) {
           ? `${professional.firstName} ${professional.lastName}`
           : undefined;
 
-        // Logic for adminStatusColor and label
-        let adminStatusColor = "gray";
-        let adminStatusLabel = "Nouveau prospect";
-
-        // Check for failed payments or late Interac
-        const hasFailedPayment = await Appointment.exists({
+        // Fetch all appointments for this patient for tier computation
+        const allAppointments = await Appointment.find({
           clientId: patient._id,
-          "payment.status": "failed",
-        });
+        })
+          .select("status payment awaitingPaymentGuarantee sessionCompletedAt")
+          .lean();
 
-        const hasLateInterac = await Appointment.exists({
-          clientId: patient._id,
-          "payment.status": { $ne: "paid" },
-          "payment.transferDueAt": { $lt: new Date() },
-        });
-
-        if (hasFailedPayment || hasLateInterac) {
-          adminStatusColor = "red";
-          adminStatusLabel = "Échec de paiement";
-        } else if (patient.paymentGuaranteeStatus === "green") {
-          adminStatusColor = "green";
-          adminStatusLabel = "Ok";
-        } else {
-          const scheduledAppointment = await Appointment.findOne({
-            clientId: patient._id,
-            status: "scheduled",
-          }).lean();
-
-          if (scheduledAppointment) {
-            adminStatusColor = "yellow";
-            adminStatusLabel = "RDV fixé sans carte";
-          } else {
-            // Default to Gray / Nouveau prospect
-            adminStatusColor = "gray";
-            adminStatusLabel = "Nouveau prospect";
-          }
-        }
+        const statusTier = computeClientStatusTier(
+          patient.paymentGuaranteeStatus as
+            | "none"
+            | "pending_admin"
+            | "green"
+            | undefined,
+          allAppointments.map((a) => ({
+            status: a.status,
+            payment: a.payment
+              ? {
+                  status: a.payment.status,
+                  method: a.payment.method,
+                }
+              : undefined,
+            awaitingPaymentGuarantee: a.awaitingPaymentGuarantee,
+            sessionCompletedAt: a.sessionCompletedAt,
+          })),
+        );
 
         return {
           id: patient._id.toString(),
@@ -149,13 +138,14 @@ export async function GET(req: NextRequest) {
             ? maskPhoneForDisplay(String(patient.phone || ""))
             : patient.phone || "",
           status: patient.status,
-          role: patient.role, // Include role to identify guests
+          role: patient.role,
+          paymentGuaranteeStatus: patient.paymentGuaranteeStatus,
+          paymentGuaranteeSource: patient.paymentGuaranteeSource,
           matchedWith,
           joinedDate: patient.createdAt.toISOString().split("T")[0],
           totalSessions,
-          issueType: "General", // This would come from appointment data or profile
-          adminStatusColor,
-          adminStatusLabel,
+          issueType: "General",
+          statusTier,
         };
 
       }),
@@ -163,14 +153,14 @@ export async function GET(req: NextRequest) {
 
     // Get summary stats (include both clients and guests)
     const totalPatients = await User.countDocuments({
-      role: { $in: ["client", "guest"] },
+      role: { $in: ["client", "guest", "prospect"] },
     });
     const activePatients = await User.countDocuments({
-      role: { $in: ["client", "guest"] },
+      role: { $in: ["client", "guest", "prospect"] },
       status: "active",
     });
     const pendingPatients = await User.countDocuments({
-      role: { $in: ["client", "guest"] },
+      role: { $in: ["client", "guest", "prospect"] },
       status: "pending",
     });
     const totalSessions = await Appointment.countDocuments({

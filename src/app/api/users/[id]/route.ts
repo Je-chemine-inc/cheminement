@@ -55,7 +55,7 @@ export async function GET(
 
     if (session.user.role === "admin") {
       const perms = await getActiveAdminPermissions(session.user.id);
-      const isClientOrGuest = ["client", "guest"].includes(String(user.role));
+      const isClientOrGuest = ["client", "guest", "prospect"].includes(String(user.role));
       if (isClientOrGuest) {
         void logAdminClientAccess({
           actorUserId: session.user.id,

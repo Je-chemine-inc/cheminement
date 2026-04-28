@@ -67,6 +67,36 @@
       "colSessions": "Séances",
       "colJoined": "Inscrit le",
       "colActions": "Actions",
+      "colStatusTier": "Statut dossier",
+      "filterTier": "Statut dossier",
+      "allTiers": "Tous les statuts",
+      "statusTierLegendTitle": "Résumé des statuts (codes couleur)",
+      "statusTierMeaning": "Signification",
+      "statusTierAction": "Action requise",
+      "statusTier": {
+        "tiers": {
+          "gray": {
+            "label": "Nouveau prospect",
+            "meaning": "Aucun RDV confirmé pour l'instant.",
+            "action": "Le professionnel doit appeler pour fixer le RDV."
+          },
+          "yellow": {
+            "label": "RDV fixé, sans carte",
+            "meaning": "RDV fixé, mais pas de carte ou garantie en place.",
+            "action": "Le système envoie des relances automatiques."
+          },
+          "green": {
+            "label": "Carte ou entente OK",
+            "meaning": "Carte enregistrée ou entente validée.",
+            "action": "Prêt pour la séance, dossier sécurisé."
+          },
+          "red": {
+            "label": "Échec paiement / Interac dû",
+            "meaning": "Échec de paiement ou virement Interac en retard.",
+            "action": "L'administrateur ou le professionnel doit suspendre le suivi et contacter le client."
+          }
+        }
+      },
       "table": {
         "client": "Client",
         "email": "Courriel",
@@ -1164,6 +1194,7 @@
         "emailNotVerified": "Vous devez d'abord confirmer votre courriel (lien dans le message envoyé).",
         "phoneNotVerified": "Après le courriel, validez votre numéro avec le code SMS envoyé à votre téléphone.",
         "licenseRejected": "Votre dossier (permis OPQ) a été refusé. Contactez le support si besoin.",
+        "accountInactive": "Un compte vous a été créé suite à votre demande de service. Cliquez sur le lien d'invitation reçu par courriel pour l'activer, ou créez votre compte complet via la page d'inscription.",
         "genericSignIn": "Une erreur s'est produite lors de la connexion."
       },
       "confirmAccountLink": "Confirmer mon compte (courriel / SMS)"
@@ -2174,7 +2205,8 @@
         "outcomes": {
           "completed": "Complété (100 % des frais)",
           "cancelled_48h_plus": "Annulé plus de 48h à l'avance (0 frais)",
-          "absence_or_late_cancel": "Absence / Annulation moins de 48h (100 % des frais)"
+          "absence_or_late_cancel": "Absence / Annulation moins de 48h (100 % des frais)",
+          "rescheduled": "Reporté avec l'accord du professionnel (0 frais)"
         },
         "actNatureLabel": "Raison de la consultation",
         "actPlaceholder": "Choisir une option",
@@ -2193,6 +2225,8 @@
         },
         "actNatureOtherLabel": "Autre précision (apparaîtra sur le reçu)",
         "actNatureOtherPlaceholder": "Facultatif — ex. : sujet, contexte…",
+        "nextAppointmentLabel": "Prochain rendez-vous",
+        "nextAppointmentHint": "Facultatif — saisissez la date et l'heure pour planifier la prochaine séance.",
         "cancel": "Annuler",
         "saving": "Enregistrement...",
         "submit": "Terminer la rencontre",
@@ -4089,16 +4123,21 @@
       "paymentHistory": "Historique des paiements",
       "noReceivables": "Aucune créance en attente",
       "noPaymentHistory": "Aucun historique de paiement",
+      "pendingPayoutCardLabel": "Solde à verser",
+      "pendingPayoutCardSub": "Paiements clients en attente",
       "ledgerTitle": "Grand livre",
       "pendingPayoutSynth": "Chaque séance validée ajoute une ligne. Le solde « à verser » suit les paiements clients encore en attente.",
       "pendingPayoutLabel": "À verser (estimé — paiements clients en attente)",
       "ledgerEmpty": "Aucune ligne de revenu enregistrée pour l’instant.",
       "ledgerDate": "Date",
       "ledgerKind": "Type",
+      "ledgerAct": "Acte",
       "ledgerCredit": "Crédit",
       "ledgerDebit": "Débit",
       "ledgerBalanceCycle": "Solde du cycle (crédits − débits)",
       "ledgerBalanceLifetime": "Solde cumulé (historique)",
+      "ledgerShowAll": "Tout afficher",
+      "ledgerShowLess": "Réduire",
       "session": "Séance",
       "invoiceNumber": "Numéro de facture",
       "earnings": "Revenu",
@@ -4252,6 +4291,20 @@
       "interac48Title": "Interac > 48 h",
       "interac48Desc": "Virement attendu depuis plus de 48 h après la clôture de séance.",
       "noneOk": "Rien à signaler.",
+      "colSession": "Séance",
+      "colPaidAt": "Payé le",
+      "colDueAt": "Échéance",
+      "colRef": "Réf",
+      "colClosed": "Clôturé le",
+      "colOverdue": "En retard depuis",
+      "cycle": "Cycle",
+      "resendInterac": "Renvoyer les instructions",
+      "resendOk": "Instructions renvoyées.",
+      "resendError": "Échec du renvoi.",
+      "payoutPro": "Professionnel",
+      "payoutProPlaceholder": "Sélectionner un professionnel",
+      "payoutProIdHint": "Chargez les soldes d'abord pour afficher la liste.",
+      "balanceCycleShort": "Solde cycle",
       "exportsTitle": "Journal des ventes et grand livre",
       "exportsDesc": "CSV pour le comptable (UTF-8). Le journal des ventes liste les crédits séance ; le grand livre inclut aussi les débits de versement.",
       "year": "Année",

@@ -34,7 +34,7 @@ export async function GET() {
     const mask = perms ? mustMaskClientContactPII(perms) : false;
 
     const pending = await User.find({
-      role: { $in: ["client", "guest"] },
+      role: { $in: ["client", "guest", "prospect"] },
       paymentGuaranteeStatus: "pending_admin",
     })
       .select("firstName lastName email phone createdAt")

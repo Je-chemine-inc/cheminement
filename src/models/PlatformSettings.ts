@@ -24,7 +24,8 @@ export type EmailNotificationType =
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_48h_client"
   | "payment_guarantee_48h_professional"
-  | "fiscal_receipt";
+  | "fiscal_receipt"
+  | "interac_payment_reminder";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -171,6 +172,10 @@ const defaultEmailTemplates: Record<
   fiscal_receipt: {
     enabled: true,
     subject: "Votre reçu fiscal — JeChemine",
+  },
+  interac_payment_reminder: {
+    enabled: true,
+    subject: "Rappel paiement Interac — JeChemine",
   },
 };
 

@@ -221,11 +221,12 @@ export async function PATCH(
       };
 
       const clientUserBefore = await User.findById(client._id);
-      const wasGuest = clientUserBefore?.role === "guest";
+      const wasGuest = clientUserBefore?.role === "guest" || clientUserBefore?.role === "prospect";
 
       if (wasGuest) {
         await provisionGuestAsClient(client._id.toString(), {
           issueType: appointment.issueType,
+          activate: false, // inactive until client claims account via invitation link
         });
       }
 
@@ -306,7 +307,7 @@ export async function PATCH(
 
       // Check if client is a guest user
       const clientUser = await User.findById(client._id);
-      if (clientUser && clientUser.role === "guest") {
+      if (clientUser && (clientUser.role === "guest" || clientUser.role === "prospect")) {
         sendMeetingLinkNotification({
           guestName: `${client.firstName} ${client.lastName}`,
           guestEmail: client.email,

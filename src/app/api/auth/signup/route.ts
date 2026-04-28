@@ -147,9 +147,71 @@ export async function POST(req: NextRequest) {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
+      // Allow a client to claim a provisioned-but-inactive account.
+      // This happens when the system auto-created the account after a professional
+      // accepted their request, but the client never completed signup.
+      const isClaimableAccount =
+        existingUser.role === "client" &&
+        existingUser.status === "inactive" &&
+        role === "client";
+
+      if (!isClaimableAccount) {
+        return NextResponse.json(
+          { error: "User already exists with this email" },
+          { status: 400 },
+        );
+      }
+
+      // Activate the pre-provisioned account with the client's chosen password
+      const hashedPassword = await bcrypt.hash(password, 12);
+      existingUser.password = hashedPassword;
+      existingUser.firstName = firstName;
+      existingUser.lastName = lastName;
+      existingUser.phone = phone || existingUser.phone;
+      existingUser.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : existingUser.dateOfBirth;
+      existingUser.gender = gender || existingUser.gender;
+      existingUser.language =
+        language === "french" ? "fr" :
+        language === "english" ? "en" :
+        language === "arabic" ? "ar" :
+        language === "spanish" ? "es" :
+        language === "mandarin" ? "zh" :
+        language === "other" ? "other" :
+        existingUser.language;
+      existingUser.location = location || existingUser.location;
+      existingUser.status = "pending"; // will go active after email+phone verification
+      existingUser.accountSecurityVersion = 1;
+      existingUser.privacyPolicyAcceptedAt = new Date();
+      existingUser.privacyPolicyVersion = LEGAL_VERSIONS.privacy;
+      existingUser.termsAcceptedAt = new Date();
+      existingUser.termsVersion = LEGAL_VERSIONS.terms;
+
+      const claimToken = generateUrlToken();
+      existingUser.verificationEmailTokenHash = hashVerificationSecret(claimToken);
+      existingUser.verificationEmailExpires = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
+      await existingUser.save();
+
+      const base = process.env.NEXTAUTH_URL || "";
+      const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(existingUser._id.toString())}&token=${encodeURIComponent(claimToken)}`;
+      sendAccountEmailVerificationEmail({
+        name: `${firstName} ${lastName}`,
+        email: existingUser.email,
+        verifyUrl,
+      }).catch((err) => console.error("Claim account verify email:", err));
+
       return NextResponse.json(
-        { error: "User already exists with this email" },
-        { status: 400 },
+        {
+          message: "Account claimed successfully",
+          requiresEmailVerification: true,
+          user: {
+            id: existingUser._id,
+            email: existingUser.email,
+            firstName: existingUser.firstName,
+            lastName: existingUser.lastName,
+            role: existingUser.role,
+          },
+        },
+        { status: 200 },
       );
     }
 
@@ -312,7 +374,7 @@ export async function POST(req: NextRequest) {
       sendWelcomeEmail({
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        role: user.role as "client" | "professional" | "guest",
+        role: user.role as "client" | "professional" | "guest" | "prospect",
       }).catch((err) => console.error("Welcome email:", err));
 
       if (user.phone) {

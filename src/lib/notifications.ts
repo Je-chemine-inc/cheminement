@@ -74,7 +74,7 @@ interface MeetingLinkEmailData {
 interface WelcomeEmailData {
   name: string;
   email: string;
-  role: "client" | "professional" | "guest";
+  role: "client" | "professional" | "guest" | "prospect";
   locale?: "fr" | "en";
 }
 
@@ -631,7 +631,7 @@ export async function sendWelcomeEmail(
     greeting: `Bonjour ${data.name},`,
     intro: `Merci d'avoir créé votre compte. ${roleMessages[data.role] || ""}`,
     button:
-      data.role !== "guest"
+      data.role !== "guest" && data.role !== "prospect"
         ? { text: "Accéder au tableau de bord", url: dashboardUrl }
         : undefined,
     outro:
@@ -644,7 +644,7 @@ export async function sendWelcomeEmail(
     `Bonjour ${data.name},`,
     `Merci d'avoir créé votre compte.`,
     roleMessages[data.role] || "",
-    data.role !== "guest" ? `Accédez à votre tableau de bord : ${dashboardUrl}` : "",
+    data.role !== "guest" && data.role !== "prospect" ? `Accédez à votre tableau de bord : ${dashboardUrl}` : "",
   ]);
 
   const subject = await getSubject("welcome", "Bienvenue sur JeChemine !");
@@ -2012,22 +2012,39 @@ export async function sendInteracPaymentReminder(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const company = branding?.companyName || "JeChemine";
-  const urgency = data.reminderNumber === 2 ? "urgent" : "info";
+  const isUrgent = data.reminderNumber === 2;
+
+  const smsBlock = [
+    "Paiement Interac Rapide ⚡",
+    `📧 Courriel : ${data.depositEmail}`,
+    `💰 Montant : ${data.amountCad.toFixed(2)} $`,
+    `📝 Message obligatoire : ${data.interacReferenceCode}`,
+    "",
+    "Le système associera votre virement à votre dossier grâce à ce code.",
+  ].join("\n");
 
   const html = buildEmailHtml({
     title: `Rappel de paiement — Interac (${data.reminderNumber === 1 ? "J+1" : "J+2"})`,
-    theme: urgency === "urgent" ? "warning" : "info",
+    theme: isUrgent ? "warning" : "info",
     greeting: `Bonjour ${data.clientName},`,
-    intro:
-      data.reminderNumber === 1
-        ? `Nous n'avons pas encore reçu votre virement Interac pour votre séance du ${data.appointmentDateLabel}. Voici un rappel des instructions de paiement.`
-        : `Deuxième rappel : votre paiement Interac pour la séance du ${data.appointmentDateLabel} est toujours en attente. Veuillez envoyer votre virement dès que possible afin d'éviter un signalement de retard.`,
+    intro: isUrgent
+      ? `Deuxième rappel : votre paiement Interac pour la séance du ${data.appointmentDateLabel} est toujours en attente. Veuillez envoyer votre virement dès que possible afin d'éviter un signalement de retard.`
+      : `Nous n'avons pas encore reçu votre virement Interac pour votre séance du ${data.appointmentDateLabel}. Voici un rappel des instructions de paiement.`,
     details: [
-      { label: "Envoyer à", value: data.depositEmail },
+      { label: "1. Envoyer à", value: data.depositEmail },
+      { label: "2. Nom", value: `Le nom de votre compte bancaire doit correspondre à celui de votre dossier : ${data.clientName}.` },
+      { label: "3. Compte tiers / entreprise", value: "Indiquez votre nom complet dans le champ « Message » du virement." },
+      { label: "4. Message obligatoire (code unique)", value: data.interacReferenceCode },
       { label: "Montant", value: `${data.amountCad.toFixed(2)} $ CAD` },
-      { label: "Message obligatoire (code de référence)", value: data.interacReferenceCode },
     ],
-    outro: `En cas de difficulté, contactez-nous à l'adresse de support de ${company}.`,
+    infoBox: {
+      title: "Format court (idéal mobile / SMS)",
+      content: smsBlock.split("\n").join("<br/>"),
+      theme: isUrgent ? "warning" : "info",
+    },
+    outro: isUrgent
+      ? `Votre paiement est en retard. Si vous rencontrez des difficultés, contactez le soutien de ${company} immédiatement.`
+      : `En cas de difficulté, contactez-nous à l'adresse de support de ${company}.`,
     branding,
   });
 
@@ -2035,9 +2052,15 @@ export async function sendInteracPaymentReminder(data: {
     `Rappel paiement Interac (relance ${data.reminderNumber})`,
     `Bonjour ${data.clientName},`,
     `Séance du ${data.appointmentDateLabel}`,
-    `Envoyer à : ${data.depositEmail}`,
+    "",
+    `1. Envoyer à : ${data.depositEmail}`,
+    `2. Nom : doit correspondre à « ${data.clientName} »`,
+    "3. Tiers / entreprise : indiquez votre nom dans le message.",
+    `4. Message obligatoire : ${data.interacReferenceCode}`,
     `Montant : ${data.amountCad.toFixed(2)} $ CAD`,
-    `Code de référence : ${data.interacReferenceCode}`,
+    "",
+    "— Format SMS —",
+    smsBlock,
   ]);
 
   const subject = await getSubject(
@@ -2462,4 +2485,178 @@ export async function sendResendInvitationEmail(data: {
       : `Invitation to join ${branding?.companyName || "JeChemine"}`;
 
   return sendEmail({ to: data.email, subject, html, text }, "welcome");
+}
+
+/**
+ * Sent to all admins when a new service request (appointment) is submitted.
+ * Covers both authenticated clients and unauthenticated prospects.
+ */
+export async function sendAdminNewServiceRequestAlert(data: {
+  clientName: string;
+  clientEmail: string;
+  bookingFor: string;
+  motifs: string[];
+  appointmentId: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
+    .select("email")
+    .lean();
+  let adminEmails = adminUsers
+    .map((a) => a.email)
+    .filter((e): e is string => Boolean(e));
+  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
+    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
+  }
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  const html = buildEmailHtml({
+    title: "Nouvelle demande de service",
+    theme: "info",
+    greeting: "Bonjour,",
+    intro: `Une nouvelle demande de service a été soumise par ${data.clientName} (${data.clientEmail}).`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Pour", value: data.bookingFor },
+      { label: "Motif(s)", value: data.motifs.join(", ") || "—" },
+      { label: "ID Rendez-vous", value: data.appointmentId },
+    ],
+    button: { text: "Voir les demandes", url: adminUrl },
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Nouvelle demande de service",
+    `Client : ${data.clientName} — ${data.clientEmail}`,
+    `Pour : ${data.bookingFor}`,
+    `Motif(s) : ${data.motifs.join(", ") || "—"}`,
+    `ID : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+
+  const subject = `Nouvelle demande — ${data.clientName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) => console.error("sendAdminNewServiceRequestAlert:", e));
+  }
+}
+
+/**
+ * Sent to proposed professionals whose request was taken by a colleague.
+ */
+export async function sendAppointmentTakenNotification(data: {
+  professionalName: string;
+  professionalEmail: string;
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const dashboardUrl = `${process.env.NEXTAUTH_URL || ""}/professional/dashboard/requests`;
+
+  const html = buildEmailHtml({
+    title: "Demande de rendez-vous attribuée",
+    theme: "warning",
+    greeting: `Bonjour ${data.professionalName},`,
+    intro:
+      "Une demande de rendez-vous qui vous avait été proposée a été acceptée par un autre professionnel. Elle n'est plus disponible.",
+    infoBox: {
+      title: "Nouvelles demandes disponibles",
+      content:
+        "D'autres demandes de clients vous attendent sur votre tableau de bord.",
+      theme: "info",
+    },
+    button: { text: "Voir les demandes disponibles", url: dashboardUrl },
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Demande de rendez-vous attribuée",
+    `Bonjour ${data.professionalName},`,
+    "Une demande qui vous avait été proposée a été acceptée par un autre professionnel.",
+    `Voir les nouvelles demandes : ${dashboardUrl}`,
+  ]);
+
+  const subject = "Demande attribuée à un autre professionnel — JeChemine";
+
+  return sendEmail(
+    { to: data.professionalEmail, subject, html, text },
+    "appointment_professional_notification",
+  );
+}
+
+/**
+ * Sent to the client when their request could not be matched and moved to the general list.
+ */
+export async function sendRequestMovedToGeneralListEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
+
+  const title =
+    lang === "fr"
+      ? "Votre demande est toujours active"
+      : "Your request is still active";
+  const intro =
+    lang === "fr"
+      ? "Nous n'avons pas encore trouvé un professionnel parfaitement correspondant à votre demande. Votre dossier a été ouvert à l'ensemble de notre réseau de professionnels disponibles."
+      : "We haven't yet found a perfectly matched professional for your request. Your file has been opened to our full network of available professionals.";
+  const infoContent =
+    lang === "fr"
+      ? "Dès qu'un professionnel accepte votre demande, vous recevrez un courriel de confirmation avec les prochaines étapes."
+      : "As soon as a professional accepts your request, you will receive a confirmation email with next steps.";
+
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    badge: {
+      text: lang === "fr" ? "⏳ Recherche en cours" : "⏳ Search in progress",
+      theme: "warning",
+    },
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.clientName},`
+        : `Dear ${data.clientName},`,
+    intro,
+    infoBox: {
+      title:
+        lang === "fr" ? "Que se passe-t-il ensuite ?" : "What happens next?",
+      content: infoContent,
+    },
+    outro:
+      lang === "fr"
+        ? "Merci de votre patience. Si vous avez des questions, contactez notre équipe."
+        : "Thank you for your patience. If you have questions, please contact our team.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    title,
+    lang === "fr"
+      ? `Bonjour ${data.clientName},`
+      : `Dear ${data.clientName},`,
+    intro,
+    infoContent,
+  ]);
+
+  const subject =
+    lang === "fr"
+      ? "Votre demande est transmise à notre réseau — JeChemine"
+      : "Your request has been shared with our network — JeChemine";
+
+  return sendEmail(
+    { to: data.clientEmail, subject, html, text },
+    "service_request_onboarding",
+  );
 }

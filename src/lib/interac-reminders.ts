@@ -77,6 +77,7 @@ export async function runInteracReminders(): Promise<{
       await sendAdminInteracTrustRequestAlert({
         clientName: `${client.firstName} ${client.lastName}`,
         clientEmail: client.email,
+        appointmentId: String(apt._id),
       }).catch(() => {});
       void pro; // alert already covers admin
     }

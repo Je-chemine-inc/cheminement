@@ -2,7 +2,10 @@ import Profile from "@/models/Profile";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import MedicalProfile from "@/models/MedicalProfile";
-import { sendProfessionalNotification } from "@/lib/notifications";
+import {
+  sendProfessionalNotification,
+  sendRequestMovedToGeneralListEmail,
+} from "@/lib/notifications";
 
 /**
  * Calculate age from date of birth
@@ -224,6 +227,8 @@ export function calculateRelevancyScore(
   },
   appointment: {
     issueType?: string;
+    /** Multi-reason motifs array from the booking form (1–3 items). */
+    needs?: string[];
     type: string;
     therapyType: string;
     preferredAvailability?: string[];
@@ -306,6 +311,46 @@ export function calculateRelevancyScore(
           `Spécialité pertinente (${Math.round(match.score * 100)}%)`,
         );
       }
+    }
+  }
+
+  // 2b. Match additional motifs from the `needs` array (multi-reason booking form)
+  // Each motif beyond the first that matches earns bonus points to reward specificity.
+  if (appointment.needs && appointment.needs.length > 0) {
+    const needsToScore = medicalProfile?.primaryIssue
+      ? appointment.needs // primary already scored above; all needs still get bonus weight here
+      : appointment.needs.slice(1); // first need already handled by issueType block above
+
+    let exactNeedsMatches = 0;
+    let partialNeedsScore = 0;
+
+    for (const need of needsToScore) {
+      if (profile.problematics && profile.problematics.length > 0) {
+        const match = findBestMatch(need, profile.problematics, 0.3);
+        if (match.isExactMatch) {
+          exactNeedsMatches++;
+        } else if (match.score > 0) {
+          partialNeedsScore += match.score;
+        }
+      }
+      if (profile.specialty) {
+        const match = findBestMatch(need, [profile.specialty], 0.3);
+        if (match.score > 0) {
+          partialNeedsScore += match.score * 0.5;
+        }
+      }
+    }
+
+    if (exactNeedsMatches > 0) {
+      score += exactNeedsMatches * 25;
+      reasons.push(
+        `${exactNeedsMatches} motif(s) de consultation correspondant(s) exactement`,
+      );
+    }
+    if (partialNeedsScore > 0) {
+      const pts = Math.round(Math.min(partialNeedsScore * 10, 20));
+      score += pts;
+      reasons.push("Correspondances partielles sur les motifs de consultation");
     }
   }
 
@@ -567,13 +612,37 @@ export async function routeAppointmentToProfessionals(
     );
 
     if (ageFilteredProfiles.length === 0) {
-      // No professionals match the age category
       console.log(
         `No professionals found for ${isPatientChild ? "child" : "adult"} patients`,
       );
       await Appointment.findByIdAndUpdate(appointmentId, {
         routingStatus: "general",
       });
+
+      // Notify the client their request is now open to the full network
+      void (async () => {
+        try {
+          const apptDoc = await Appointment.findById(appointmentId)
+            .populate("clientId", "firstName lastName email language")
+            .lean();
+          const c = apptDoc?.clientId as {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            language?: string;
+          } | null;
+          if (c?.email) {
+            await sendRequestMovedToGeneralListEmail({
+              clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
+              clientEmail: c.email,
+              locale: c.language === "fr" ? "fr" : "en",
+            });
+          }
+        } catch (e) {
+          console.error("[routing] Failed to send general-list notification:", e);
+        }
+      })();
+
       return { success: true, matches: [], routingStatus: "general" };
     }
 
@@ -585,6 +654,7 @@ export async function routeAppointmentToProfessionals(
         profile,
         {
           issueType: appointment.issueType,
+          needs: appointment.needs,
           type: appointment.type,
           therapyType: appointment.therapyType,
           preferredAvailability: appointment.preferredAvailability,
@@ -616,10 +686,33 @@ export async function routeAppointmentToProfessionals(
     const topMatches = matches.slice(0, 5);
 
     if (topMatches.length === 0) {
-      // No matching professionals found, move to general list
       await Appointment.findByIdAndUpdate(appointmentId, {
         routingStatus: "general",
       });
+
+      // Notify the client their request is now open to the full network
+      void (async () => {
+        try {
+          const apptDoc = await Appointment.findById(appointmentId)
+            .populate("clientId", "firstName lastName email language")
+            .lean();
+          const c = apptDoc?.clientId as {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            language?: string;
+          } | null;
+          if (c?.email) {
+            await sendRequestMovedToGeneralListEmail({
+              clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
+              clientEmail: c.email,
+              locale: c.language === "fr" ? "fr" : "en",
+            });
+          }
+        } catch (e) {
+          console.error("[routing] Failed to send general-list notification:", e);
+        }
+      })();
 
       return { success: true, matches: [], routingStatus: "general" };
     }

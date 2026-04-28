@@ -292,6 +292,7 @@ export const appointmentsAPI = {
     id: string,
     data: {
       sessionActNature: string;
+      sessionActNatureOther?: string;
       sessionOutcome: string;
       nextAppointmentDate?: string;
       nextAppointmentTime?: string;

@@ -67,6 +67,36 @@
       "colSessions": "Sessions",
       "colJoined": "Joined",
       "colActions": "Actions",
+      "colStatusTier": "Case status",
+      "filterTier": "Case status",
+      "allTiers": "All statuses",
+      "statusTierLegendTitle": "Status color guide",
+      "statusTierMeaning": "Meaning",
+      "statusTierAction": "Required action",
+      "statusTier": {
+        "tiers": {
+          "gray": {
+            "label": "New prospect",
+            "meaning": "No confirmed appointment yet.",
+            "action": "Professional should call to book the appointment."
+          },
+          "yellow": {
+            "label": "Appointment, no card",
+            "meaning": "Appointment set, but no card or guarantee on file.",
+            "action": "System sends automatic reminders."
+          },
+          "green": {
+            "label": "Card or agreement OK",
+            "meaning": "Card on file or agreement validated.",
+            "action": "Ready for the session; file is secure."
+          },
+          "red": {
+            "label": "Payment issue / Interac",
+            "meaning": "Payment failed or Interac transfer overdue.",
+            "action": "Admin or professional must follow up and contact the client."
+          }
+        }
+      },
       "table": {
         "client": "Client",
         "email": "Email",
@@ -1164,6 +1194,7 @@
         "emailNotVerified": "Please confirm your email first (use the link we sent).",
         "phoneNotVerified": "After email confirmation, validate your phone number with the SMS code.",
         "licenseRejected": "Your professional license file was declined. Contact support if you need help.",
+        "accountInactive": "An account was created for you following your service request. Click the invitation link sent to your email to activate it, or create your full account via the sign-up page.",
         "genericSignIn": "Something went wrong while signing in."
       },
       "confirmAccountLink": "Confirm my account (email / SMS)"
@@ -2174,7 +2205,8 @@
         "outcomes": {
           "completed": "Completed (100% fees)",
           "cancelled_48h_plus": "Cancelled more than 48h in advance (no fees)",
-          "absence_or_late_cancel": "Absence / Cancellation less than 48h (100% fees)"
+          "absence_or_late_cancel": "Absence / Cancellation less than 48h (100% fees)",
+          "rescheduled": "Rescheduled with professional's agreement (no fees)"
         },
         "actNatureLabel": "Reason for consultation",
         "actPlaceholder": "Choose an option",
@@ -2193,6 +2225,8 @@
         },
         "actNatureOtherLabel": "Additional note (will appear on the receipt)",
         "actNatureOtherPlaceholder": "Optional — e.g. topic, context…",
+        "nextAppointmentLabel": "Next appointment",
+        "nextAppointmentHint": "Optional — enter date and time to schedule the next session.",
         "cancel": "Cancel",
         "saving": "Saving...",
         "submit": "Close session",
@@ -4090,16 +4124,21 @@
       "paymentHistory": "Payment History",
       "noReceivables": "No pending receivables",
       "noPaymentHistory": "No payment history",
+      "pendingPayoutCardLabel": "To be paid out",
+      "pendingPayoutCardSub": "Pending client payments",
       "ledgerTitle": "Ledger",
       "pendingPayoutSynth": "Each validated session adds a line. The pending balance reflects client payments not yet received.",
       "pendingPayoutLabel": "To be paid out (estimate — pending client payments)",
       "ledgerEmpty": "No revenue lines recorded yet.",
       "ledgerDate": "Date",
       "ledgerKind": "Type",
+      "ledgerAct": "Act",
       "ledgerCredit": "Credit",
       "ledgerDebit": "Debit",
       "ledgerBalanceCycle": "Cycle balance (credits − debits)",
       "ledgerBalanceLifetime": "Lifetime balance (history)",
+      "ledgerShowAll": "Show all",
+      "ledgerShowLess": "Show less",
       "session": "Session",
       "invoiceNumber": "Invoice Number",
       "earnings": "Earnings",
@@ -4253,6 +4292,20 @@
       "interac48Title": "Interac > 48h",
       "interac48Desc": "Transfer still expected more than 48h after session closure.",
       "noneOk": "Nothing to report.",
+      "colSession": "Session",
+      "colPaidAt": "Paid",
+      "colDueAt": "Due",
+      "colRef": "Ref",
+      "colClosed": "Closed",
+      "colOverdue": "Overdue since",
+      "cycle": "Cycle",
+      "resendInterac": "Resend instructions",
+      "resendOk": "Instructions re-sent.",
+      "resendError": "Failed to resend.",
+      "payoutPro": "Professional",
+      "payoutProPlaceholder": "Select a professional",
+      "payoutProIdHint": "Load balances first to get a dropdown.",
+      "balanceCycleShort": "Cycle balance",
       "exportsTitle": "Sales journal & full ledger",
       "exportsDesc": "CSV for your accountant (UTF-8). Sales journal lists session credits; full ledger includes payout debits too.",
       "year": "Year",

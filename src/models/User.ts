@@ -6,7 +6,7 @@ export interface IUser extends Document {
   password?: string;
   firstName: string;
   lastName: string;
-  role: "client" | "professional" | "admin" | "guest";
+  role: "client" | "professional" | "admin" | "guest" | "prospect";
   isAdmin: boolean;
   adminId?: mongoose.Types.ObjectId; // Reference to Admin document if user is admin
   profile?: mongoose.Types.ObjectId; // Reference to Profile document
@@ -90,7 +90,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["client", "professional", "admin", "guest"],
+      enum: ["client", "professional", "admin", "guest", "prospect"],
       required: [true, "Role is required"],
       default: "client",
     },

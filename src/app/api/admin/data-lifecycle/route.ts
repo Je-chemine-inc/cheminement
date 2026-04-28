@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Admin from "@/models/Admin";
 import connectToDatabase from "@/lib/mongodb";
@@ -8,7 +9,7 @@ import {
   anonymizeSingleUser,
 } from "@/lib/data-lifecycle";
 
-async function getAuthorizedAdmin(session: Awaited<ReturnType<typeof getServerSession>>) {
+async function getAuthorizedAdmin(session: Session | null) {
   if (!session?.user?.id || session.user.role !== "admin") return null;
   await connectToDatabase();
   const admin = await Admin.findOne({ userId: session.user.id, isActive: true }).lean();

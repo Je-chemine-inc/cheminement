@@ -24,6 +24,7 @@ import {
   professionalLedgerAPI,
   type ProfessionalLedgerEntryResponse,
 } from "@/lib/api-client";
+import { getSessionActNatureLabelFr } from "@/lib/receipt-pdf";
 import { AppointmentResponse } from "@/types/api";
 
 type ConnectPayoutResponse = {
@@ -69,6 +70,7 @@ export default function ProfessionalBillingPage() {
     balanceCurrentCycleCad?: number;
   } | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(true);
+  const [ledgerShowAll, setLedgerShowAll] = useState(false);
   const t = useTranslations("Professional.billing");
 
   const fetchConnectStatus = useCallback(async () => {
@@ -333,7 +335,7 @@ export default function ProfessionalBillingPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-3xl border border-border/20 bg-card/80 p-6 shadow-lg">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-yellow-500/10 p-3">
@@ -377,6 +379,27 @@ export default function ProfessionalBillingPage() {
               </p>
               <p className="text-2xl font-light text-foreground">
                 {monthlyRevenue.toFixed(2)} $
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-primary/20 bg-primary/5 p-6 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-primary/10 p-3">
+              <Wallet className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {t("pendingPayoutCardLabel")}
+              </p>
+              <p className="text-2xl font-light text-primary">
+                {ledgerLoading
+                  ? "…"
+                  : `${(ledgerData?.pendingPayoutCad ?? 0).toFixed(2)} $`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("pendingPayoutCardSub")}
               </p>
             </div>
           </div>
@@ -441,11 +464,15 @@ export default function ProfessionalBillingPage() {
                     <tr className="border-b border-border/40 text-left text-muted-foreground">
                       <th className="pb-2 pr-2 font-medium">{t("ledgerDate")}</th>
                       <th className="pb-2 pr-2 font-medium">{t("ledgerKind")}</th>
+                      <th className="pb-2 pr-2 font-medium">{t("ledgerAct")}</th>
                       <th className="pb-2 font-medium">{t("earnings")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ledgerData.entries.slice(0, 15).map((row) => {
+                    {(ledgerShowAll
+                      ? ledgerData.entries
+                      : ledgerData.entries.slice(0, 15)
+                    ).map((row) => {
                       const isDebit = row.entryKind === "debit";
                       return (
                         <tr
@@ -458,6 +485,11 @@ export default function ProfessionalBillingPage() {
                           <td className="py-2 pr-2 text-xs">
                             {isDebit ? t("ledgerDebit") : t("ledgerCredit")}
                           </td>
+                          <td className="py-2 pr-2 text-xs text-muted-foreground">
+                            {row.sessionActNature
+                              ? getSessionActNatureLabelFr(row.sessionActNature)
+                              : "—"}
+                          </td>
                           <td className="py-2">
                             {isDebit
                               ? `− ${(row.payoutAmountCad ?? 0).toFixed(2)} $`
@@ -468,6 +500,18 @@ export default function ProfessionalBillingPage() {
                     })}
                   </tbody>
                 </table>
+                {ledgerData.entries.length > 15 && (
+                  <button
+                    type="button"
+                    onClick={() => setLedgerShowAll((v) => !v)}
+                    className="mt-3 text-xs text-primary hover:underline"
+                  >
+                    {ledgerShowAll
+                      ? t("ledgerShowLess")
+                      : t("ledgerShowAll") +
+                        ` (${ledgerData.entries.length - 15})`}
+                  </button>
+                )}
               </div>
             )}
           </>

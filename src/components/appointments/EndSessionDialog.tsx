@@ -44,6 +44,8 @@ export function EndSessionDialog({
   const [act, setAct] = useState("");
   const [actOther, setActOther] = useState("");
   const [outcome, setOutcome] = useState("");
+  const [nextDate, setNextDate] = useState("");
+  const [nextTime, setNextTime] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,6 +53,8 @@ export function EndSessionDialog({
       setAct("");
       setActOther("");
       setOutcome("");
+      setNextDate("");
+      setNextTime("");
     }
   }, [open, appointmentId]);
 
@@ -63,12 +67,18 @@ export function EndSessionDialog({
         sessionActNature: string;
         sessionActNatureOther?: string;
         sessionOutcome: string;
+        nextAppointmentDate?: string;
+        nextAppointmentTime?: string;
       } = {
         sessionActNature: act,
         sessionOutcome: outcome,
       };
       if (actOther.trim()) {
         payload.sessionActNatureOther = actOther.trim();
+      }
+      if (nextDate.trim() && nextTime.trim()) {
+        payload.nextAppointmentDate = nextDate.trim();
+        payload.nextAppointmentTime = nextTime.trim();
       }
       const apt = await appointmentsAPI.completeSession(appointmentId, payload);
       onCompleted(apt);
@@ -132,6 +142,27 @@ export function EndSessionDialog({
               placeholder={t("actNatureOtherPlaceholder")}
               maxLength={200}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("nextAppointmentLabel")}</Label>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={nextDate}
+                onChange={(e) => setNextDate(e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                type="time"
+                value={nextTime}
+                onChange={(e) => setNextTime(e.target.value)}
+                className="w-32"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("nextAppointmentHint")}
+            </p>
           </div>
         </div>
         <DialogFooter>

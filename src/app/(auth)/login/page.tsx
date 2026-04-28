@@ -101,6 +101,8 @@ export default function LoginPage() {
             } else if (code === "AUTH_PHONE_NOT_VERIFIED") {
               setError(t("errors.phoneNotVerified"));
               setVerifyHint("phone");
+            } else if (code === "AUTH_ACCOUNT_INACTIVE") {
+              setError(t("errors.accountInactive"));
             } else if (code === "AUTH_LICENSE_REJECTED") {
               setError(t("errors.licenseRejected"));
             } else if (code === "OK") {

@@ -8,7 +8,7 @@ import { sendInteracTransferInstructionsEmail } from "@/lib/notifications";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,8 @@ export async function POST(
 
     await connectToDatabase();
 
-    const apt = await Appointment.findById(params.id)
+    const { id } = await params;
+    const apt = await Appointment.findById(id)
       .populate("clientId", "firstName lastName email")
       .populate("professionalId", "firstName lastName");
 

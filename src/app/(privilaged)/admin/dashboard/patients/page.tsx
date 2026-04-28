@@ -6,8 +6,6 @@ import {
   Search,
   Filter,
   Eye,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   RefreshCw,
   Download,
@@ -33,6 +31,11 @@ import {
 } from "@/components/ui/table";
 import Link from "next/link";
 import { AddProfileModal } from "@/components/admin/AddProfileModal";
+import { ClientStatusTierBadge } from "@/components/dashboard/ClientStatusTierBadge";
+import { clientStatusTierColors } from "@/config/colors";
+import type { ClientStatusTier } from "@/lib/client-status-tier";
+
+const STATUS_TIERS: ClientStatusTier[] = ["gray", "yellow", "green", "red"];
 
 type PatientStatus = "active" | "pending" | "inactive";
 
@@ -49,8 +52,7 @@ interface Patient {
   issueType: string;
   paymentGuaranteeStatus?: "none" | "pending_admin" | "green";
   paymentGuaranteeSource?: "stripe" | "interac_trust";
-  adminStatusColor?: string;
-  adminStatusLabel?: string;
+  statusTier?: ClientStatusTier;
 }
 
 interface PatientsData {
@@ -76,6 +78,7 @@ export default function PatientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tierFilter, setTierFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchPatients = useCallback(
@@ -109,7 +112,11 @@ export default function PatientsPage() {
     fetchPatients(1);
   }, [fetchPatients]);
 
-  const patients = data?.patients || [];
+  const allPatients = data?.patients || [];
+  const patients =
+    tierFilter === "all"
+      ? allPatients
+      : allPatients.filter((p) => (p.statusTier ?? "gray") === tierFilter);
   const summary = data?.summary || {
     totalPatients: 0,
     activePatients: 0,
@@ -158,61 +165,6 @@ export default function PatientsPage() {
     document.body.removeChild(link);
   };
 
-  const getAdminStatusBadge = (color?: string, label?: string) => {
-    const defaultColor = "bg-gray-100 text-gray-700";
-    const defaultLabel = "Inconnu";
-
-    const styles: Record<string, string> = {
-      gray: "bg-gray-100 text-gray-600 border-gray-200",
-      yellow: "bg-yellow-50 text-yellow-700 border-yellow-200",
-      green: "bg-green-50 text-green-700 border-green-200",
-      red: "bg-red-50 text-red-700 border-red-200",
-    };
-
-    const dotStyles: Record<string, string> = {
-      gray: "bg-gray-400",
-      yellow: "bg-yellow-500",
-      green: "bg-green-500",
-      red: "bg-red-500",
-    };
-
-    const style = color ? styles[color] : defaultColor;
-    const dotStyle = color ? dotStyles[color] : "bg-gray-400";
-
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${style}`}
-      >
-        <span className={`h-1.5 w-1.5 rounded-full ${dotStyle}`} />
-        {label || defaultLabel}
-      </span>
-    );
-  };
-
-
-  const getGuaranteeDot = (status?: string, source?: string) => {
-    if (status === "green" && source === "interac_trust") {
-      return (
-        <span
-          title="Garantie manuelle (Interac/Entente)"
-          className="inline-flex h-3 w-3 rounded-full bg-blue-500 shadow-sm"
-        />
-      );
-    } else if (status === "green") {
-      return (
-        <span
-          title="Garantie Stripe"
-          className="inline-flex h-3 w-3 rounded-full bg-green-500 shadow-sm"
-        />
-      );
-    }
-    return (
-      <span
-        title="Aucune garantie"
-        className="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm"
-      />
-    );
-  };
 
   if (loading) {
     return (
@@ -359,6 +311,50 @@ export default function PatientsPage() {
         </div>
       </div>
 
+      {/* Status color legend */}
+      <div className="rounded-xl bg-card border border-border/40 p-6 space-y-4">
+        <h2 className="text-base font-medium text-foreground">
+          {t("statusTierLegendTitle")}
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-border/40 text-left text-muted-foreground">
+                <th className="py-2 pr-4 font-normal w-8" />
+                <th className="py-2 pr-4 font-normal">{t("statusTierMeaning")}</th>
+                <th className="py-2 font-normal">{t("statusTierAction")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {STATUS_TIERS.map((tier) => (
+                <tr
+                  key={tier}
+                  className="border-b border-border/20 last:border-0 align-top"
+                >
+                  <td className="py-3 pr-4">
+                    <span
+                      className={`inline-block h-3 w-3 rounded-full ${clientStatusTierColors[tier].dot}`}
+                      aria-hidden
+                    />
+                  </td>
+                  <td className="py-3 pr-4 text-foreground">
+                    <span className="font-medium">
+                      {t(`statusTier.tiers.${tier}.label`)}
+                    </span>
+                    <span className="text-muted-foreground block mt-0.5 text-xs">
+                      {t(`statusTier.tiers.${tier}.meaning`)}
+                    </span>
+                  </td>
+                  <td className="py-3 text-muted-foreground text-xs">
+                    {t(`statusTier.tiers.${tier}.action`)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="rounded-xl bg-card border border-border/40">
         <div className="p-6 border-b border-border/40">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -384,6 +380,24 @@ export default function PatientsPage() {
                   <SelectItem value="inactive">{t("statusInactive")}</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={tierFilter} onValueChange={setTierFilter}>
+                <SelectTrigger className="w-[170px]">
+                  <SelectValue placeholder={t("filterTier")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("allTiers")}</SelectItem>
+                  {STATUS_TIERS.map((tier) => (
+                    <SelectItem key={tier} value={tier}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${clientStatusTierColors[tier].dot}`}
+                        />
+                        {t(`statusTier.tiers.${tier}.label`)}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -399,7 +413,7 @@ export default function PatientsPage() {
                   Contact
                 </TableHead>
                 <TableHead className="text-left text-sm font-light text-muted-foreground">
-                  Issue Type
+                  {t("colStatusTier")}
                 </TableHead>
                 <TableHead className="text-left text-sm font-light text-muted-foreground">
                   {t("colStatus")}
@@ -447,14 +461,13 @@ export default function PatientsPage() {
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm font-light text-foreground">
-                    {patient.issueType}
-                  </TableCell>
                   <TableCell>
-                    {getAdminStatusBadge(
-                      patient.adminStatusColor,
-                      patient.adminStatusLabel,
-                    )}
+                    <ClientStatusTierBadge
+                      tier={patient.statusTier ?? "gray"}
+                      label={t(
+                        `statusTier.tiers.${patient.statusTier ?? "gray"}.label`,
+                      )}
+                    />
                   </TableCell>
                   <TableCell className="text-sm font-light text-muted-foreground">
                     {patient.matchedWith || "-"}

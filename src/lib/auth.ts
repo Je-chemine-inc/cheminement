@@ -74,6 +74,13 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Inactive client accounts were auto-provisioned by the system but never claimed.
+        // Block login and direct them to the signup/claim flow.
+        if (user.role === "client" && user.status === "inactive") {
+          void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
+          throw new Error("AUTH_ACCOUNT_INACTIVE");
+        }
+
         if (
           user.role === "professional" &&
           user.professionalLicenseStatus === "rejected"

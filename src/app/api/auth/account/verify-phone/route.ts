@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     sendWelcomeEmail({
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      role: user.role as "client" | "professional" | "guest",
+      role: user.role as "client" | "professional" | "guest" | "prospect",
     }).catch((err) => console.error("welcome after verify email:", err));
 
     if (user.phone) {

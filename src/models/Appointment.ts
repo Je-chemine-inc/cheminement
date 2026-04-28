@@ -75,6 +75,8 @@ export interface IAppointment extends Document {
     | "pending"
     | "ongoing";
   issueType?: string;
+  /** Array of selected motifs (1–3), stored from the booking form's `needs` field. */
+  needs?: string[];
   notes?: string;
   cancelReason?: string;
   cancelledBy?: "client" | "professional" | "admin";
@@ -299,6 +301,7 @@ const AppointmentSchema = new Schema<IAppointment>(
       default: "pending",
     },
     issueType: String,
+    needs: [{ type: String }],
     notes: String,
     cancelReason: String,
     cancelledBy: {

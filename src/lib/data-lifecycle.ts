@@ -53,7 +53,7 @@ export async function anonymizeExpiredAccounts(): Promise<AnonymizationReport> {
   };
 
   const candidates = await User.find({
-    role: { $in: ["client", "guest"] },
+    role: { $in: ["client", "guest", "prospect"] },
     $or: [
       { phoneVerifiedAt: { $lt: cutoff } },
       { emailVerified: { $lt: cutoff }, phoneVerifiedAt: null },
