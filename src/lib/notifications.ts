@@ -375,19 +375,30 @@ const createButton = (
   return `<div style="text-align: center;"><a href="${url}" style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: white; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500;">${text}</a></div>`;
 };
 
-const createFooter = (branding?: IEmailBranding): string => {
+const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): string => {
   const year = new Date().getFullYear();
   const url = process.env.NEXTAUTH_URL || "";
   const companyName = branding?.companyName || "JeChemine";
+  const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
   const footerText =
-    branding?.footerText || "Your journey to wellness starts here.";
+    branding?.footerText ||
+    (lang === "fr"
+      ? "Votre parcours vers le mieux-être commence ici."
+      : "Your journey to wellness starts here.");
   const primaryColor = branding?.primaryColor || "#8B7355";
+  const allRights = lang === "fr" ? "Tous droits réservés." : "All rights reserved.";
+  const visitSite = lang === "fr" ? "Visiter notre site web" : "Visit our website";
+  const contactSupport = lang === "fr" ? "Contacter le soutien" : "Contact support";
 
   return `
     <div class="footer">
       <p style="margin: 0 0 5px;">${footerText}</p>
-      <p style="margin: 0;">&copy; ${year} ${companyName}. All rights reserved.</p>
-      <p style="margin: 10px 0 0;"><a href="${url}" style="color: ${primaryColor};">Visit our website</a></p>
+      <p style="margin: 0;">&copy; ${year} ${companyName}. ${allRights}</p>
+      <p style="margin: 8px 0 0;">
+        <a href="${url}" style="color: ${primaryColor};">${visitSite}</a>
+        &nbsp;·&nbsp;
+        <a href="mailto:${supportEmail}" style="color: ${primaryColor};">${contactSupport}</a>
+      </p>
     </div>
   `;
 };
@@ -421,6 +432,7 @@ interface EmailTemplateOptions {
   secondaryButton?: { preamble?: string; text: string; url: string };
   outro?: string;
   branding?: IEmailBranding;
+  lang?: "fr" | "en";
 }
 
 const buildEmailHtml = (options: EmailTemplateOptions): string => {
@@ -439,6 +451,7 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
     secondaryButton,
     outro,
     branding,
+    lang = "fr",
   } = options;
 
   const colors = getThemeColors(theme, branding);
@@ -473,18 +486,20 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
             }
             ${outro ? `<p style="color: #666; font-size: 14px;">${outro}</p>` : ""}
           </div>
-          ${createFooter(branding)}
+          ${createFooter(branding, lang)}
         </div>
       </body>
     </html>
   `;
 };
 
-const buildEmailText = (sections: string[]): string => {
-  return (
-    sections.filter(Boolean).join("\n\n") +
-    `\n\n© ${new Date().getFullYear()} JeChemine. All rights reserved.`
-  );
+const buildEmailText = (sections: string[], lang: "fr" | "en" = "fr"): string => {
+  const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
+  const copyright =
+    lang === "fr"
+      ? `© ${new Date().getFullYear()} JeChemine. Tous droits réservés.\nSoutien : ${supportEmail}`
+      : `© ${new Date().getFullYear()} JeChemine. All rights reserved.\nSupport: ${supportEmail}`;
+  return sections.filter(Boolean).join("\n\n") + `\n\n${copyright}`;
 };
 
 // =============================================================================

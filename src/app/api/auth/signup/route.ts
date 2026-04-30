@@ -147,13 +147,14 @@ export async function POST(req: NextRequest) {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      // Allow a client to claim a provisioned-but-inactive account.
-      // This happens when the system auto-created the account after a professional
-      // accepted their request, but the client never completed signup.
+      // Allow a client to claim an account that was never email-verified.
+      // Covers: (1) admin-provisioned inactive accounts, (2) zombie accounts where
+      // the user created an account but never clicked the verification link.
+      // Once emailVerified is set the account belongs to someone — not claimable.
       const isClaimableAccount =
         existingUser.role === "client" &&
-        existingUser.status === "inactive" &&
-        role === "client";
+        role === "client" &&
+        (existingUser.status === "inactive" || !existingUser.emailVerified);
 
       if (!isClaimableAccount) {
         return NextResponse.json(
@@ -186,10 +187,71 @@ export async function POST(req: NextRequest) {
       existingUser.termsAcceptedAt = new Date();
       existingUser.termsVersion = LEGAL_VERSIONS.terms;
 
+      // Reset verification state so the user goes through email+phone again
+      existingUser.emailVerified = undefined;
+      existingUser.phoneVerifiedAt = undefined;
+      existingUser.phoneStepTokenHash = undefined;
+      existingUser.phoneStepTokenExpires = undefined;
+      existingUser.verificationSmsCodeHash = undefined;
+      existingUser.verificationSmsExpires = undefined;
+      existingUser.verificationSmsAttempts = 0;
+
       const claimToken = generateUrlToken();
       existingUser.verificationEmailTokenHash = hashVerificationSecret(claimToken);
       existingUser.verificationEmailExpires = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
       await existingUser.save();
+
+      // Upsert the medical profile with updated signup data
+      await MedicalProfile.findOneAndUpdate(
+        { userId: existingUser._id },
+        {
+          $set: {
+            concernedPerson,
+            accountFor,
+            childFirstName,
+            childLastName,
+            childDateOfBirth,
+            childServiceType,
+            medicalConditions,
+            currentMedications,
+            consultationMotifs,
+            substanceUse,
+            previousTherapy,
+            previousTherapyDetails,
+            psychiatricHospitalization,
+            currentTreatment,
+            diagnosedConditions,
+            primaryIssue,
+            secondaryIssues,
+            issueDescription,
+            severity,
+            duration,
+            triggeringSituation,
+            symptoms,
+            dailyLifeImpact,
+            sleepQuality,
+            appetiteChanges,
+            treatmentGoals,
+            therapyApproach,
+            concernsAboutTherapy,
+            availability,
+            modality,
+            sessionFrequency,
+            notes,
+            emergencyContactName,
+            emergencyContactPhone,
+            emergencyContactEmail,
+            emergencyContactRelation,
+            preferredGender,
+            preferredAge,
+            languagePreference,
+            culturalConsiderations,
+            paymentMethod,
+            profileCompleted: false,
+          },
+        },
+        { upsert: true },
+      );
 
       const base = process.env.NEXTAUTH_URL || "";
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(existingUser._id.toString())}&token=${encodeURIComponent(claimToken)}`;
@@ -228,7 +290,7 @@ export async function POST(req: NextRequest) {
       firstName,
       lastName,
       role,
-      status: role == "professional" ? "pending" : "active",
+      status: "pending",
       phone,
       accountSecurityVersion: useSecureInit ? 1 : 0,
       emailVerified: bootstrapVerified ? new Date() : undefined,
@@ -367,7 +429,13 @@ export async function POST(req: NextRequest) {
         profileCompleted: false,
       });
 
-      await medicalProfile.save();
+      try {
+        await medicalProfile.save();
+      } catch (profileErr) {
+        // Roll back the user to avoid a zombie account that blocks re-signup
+        await User.deleteOne({ _id: user._id }).catch(() => {});
+        throw profileErr;
+      }
     }
 
     if (bootstrapVerified) {

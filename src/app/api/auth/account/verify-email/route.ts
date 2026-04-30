@@ -5,8 +5,6 @@ import User from "@/models/User";
 import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 import {
   EMAIL_VERIFY_TTL_MS,
-  PHONE_STEP_TTL_MS,
-  generatePhoneStepToken,
   hashVerificationSecret,
 } from "@/lib/account-init";
 
@@ -55,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     if (user.verificationEmailExpires.getTime() < Date.now()) {
       return NextResponse.json(
-        { error: "Ce lien a expiré (15 min). Demandez un nouveau courriel." },
+        { error: `Ce lien a expiré (${EMAIL_VERIFY_TTL_MS / 60000} min). Demandez un nouveau courriel.` },
         { status: 400 },
       );
     }
@@ -66,31 +64,13 @@ export async function POST(req: NextRequest) {
     }
 
     user.emailVerified = new Date();
+    user.status = "active";
     user.verificationEmailTokenHash = undefined;
     user.verificationEmailExpires = undefined;
 
-    const phoneStepToken = generatePhoneStepToken();
-    user.phoneStepTokenHash = hashVerificationSecret(phoneStepToken);
-    user.phoneStepTokenExpires = new Date(Date.now() + PHONE_STEP_TTL_MS);
-    user.verificationSmsCodeHash = undefined;
-    user.verificationSmsExpires = undefined;
-    user.verificationSmsAttempts = 0;
-
     await user.save();
 
-    const phone = user.phone || "";
-    const masked =
-      phone.length >= 4
-        ? `${phone.slice(0, Math.min(3, phone.length - 2))}…${phone.slice(-2)}`
-        : "•••";
-
-    return NextResponse.json({
-      ok: true,
-      phoneStepToken,
-      phoneMasked: masked,
-      emailVerifyTtlMs: EMAIL_VERIFY_TTL_MS,
-      phoneStepTtlMs: PHONE_STEP_TTL_MS,
-    });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("verify-email:", e);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

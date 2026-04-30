@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import type { LegalDocumentDTO } from "@/lib/legal-content";
 import LegalBackButton from "./LegalBackButton";
+import LegalBackButtonBottom from "./LegalBackButtonBottom";
 
 function slugify(value: string) {
   return value
@@ -107,6 +108,10 @@ export default async function LegalPage({
           />
         </div>
       </div>
+
+      <Suspense>
+        <LegalBackButtonBottom />
+      </Suspense>
     </article>
   );
 }

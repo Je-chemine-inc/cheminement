@@ -52,6 +52,7 @@ export default function PatientDetailPage({
 }) {
   const router = useRouter();
   const t = useTranslations("AdminDashboard.patientDetail");
+  const tStatus = useTranslations("AdminDashboard.appointmentStatus");
   const { id } = use(params);
 
   const [loading, setLoading] = useState(true);
@@ -383,33 +384,33 @@ export default function PatientDetailPage({
 
           <div className="bg-card border border-border/40 rounded-xl p-6">
             <h2 className="text-xl font-serif font-light mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5" /> Suivi Clinique (Séances)
+              <Calendar className="h-5 w-5" /> {t("clinicalTracking")}
             </h2>
             {appointments.length === 0 ? (
-              <p className="text-muted-foreground text-sm font-light py-4 text-center">Aucune séance trouvée.</p>
+              <p className="text-muted-foreground text-sm font-light py-4 text-center">{t("noSessions")}</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Pro</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>{t("colDate")}</TableHead>
+                      <TableHead>{t("colPro")}</TableHead>
+                      <TableHead>{t("colStatus")}</TableHead>
+                      <TableHead>{t("colAction")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {appointments.map((apt) => (
                       <TableRow key={apt.id}>
                         <TableCell className="text-sm">
-                          {apt.date ? new Date(apt.date).toLocaleDateString() : "—"}<br />
+                          {apt.date ? new Date(apt.date).toLocaleDateString("fr-CA") : "—"}<br />
                           {apt.time || "—"} ({apt.duration}min)
                         </TableCell>
                         <TableCell className="text-sm">
                           {apt.professional ? apt.professional.name : "—"}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {apt.status}
+                          {tStatus(apt.status)}
                         </TableCell>
                         <TableCell>
                           <Select
@@ -420,10 +421,10 @@ export default function PatientDetailPage({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="scheduled">Prévu</SelectItem>
-                              <SelectItem value="completed">Terminé</SelectItem>
-                              <SelectItem value="cancelled">Annulé</SelectItem>
-                              <SelectItem value="no-show">Absent/No-show</SelectItem>
+                              <SelectItem value="scheduled">{tStatus("scheduled")}</SelectItem>
+                              <SelectItem value="completed">{tStatus("completed")}</SelectItem>
+                              <SelectItem value="cancelled">{tStatus("cancelled")}</SelectItem>
+                              <SelectItem value="no-show">{tStatus("noShow")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -439,13 +440,13 @@ export default function PatientDetailPage({
         {/* Right Col - Actions */}
         <div className="space-y-6">
           <div className="bg-card border border-border/40 rounded-xl p-6">
-            <h2 className="text-lg font-serif font-light mb-4">Actions de Garantie</h2>
+            <h2 className="text-lg font-serif font-light mb-4">{t("guaranteeActions")}</h2>
             <div className="space-y-3">
               <div className="p-3 bg-muted/50 rounded-lg text-sm mb-2 flex items-center justify-between">
-                <strong>Statut :</strong>
+                <strong>{t("statusLabel")}</strong>
                 {getAdminStatusBadge(data.adminStatus?.color, data.adminStatus?.label)}
               </div>
-              
+
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"
@@ -453,9 +454,9 @@ export default function PatientDetailPage({
                 disabled={actionLoading !== null}
               >
                 {actionLoading === "invite" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4 text-muted-foreground" />}
-                Renvoyer l'invitation
+                {t("resendInvite")}
               </Button>
-              
+
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"
@@ -463,7 +464,7 @@ export default function PatientDetailPage({
                 disabled={actionLoading !== null}
               >
                 {actionLoading === "guarantee" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-orange-500" />}
-                Relance Garantie Bancaire
+                {t("resendGuarantee")}
               </Button>
 
               {!isGreen && (
@@ -474,7 +475,7 @@ export default function PatientDetailPage({
                   disabled={actionLoading !== null}
                 >
                   {actionLoading === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  Approuver la garantie manuellement
+                  {t("approveGuarantee")}
                 </Button>
               )}
             </div>

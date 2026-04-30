@@ -15,6 +15,7 @@ import {
   Calendar,
   Wallet,
   Shield,
+  MessageSquare,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -41,6 +42,27 @@ export function ClientSidebar() {
   const { state } = useSidebar();
   const t = useTranslations("Dashboard.sidebar");
   const [hasManagedAccounts, setHasManagedAccounts] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const res = await fetch("/api/messages");
+        if (!res.ok) return;
+        const data = await res.json();
+        const total = (data.conversations as Array<{ unread: number }>).reduce(
+          (sum, c) => sum + (c.unread ?? 0),
+          0,
+        );
+        setUnreadCount(total);
+      } catch {
+        // silent
+      }
+    };
+    loadUnread();
+    const id = setInterval(loadUnread, 60000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const checkManagedAccounts = async () => {
@@ -104,6 +126,12 @@ export function ClientSidebar() {
       title: t("support"),
       items: [
         {
+          title: t("messages"),
+          url: "/client/dashboard/messages",
+          icon: MessageSquare,
+          badge: unreadCount,
+        },
+        {
           title: t("helpCenter"),
           url: "/client/dashboard/help",
           icon: HelpCircle,
@@ -146,6 +174,7 @@ export function ClientSidebar() {
               <SidebarMenu>
                 {section.items.map((item) => {
                   const isActive = pathname === item.url;
+                  const badge = "badge" in item ? (item as { badge?: number }).badge : undefined;
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
@@ -156,9 +185,13 @@ export function ClientSidebar() {
                         <Link href={item.url}>
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
-                          {isActive && (
+                          {badge && badge > 0 ? (
+                            <span className="ml-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold w-4 h-4">
+                              {badge > 9 ? "9+" : badge}
+                            </span>
+                          ) : isActive ? (
                             <ChevronRight className="ml-auto h-4 w-4" />
-                          )}
+                          ) : null}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

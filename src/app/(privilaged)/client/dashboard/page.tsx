@@ -5,14 +5,15 @@ import {
   ArrowRight,
   Calendar,
   HelpCircle,
+  Lock,
   Mail,
+  RefreshCw,
   User,
   Video,
   Phone,
   MapPin,
   Clock,
   Wallet,
-  Users,
   Shield,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,12 +22,17 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import { appointmentsAPI, apiClient } from "@/lib/api-client";
 import { AppointmentResponse } from "@/types/api";
+import { CancelAppointmentDialog } from "@/components/appointments";
 
 export default function ClientDashboardPage() {
   const [upcomingAppointments, setUpcomingAppointments] = useState<
     AppointmentResponse[]
   >([]);
   const [hasManagedAccounts, setHasManagedAccounts] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] =
+    useState<AppointmentResponse | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [rescheduleInfoId, setRescheduleInfoId] = useState<string | null>(null);
   const { data: session, status } = useSession();
   const t = useTranslations("Client.overview");
   const tApptStatus = useTranslations("Client.appointments.status");
@@ -114,9 +120,40 @@ export default function ClientDashboardPage() {
     }
   };
 
+  const canModifyAppointment = (appointment: AppointmentResponse): boolean => {
+    if (!appointment.date || !appointment.time) return false;
+    const [h, m] = appointment.time.split(":").map(Number);
+    const sessionStart = new Date(appointment.date);
+    sessionStart.setHours(h, m, 0, 0);
+    return (sessionStart.getTime() - Date.now()) / (1000 * 60 * 60) > 48;
+  };
+
+  const openCancelDialog = (appointment: AppointmentResponse) => {
+    setAppointmentToCancel(appointment);
+    setShowCancelDialog(true);
+  };
+
+  const handleCancelSuccess = () => {
+    setShowCancelDialog(false);
+    setAppointmentToCancel(null);
+    appointmentsAPI.list().then((data) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = data.filter((apt) => {
+        const aptDate = apt.date ? new Date(apt.date) : null;
+        return (
+          aptDate &&
+          aptDate >= today &&
+          ["scheduled", "pending", "ongoing"].includes(apt.status)
+        );
+      });
+      setUpcomingAppointments(upcoming.slice(0, 3));
+    });
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("fr-CA", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -250,10 +287,10 @@ export default function ClientDashboardPage() {
                       {t("support.emailDesc")}
                     </p>
                     <a
-                      href="mailto:contact@monimpression.com"
+                      href={`mailto:${t("support.supportEmail")}`}
                       className="mt-2 inline-block text-sm text-primary hover:underline"
                     >
-                      contact@monimpression.com
+                      {t("support.supportEmail")}
                     </a>
                   </div>
                 </div>
@@ -386,16 +423,93 @@ export default function ClientDashboardPage() {
                           {appointment.professionalId?.lastName}
                         </p>
                       </div>
-                      {appointment.type === "video" &&
-                        canJoinSession(appointment) && (
-                          <Button
-                            onClick={() => handleJoinSession(appointment)}
-                            className="gap-2 rounded-full"
-                          >
-                            <Video className="h-4 w-4" />
-                            Join Session
-                          </Button>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          {appointment.type === "video" &&
+                            canJoinSession(appointment) && (
+                              <Button
+                                onClick={() => handleJoinSession(appointment)}
+                                className="gap-2 rounded-full"
+                              >
+                                <Video className="h-4 w-4" />
+                                {t("upcomingAppointments.joinSession")}
+                              </Button>
+                            )}
+                          {appointment.status === "scheduled" &&
+                            canModifyAppointment(appointment) && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openCancelDialog(appointment)}
+                                  className="gap-2 rounded-full text-red-600 hover:text-red-700"
+                                >
+                                  {t("upcomingAppointments.cancel")}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setRescheduleInfoId(
+                                      rescheduleInfoId === appointment._id
+                                        ? null
+                                        : appointment._id,
+                                    )
+                                  }
+                                  className="gap-2 rounded-full"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                  {t("upcomingAppointments.reschedule")}
+                                </Button>
+                              </>
+                            )}
+                        </div>
+                        {appointment.status === "scheduled" &&
+                          !canModifyAppointment(appointment) && (
+                            <div className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-800/40 dark:bg-orange-950/20">
+                              <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-600 dark:text-orange-400" />
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-medium text-orange-800 dark:text-orange-200">
+                                  {t("upcomingAppointments.lateChange.title")}
+                                </p>
+                                <p className="text-xs text-orange-700 dark:text-orange-300">
+                                  {t("upcomingAppointments.lateChange.message")}
+                                </p>
+                                <a
+                                  href="mailto:contact@monimpression.com"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 underline hover:text-orange-900 dark:text-orange-300"
+                                >
+                                  <Mail className="h-3 w-3" />
+                                  {t("upcomingAppointments.lateChange.emailUs")}
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        {rescheduleInfoId === appointment._id && (
+                          <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-800/40 dark:bg-blue-950/20">
+                            <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-medium text-blue-800 dark:text-blue-200">
+                                {t("upcomingAppointments.rescheduleInfo.title")}
+                              </p>
+                              <p className="text-xs text-blue-700 dark:text-blue-300">
+                                {t(
+                                  "upcomingAppointments.rescheduleInfo.message",
+                                )}
+                              </p>
+                              <a
+                                href="mailto:contact@monimpression.com"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 underline hover:text-blue-900 dark:text-blue-300"
+                              >
+                                <Mail className="h-3 w-3" />
+                                {t(
+                                  "upcomingAppointments.rescheduleInfo.emailUs",
+                                )}
+                              </a>
+                            </div>
+                          </div>
                         )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -404,6 +518,19 @@ export default function ClientDashboardPage() {
           </section>
         </div>
       </div>
+
+      {appointmentToCancel && (
+        <CancelAppointmentDialog
+          open={showCancelDialog}
+          onOpenChange={setShowCancelDialog}
+          appointmentId={appointmentToCancel._id}
+          appointmentDate={appointmentToCancel.date}
+          appointmentTime={appointmentToCancel.time}
+          amount={appointmentToCancel.payment.price}
+          isPaid={appointmentToCancel.payment.status === "paid"}
+          onSuccess={handleCancelSuccess}
+        />
+      )}
     </div>
   );
 }

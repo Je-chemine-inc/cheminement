@@ -38,7 +38,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { apiClient, medicalProfileAPI } from "@/lib/api-client";
+import { apiClient, ApiClientError, medicalProfileAPI } from "@/lib/api-client";
+import { PhoneVerificationModal } from "@/components/appointments/PhoneVerificationModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { MotifSearch } from "@/components/ui/MotifSearch";
@@ -175,6 +176,7 @@ export default function BookAppointmentPage() {
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
 
   // Booking context
   const [bookingFor, setBookingFor] = useState<
@@ -183,6 +185,8 @@ export default function BookAppointmentPage() {
 
   useEffect(() => {
     if (bookingFor === "self") {
+      setSelectedType((prev) => (prev === "phone" ? "video" : prev));
+    } else if (bookingFor === "loved-one") {
       setSelectedType((prev) => (prev === "phone" ? "video" : prev));
     } else if (bookingFor) {
       setSelectedType((prev) => (prev === "both" ? "video" : prev));
@@ -543,11 +547,59 @@ export default function BookAppointmentPage() {
     return true;
   };
 
+  const handlePatientDirectSubmit = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const appointmentData: Record<string, unknown> = {
+        type: selectedType,
+        therapyType,
+        issueType: "",
+        needs: [],
+        reason: [],
+        notes,
+        bookingFor: "patient",
+        preferredAvailability: [],
+        notificationLocale: locale === "fr" ? "fr" : "en",
+        referralInfo,
+      };
+
+      if (isGuest) {
+        const nameParts = referralInfo.referrerName.trim().split(/\s+/);
+        const referrerFirstName = nameParts[0] || "";
+        const referrerLastName = nameParts.slice(1).join(" ") || "";
+        const professionalGuestInfo: GuestInfo = {
+          firstName: referrerFirstName,
+          lastName: referrerLastName,
+          email: referralInfo.referrerEmail || "",
+          phone: referralInfo.referrerPhone || "",
+          location: "",
+        };
+        await apiClient.post<{ appointmentId: string }>("/appointments/guest", {
+          ...appointmentData,
+          guestInfo: professionalGuestInfo,
+        });
+      } else {
+        await apiClient.post<{ appointmentId: string }>("/appointments", appointmentData);
+      }
+
+      setCurrentStep(5);
+    } catch (err: unknown) {
+      console.error("Error submitting patient referral:", err);
+      setError(err instanceof Error ? err.message : tB("errors.submitFailed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSpecificInfoSubmit = () => {
     if (bookingFor === "loved-one" && !validateLovedOneInfo()) return;
     if (bookingFor === "patient" && !validateReferralInfo()) return;
     if (bookingFor === "loved-one") {
       setCurrentStep(4); // Loved-one merged form: skip Step 3, go directly to review
+    } else if (bookingFor === "patient") {
+      handlePatientDirectSubmit();
     } else {
       setCurrentStep(3); // Move to appointment details
     }
@@ -752,6 +804,10 @@ export default function BookAppointmentPage() {
 
       setCurrentStep(5); // Success step
     } catch (err: unknown) {
+      if (err instanceof ApiClientError && err.code === "PHONE_NOT_VERIFIED") {
+        setShowPhoneVerification(true);
+        return;
+      }
       console.error("Error submitting request:", err);
       setError(err instanceof Error ? err.message : tB("errors.submitFailed"));
     } finally {
@@ -959,6 +1015,14 @@ export default function BookAppointmentPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background to-muted/20">
+      <PhoneVerificationModal
+        open={showPhoneVerification}
+        onClose={() => setShowPhoneVerification(false)}
+        onSuccess={() => {
+          setShowPhoneVerification(false);
+          handleSubmit();
+        }}
+      />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
@@ -1648,38 +1712,46 @@ export default function BookAppointmentPage() {
                       </div>
 
                       {/* Meeting Modality */}
-                      <div className="space-y-2 pt-4 border-t border-border/40">
+                      <div className="space-y-3 pt-4 border-t border-border/40">
                         <Label>{tB("preferredAppointmentType")}</Label>
-                        <Select
+                        <RadioGroup
                           value={selectedType}
-                          onValueChange={(
-                            value: "video" | "in-person" | "phone",
-                          ) => setSelectedType(value)}
+                          onValueChange={(value) =>
+                            setSelectedType(value as "video" | "in-person" | "both")
+                          }
+                          className="space-y-2"
                         >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="video">
-                              <div className="flex items-center gap-2">
-                                <Video className="h-4 w-4" />
-                                {tB("videoCall")}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="in-person">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                {tB("inPerson")}
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="phone">
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4" />
-                                {tB("phoneCall")}
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <label
+                            htmlFor="loved-mod-video"
+                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/40 p-3 has-[[data-state=checked]]:border-primary/60"
+                          >
+                            <RadioGroupItem value="video" id="loved-mod-video" />
+                            <div className="flex items-center gap-2 text-sm font-normal">
+                              <Video className="h-4 w-4 shrink-0" />
+                              {tB("videoCall")}
+                            </div>
+                          </label>
+                          <label
+                            htmlFor="loved-mod-inperson"
+                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/40 p-3 has-[[data-state=checked]]:border-primary/60"
+                          >
+                            <RadioGroupItem value="in-person" id="loved-mod-inperson" />
+                            <div className="flex items-center gap-2 text-sm font-normal">
+                              <MapPin className="h-4 w-4 shrink-0" />
+                              {tB("inPerson")}
+                            </div>
+                          </label>
+                          <label
+                            htmlFor="loved-mod-both"
+                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/40 p-3 has-[[data-state=checked]]:border-primary/60"
+                          >
+                            <RadioGroupItem value="both" id="loved-mod-both" />
+                            <div className="flex items-center gap-2 text-sm font-normal">
+                              <Layers className="h-4 w-4 shrink-0" />
+                              {tB("bothModalities")}
+                            </div>
+                          </label>
+                        </RadioGroup>
                       </div>
 
                       {/* Session Type */}
@@ -1717,25 +1789,31 @@ export default function BookAppointmentPage() {
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="lovedOneNotes">
+                      <div className="space-y-2 col-span-full">
+                        <Label htmlFor="lovedOneNotes" className="text-sm font-medium">
                           {tB("additionalNotesLabel")}{" "}
-                          <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
+                          <span className="text-muted-foreground text-[10px] font-normal uppercase tracking-wider">
                             {tB("optional")}
                           </span>
                         </Label>
-                        <Textarea
-                          id="lovedOneNotes"
-                          value={lovedOneInfo.notes}
-                          onChange={(e) =>
-                            setLovedOneInfo({
-                              ...lovedOneInfo,
-                              notes: e.target.value,
-                            })
-                          }
-                          placeholder={tB("notesLovedOnePlaceholder")}
-                          rows={3}
-                        />
+                        <div className="relative w-full">
+                          <Textarea
+                            id="lovedOneNotes"
+                            value={lovedOneInfo.notes}
+                            onChange={(e) =>
+                              setLovedOneInfo({
+                                ...lovedOneInfo,
+                                notes: e.target.value,
+                              })
+                            }
+                            placeholder={tB("notesLovedOnePlaceholder")}
+                            rows={5}
+                            className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-relaxed shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
+                          />
+                          <span className="absolute bottom-2 right-3 text-[11px] text-muted-foreground/50 select-none pointer-events-none">
+                            {lovedOneInfo.notes && lovedOneInfo.notes.length > 0 ? `${lovedOneInfo.notes.length}` : ""}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Motif Search Section - ADDED HERE */}
@@ -1992,25 +2070,31 @@ export default function BookAppointmentPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="referralReason">
+                      <div className="space-y-2 col-span-full">
+                        <Label htmlFor="referralReason" className="text-sm font-medium">
                           {tB("reasonReferralLabel")}{" "}
-                          <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
+                          <span className="text-muted-foreground text-[10px] font-normal uppercase tracking-wider">
                             {tB("optional")}
                           </span>
                         </Label>
-                        <Textarea
-                          id="referralReason"
-                          value={referralInfo.referralReason}
-                          onChange={(e) =>
-                            setReferralInfo({
-                              ...referralInfo,
-                              referralReason: e.target.value,
-                            })
-                          }
-                          placeholder={tB("reasonReferralPlaceholder")}
-                          rows={3}
-                        />
+                        <div className="relative w-full">
+                          <Textarea
+                            id="referralReason"
+                            value={referralInfo.referralReason}
+                            onChange={(e) =>
+                              setReferralInfo({
+                                ...referralInfo,
+                                referralReason: e.target.value,
+                              })
+                            }
+                            placeholder={tB("reasonReferralPlaceholder")}
+                            rows={5}
+                            className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-relaxed shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
+                          />
+                          <span className="absolute bottom-2 right-3 text-[11px] text-muted-foreground/50 select-none pointer-events-none">
+                            {referralInfo.referralReason && referralInfo.referralReason.length > 0 ? `${referralInfo.referralReason.length}` : ""}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Patient Contact Information */}
@@ -2098,22 +2182,6 @@ export default function BookAppointmentPage() {
                         </div>
                       </div>
 
-                      {/* Motif Search Section - ADDED HERE */}
-                      <div className="space-y-2 pt-4 border-t border-border/40">
-                        <Label htmlFor="issueType">
-                          {tB("primaryIssueDiagnosis")}
-                        </Label>
-                        <MotifSearch
-                          value={issueType}
-                          onChange={(value) => {
-                            setIssueType(Array.isArray(value) ? value : value ? [value] : []);
-                          }}
-                          placeholder={tB("motifPlaceholder")}
-                          multiSelect={true}
-                          maxSelections={3}
-                        />
-                      </div>
-
                       {/* Document Upload Section */}
                       <div className="space-y-3 pt-4 border-t border-border/40">
                         <Label>
@@ -2197,10 +2265,21 @@ export default function BookAppointmentPage() {
                           onClick={handleSpecificInfoSubmit}
                           size="lg"
                           className="gap-2"
-                          disabled={uploading}
+                          disabled={uploading || loading}
                         >
-                          {tB("continue")}
-                          <ArrowLeft className="h-4 w-4 rotate-180" />
+                          {loading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {tB("submitting")}
+                            </>
+                          ) : bookingFor === "patient" ? (
+                            tB("submitRequest")
+                          ) : (
+                            <>
+                              {tB("continue")}
+                              <ArrowLeft className="h-4 w-4 rotate-180" />
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -2521,19 +2600,25 @@ export default function BookAppointmentPage() {
                   */}
 
                   {/* Notes */}
-                  <div className="space-y-2">
-                    <Label>
+                  <div className="space-y-2 col-span-full">
+                    <Label className="text-sm font-medium">
                       {tB("additionalNotesLabel")}{" "}
-                      <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
+                      <span className="text-muted-foreground text-[10px] font-normal uppercase tracking-wider">
                         {tB("optional")}
                       </span>
                     </Label>
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder={tB("notesPlaceholder")}
-                      rows={4}
-                    />
+                    <div className="relative w-full">
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder={tB("notesPlaceholder")}
+                        rows={5}
+                        className="w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-sm leading-relaxed shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/60"
+                      />
+                      <span className="absolute bottom-2 right-3 text-[11px] text-muted-foreground/50 select-none pointer-events-none">
+                        {notes.length > 0 ? `${notes.length}` : ""}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex justify-between pt-4">

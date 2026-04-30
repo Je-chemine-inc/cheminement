@@ -30,6 +30,7 @@ export default function AdminPaymentTrustPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvedIds, setApprovedIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -63,7 +64,11 @@ export default function AdminPaymentTrustPage() {
         const j = await res.json();
         throw new Error(j.error || t("errorApprove"));
       }
-      await load();
+      setApprovedIds((prev) => [...prev, userId]);
+      setTimeout(async () => {
+        setApprovedIds((prev) => prev.filter((id) => id !== userId));
+        await load();
+      }, 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -133,19 +138,26 @@ export default function AdminPaymentTrustPage() {
                     </code>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      disabled={approvingId === r.id}
-                      onClick={() => approve(r.id)}
-                      className="gap-1.5"
-                    >
-                      {approvingId === r.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
+                    {approvedIds.includes(r.id) ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                         <CheckCircle2 className="h-4 w-4" />
-                      )}
-                      {t("approveBtn")}
-                    </Button>
+                        {t("validationLabel")}
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={approvingId === r.id}
+                        onClick={() => approve(r.id)}
+                        className="gap-1.5"
+                      >
+                        {approvingId === r.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        {t("approveBtn")}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

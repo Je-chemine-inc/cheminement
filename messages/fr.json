@@ -213,7 +213,9 @@
       "dailyTracking": "Suivi quotidien",
       "dailyTrackingDesc": "Filtrez par date de rendez-vous et mode de paiement pour suivre les transactions du jour.",
       "searchPlaceholder": "Rechercher client, professionnel ou numéro de séance…",
-      "filterMethod": "Mode de paiement :",
+      "resetFilters": "Réinitialiser",
+      "filterStatus": "Statut",
+      "filterMethod": "Mode de paiement",
       "allMethods": "Tous les modes",
       "methodCard": "Carte",
       "methodInterac": "Interac",
@@ -239,6 +241,9 @@
       "reminder24hSent": "Relance J+1 envoyée",
       "reminder48hSent": "Relance J+2 envoyée",
       "overdueAlert": "Paiement en retard — plus de 72 h sans virement reçu",
+      "validationCard": "ok",
+      "validationInterac": "Dossier Valide",
+      "noPaymentBeforeMeeting": "Aucun mode de paiement avant la séance — admin notifié",
       "filters": {
         "all": "Tous",
         "paid": "Payé",
@@ -411,7 +416,9 @@
       "contact": "Contact",
       "action": "Action",
       "approveBtn": "Statut vert",
-      "colReference": "Référence Interac"
+      "colReference": "Référence Interac",
+      "validationLabel": "Dossier Valide",
+      "approvedStatus": "Dossier Valide"
     },
 
 
@@ -443,7 +450,26 @@
       "deleteConfirmDesc": "Veuillez taper <strong>{name}</strong> pour confirmer la désactivation de ce profil.",
       "typeFullNamePlaceholder": "Tapez le nom complet",
       "cancel": "Annuler",
-      "confirm": "Confirmer"
+      "confirm": "Confirmer",
+      "clinicalTracking": "Suivi Clinique (Séances)",
+      "noSessions": "Aucune séance trouvée.",
+      "colDate": "Date",
+      "colPro": "Professionnel",
+      "colStatus": "Statut",
+      "colAction": "Action",
+      "guaranteeActions": "Actions de Garantie",
+      "statusLabel": "Statut :",
+      "resendInvite": "Renvoyer l'invitation",
+      "resendGuarantee": "Relance Garantie Bancaire",
+      "approveGuarantee": "Approuver la garantie manuellement"
+    },
+    "appointmentStatus": {
+      "scheduled": "Planifié",
+      "completed": "Terminé",
+      "cancelled": "Annulé",
+      "noShow": "Absent",
+      "pending": "En attente",
+      "ongoing": "En cours"
     },
     "professionalDetail": {
       "loadError": "Impossible de charger le dossier professionnel.",
@@ -568,8 +594,8 @@
     "maxReached": "Maximum {max} sélections"
   },
   "AdminServiceRequests": {
-    "title": "Demandes de service",
-    "subtitle": "Demandes sans professionnel assigné (en attente de jumelage).",
+    "title": "Nouveaux clients",
+    "subtitle": "Demandes entrantes — statut : Nouveau prospect. Aucun professionnel assigné.",
     "empty": "Aucune demande pour le moment.",
     "client": "Client",
     "email": "Courriel",
@@ -577,7 +603,7 @@
     "modality": "Modalité",
     "bookingFor": "Pour",
     "created": "Reçue le",
-    "routing": "Jumelage",
+    "routing": "Statut",
     "self": "Pour moi",
     "patient": "Patient",
     "lovedOne": "Proche",
@@ -588,7 +614,15 @@
     "actions": "Actions",
     "sendToRequester": "Envoyer au demandeur",
     "sendToLovedOne": "Envoyer au proche",
-    "refresh": "Actualiser"
+    "refresh": "Actualiser",
+    "routingPending": "Nouveau prospect",
+    "routingProposed": "Jumelage en cours",
+    "routingAccepted": "Professionnel assigné",
+    "routingGeneral": "Liste générale",
+    "routingRefused": "Refusé",
+    "paymentValidationCard": "ok",
+    "paymentValidationInterac": "Dossier Valide",
+    "noPaymentReminder": "Aucun mode de paiement — admin notifié"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Grille de disponibilités par période (matin, après-midi, soir) et type de semaine",
@@ -1197,6 +1231,7 @@
         "accountInactive": "Un compte vous a été créé suite à votre demande de service. Cliquez sur le lien d'invitation reçu par courriel pour l'activer, ou créez votre compte complet via la page d'inscription.",
         "genericSignIn": "Une erreur s'est produite lors de la connexion."
       },
+      "sessionExpiredInactivity": "Votre session a expiré en raison d'inactivité. Veuillez vous reconnecter.",
       "confirmAccountLink": "Confirmer mon compte (courriel / SMS)"
     },
     "verifyAccount": {
@@ -1267,8 +1302,8 @@
       "lastNamePlaceholder": "Dupont",
       "email": "Adresse e-mail",
       "emailPlaceholder": "vous@exemple.com",
-      "phone": "Téléphone",
-      "phonePlaceholder": "+1 (555) 123-4567",
+      "phone": "Téléphone (avec indicatif pays)",
+      "phonePlaceholder": "+1 514-000-0000 / +213 551-000-000",
       "postalCodePlaceholder": "A1A 1A1",
       "location": "Localisation",
       "locationPlaceholder": "Ville, Province",
@@ -1895,6 +1930,7 @@
       "library": "Bibliothèque",
       "analytics": "Analytique",
       "support": "Soutien",
+      "messages": "Messages",
       "helpCenter": "Centre d'aide",
       "settings": "Paramètres",
       "logout": "Déconnexion",
@@ -2542,6 +2578,28 @@
       "myDownloadsTitle": "Mes téléchargements",
       "myDownloadsDescription": "Les ressources que vous avez téléchargées apparaîtront ici. Cette fonctionnalité sera bientôt disponible.",
       "close": "Fermer"
+    },
+    "inbox": {
+      "title": "Messages",
+      "subtitle": "Vos échanges avec vos clients et professionnels",
+      "newMessage": "Nouveau message",
+      "noConversations": "Aucune conversation",
+      "noConversationsDesc": "Vos échanges apparaîtront ici.",
+      "noMessages": "Aucun message dans cette conversation.",
+      "selectConversation": "Sélectionnez une conversation pour afficher les messages.",
+      "reply": "Répondre",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "messagePlaceholder": "Écrivez votre message…",
+      "subjectPlaceholder": "Objet du message",
+      "toLabel": "Destinataire",
+      "subjectLabel": "Objet",
+      "composeTitle": "Nouveau message",
+      "cancel": "Annuler",
+      "loadError": "Impossible de charger les messages.",
+      "sendError": "Impossible d'envoyer le message.",
+      "unread": "Non lu",
+      "you": "Vous"
     },
     "helpCenter": {
       "badge": "Support",
@@ -3373,7 +3431,20 @@
         "noAppointments": "Aucun rendez-vous à venir",
         "viewAll": "Voir tous les rendez-vous",
         "with": "avec",
-        "requestAppointment": "Demander un rendez-vous"
+        "requestAppointment": "Demander un rendez-vous",
+        "cancel": "Annuler",
+        "reschedule": "Reporter",
+        "joinSession": "Rejoindre la séance",
+        "lateChange": {
+          "title": "Délai de modification dépassé",
+          "message": "Ce rendez-vous est dans moins de 48 heures. Pour l'annuler ou le reporter, veuillez nous contacter directement.",
+          "emailUs": "Nous écrire"
+        },
+        "rescheduleInfo": {
+          "title": "Reporter une séance",
+          "message": "Pour reporter ce rendez-vous, veuillez contacter notre équipe ou votre professionnel directement par courriel.",
+          "emailUs": "Nous écrire"
+        }
       },
       "quickActions": {
         "title": "Actions rapides",
@@ -3395,7 +3466,8 @@
         "billing": "Facturation et paiements",
         "billingDesc": "Suivi des factures, reçus et assurances.",
         "openFaq": "Ouvrir la FAQ",
-        "billingCenter": "Centre de facturation"
+        "billingCenter": "Centre de facturation",
+        "supportEmail": "support@jechemine.ca"
       }
     },
     "profile": {
@@ -3956,8 +4028,17 @@
       "myDocuments": {
         "title": "Mes documents",
         "subtitle": "Documents et ressources partagés par votre professionnel ou la plateforme",
-        "noDocuments": "Aucun document n'a encore été partagé avec vous.",
-        "noDocumentsDesc": "Lorsque votre professionnel partagera des documents, feuilles de travail ou ressources, ils apparaîtront ici."
+        "noDocuments": "Aucun document pour l'instant.",
+        "noDocumentsDesc": "Lorsque votre professionnel partagera des documents ou ressources, ils apparaîtront ici.",
+        "uploadButton": "Ajouter un document",
+        "uploadHint": "PDF, JPG ou PNG — max 10 Mo",
+        "uploading": "Téléversement...",
+        "uploadError": "Échec du téléversement. Veuillez réessayer.",
+        "download": "Télécharger",
+        "uploadedAt": "Ajouté le",
+        "sharedByYou": "Ajouté par vous",
+        "sharedByProfessional": "Partagé par votre professionnel",
+        "sharedByPlatform": "Partagé par la plateforme"
       }
     },
     "billing": {
@@ -4261,7 +4342,26 @@
         "upcoming": "À venir",
         "processing": "En traitement",
         "overdue": "En retard"
-      }
+      },
+      "dailyTracking": "Suivi quotidien",
+      "interacPending": "Interac en attente",
+      "dateFrom": "Rendez-vous du",
+      "dateTo": "Rendez-vous au",
+      "filterStatus": "Statut",
+      "filterMethod": "Mode de paiement",
+      "allMethods": "Tous les modes",
+      "methodCard": "Carte",
+      "methodInterac": "Interac",
+      "resetFilters": "Réinitialiser les filtres",
+      "transferDueAt": "Virement attendu le",
+      "interacCode": "Code Interac",
+      "reminder24hSent": "Relance 24h envoyée",
+      "reminder48hSent": "Relance 48h envoyée",
+      "overdueAlert": "Paiement en retard — plus de 72h sans paiement",
+      "resend": "Relancer",
+      "resending": "Envoi en cours...",
+      "resendSuccess": "Instructions envoyées",
+      "resendError": "Échec de l'envoi"
     },
     "accounting": {
       "title": "Comptabilité et cycles de paiement",
@@ -4803,12 +4903,12 @@
       ],
       "acceptanceModal": {
         "title": "Conditions d'utilisation pour les professionnels",
-        "description": "Avant de finaliser votre profil, veuillez lire et accepter les présentes conditions. Elles encadrent votre pratique au sein de l'écosystème Je chemine.",
+        "description": "L'acceptation de ces conditions est obligatoire pour accéder à la plateforme. Veuillez les lire attentivement avant d'accepter. Refuser entraîne la déconnexion automatique.",
         "scrollHint": "Faites défiler jusqu'en bas pour activer l'acceptation.",
         "readyToAccept": "Vous pouvez maintenant accepter les conditions.",
         "checkboxLabel": "Je reconnais avoir lu et j'accepte les conditions d'utilisation pour les professionnels de Je chemine.",
-        "acceptButton": "Accepter et finaliser mon profil",
-        "laterButton": "Plus tard",
+        "acceptButton": "Accepter et accéder à mon espace",
+        "laterButton": "Refuser et se déconnecter",
         "openFullPage": "Ouvrir le document complet dans un nouvel onglet",
         "versionLabel": "Version du 13 avril 2026",
         "submitting": "Envoi en cours…",
@@ -4898,5 +4998,11 @@
     "versionNote": "Version actuelle : {version}. La date et la version sont mises à jour automatiquement lors de l'enregistrement.",
     "viewPublic": "Voir la page publique",
     "empty": "Aucune entrée."
+  },
+  "InactivityGuard": {
+    "title": "Êtes-vous toujours là ?",
+    "description": "Votre session va expirer en raison d'inactivité. Vous serez déconnecté(e) automatiquement.",
+    "stayLoggedIn": "Rester connecté(e)",
+    "logOutNow": "Se déconnecter maintenant"
   }
 }

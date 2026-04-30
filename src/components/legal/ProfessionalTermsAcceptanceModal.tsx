@@ -186,7 +186,8 @@ export default function ProfessionalTermsAcceptanceModal({
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
-              variant="ghost"
+              variant="outline"
+              className="text-destructive border-destructive/40 hover:bg-destructive/10"
               onClick={onClose}
               disabled={submitting}
             >

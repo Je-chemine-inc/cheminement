@@ -32,9 +32,7 @@ export async function GET() {
     await connectToDatabase();
 
     const requests = await Appointment.find({
-      bookingFor: "loved-one",
       status: "pending",
-      accountActivationStatus: "pending_admin",
       $or: [{ professionalId: null }, { professionalId: { $exists: false } }],
     })
       .populate("clientId", "firstName lastName email phone")

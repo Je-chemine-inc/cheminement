@@ -135,6 +135,17 @@ export async function POST(req: NextRequest) {
       data.clientId = session.user.id;
     }
 
+    // Require phone verification for clients before their first booking
+    if (session.user.role === "client") {
+      const clientUser = await User.findById(session.user.id).select("phoneVerifiedAt").lean();
+      if (clientUser && !clientUser.phoneVerifiedAt) {
+        return NextResponse.json(
+          { error: "Phone verification required before booking", code: "PHONE_NOT_VERIFIED" },
+          { status: 403 },
+        );
+      }
+    }
+
     // Validate required fields (professionalId is now optional - assigned by professional later)
     if (!data.type) {
       return NextResponse.json(

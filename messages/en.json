@@ -213,7 +213,9 @@
       "dailyTracking": "Daily monitoring",
       "dailyTrackingDesc": "Filter by appointment date and payment method to track today's transactions.",
       "searchPlaceholder": "Search client, professional or session ID…",
-      "filterMethod": "Payment method:",
+      "resetFilters": "Reset",
+      "filterStatus": "Status",
+      "filterMethod": "Payment method",
       "allMethods": "All methods",
       "methodCard": "Card",
       "methodInterac": "Interac",
@@ -239,6 +241,9 @@
       "reminder24hSent": "J+1 reminder sent",
       "reminder48hSent": "J+2 reminder sent",
       "overdueAlert": "Payment overdue — more than 72 h without transfer received",
+      "validationCard": "ok",
+      "validationInterac": "Dossier Valide",
+      "noPaymentBeforeMeeting": "No payment method before session — admin notified",
       "filters": {
         "all": "All",
         "paid": "Paid",
@@ -411,7 +416,9 @@
       "contact": "Contact",
       "action": "Action",
       "approveBtn": "Approve Trust",
-      "colReference": "Interac Reference"
+      "colReference": "Interac Reference",
+      "validationLabel": "Dossier Valide",
+      "approvedStatus": "Dossier Valide"
     },
 
 
@@ -443,7 +450,26 @@
       "deleteConfirmDesc": "Please type <strong>{name}</strong> to confirm the deactivation of this profile.",
       "typeFullNamePlaceholder": "Type the full name",
       "cancel": "Cancel",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "clinicalTracking": "Clinical Tracking (Sessions)",
+      "noSessions": "No sessions found.",
+      "colDate": "Date",
+      "colPro": "Professional",
+      "colStatus": "Status",
+      "colAction": "Action",
+      "guaranteeActions": "Guarantee Actions",
+      "statusLabel": "Status:",
+      "resendInvite": "Resend invitation",
+      "resendGuarantee": "Resend Banking Guarantee",
+      "approveGuarantee": "Manually approve guarantee"
+    },
+    "appointmentStatus": {
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "noShow": "Absent (no-show)",
+      "pending": "Pending",
+      "ongoing": "In progress"
     },
     "professionalDetail": {
       "loadError": "Failed to load professional record.",
@@ -568,8 +594,8 @@
     "maxReached": "Maximum {max} selections"
   },
   "AdminServiceRequests": {
-    "title": "Service requests",
-    "subtitle": "Requests without an assigned professional (matching pending).",
+    "title": "New clients",
+    "subtitle": "Incoming requests — status: Nouveau prospect. No professional assigned yet.",
     "empty": "No requests at this time.",
     "client": "Client",
     "email": "Email",
@@ -577,7 +603,7 @@
     "modality": "Modality",
     "bookingFor": "For",
     "created": "Received",
-    "routing": "Matching",
+    "routing": "Status",
     "self": "Self",
     "patient": "Patient",
     "lovedOne": "Loved one",
@@ -588,7 +614,15 @@
     "actions": "Actions",
     "sendToRequester": "Send to requester",
     "sendToLovedOne": "Send to loved one",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "routingPending": "Nouveau prospect",
+    "routingProposed": "Matching in progress",
+    "routingAccepted": "Professional assigned",
+    "routingGeneral": "General pool",
+    "routingRefused": "Refused",
+    "paymentValidationCard": "ok",
+    "paymentValidationInterac": "Dossier Valide",
+    "noPaymentReminder": "No payment method — admin notified"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Availability grid by period (morning, afternoon, evening) and week type",
@@ -1197,6 +1231,7 @@
         "accountInactive": "An account was created for you following your service request. Click the invitation link sent to your email to activate it, or create your full account via the sign-up page.",
         "genericSignIn": "Something went wrong while signing in."
       },
+      "sessionExpiredInactivity": "Your session expired due to inactivity. Please sign in again.",
       "confirmAccountLink": "Confirm my account (email / SMS)"
     },
     "verifyAccount": {
@@ -1267,8 +1302,8 @@
       "lastNamePlaceholder": "Doe",
       "email": "Email Address",
       "emailPlaceholder": "you@example.com",
-      "phone": "Phone Number",
-      "phonePlaceholder": "+1 (555) 123-4567",
+      "phone": "Phone (with country code)",
+      "phonePlaceholder": "+1 514-000-0000 / +213 551-000-000",
       "postalCode": "Postal Code",
       "postalCodePlaceholder": "A1A 1A1",
       "location": "Location",
@@ -1894,6 +1929,7 @@
       "library": "Library",
       "analytics": "Analytics",
       "support": "Support",
+      "messages": "Messages",
       "helpCenter": "Help Center",
       "settings": "Settings",
       "logout": "Logout",
@@ -2542,6 +2578,28 @@
       "myDownloadsTitle": "My downloads",
       "myDownloadsDescription": "Resources you have downloaded will appear here. This feature is coming soon.",
       "close": "Close"
+    },
+    "inbox": {
+      "title": "Messages",
+      "subtitle": "Your exchanges with clients and professionals",
+      "newMessage": "New message",
+      "noConversations": "No conversations",
+      "noConversationsDesc": "Your exchanges will appear here.",
+      "noMessages": "No messages in this conversation.",
+      "selectConversation": "Select a conversation to view messages.",
+      "reply": "Reply",
+      "send": "Send",
+      "sending": "Sending…",
+      "messagePlaceholder": "Write your message…",
+      "subjectPlaceholder": "Message subject",
+      "toLabel": "To",
+      "subjectLabel": "Subject",
+      "composeTitle": "New message",
+      "cancel": "Cancel",
+      "loadError": "Unable to load messages.",
+      "sendError": "Unable to send message.",
+      "unread": "Unread",
+      "you": "You"
     },
     "helpCenter": {
       "badge": "Support",
@@ -3374,7 +3432,20 @@
         "noAppointments": "No upcoming appointments",
         "viewAll": "View All Appointments",
         "with": "with",
-        "requestAppointment": "Request Appointment"
+        "requestAppointment": "Request Appointment",
+        "cancel": "Cancel",
+        "reschedule": "Reschedule",
+        "joinSession": "Join Session",
+        "lateChange": {
+          "title": "Modification window closed",
+          "message": "This appointment is less than 48 hours away. To cancel or reschedule, please contact us directly.",
+          "emailUs": "Write to us"
+        },
+        "rescheduleInfo": {
+          "title": "Reschedule a session",
+          "message": "To reschedule this appointment, please contact our team or your professional directly by email.",
+          "emailUs": "Write to us"
+        }
       },
       "quickActions": {
         "title": "Quick Actions",
@@ -3396,7 +3467,8 @@
         "billing": "Billing & Payments",
         "billingDesc": "Track invoices, receipts, and insurance.",
         "openFaq": "Open FAQ",
-        "billingCenter": "Billing Center"
+        "billingCenter": "Billing Center",
+        "supportEmail": "support@jechemine.ca"
       }
     },
     "profile": {
@@ -3957,8 +4029,17 @@
       "myDocuments": {
         "title": "My Documents",
         "subtitle": "Documents and resources shared by your professional or the platform",
-        "noDocuments": "No documents have been shared with you yet.",
-        "noDocumentsDesc": "When your professional shares documents, worksheets, or materials, they will appear here."
+        "noDocuments": "No documents yet.",
+        "noDocumentsDesc": "When your professional shares documents or materials, they will appear here.",
+        "uploadButton": "Upload a Document",
+        "uploadHint": "PDF, JPG or PNG — max 10 MB",
+        "uploading": "Uploading...",
+        "uploadError": "Upload failed. Please try again.",
+        "download": "Download",
+        "uploadedAt": "Added on",
+        "sharedByYou": "Uploaded by you",
+        "sharedByProfessional": "Shared by your professional",
+        "sharedByPlatform": "Shared by the platform"
       }
     },
     "billing": {
@@ -4262,7 +4343,26 @@
         "upcoming": "Upcoming",
         "processing": "Processing",
         "overdue": "Overdue"
-      }
+      },
+      "dailyTracking": "Daily Tracking",
+      "interacPending": "Interac Pending",
+      "dateFrom": "Appointment from",
+      "dateTo": "Appointment to",
+      "filterStatus": "Status",
+      "filterMethod": "Payment Method",
+      "allMethods": "All Methods",
+      "methodCard": "Card",
+      "methodInterac": "Interac",
+      "resetFilters": "Reset filters",
+      "transferDueAt": "Transfer due",
+      "interacCode": "Interac code",
+      "reminder24hSent": "Reminder 24h sent",
+      "reminder48hSent": "Reminder 48h sent",
+      "overdueAlert": "Payment overdue — more than 72h without payment",
+      "resend": "Resend Instructions",
+      "resending": "Sending...",
+      "resendSuccess": "Instructions sent",
+      "resendError": "Failed to resend"
     },
     "accounting": {
       "title": "Accounting & payment cycles",
@@ -4804,12 +4904,12 @@
       ],
       "acceptanceModal": {
         "title": "Professional Terms of Use",
-        "description": "Before finalizing your profile, please read and accept these terms. They govern your practice within the Je chemine ecosystem.",
+        "description": "Accepting these terms is mandatory to access the platform. Please read them carefully before accepting. Declining will automatically sign you out.",
         "scrollHint": "Scroll to the bottom to enable acceptance.",
         "readyToAccept": "You can now accept the terms.",
         "checkboxLabel": "I acknowledge having read and accept Je chemine's Professional Terms of Use.",
-        "acceptButton": "Accept and finalize my profile",
-        "laterButton": "Later",
+        "acceptButton": "Accept and access my workspace",
+        "laterButton": "Decline and sign out",
         "openFullPage": "Open the full document in a new tab",
         "versionLabel": "Version of April 13, 2026",
         "submitting": "Submitting…",
@@ -4899,5 +4999,11 @@
     "versionNote": "Current version: {version}. The date and version are updated automatically on save.",
     "viewPublic": "View public page",
     "empty": "No entries."
+  },
+  "InactivityGuard": {
+    "title": "Are you still there?",
+    "description": "Your session will expire due to inactivity. You will be logged out automatically.",
+    "stayLoggedIn": "Stay logged in",
+    "logOutNow": "Log out now"
   }
 }

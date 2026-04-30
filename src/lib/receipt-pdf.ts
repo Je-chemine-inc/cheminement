@@ -1,4 +1,6 @@
 import jsPDF from "jspdf";
+import fs from "fs";
+import path from "path";
 import type { SessionActNature } from "@/lib/session-closure";
 
 const ACT_LABELS_FR: Record<SessionActNature, string> = {
@@ -193,19 +195,43 @@ export function buildFiscalReceiptPdfBuffer(
   const { appointmentId } = input;
   const isProVariant = input.audience === "professional";
 
-  // ── HEADER BANNER ────────────────────────────────────────────────────────────
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 210, 40, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text("Je Chemine", MARGIN, 25);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text("Plateforme de services en santé mentale", MARGIN, 33);
+  // ── HEADER ───────────────────────────────────────────────────────────────────
+  let headerBottomY = 40;
+  let logoEmbedded = false;
+
+  try {
+    const logoPath = path.join(process.cwd(), "public", "Logo.png");
+    const logoData = fs.readFileSync(logoPath);
+    doc.addImage(
+      `data:image/png;base64,${logoData.toString("base64")}`,
+      "PNG",
+      MARGIN,
+      5,
+      50,
+      29,
+    );
+    logoEmbedded = true;
+    headerBottomY = 36;
+  } catch {
+    // Fallback: text banner when logo file is unavailable
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 40, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("Je Chemine", MARGIN, 25);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Plateforme de services en santé mentale", MARGIN, 33);
+  }
+
+  if (logoEmbedded) {
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, headerBottomY, 210, 3, "F");
+  }
 
   // ── TITLE & RECEIPT META ─────────────────────────────────────────────────────
-  let y = 52;
+  let y = headerBottomY + 12;
   doc.setTextColor(...textColor);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");

@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     user.phoneVerifiedAt = new Date();
+    user.status = "active";
     user.phoneStepTokenHash = undefined;
     user.phoneStepTokenExpires = undefined;
     user.verificationSmsCodeHash = undefined;

@@ -10,7 +10,6 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 import ProfessionalTermsGate from "@/components/legal/ProfessionalTermsGate";
-import InactivityLogout from "@/components/auth/InactivityLogout";
 
 export default async function ProfessionalLayout({
   children,
@@ -49,7 +48,6 @@ export default async function ProfessionalLayout({
 
   return (
     <SidebarProvider>
-      <InactivityLogout />
       <div className="flex min-h-screen w-full">
         <ProfessionalSidebar />
         <main className="flex-1 overflow-y-auto">

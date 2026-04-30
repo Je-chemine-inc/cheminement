@@ -62,6 +62,23 @@ export default function AdminServiceRequestsPage() {
     }
   };
 
+  const routingStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return { label: t("routingPending"), color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
+      case "proposed":
+        return { label: t("routingProposed"), color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" };
+      case "accepted":
+        return { label: t("routingAccepted"), color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+      case "general":
+        return { label: t("routingGeneral"), color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300" };
+      case "refused":
+        return { label: t("routingRefused"), color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300" };
+      default:
+        return { label: status, color: "bg-muted text-muted-foreground" };
+    }
+  };
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -174,8 +191,15 @@ export default function AdminServiceRequestsPage() {
                   <TableCell className="text-sm">
                     {bookingForLabel(r.bookingFor)}
                   </TableCell>
-                  <TableCell className="text-xs font-mono">
-                    {r.routingStatus}
+                  <TableCell>
+                    {(() => {
+                      const { label, color } = routingStatusLabel(r.routingStatus);
+                      return (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-sm">
                     <div className="flex flex-wrap gap-2">

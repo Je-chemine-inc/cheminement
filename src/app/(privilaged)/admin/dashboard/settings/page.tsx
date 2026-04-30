@@ -58,94 +58,94 @@ interface PlatformSettings {
   updatedAt: string;
 }
 
-// Email template display names and descriptions
+// Email template display names and descriptions (French)
 const EMAIL_TEMPLATE_INFO: Record<
   string,
   { name: string; description: string; category: string }
 > = {
   welcome: {
-    name: "Welcome Email",
-    description: "Sent when a new user creates an account",
-    category: "Authentication",
+    name: "Courriel de bienvenue",
+    description: "Envoyé lors de la création d'un nouveau compte",
+    category: "Authentification",
   },
   email_verification: {
-    name: "Email Verification",
-    description: "Sent to verify user email address",
-    category: "Authentication",
+    name: "Vérification du courriel",
+    description: "Envoyé pour confirmer l'adresse courriel de l'utilisateur",
+    category: "Authentification",
   },
   password_reset: {
-    name: "Password Reset",
-    description: "Sent when user requests password reset",
-    category: "Authentication",
+    name: "Réinitialisation du mot de passe",
+    description: "Envoyé lorsqu'un utilisateur demande une réinitialisation",
+    category: "Authentification",
   },
   appointment_confirmation: {
-    name: "Appointment Confirmation",
-    description: "Sent to client when appointment is confirmed",
-    category: "Appointments",
+    name: "Confirmation de rendez-vous",
+    description: "Envoyé au client lorsque le rendez-vous est confirmé",
+    category: "Rendez-vous",
   },
   appointment_professional_notification: {
-    name: "Professional Notification",
-    description: "Sent to professional for new appointment requests",
-    category: "Appointments",
+    name: "Notification professionnel",
+    description: "Envoyé au professionnel pour les nouvelles demandes de rendez-vous",
+    category: "Rendez-vous",
   },
   appointment_reminder: {
-    name: "Appointment Reminder",
-    description: "Sent before scheduled appointments",
-    category: "Appointments",
+    name: "Rappel de rendez-vous",
+    description: "Envoyé avant les rendez-vous planifiés",
+    category: "Rendez-vous",
   },
   appointment_cancellation: {
-    name: "Cancellation Notice",
-    description: "Sent when an appointment is cancelled",
-    category: "Appointments",
+    name: "Avis d'annulation",
+    description: "Envoyé lorsqu'un rendez-vous est annulé",
+    category: "Rendez-vous",
   },
   guest_booking_confirmation: {
-    name: "Guest Booking Confirmation",
-    description: "Sent to guests when they submit a booking request",
-    category: "Guest Booking",
+    name: "Confirmation réservation (invité)",
+    description: "Envoyé aux invités lors de la soumission d'une demande de réservation",
+    category: "Réservation invité",
   },
   guest_payment_confirmation: {
-    name: "Guest Payment Request",
-    description: "Sent to guests when payment is required",
-    category: "Guest Booking",
+    name: "Demande de paiement (invité)",
+    description: "Envoyé aux invités lorsque le paiement est requis",
+    category: "Réservation invité",
   },
   guest_payment_complete: {
-    name: "Guest Payment Complete",
-    description: "Sent to guests after successful payment",
-    category: "Guest Booking",
+    name: "Paiement complété (invité)",
+    description: "Envoyé aux invités après un paiement réussi",
+    category: "Réservation invité",
   },
   payment_failed: {
-    name: "Payment Failed",
-    description: "Sent when a payment attempt fails",
-    category: "Payments",
+    name: "Échec de paiement",
+    description: "Envoyé lorsqu'une tentative de paiement échoue",
+    category: "Paiements",
   },
   payment_refund: {
-    name: "Refund Confirmation",
-    description: "Sent when a refund is processed",
-    category: "Payments",
+    name: "Confirmation de remboursement",
+    description: "Envoyé lorsqu'un remboursement est traité",
+    category: "Paiements",
   },
   meeting_link: {
-    name: "Meeting Link",
-    description: "Sent when meeting link is added to appointment",
-    category: "Appointments",
+    name: "Lien de réunion",
+    description: "Envoyé lorsque le lien de réunion est ajouté au rendez-vous",
+    category: "Rendez-vous",
   },
   professional_approval: {
-    name: "Professional Approval",
-    description: "Sent when professional application is approved",
-    category: "Professional",
+    name: "Approbation professionnel",
+    description: "Envoyé lorsque la candidature d'un professionnel est approuvée",
+    category: "Professionnels",
   },
   professional_rejection: {
-    name: "Professional Rejection",
-    description: "Sent when professional application is rejected",
-    category: "Professional",
+    name: "Refus de candidature professionnel",
+    description: "Envoyé lorsque la candidature d'un professionnel est refusée",
+    category: "Professionnels",
   },
 };
 
 const TEMPLATE_CATEGORIES = [
-  "Authentication",
-  "Appointments",
-  "Guest Booking",
-  "Payments",
-  "Professional",
+  "Authentification",
+  "Rendez-vous",
+  "Réservation invité",
+  "Paiements",
+  "Professionnels",
 ];
 
 export default function SettingsPage() {
@@ -156,7 +156,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(["Authentication", "Appointments"]),
+    new Set(["Authentification", "Rendez-vous"]),
   );
 
   const fetchSettings = async () => {

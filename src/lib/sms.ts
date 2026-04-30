@@ -3,19 +3,25 @@
  * Sinon : log serveur (dev uniquement).
  */
 
+/**
+ * Normalise un numéro vers le format E.164.
+ * Si le numéro commence déjà par "+" il est retourné tel quel.
+ * "00213…" → "+213…".  Sinon "+" est simplement préfixé aux chiffres.
+ * Le formulaire d'inscription doit demander l'indicatif complet (ex. +213XXXXXXXXX).
+ */
+function toE164(phone: string): string {
+  const trimmed = phone.trim();
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  return `+${digits}`;
+}
+
 /** Envoie un SMS générique via Twilio. */
 export async function sendSms(toPhone: string, body: string): Promise<void> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
-
-  console.log("[sms] config check:", {
-    hasSid: !!sid,
-    hasToken: !!token,
-    hasFrom: !!from,
-    dryRun: process.env.SMS_DRY_RUN,
-    toPhone,
-  });
 
   if (process.env.SMS_DRY_RUN === "true") {
     console.info(`[sms] (dry-run) Vers ${toPhone} : ${body}`);
@@ -23,10 +29,11 @@ export async function sendSms(toPhone: string, body: string): Promise<void> {
   }
 
   if (sid && token && from) {
+    const e164 = toE164(toPhone);
     const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
     const params = new URLSearchParams({
-      To: toPhone,
+      To: e164,
       From: from,
       Body: body,
     });

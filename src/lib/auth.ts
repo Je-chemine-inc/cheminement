@@ -68,10 +68,7 @@ export const authOptions: NextAuthOptions = {
             void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
             throw new Error("AUTH_EMAIL_NOT_VERIFIED");
           }
-          if (!user.phoneVerifiedAt) {
-            void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
-            throw new Error("AUTH_PHONE_NOT_VERIFIED");
-          }
+          // Phone verification is deferred to the booking flow, not required at login.
         }
 
         // Inactive client accounts were auto-provisioned by the system but never claimed.

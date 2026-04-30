@@ -272,7 +272,11 @@ export default function MemberSignupPage() {
   const stripeLocale: "fr" | "en" = locale === "fr" ? "fr" : "en";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [currentSection, setCurrentSection] = useState(0);
+  const [currentSection, setCurrentSection] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const saved = sessionStorage.getItem("signup_member_section");
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -287,7 +291,7 @@ export default function MemberSignupPage() {
     null,
   );
 
-  const [formData, setFormData] = useState<FormData>({
+  const defaultFormData: FormData = {
     firstName: "",
     lastName: "",
     email: "",
@@ -342,6 +346,16 @@ export default function MemberSignupPage() {
     paymentMethod: "",
     agreeToTerms: false,
     acceptPrivacyPolicy: false,
+  };
+
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (typeof window === "undefined") return defaultFormData;
+    try {
+      const saved = sessionStorage.getItem("signup_member_form");
+      return saved ? { ...defaultFormData, ...JSON.parse(saved) } : defaultFormData;
+    } catch {
+      return defaultFormData;
+    }
   });
 
   useEffect(() => {
@@ -357,6 +371,14 @@ export default function MemberSignupPage() {
       /* ignore malformed query */
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    sessionStorage.setItem("signup_member_form", JSON.stringify(formData));
+  }, [formData]);
+
+  useEffect(() => {
+    sessionStorage.setItem("signup_member_section", String(currentSection));
+  }, [currentSection]);
 
   useEffect(() => {
     if (formData.paymentMethod !== "credit_card") {
@@ -610,7 +632,7 @@ export default function MemberSignupPage() {
       setError(t("errors.availabilityRequired"));
       return;
     }
-    if (!validateSection(currentSection)) return;
+    if (!validateSection(actualSection)) return;
 
     setIsLoading(true);
 
@@ -702,6 +724,8 @@ export default function MemberSignupPage() {
       });
 
       if (signupResult.requiresEmailVerification) {
+        sessionStorage.removeItem("signup_member_form");
+        sessionStorage.removeItem("signup_member_section");
         router.push(
           `/verify-account?email=${encodeURIComponent(formData.email)}`,
         );
@@ -718,6 +742,8 @@ export default function MemberSignupPage() {
         setError(t("errors.accountCreatedButSignInFailed"));
         router.push("/login");
       } else {
+        sessionStorage.removeItem("signup_member_form");
+        sessionStorage.removeItem("signup_member_section");
         // Optional: if the user added a card in Step Payment, save it on Stripe after sign-in.
         if (stripeCardPaymentMethodId) {
           try {
@@ -957,7 +983,7 @@ export default function MemberSignupPage() {
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <Label htmlFor="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 {t("location")} / {t("postalCode")}
@@ -1910,7 +1936,7 @@ export default function MemberSignupPage() {
                   className="text-sm leading-relaxed cursor-pointer"
                 >
                   {t("termsAcceptBefore")}
-                  <Link href="/terms" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                  <Link href="/terms?from=signup" className="text-primary hover:underline">
                     {t("termsOfService")}
                   </Link>
                   {t("termsAcceptAfter")} {t("agreeToTermsSuffix")}
@@ -1934,10 +1960,8 @@ export default function MemberSignupPage() {
                   >
                     {t("privacyAcceptBefore")}
                     <Link
-                      href="/privacy"
+                      href="/privacy?from=signup"
                       className="text-primary hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
                     >
                       {t("privacyPolicy")}
                     </Link>

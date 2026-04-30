@@ -5,10 +5,19 @@
       "Bash(grep -E \"\\\\.ts$\")",
       "Bash(xargs basename *)",
       "Bash(pnpm build *)",
-      "Bash(git diff *)"
+      "Bash(git diff *)",
+      "Bash(node -e ' *)",
+      "Bash(nslookup -type=SRV _mongodb._tcp.cluster0.g1ycfex.mongodb.net 8.8.8.8)",
+      "Bash(nslookup cluster0.g1ycfex.mongodb.net)",
+      "Bash(pnpm dev *)",
+      "Bash(taskkill /F /PID 22448)",
+      "PowerShell(Stop-Process -Id 22448 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]"
+      "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",
+      "C:\\Users\\merie\\cheminement\\src\\app\\api\\messages"
     ]
   }
 }

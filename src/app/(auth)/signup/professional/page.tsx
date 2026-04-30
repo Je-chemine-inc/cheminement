@@ -579,7 +579,7 @@ export default function ProfessionalSignupPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <Label htmlFor="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 {t("locationLabel")}
@@ -1133,10 +1133,8 @@ export default function ProfessionalSignupPage() {
                 >
                   {t("termsAcceptBefore")}
                   <Link
-                    href="/terms"
+                    href="/terms?from=signup"
                     className="text-primary underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
                   >
                     {t("termsOfService")}
                   </Link>
@@ -1162,10 +1160,8 @@ export default function ProfessionalSignupPage() {
                   >
                     {t("privacyAcceptBefore")}
                     <Link
-                      href="/privacy"
+                      href="/privacy?from=signup"
                       className="text-primary underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
                     >
                       {t("privacyPolicy")}
                     </Link>

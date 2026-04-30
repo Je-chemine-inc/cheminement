@@ -14,6 +14,8 @@ import {
   Send,
   CreditCard,
   ArrowRightLeft,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,21 @@ export default function AdminBillingPage() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendFeedback, setResendFeedback] = useState<Record<string, "ok" | "error">>({});
   const t = useTranslations("Admin.billing");
+
+  const activeFilterCount =
+    (search ? 1 : 0) +
+    (statusFilter !== "all" ? 1 : 0) +
+    (methodFilter !== "all" ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setMethodFilter("all");
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const fetchBillingData = useCallback(
     async (page = 1) => {
@@ -371,89 +388,117 @@ export default function AdminBillingPage() {
         </div>
       </div>
 
-      {/* ── Suivi quotidien ── */}
-      <section className="space-y-4 rounded-3xl border border-border/20 bg-card/60 p-6 shadow-inner">
-        <div>
-          <h2 className="font-serif text-xl font-light text-foreground">{t("dailyTracking")}</h2>
-          <p className="text-sm text-muted-foreground">{t("dailyTrackingDesc")}</p>
+      {/* ── Filtres / Suivi quotidien ── */}
+      <section className="rounded-3xl border border-border/20 bg-card/60 shadow-inner overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-border/20 px-6 py-4">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">{t("dailyTracking")}</span>
+            {activeFilterCount > 0 && (
+              <span className="inline-flex items-center justify-center rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              {t("resetFilters")}
+            </button>
+          )}
         </div>
 
-        {/* Search + date range */}
-        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
-          <div className="relative flex items-center">
-            <Search className="absolute left-4 h-4 w-4 text-muted-foreground" />
+        <div className="space-y-5 p-6">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="w-full rounded-full border border-border/40 bg-card/80 py-3 pl-11 pr-4 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-full border border-border/40 bg-background/60 py-2.5 pl-11 pr-4 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground whitespace-nowrap">{t("dateFrom")}</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg border border-border/40 bg-card/80 px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-muted-foreground whitespace-nowrap">{t("dateTo")}</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg border border-border/40 bg-card/80 px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-        </div>
 
-        {/* Status filter chips */}
-        <div className="flex flex-wrap gap-2">
-          {(["all", "paid", "pending", "upcoming", "processing", "overdue"] as const).map(
-            (s) => {
-              const isActive = statusFilter === s;
-              return (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
-                    isActive
-                      ? "border-primary bg-primary text-primary-foreground shadow-lg"
-                      : "border-border/40 bg-card/80 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                  }`}
-                >
-                  {s !== "all" && getStatusIcon(s as PaymentStatus)}
-                  {t(`filters.${s}`)}
-                </button>
-              );
-            },
-          )}
-        </div>
+          {/* Date range — filters by appointment date */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("dateFrom")} / {t("dateTo")}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full rounded-xl border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full rounded-xl border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </div>
 
-        {/* Payment method filter */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t("filterMethod")}</span>
-          {(["all", "card", "transfer"] as const).map((m) => {
-            const isActive = methodFilter === m;
-            return (
-              <button
-                key={m}
-                onClick={() => setMethodFilter(m)}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground shadow-lg"
-                    : "border-border/40 bg-card/80 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                }`}
-              >
-                {m === "card" && <CreditCard className="h-4 w-4" />}
-                {m === "transfer" && <ArrowRightLeft className="h-4 w-4" />}
-                {m === "all" ? t("allMethods") : m === "card" ? t("methodCard") : t("methodInterac")}
-              </button>
-            );
-          })}
+          <div className="border-t border-border/20" />
+
+          {/* Status chips */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("filterStatus")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(["all", "paid", "pending", "upcoming", "processing", "overdue"] as const).map((s) => {
+                const isActive = statusFilter === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                      isActive
+                        ? "border-primary bg-primary text-primary-foreground shadow"
+                        : "border-border/40 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    }`}
+                  >
+                    {s !== "all" && getStatusIcon(s as PaymentStatus)}
+                    {t(`filters.${s}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Method chips */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("filterMethod")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(["all", "card", "transfer"] as const).map((m) => {
+                const isActive = methodFilter === m;
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setMethodFilter(m)}
+                    className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                      isActive
+                        ? "border-primary bg-primary text-primary-foreground shadow"
+                        : "border-border/40 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    }`}
+                  >
+                    {m === "card" && <CreditCard className="h-3.5 w-3.5" />}
+                    {m === "transfer" && <ArrowRightLeft className="h-3.5 w-3.5" />}
+                    {m === "all" ? t("allMethods") : m === "card" ? t("methodCard") : t("methodInterac")}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -532,13 +577,25 @@ export default function AdminBillingPage() {
                       {payment.paymentMethod && (
                         <div>
                           <p className="text-xs text-muted-foreground">{t("paymentMethod")}</p>
-                          <p className="font-medium text-foreground capitalize">
-                            {payment.paymentMethod === "transfer"
-                              ? t("methodInterac")
-                              : payment.paymentMethod === "card"
-                                ? t("methodCard")
-                                : payment.paymentMethod}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground capitalize">
+                              {payment.paymentMethod === "transfer"
+                                ? t("methodInterac")
+                                : payment.paymentMethod === "card"
+                                  ? t("methodCard")
+                                  : payment.paymentMethod}
+                            </p>
+                            {payment.paymentMethod === "card" && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                {t("validationCard")}
+                              </span>
+                            )}
+                            {payment.paymentMethod === "transfer" && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                {t("validationInterac")}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                       {payment.paidDate && (
@@ -560,6 +617,14 @@ export default function AdminBillingPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* No payment method warning */}
+                    {!payment.paymentMethod && payment.status !== "paid" && (
+                      <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        {t("noPaymentBeforeMeeting")}
+                      </div>
+                    )}
 
                     {/* Reminder badges */}
                     {(payment.interacReminder24hSent || payment.interacReminder48hSent) && (

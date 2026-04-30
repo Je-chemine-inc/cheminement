@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +28,8 @@ import {
 export default function LoginPage() {
   const t = useTranslations("Auth.login");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wasInactive = searchParams.get("reason") === "inactivity";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -98,9 +101,6 @@ export default function LoginPage() {
             if (code === "AUTH_EMAIL_NOT_VERIFIED") {
               setError(t("errors.emailNotVerified"));
               setVerifyHint("email");
-            } else if (code === "AUTH_PHONE_NOT_VERIFIED") {
-              setError(t("errors.phoneNotVerified"));
-              setVerifyHint("phone");
             } else if (code === "AUTH_ACCOUNT_INACTIVE") {
               setError(t("errors.accountInactive"));
             } else if (code === "AUTH_LICENSE_REJECTED") {
@@ -148,6 +148,11 @@ export default function LoginPage() {
       />
 
       <AuthCard>
+        {wasInactive && (
+          <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            {t("sessionExpiredInactivity")}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md space-y-2">

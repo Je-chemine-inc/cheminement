@@ -161,9 +161,6 @@ export async function Footer() {
             <Link href="/terms" className="hover:text-primary-foreground transition-colors uppercase">
               {legalTitles.terms || t("termsOfUse")}
             </Link>
-            <Link href="/professional-terms" className="hover:text-primary-foreground transition-colors uppercase">
-              {legalTitles.professionalTerms || t("professionalTerms")}
-            </Link>
             <Link href="/cookies" className="hover:text-primary-foreground transition-colors uppercase">
               {legalTitles.cookies || t("cookiePolicy")}
             </Link>
