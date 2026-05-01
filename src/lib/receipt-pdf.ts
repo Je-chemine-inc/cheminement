@@ -1,6 +1,4 @@
 import jsPDF from "jspdf";
-import fs from "fs";
-import path from "path";
 import type { SessionActNature } from "@/lib/session-closure";
 
 const ACT_LABELS_FR: Record<SessionActNature, string> = {
@@ -200,6 +198,10 @@ export function buildFiscalReceiptPdfBuffer(
   let logoEmbedded = false;
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
     const logoPath = path.join(process.cwd(), "public", "Logo.png");
     const logoData = fs.readFileSync(logoPath);
     doc.addImage(
