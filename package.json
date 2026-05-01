@@ -54,6 +54,9 @@
     "stripe": "^19.3.1",
     "tailwind-merge": "^3.4.0"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@swc/core", "core-js", "esbuild", "sharp", "unrs-resolver"]
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/jest-dom": "^6.9.1",
