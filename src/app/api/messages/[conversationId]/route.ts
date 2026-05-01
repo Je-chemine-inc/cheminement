@@ -52,7 +52,7 @@ export async function GET(
     conversation: {
       id: conv._id,
       subject: conv.subject,
-      participants: (conv.participants as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).map((p) => ({
+      participants: (conv.participants as unknown as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).map((p) => ({
         id: p._id,
         name: `${p.firstName} ${p.lastName}`,
         role: p.role,

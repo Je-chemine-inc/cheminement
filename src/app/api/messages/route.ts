@@ -28,8 +28,8 @@ export async function GET() {
     subject: conv.subject,
     lastMessageAt: conv.lastMessageAt,
     lastMessagePreview: conv.lastMessagePreview,
-    unread: (conv.unreadCounts as Map<string, number>)?.[session.user.id] ?? 0,
-    participants: (conv.participants as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).filter(
+    unread: (conv.unreadCounts as Record<string, number>)?.[session.user.id] ?? 0,
+    participants: (conv.participants as unknown as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).filter(
       (p) => p._id.toString() !== session.user.id,
     ).map((p) => ({
       id: p._id,

@@ -24,7 +24,7 @@ import {
   professionalLedgerAPI,
   type ProfessionalLedgerEntryResponse,
 } from "@/lib/api-client";
-import { getSessionActNatureLabelFr } from "@/lib/receipt-pdf";
+import { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
 import { AppointmentResponse } from "@/types/api";
 
 type ConnectPayoutResponse = {
