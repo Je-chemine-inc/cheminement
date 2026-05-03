@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Loader2, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,39 +27,47 @@ function VerifyAccountInner() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [emailStepDone, setEmailStepDone] = useState(false);
-
-  const runVerifyEmail = useCallback(async () => {
-    if (!uid || !token) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/auth/account/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: uid, token }),
-      });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) {
-        setError(
-          typeof data.error === "string"
-            ? data.error
-            : t("errors.verifyEmailFailed"),
-        );
-        return;
-      }
-      setEmailStepDone(true);
-    } catch {
-      setError(t("errors.network"));
-    } finally {
-      setBusy(false);
-    }
-  }, [uid, token, t]);
+  // Guard against React StrictMode double-fire and any unintended re-runs that
+  // would consume the single-use token twice and produce "Lien invalide".
+  const verifyAttempted = useRef(false);
 
   useEffect(() => {
-    if (uid && token) {
-      void runVerifyEmail();
-    }
-  }, [uid, token, runVerifyEmail]);
+    if (!uid || !token) return;
+    if (verifyAttempted.current) return;
+    verifyAttempted.current = true;
+
+    let cancelled = false;
+    (async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/auth/account/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: uid, token }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(
+            typeof data.error === "string"
+              ? data.error
+              : t("errors.verifyEmailFailed"),
+          );
+          return;
+        }
+        setEmailStepDone(true);
+      } catch {
+        if (!cancelled) setError(t("errors.network"));
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, token, t]);
 
   const resendVerificationEmail = async (e: React.FormEvent) => {
     e.preventDefault();
