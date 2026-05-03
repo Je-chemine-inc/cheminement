@@ -9,6 +9,9 @@ import {
 } from "@/lib/account-init";
 import { sendAccountEmailVerificationEmail } from "@/lib/notifications";
 
+// Allow enough time for cold-start Mongo connect + SMTP send before Vercel kills the function
+export const maxDuration = 30;
+
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const rl = rateLimit(`resend-email:${ip}`, AuthRateLimits.resendEmail.limit, AuthRateLimits.resendEmail.windowMs);
@@ -54,11 +57,17 @@ export async function POST(req: NextRequest) {
       new URL(req.url).origin;
     const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(user._id.toString())}&token=${encodeURIComponent(token)}`;
 
-    void sendAccountEmailVerificationEmail({
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      verifyUrl,
-    });
+    // Await the send: on Vercel serverless, fire-and-forget can be killed when
+    // the response returns, so the email never actually leaves the server.
+    try {
+      await sendAccountEmailVerificationEmail({
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        verifyUrl,
+      });
+    } catch (err) {
+      console.error("resend-email send:", err);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

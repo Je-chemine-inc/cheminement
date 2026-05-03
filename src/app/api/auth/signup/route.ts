@@ -19,6 +19,9 @@ import {
 } from "@/lib/notifications";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 
+// Allow enough time for cold-start Mongo connect + SMTP send before Vercel kills the function
+export const maxDuration = 30;
+
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const rl = rateLimit(`signup:${ip}`, AuthRateLimits.signup.limit, AuthRateLimits.signup.windowMs);
@@ -258,11 +261,17 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_APP_URL ||
         new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(existingUser._id.toString())}&token=${encodeURIComponent(claimToken)}`;
-      sendAccountEmailVerificationEmail({
-        name: `${firstName} ${lastName}`,
-        email: existingUser.email,
-        verifyUrl,
-      }).catch((err) => console.error("Claim account verify email:", err));
+      // Await the send: on Vercel serverless, fire-and-forget can be killed when
+      // the response returns, so the email never actually leaves the server.
+      try {
+        await sendAccountEmailVerificationEmail({
+          name: `${firstName} ${lastName}`,
+          email: existingUser.email,
+          verifyUrl,
+        });
+      } catch (err) {
+        console.error("Claim account verify email:", err);
+      }
 
       return NextResponse.json(
         {
@@ -442,19 +451,27 @@ export async function POST(req: NextRequest) {
     }
 
     if (bootstrapVerified) {
-      sendWelcomeEmail({
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        role: user.role as "client" | "professional" | "guest" | "prospect",
-      }).catch((err) => console.error("Welcome email:", err));
+      try {
+        await sendWelcomeEmail({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: user.role as "client" | "professional" | "guest" | "prospect",
+        });
+      } catch (err) {
+        console.error("Welcome email:", err);
+      }
 
       if (user.phone) {
         const { sendWelcomeSms } = await import("@/lib/sms");
-        sendWelcomeSms(
-          user.phone,
-          user.firstName,
-          (user.language as "fr" | "en") || "fr",
-        ).catch((err) => console.error("Welcome SMS:", err));
+        try {
+          await sendWelcomeSms(
+            user.phone,
+            user.firstName,
+            (user.language as "fr" | "en") || "fr",
+          );
+        } catch (err) {
+          console.error("Welcome SMS:", err);
+        }
       }
     }
 
@@ -464,13 +481,17 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_APP_URL ||
         new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(user._id.toString())}&token=${encodeURIComponent(emailVerifyPlainToken)}`;
-      sendAccountEmailVerificationEmail({
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        verifyUrl,
-      }).catch((err) =>
-        console.error("Verification email:", err),
-      );
+      // Await the send: on Vercel serverless, fire-and-forget can be killed when
+      // the response returns, so the email never actually leaves the server.
+      try {
+        await sendAccountEmailVerificationEmail({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          verifyUrl,
+        });
+      } catch (err) {
+        console.error("Verification email:", err);
+      }
     }
 
     return NextResponse.json(
