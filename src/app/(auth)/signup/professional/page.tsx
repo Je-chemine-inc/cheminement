@@ -211,28 +211,42 @@ export default function ProfessionalSignupPage() {
     acceptPrivacyPolicy: false,
   });
 
-  // Restore step + entered data so users returning from /professional-terms land where they left off.
+  // Tracks whether sessionStorage has been read on mount. As state (not a ref) so
+  // the persist effect re-runs once restore is done — this prevents the persist
+  // effect from clobbering saved data with the initial defaults during the first
+  // commit cycle, before the restored values land in formData.
+  const [hasRestored, setHasRestored] = useState(false);
+
+  // Restore step + entered data so users returning from /professional-terms (or
+  // /privacy) land where they left off with all fields intact.
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      setHasRestored(true);
+      return;
+    }
     try {
       const saved = sessionStorage.getItem(SIGNUP_STATE_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === "object") {
-        if (parsed.formData && typeof parsed.formData === "object") {
-          setFormData((prev) => ({ ...prev, ...parsed.formData }));
-        }
-        if (typeof parsed.currentSection === "number") {
-          setCurrentSection(parsed.currentSection);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          if (parsed.formData && typeof parsed.formData === "object") {
+            setFormData((prev) => ({ ...prev, ...parsed.formData }));
+          }
+          if (typeof parsed.currentSection === "number") {
+            setCurrentSection(parsed.currentSection);
+          }
         }
       }
     } catch {
       // ignore corrupt storage
     }
+    setHasRestored(true);
   }, []);
 
-  // Persist on every change. Skip password fields so they aren't kept in storage.
+  // Persist on every change, but only once restore has finished. Skip password
+  // fields so they aren't kept in sessionStorage.
   useEffect(() => {
+    if (!hasRestored) return;
     if (typeof window === "undefined") return;
     try {
       const { password: _p, confirmPassword: _cp, ...persistable } = formData;
@@ -243,7 +257,7 @@ export default function ProfessionalSignupPage() {
     } catch {
       // ignore quota errors
     }
-  }, [formData, currentSection]);
+  }, [hasRestored, formData, currentSection]);
 
   const sections = [
     { title: t("sections.basicInfo"), icon: User, required: true },
