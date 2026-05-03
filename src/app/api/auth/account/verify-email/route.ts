@@ -45,6 +45,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user.verificationEmailTokenHash || !user.verificationEmailExpires) {
+      // If the email was already verified, treat re-clicks of the link as success
+      // (handles double-click, refresh, or re-opening the email after first use).
+      if (user.emailVerified) {
+        return NextResponse.json({ ok: true, alreadyVerified: true });
+      }
       return NextResponse.json(
         { error: "Lien invalide ou déjà utilisé" },
         { status: 400 },
