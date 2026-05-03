@@ -6,6 +6,14 @@ import Profile from "@/models/Profile";
 import Appointment from "@/models/Appointment";
 import MedicalProfile from "@/models/MedicalProfile";
 import Admin from "@/models/Admin";
+import ClientDocument from "@/models/ClientDocument";
+import ClientReceipt from "@/models/ClientReceipt";
+import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+import Review from "@/models/Review";
+import { ResourcePurchase } from "@/models/Resource";
+import Conversation from "@/models/Conversation";
+import Message from "@/models/Message";
+import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 
 // GET /api/admin/users/[id] — Full user detail
@@ -266,7 +274,8 @@ export async function PUT(
   }
 }
 
-// DELETE /api/admin/users/[id] — Soft-delete (set status to inactive)
+// DELETE /api/admin/users/[id] — Hard-delete the user and all related records.
+// Soft-deactivation lives on the status field ("inactive") and is performed via PUT.
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -277,27 +286,57 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     await connectToDatabase();
-    
+
     // Check granular permissions if Admin record exists
     const adminRecord = await Admin.findOne({ userId: session.user.id, isActive: true })
       .select("permissions")
       .lean();
-    
+
     if (adminRecord?.permissions && !adminRecord.permissions.managePatients) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id: userId } = await params;
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: { status: "inactive" } },
-      { new: true },
-    );
+
+    if (!userId || userId === "undefined" || userId.length !== 24) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    // Prevent admin from deleting themselves
+    if (userId === session.user.id) {
+      return NextResponse.json(
+        { error: "You cannot delete your own account." },
+        { status: 400 },
+      );
+    }
+
+    const user = await User.findById(userId);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, message: "User deactivated" });
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    await Promise.all([
+      User.deleteOne({ _id: userObjectId }),
+      Profile.deleteMany({ userId: userObjectId }),
+      MedicalProfile.deleteMany({ userId: userObjectId }),
+      Admin.deleteMany({ userId: userObjectId }),
+      Appointment.deleteMany({
+        $or: [{ clientId: userObjectId }, { professionalId: userObjectId }],
+      }),
+      ClientDocument.deleteMany({ clientId: userObjectId }),
+      ClientReceipt.deleteMany({ clientId: userObjectId }),
+      ProfessionalLedgerEntry.deleteMany({ professionalId: userObjectId }),
+      Review.deleteMany({
+        $or: [{ clientId: userObjectId }, { professionalId: userObjectId }],
+      }),
+      ResourcePurchase.deleteMany({ userId: userObjectId }),
+      Message.deleteMany({ senderId: userObjectId }),
+      Conversation.deleteMany({ participants: userObjectId }),
+    ]);
+
+    return NextResponse.json({ success: true, message: "User deleted" });
   } catch (error) {
     console.error("Admin user delete error:", error);
     return NextResponse.json(

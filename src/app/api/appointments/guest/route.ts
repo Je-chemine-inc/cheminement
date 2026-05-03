@@ -30,9 +30,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate guest info
-    const { firstName, lastName, email, phone, location } = guestInfo;
+    const { firstName, email } = guestInfo;
+    let lastName = guestInfo.lastName || "";
+    const phone = guestInfo.phone || "";
+    let location = guestInfo.location || "";
 
-    if (!firstName || !lastName || !email || !phone || !location) {
+    // Patient referrals are submitted by a professional on behalf of a patient,
+    // so only the referrer's name + email are strictly required for prospect creation.
+    // Self / loved-one bookings still require full contact info.
+    const isPatientReferral = data.bookingFor === "patient";
+    if (isPatientReferral) {
+      if (!firstName || !email) {
+        return NextResponse.json(
+          { error: "Referrer name and email are required" },
+          { status: 400 },
+        );
+      }
+      // User schema requires lastName/location; supply placeholders when the
+      // referrer entered a single-word name and didn't provide a location.
+      if (!lastName) lastName = "—";
+      if (!location) location = "—";
+    } else if (!firstName || !lastName || !email || !phone || !location) {
       return NextResponse.json(
         {
           error:
@@ -153,20 +171,20 @@ export async function POST(req: NextRequest) {
 
     let isNewGuest = false;
 
-    // Find or create prospect user (unauthenticated form submission).
-    // Also match existing guest accounts so returning users aren't duplicated.
-    let guestUser = await User.findOne({
-      email: email.toLowerCase(),
-      role: { $in: ["prospect", "guest"] },
-    });
+    // Look up by email across ALL roles — email is unique, so a user with the
+    // same address (client / professional / admin) must be reused rather than
+    // re-inserted. Only refresh contact info on prospect/guest matches; never
+    // overwrite a real account's profile data.
+    let guestUser = await User.findOne({ email: email.toLowerCase() });
 
     if (guestUser) {
-      // Update contact info if they submit the form again
-      guestUser.firstName = firstName;
-      guestUser.lastName = lastName;
-      guestUser.phone = phone;
-      guestUser.location = location;
-      await guestUser.save();
+      if (guestUser.role === "prospect" || guestUser.role === "guest") {
+        guestUser.firstName = firstName;
+        guestUser.lastName = lastName;
+        guestUser.phone = phone;
+        guestUser.location = location;
+        await guestUser.save();
+      }
     } else {
       // Create new prospect profile (Étape 1 — profil Prospect)
       guestUser = new User({

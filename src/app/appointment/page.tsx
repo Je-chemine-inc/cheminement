@@ -525,6 +525,17 @@ export default function BookAppointmentPage() {
       setError(tB("errors.referrerName"));
       return false;
     }
+    if (isGuest) {
+      if (!referralInfo.referrerEmail.trim()) {
+        setError(tB("errors.referrerEmailRequired"));
+        return false;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(referralInfo.referrerEmail)) {
+        setError(tB("errors.emailInvalid"));
+        return false;
+      }
+    }
     if (
       !referralInfo.patientFirstName.trim() ||
       !referralInfo.patientLastName.trim()
@@ -576,6 +587,7 @@ export default function BookAppointmentPage() {
           phone: referralInfo.referrerPhone || "",
           location: "",
         };
+        setGuestInfo(professionalGuestInfo);
         await apiClient.post<{ appointmentId: string }>("/appointments/guest", {
           ...appointmentData,
           guestInfo: professionalGuestInfo,
@@ -680,6 +692,8 @@ export default function BookAppointmentPage() {
         //       : "card",
       };
 
+      let effectiveGuestInfo: GuestInfo = guestInfo;
+
       // Include loved one info if booking for a loved one
       if (bookingFor === "loved-one" && lovedOneInfo.firstName) {
         appointmentData.lovedOneInfo = lovedOneInfo;
@@ -687,6 +701,17 @@ export default function BookAppointmentPage() {
         if (linkAsGuardian && status === "authenticated") {
           appointmentData.linkGuardian = true;
           appointmentData.guardianUserId = session?.user?.id;
+        }
+        // For loved-one guest bookings, build guestInfo from requester fields
+        if (isGuest) {
+          effectiveGuestInfo = {
+            firstName: lovedOneInfo.requesterFirstName,
+            lastName: lovedOneInfo.requesterLastName,
+            email: lovedOneInfo.requesterEmail,
+            phone: lovedOneInfo.requesterPhone,
+            location: lovedOneInfo.requesterLocation,
+          };
+          setGuestInfo(effectiveGuestInfo);
         }
       }
 
@@ -699,29 +724,23 @@ export default function BookAppointmentPage() {
           const nameParts = referralInfo.referrerName.trim().split(/\s+/);
           const referrerFirstName = nameParts[0] || "";
           const referrerLastName = nameParts.slice(1).join(" ") || "";
-          
+
           // Create guestInfo from referrer information
           // Email and phone are required for guest bookings, use referrer info
-          const professionalGuestInfo: GuestInfo = {
+          effectiveGuestInfo = {
             firstName: referrerFirstName,
             lastName: referrerLastName,
             email: referralInfo.referrerEmail || "",
             phone: referralInfo.referrerPhone || "",
             location: "", // Location not required for professional bookings, can be empty
           };
-          
-          await apiClient.post<{ appointmentId: string }>("/appointments/guest", {
-            ...appointmentData,
-            guestInfo: professionalGuestInfo,
-          });
-          setCurrentStep(5); // Success step
-          return;
+          setGuestInfo(effectiveGuestInfo);
         }
       }
 
       await apiClient.post<{ appointmentId: string }>("/appointments/guest", {
         ...appointmentData,
-        guestInfo,
+        guestInfo: effectiveGuestInfo,
       });
 
       setCurrentStep(5); // Success step
@@ -1536,7 +1555,7 @@ export default function BookAppointmentPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-4">
+                            <div className="mt-4 space-y-2">
                               <Label htmlFor="requesterLocation">
                                 {tB("yourLocation")}{" "}
                                 <span className="text-red-500">*</span>
@@ -2047,9 +2066,13 @@ export default function BookAppointmentPage() {
                         <div className="space-y-2">
                           <Label htmlFor="referrerEmail">
                             {tB("contactEmail")}{" "}
-                            <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
-                              {tB("optional")}
-                            </span>
+                            {isGuest ? (
+                              <span className="text-red-500">*</span>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
+                                {tB("optional")}
+                              </span>
+                            )}
                           </Label>
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2392,7 +2415,7 @@ export default function BookAppointmentPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-2">
                           <Label htmlFor="guestLocation">
                             {tB("location")}{" "}
                             <span className="text-red-500">*</span>

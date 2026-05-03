@@ -75,7 +75,7 @@ const UserSchema = new Schema<IUser>(
     password: {
       type: String,
       required: function (this: IUser) {
-        return this.role !== "guest";
+        return this.role !== "guest" && this.role !== "prospect";
       },
     },
     firstName: {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { translateFromMap } from "@/lib/bilingual";
 import { authAPI } from "@/lib/api-client";
@@ -156,6 +156,8 @@ const PROFESSIONAL_WEEKDAY_OPTIONS = [
   { value: "Sunday", msgKey: "sunday" },
 ] as const;
 
+const SIGNUP_STATE_STORAGE_KEY = "signup:professional:state";
+
 export default function ProfessionalSignupPage() {
   const t = useTranslations("Auth.professionalSignup");
   const locale = useLocale();
@@ -208,6 +210,40 @@ export default function ProfessionalSignupPage() {
     agreeToTerms: false,
     acceptPrivacyPolicy: false,
   });
+
+  // Restore step + entered data so users returning from /professional-terms land where they left off.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = sessionStorage.getItem(SIGNUP_STATE_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object") {
+        if (parsed.formData && typeof parsed.formData === "object") {
+          setFormData((prev) => ({ ...prev, ...parsed.formData }));
+        }
+        if (typeof parsed.currentSection === "number") {
+          setCurrentSection(parsed.currentSection);
+        }
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+  }, []);
+
+  // Persist on every change. Skip password fields so they aren't kept in storage.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const { password: _p, confirmPassword: _cp, ...persistable } = formData;
+      sessionStorage.setItem(
+        SIGNUP_STATE_STORAGE_KEY,
+        JSON.stringify({ formData: persistable, currentSection }),
+      );
+    } catch {
+      // ignore quota errors
+    }
+  }, [formData, currentSection]);
 
   const sections = [
     { title: t("sections.basicInfo"), icon: User, required: true },
@@ -389,6 +425,14 @@ export default function ProfessionalSignupPage() {
           clinicalAvailability: formData.clinicalAvailability,
         },
       });
+
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem(SIGNUP_STATE_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
+      }
 
       if (signupResult.requiresEmailVerification) {
         router.push(
@@ -1133,7 +1177,7 @@ export default function ProfessionalSignupPage() {
                 >
                   {t("termsAcceptBefore")}
                   <Link
-                    href="/terms?from=signup"
+                    href="/professional-terms?from=signup"
                     className="text-primary underline"
                   >
                     {t("termsOfService")}

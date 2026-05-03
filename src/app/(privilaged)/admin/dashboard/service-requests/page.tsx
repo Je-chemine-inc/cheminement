@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -11,6 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useTranslations } from "next-intl";
 
 interface ServiceRequestRow {
@@ -33,6 +41,8 @@ export default function AdminServiceRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceRequestRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const modalityLabel = (type: string) => {
     switch (type) {
@@ -95,6 +105,27 @@ export default function AdminServiceRequestsPage() {
       setLoading(false);
     }
   }, []);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleting(true);
+      setError(null);
+      const res = await fetch(`/api/admin/service-requests/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Failed to delete");
+      }
+      setDeleteTarget(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const approve = async (id: string, target: "requester" | "loved-one") => {
     try {
@@ -220,6 +251,16 @@ export default function AdminServiceRequestsPage() {
                       >
                         {t("sendToLovedOne")}
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(r)}
+                        disabled={loading || approvingId === r.id}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        {t("delete")}
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -228,6 +269,44 @@ export default function AdminServiceRequestsPage() {
           </Table>
         </div>
       )}
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("deleteConfirmDesc", {
+                client: deleteTarget?.clientName ?? "",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t("confirm")
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
