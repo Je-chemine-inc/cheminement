@@ -48,7 +48,10 @@ export async function POST(req: NextRequest) {
     user.verificationEmailExpires = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
     await user.save();
 
-    const base = process.env.NEXTAUTH_URL || "";
+    const base =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      new URL(req.url).origin;
     const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(user._id.toString())}&token=${encodeURIComponent(token)}`;
 
     void sendAccountEmailVerificationEmail({

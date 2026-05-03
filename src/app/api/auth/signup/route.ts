@@ -253,7 +253,10 @@ export async function POST(req: NextRequest) {
         { upsert: true },
       );
 
-      const base = process.env.NEXTAUTH_URL || "";
+      const base =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(existingUser._id.toString())}&token=${encodeURIComponent(claimToken)}`;
       sendAccountEmailVerificationEmail({
         name: `${firstName} ${lastName}`,
@@ -456,7 +459,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (emailVerifyPlainToken) {
-      const base = process.env.NEXTAUTH_URL || "";
+      const base =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(user._id.toString())}&token=${encodeURIComponent(emailVerifyPlainToken)}`;
       sendAccountEmailVerificationEmail({
         name: `${user.firstName} ${user.lastName}`,

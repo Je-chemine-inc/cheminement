@@ -567,37 +567,7 @@ export default function MemberSignupPage() {
           }
         }
         return true;
-      case 1:
-        return true;
-      case 2:
-        return true;
-      case 3:
-        return true;
-      case 4:
-        return true;
-      case 5:
-        return true;
-      case 6:
-        if (formData.availability.length === 0) {
-          setError(t("errors.availabilityRequired"));
-          return false;
-        }
-        return true;
-      case 7:
-        return true;
-      case 8:
-        if (!formData.preferredGender) {
-          setError(t("errors.errorPreferredGender"));
-          return false;
-        }
-        return true;
-      case 9: // Payment
-        if (!formData.paymentMethod) {
-          setError(t("errors.paymentMethodRequired"));
-          return false;
-        }
-        return true;
-      case 10: // Review & Confirm
+      case 10: // Review & Confirm — legal requirement, only enforced at final submit
         if (!formData.agreeToTerms) {
           setError(t("errors.agreeToTermsRequired"));
           return false;
@@ -614,10 +584,12 @@ export default function MemberSignupPage() {
 
   const handleNext = () => {
     setError("");
-    if (validateSection(actualSection)) {
-      setDirection(1);
-      setCurrentSection((prev) => Math.min(prev + 1, totalSteps - 1));
+    // Only the first step (basic info) blocks navigation; all others are skippable
+    if (actualSection === 0 && !validateSection(0)) {
+      return;
     }
+    setDirection(1);
+    setCurrentSection((prev) => Math.min(prev + 1, totalSteps - 1));
   };
 
   const handleBack = () => {
@@ -628,8 +600,9 @@ export default function MemberSignupPage() {
 
   const handleSubmit = async () => {
     setError("");
-    if (formData.availability.length === 0) {
-      setError(t("errors.availabilityRequired"));
+    // Re-run step 0 (always required) and the current step (legal terms on final step)
+    if (!validateSection(0)) {
+      setCurrentSection(0);
       return;
     }
     if (!validateSection(actualSection)) return;
