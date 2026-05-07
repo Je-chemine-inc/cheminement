@@ -234,7 +234,7 @@ export async function PATCH(
         awaitingPaymentGuarantee: true,
       });
 
-      const billingUrl = `${getBaseUrl()}/client/dashboard/billing`;
+      const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
 
       if (wasGuest) {
         // Generate payment token for payment link (/pay) — même flux qu’avant promotion compte

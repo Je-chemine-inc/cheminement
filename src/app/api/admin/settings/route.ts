@@ -158,6 +158,33 @@ export async function PUT(req: NextRequest) {
         };
       }
 
+      if (data.platformContact) {
+        const incoming = data.platformContact as Partial<{
+          physicalAddress: string;
+          phoneNumber: string;
+          supportEmail: string;
+        }>;
+        const current = settings.platformContact || {
+          physicalAddress: "",
+          phoneNumber: "",
+          supportEmail: "support@jechemine.ca",
+        };
+        settings.platformContact = {
+          physicalAddress:
+            incoming.physicalAddress !== undefined
+              ? String(incoming.physicalAddress).trim()
+              : current.physicalAddress,
+          phoneNumber:
+            incoming.phoneNumber !== undefined
+              ? String(incoming.phoneNumber).trim()
+              : current.phoneNumber,
+          supportEmail:
+            incoming.supportEmail !== undefined
+              ? String(incoming.supportEmail).trim()
+              : current.supportEmail,
+        };
+      }
+
       // Handle email settings updates
       if (data.emailSettings) {
         if (!settings.emailSettings) {

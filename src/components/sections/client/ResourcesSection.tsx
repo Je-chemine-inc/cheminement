@@ -83,7 +83,7 @@ export default function ResourcesSection() {
   ];
 
   return (
-    <section className="py-20 bg-muted">
+    <section id="resources" className="py-20 bg-muted">
       <div className="container mx-auto px-6">
         <motion.div
           initial="hidden"
@@ -97,11 +97,14 @@ export default function ResourcesSection() {
             <motion.div
               variants={fadeInUp}
               transition={{ duration: 0.6 }}
-              className="mb-4"
+              className="mb-4 flex flex-col items-center gap-3"
             >
               <p className="text-sm md:text-base tracking-[0.3em] uppercase text-muted-foreground font-light mb-2">
                 {t("badge")}
               </p>
+              <span className="rounded-full border border-amber-300/60 bg-amber-100/60 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                {t("comingSoon")}
+              </span>
               <div className="w-32 h-0.5 bg-muted-foreground mx-auto"></div>
             </motion.div>
 

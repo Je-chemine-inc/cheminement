@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   ArrowRight,
   Calendar,
+  CreditCard,
   HelpCircle,
   Lock,
   Mail,
@@ -36,6 +37,9 @@ export default function ClientDashboardPage() {
   const { data: session, status } = useSession();
   const t = useTranslations("Client.overview");
   const tApptStatus = useTranslations("Client.appointments.status");
+  const tAwaitingPayment = useTranslations(
+    "Client.appointments.awaitingPayment",
+  );
 
   useEffect(() => {
     const fetchUpcomingAppointments = async () => {
@@ -84,6 +88,12 @@ export default function ClientDashboardPage() {
       default:
         return <Calendar className="h-4 w-4" />;
     }
+  };
+
+  const isAwaitingPayment = (appointment: AppointmentResponse): boolean => {
+    if (appointment.status !== "scheduled") return false;
+    if (appointment.payment.status === "paid") return false;
+    return !appointment.payment.stripePaymentMethodId;
   };
 
   const canJoinSession = (appointment: AppointmentResponse): boolean => {
@@ -401,6 +411,11 @@ export default function ClientDashboardPage() {
                                   {tApptStatus("ongoing")}
                                 </span>
                               )}
+                              {isAwaitingPayment(appointment) && (
+                                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                  {tAwaitingPayment("badge")}
+                                </span>
+                              )}
                             </div>
                             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
@@ -464,6 +479,25 @@ export default function ClientDashboardPage() {
                               </>
                             )}
                         </div>
+                        {isAwaitingPayment(appointment) && (
+                          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/40 dark:bg-amber-950/20">
+                            <CreditCard className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                                {tAwaitingPayment("title")}
+                              </p>
+                              <p className="text-xs text-amber-700 dark:text-amber-300">
+                                {tAwaitingPayment("message")}
+                              </p>
+                              <Link
+                                href="/client/dashboard/billing?action=addPaymentMethod"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-300"
+                              >
+                                {tAwaitingPayment("addPaymentMethod")}
+                              </Link>
+                            </div>
+                          </div>
+                        )}
                         {appointment.status === "scheduled" &&
                           !canModifyAppointment(appointment) && (
                             <div className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-800/40 dark:bg-orange-950/20">

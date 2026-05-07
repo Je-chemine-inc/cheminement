@@ -5,7 +5,6 @@ import {
   Settings,
   Bell,
   Globe,
-  Shield,
   AlertTriangle,
   Save,
   CheckCircle,
@@ -19,8 +18,6 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [language, setLanguage] = useState("fr");
-  const [profileVisible, setProfileVisible] = useState(true);
-  const [showHistory, setShowHistory] = useState(true);
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
@@ -111,35 +108,6 @@ export default function SettingsPage() {
           >
             {t("english")}
           </button>
-        </div>
-      </section>
-
-      {/* Privacy */}
-      <section className="rounded-3xl border border-border/20 bg-card/80 p-8 shadow-lg">
-        <div className="mb-6 flex items-center gap-3">
-          <Shield className="h-5 w-5 text-primary" />
-          <div>
-            <h2 className="font-serif text-xl font-medium text-foreground">
-              {t("privacy")}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t("privacyDesc")}
-            </p>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <ToggleRow
-            label={t("profileVisible")}
-            description={t("profileVisibleDesc")}
-            checked={profileVisible}
-            onChange={setProfileVisible}
-          />
-          <ToggleRow
-            label={t("showHistory")}
-            description={t("showHistoryDesc")}
-            checked={showHistory}
-            onChange={setShowHistory}
-          />
         </div>
       </section>
 

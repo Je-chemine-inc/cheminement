@@ -175,6 +175,22 @@ export async function POST(req: NextRequest) {
     // same address (client / professional / admin) must be reused rather than
     // re-inserted. Only refresh contact info on prospect/guest matches; never
     // overwrite a real account's profile data.
+    const allowedPreferredMethods = new Set([
+      "interac",
+      "card",
+      "direct_debit",
+      "payment_plan",
+    ]);
+    const requestedPreferred =
+      typeof appointmentData.preferredPaymentMethod === "string" &&
+      allowedPreferredMethods.has(appointmentData.preferredPaymentMethod)
+        ? (appointmentData.preferredPaymentMethod as
+            | "interac"
+            | "card"
+            | "direct_debit"
+            | "payment_plan")
+        : undefined;
+
     let guestUser = await User.findOne({ email: email.toLowerCase() });
 
     if (guestUser) {
@@ -183,6 +199,11 @@ export async function POST(req: NextRequest) {
         guestUser.lastName = lastName;
         guestUser.phone = phone;
         guestUser.location = location;
+        if (requestedPreferred) {
+          guestUser.preferredPaymentMethod = requestedPreferred;
+        } else if (!guestUser.preferredPaymentMethod) {
+          guestUser.preferredPaymentMethod = "interac";
+        }
         await guestUser.save();
       }
     } else {
@@ -196,6 +217,7 @@ export async function POST(req: NextRequest) {
         role: "prospect",
         status: "active",
         language: notificationLocale === "fr" ? "fr" : "en",
+        preferredPaymentMethod: requestedPreferred ?? "interac",
       });
       await guestUser.save();
       isNewGuest = true;

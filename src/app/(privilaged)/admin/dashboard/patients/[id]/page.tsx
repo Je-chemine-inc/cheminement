@@ -447,6 +447,23 @@ export default function PatientDetailPage({
                 {getAdminStatusBadge(data.adminStatus?.color, data.adminStatus?.label)}
               </div>
 
+              <div className="p-3 bg-muted/30 rounded-lg text-sm mb-2 flex items-center justify-between">
+                <strong>Mode de paiement</strong>
+                <span className="text-muted-foreground text-xs">
+                  {(() => {
+                    const pm = user.preferredPaymentMethod || "interac";
+                    const labels: Record<string, string> = {
+                      interac: "Virement Interac",
+                      card: "Carte de crédit",
+                      direct_debit: "Prélèvement automatique",
+                      payment_plan: "Entente de paiement",
+                    };
+                    const isDefault = !user.preferredPaymentMethod;
+                    return `${labels[pm] || pm}${isDefault ? " (défaut)" : ""}`;
+                  })()}
+                </span>
+              </div>
+
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"

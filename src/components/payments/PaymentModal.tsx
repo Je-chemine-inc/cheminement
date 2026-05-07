@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -32,26 +33,6 @@ interface PaymentModalProps {
   onSuccess?: () => void;
 }
 
-const paymentMethodOptions: {
-  id: PaymentMethodType;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    id: "card",
-    label: "Credit/Debit Card",
-    description: "Pay instantly with your card",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "direct_debit",
-    label: "Pre-authorized Debit",
-    description: "Automatic debit from your account",
-    icon: <Landmark className="h-5 w-5" />,
-  },
-];
-
 export default function PaymentModal({
   open,
   onOpenChange,
@@ -61,6 +42,28 @@ export default function PaymentModal({
   appointmentDate,
   onSuccess,
 }: PaymentModalProps) {
+  const t = useTranslations("Client.billing.paymentModal");
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
+  const paymentMethodOptions: {
+    id: PaymentMethodType;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }[] = [
+    {
+      id: "card",
+      label: t("cardLabel"),
+      description: t("cardDescription"),
+      icon: <CreditCard className="h-5 w-5" />,
+    },
+    {
+      id: "direct_debit",
+      label: t("directDebitLabel"),
+      description: t("directDebitDescription"),
+      icon: <Landmark className="h-5 w-5" />,
+    },
+  ];
   const [clientSecret, setClientSecret] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,10 +155,10 @@ export default function PaymentModal({
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-serif font-light">
-            Complete Payment
+            {t("title")}
           </DialogTitle>
           <DialogDescription className="space-y-2">
-            <span>Session with {professionalName}</span>
+            <span>{t("session", { name: professionalName })}</span>
             <span className="text-sm">{appointmentDate}</span>
           </DialogDescription>
         </DialogHeader>
@@ -167,7 +170,7 @@ export default function PaymentModal({
               <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Amount to pay
+                    {t("amountToPay")}
                   </span>
                   <span className="text-2xl font-semibold text-foreground">
                     ${amount.toFixed(2)} {currency}
@@ -177,7 +180,7 @@ export default function PaymentModal({
 
               <div className="space-y-4">
                 <Label className="text-base font-medium">
-                  Select Payment Method
+                  {t("selectMethod")}
                 </Label>
                 <div className="space-y-3">
                   {paymentMethodOptions.map((option) => (
@@ -231,7 +234,7 @@ export default function PaymentModal({
                 onClick={handleContinue}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 rounded-md font-medium transition-colors"
               >
-                Continue to Payment
+                {t("continue")}
               </button>
             </div>
           )}
@@ -240,7 +243,7 @@ export default function PaymentModal({
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
               <p className="text-sm text-muted-foreground">
-                Preparing payment...
+                {t("preparing")}
               </p>
             </div>
           )}
@@ -251,7 +254,7 @@ export default function PaymentModal({
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-red-800">
-                    Payment Error
+                    {t("errorTitle")}
                   </p>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
                 </div>
@@ -260,7 +263,7 @@ export default function PaymentModal({
                 onClick={handleBack}
                 className="w-full border border-border hover:bg-accent h-10 px-4 rounded-md font-medium transition-colors"
               >
-                Go Back
+                {t("goBack")}
               </button>
             </div>
           )}
@@ -271,12 +274,13 @@ export default function PaymentModal({
                 onClick={handleBack}
                 className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
               >
-                ← Change payment method
+                ← {t("changeMethod")}
               </button>
               <Elements
                 options={{
                   clientSecret,
                   appearance,
+                  locale: stripeLocale,
                 }}
                 stripe={stripePromise}
               >

@@ -13,7 +13,12 @@ export async function GET() {
 
     await connectToDatabase();
 
-    const list = await ClientReceipt.find({ clientId: session.user.id })
+    // Interac receipts (status: pending_transfer) are hidden from the client until
+    // an admin marks the transfer as received via /admin/dashboard/payment-trust.
+    const list = await ClientReceipt.find({
+      clientId: session.user.id,
+      status: "paid",
+    })
       .sort({ issuedAt: -1 })
       .limit(200)
       .lean();

@@ -390,6 +390,36 @@ export async function POST(req: NextRequest) {
       data.payment.method = data.paymentMethod;
     }
 
+    // Persist preferred payment method on the user (visible profil + admin).
+    // Defaults to "interac" if the client did not make any explicit choice.
+    const allowedPreferred = new Set([
+      "interac",
+      "card",
+      "direct_debit",
+      "payment_plan",
+    ]);
+    const preferredFromForm =
+      typeof data.preferredPaymentMethod === "string" &&
+      allowedPreferred.has(data.preferredPaymentMethod)
+        ? data.preferredPaymentMethod
+        : null;
+    try {
+      const me = await User.findById(session.user.id).select(
+        "preferredPaymentMethod",
+      );
+      if (me) {
+        if (preferredFromForm) {
+          me.preferredPaymentMethod = preferredFromForm;
+          await me.save();
+        } else if (!me.preferredPaymentMethod) {
+          me.preferredPaymentMethod = "interac";
+          await me.save();
+        }
+      }
+    } catch (e) {
+      console.error("[appointments] preferredPaymentMethod persist:", e);
+    }
+
     // Loved-one account activation decision (admin validation for adults)
     if (data.bookingFor === "loved-one" && data.lovedOneInfo?.dateOfBirth) {
       const lovedOneIsMinor = isMinor({ dateOfBirth: data.lovedOneInfo.dateOfBirth as any });

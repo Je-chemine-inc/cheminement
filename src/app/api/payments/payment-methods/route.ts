@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Attach payment method to customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
+    const attached = await stripe.paymentMethods.attach(paymentMethodId, {
       customer: customer.id,
     });
 
@@ -157,11 +157,17 @@ export async function POST(req: NextRequest) {
     const totalPaymentMethods =
       cardPaymentMethods.data.length + acssPaymentMethods.data.length;
 
+    const pmType: "card" | "acss_debit" | undefined =
+      attached.type === "card" || attached.type === "acss_debit"
+        ? attached.type
+        : undefined;
+
     await markClientPaymentGuaranteeGreen(
       session.user.id,
       customer.id,
       paymentMethodId,
       totalPaymentMethods === 1,
+      pmType,
     );
 
     return NextResponse.json({

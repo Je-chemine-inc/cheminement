@@ -58,21 +58,26 @@ export function EndSessionDialog({
     }
   }, [open, appointmentId]);
 
+  const isNoShow = outcome === "absence_or_late_cancel";
+
   const handleSubmit = async () => {
-    if (!act || !outcome) return;
+    if (!outcome) return;
+    if (!isNoShow && !act) return;
 
     try {
       setSaving(true);
       const payload: {
-        sessionActNature: string;
+        sessionActNature?: string;
         sessionActNatureOther?: string;
         sessionOutcome: string;
         nextAppointmentDate?: string;
         nextAppointmentTime?: string;
       } = {
-        sessionActNature: act,
         sessionOutcome: outcome,
       };
+      if (act) {
+        payload.sessionActNature = act;
+      }
       if (actOther.trim()) {
         payload.sessionActNatureOther = actOther.trim();
       }
@@ -81,6 +86,11 @@ export function EndSessionDialog({
         payload.nextAppointmentTime = nextTime.trim();
       }
       const apt = await appointmentsAPI.completeSession(appointmentId, payload);
+      const skipped = (apt as unknown as { chargeSkippedReason?: string })
+        .chargeSkippedReason;
+      if (skipped) {
+        window.alert(t("chargeSkippedWarning"));
+      }
       onCompleted(apt);
       onOpenChange(false);
     } catch (e) {
@@ -90,7 +100,7 @@ export function EndSessionDialog({
     }
   };
 
-  const canSubmit = Boolean(act && outcome) && !saving;
+  const canSubmit = Boolean(outcome) && (isNoShow || Boolean(act)) && !saving;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,33 +126,41 @@ export function EndSessionDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("actNatureLabel")}</Label>
-            <Select value={act || undefined} onValueChange={setAct}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("actPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {SESSION_ACT_NATURE_VALUES.map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {t(`acts.${v}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isNoShow ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {t("noShowFeeNotice")}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label>{t("actNatureLabel")}</Label>
+                <Select value={act || undefined} onValueChange={setAct}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("actPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SESSION_ACT_NATURE_VALUES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {t(`acts.${v}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label className="font-normal text-muted-foreground">
-              {t("actNatureOtherLabel")}
-            </Label>
-            <Input
-              value={actOther}
-              onChange={(e) => setActOther(e.target.value)}
-              placeholder={t("actNatureOtherPlaceholder")}
-              maxLength={200}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label className="font-normal text-muted-foreground">
+                  {t("actNatureOtherLabel")}
+                </Label>
+                <Input
+                  value={actOther}
+                  onChange={(e) => setActOther(e.target.value)}
+                  placeholder={t("actNatureOtherPlaceholder")}
+                  maxLength={200}
+                />
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label>{t("nextAppointmentLabel")}</Label>

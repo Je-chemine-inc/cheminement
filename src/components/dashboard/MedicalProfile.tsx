@@ -1098,31 +1098,25 @@ function MedicalProfileModal({
 
         <div className="px-6 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-              <TabsTrigger value="health-background">
-                {tMp("steps.healthBackground")}
-              </TabsTrigger>
-              <TabsTrigger value="mental-health-history">
-                {tMp("steps.mentalHealthHistory")}
-              </TabsTrigger>
-              <TabsTrigger value="current-concerns">
-                {tMp("steps.currentConcerns")}
-              </TabsTrigger>
-              <TabsTrigger value="symptoms-impact">
-                {tMp("steps.symptomsImpact")}
-              </TabsTrigger>
-              <TabsTrigger value="goals-preferences">
-                {tMp("steps.goalsPreferences")}
-              </TabsTrigger>
-              <TabsTrigger value="appointment-preferences">
-                {tMp("steps.appointmentPreferences")}
-              </TabsTrigger>
-              <TabsTrigger value="emergency-info">
-                {tMp("steps.emergencyInfo")}
-              </TabsTrigger>
-              <TabsTrigger value="matching-preferences">
-                {tMp("steps.matchingPreferences")}
-              </TabsTrigger>
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 md:grid-cols-4 lg:grid-cols-8">
+              {[
+                { value: "health-background", label: tMp("steps.healthBackground") },
+                { value: "mental-health-history", label: tMp("steps.mentalHealthHistory") },
+                { value: "current-concerns", label: tMp("steps.currentConcerns") },
+                { value: "symptoms-impact", label: tMp("steps.symptomsImpact") },
+                { value: "goals-preferences", label: tMp("steps.goalsPreferences") },
+                { value: "appointment-preferences", label: tMp("steps.appointmentPreferences") },
+                { value: "emergency-info", label: tMp("steps.emergencyInfo") },
+                { value: "matching-preferences", label: tMp("steps.matchingPreferences") },
+              ].map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="h-auto whitespace-normal rounded-md border border-border/40 bg-card px-3 py-2 text-center text-xs font-medium leading-snug text-foreground shadow-none transition-colors hover:bg-muted/40 data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none dark:bg-card dark:text-foreground dark:data-[state=active]:bg-primary dark:data-[state=active]:text-primary-foreground md:text-sm"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             <TabsContent value="health-background">

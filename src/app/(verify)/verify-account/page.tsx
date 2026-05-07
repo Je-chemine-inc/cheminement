@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, Loader2, Mail, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, ShieldCheck, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,16 @@ import {
   AuthFooter,
   AuthHeader,
 } from "@/components/auth";
+
+interface VerifyEmailResponse {
+  ok?: boolean;
+  alreadyVerified?: boolean;
+  userId?: string;
+  phoneStepToken?: string;
+  phoneMasked?: string;
+  phoneAlreadyVerified?: boolean;
+  error?: string;
+}
 
 function VerifyAccountInner() {
   const t = useTranslations("Auth.verifyAccount");
@@ -27,6 +37,15 @@ function VerifyAccountInner() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [emailStepDone, setEmailStepDone] = useState(false);
+  const [phoneStepDone, setPhoneStepDone] = useState(false);
+
+  // SMS step state — populated by the verify-email response
+  const [verifiedUserId, setVerifiedUserId] = useState<string | null>(null);
+  const [phoneStepToken, setPhoneStepToken] = useState<string | null>(null);
+  const [phoneMasked, setPhoneMasked] = useState<string | null>(null);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsCode, setSmsCode] = useState("");
+
   // Guard against React StrictMode double-fire and any unintended re-runs that
   // would consume the single-use token twice and produce "Lien invalide".
   const verifyAttempted = useRef(false);
@@ -46,7 +65,7 @@ function VerifyAccountInner() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: uid, token }),
         });
-        const data = (await res.json()) as { ok?: boolean; error?: string };
+        const data = (await res.json()) as VerifyEmailResponse;
         if (cancelled) return;
         if (!res.ok) {
           setError(
@@ -57,6 +76,13 @@ function VerifyAccountInner() {
           return;
         }
         setEmailStepDone(true);
+        setVerifiedUserId(data.userId ?? uid);
+        if (data.phoneAlreadyVerified) {
+          setPhoneStepDone(true);
+        } else if (data.phoneStepToken) {
+          setPhoneStepToken(data.phoneStepToken);
+          setPhoneMasked(data.phoneMasked ?? null);
+        }
       } catch {
         if (!cancelled) setError(t("errors.network"));
       } finally {
@@ -68,6 +94,68 @@ function VerifyAccountInner() {
       cancelled = true;
     };
   }, [uid, token, t]);
+
+  const sendSms = async () => {
+    if (!verifiedUserId || !phoneStepToken) return;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await fetch("/api/auth/account/send-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: verifiedUserId,
+          phoneStepToken,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setError(data.error || t("errors.sendSmsFailed"));
+        return;
+      }
+      setSmsSent(true);
+      setInfo(t("smsSent"));
+    } catch {
+      setError(t("errors.network"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifySms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifiedUserId || !phoneStepToken) return;
+    const code = smsCode.replace(/\D/g, "").slice(0, 6);
+    if (code.length !== 6) {
+      setError(t("errors.verifyPhoneFailed"));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const res = await fetch("/api/auth/account/verify-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: verifiedUserId,
+          phoneStepToken,
+          code,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setError(data.error || t("errors.verifyPhoneFailed"));
+        return;
+      }
+      setPhoneStepDone(true);
+    } catch {
+      setError(t("errors.network"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const resendVerificationEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +187,9 @@ function VerifyAccountInner() {
 
   const verifyLinkFailed = Boolean(uid && token && !emailStepDone && !busy && error);
   const showResendPanel = !emailStepDone && (!uid || !token || verifyLinkFailed);
+  const showPhoneStep =
+    emailStepDone && !phoneStepDone && Boolean(phoneStepToken);
+  const allDone = emailStepDone && phoneStepDone;
 
   return (
     <AuthContainer maxWidth="lg">
@@ -127,7 +218,7 @@ function VerifyAccountInner() {
           </div>
         ) : null}
 
-        {emailStepDone ? (
+        {allDone ? (
           <div className="space-y-4 text-center">
             <div className="flex justify-center">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
@@ -136,6 +227,73 @@ function VerifyAccountInner() {
             <Button asChild className="w-full">
               <Link href="/login">{t("goToLogin")}</Link>
             </Button>
+          </div>
+        ) : null}
+
+        {showPhoneStep ? (
+          <div className="space-y-6">
+            <div className="flex gap-3 rounded-lg border border-border/40 bg-muted/30 p-4">
+              <Smartphone className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+              <p className="text-sm text-muted-foreground font-light leading-relaxed">
+                {t("smsIntro", { phone: phoneMasked ?? "•••" })}
+              </p>
+            </div>
+
+            {!smsSent ? (
+              <Button onClick={sendSms} disabled={busy} className="w-full">
+                {busy ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("sending")}
+                  </>
+                ) : (
+                  t("sendSms")
+                )}
+              </Button>
+            ) : (
+              <form onSubmit={verifySms} className="space-y-4">
+                <div>
+                  <Label htmlFor="sms-code">{t("codeLabel")}</Label>
+                  <Input
+                    id="sms-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    value={smsCode}
+                    onChange={(e) =>
+                      setSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    className="mt-1.5 text-center tracking-[0.4em] text-lg"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={busy || smsCode.length !== 6}
+                  className="w-full"
+                >
+                  {busy ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("sending")}
+                    </>
+                  ) : (
+                    t("confirmSms")
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={sendSms}
+                  disabled={busy}
+                  className="w-full"
+                >
+                  {t("sendSms")}
+                </Button>
+              </form>
+            )}
           </div>
         ) : null}
 

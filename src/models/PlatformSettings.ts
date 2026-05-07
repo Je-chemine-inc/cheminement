@@ -56,6 +56,12 @@ export interface IEmailSettings {
   templates: Record<EmailNotificationType, IEmailTemplateConfig>;
 }
 
+export interface IPlatformContact {
+  physicalAddress: string;
+  phoneNumber: string;
+  supportEmail: string;
+}
+
 export interface IPlatformSettings extends Document {
   defaultPricing: {
     solo: number;
@@ -72,6 +78,7 @@ export interface IPlatformSettings extends Document {
   emailSettings: IEmailSettings;
   /** Courriel de dépôt Interac affiché aux clients (ex. paiements@domaine.com). */
   interacDepositEmail?: string;
+  platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -258,6 +265,15 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       type: String,
       trim: true,
       default: "",
+    },
+    platformContact: {
+      physicalAddress: { type: String, trim: true, default: "" },
+      phoneNumber: { type: String, trim: true, default: "" },
+      supportEmail: {
+        type: String,
+        trim: true,
+        default: "support@jechemine.ca",
+      },
     },
     emailSettings: {
       enabled: {

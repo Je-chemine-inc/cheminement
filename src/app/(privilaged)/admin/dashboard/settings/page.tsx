@@ -17,6 +17,7 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Building2,
 } from "lucide-react";
 
 interface EmailTemplateConfig {
@@ -39,6 +40,12 @@ interface EmailSettings {
   templates: Record<string, EmailTemplateConfig>;
 }
 
+interface PlatformContact {
+  physicalAddress: string;
+  phoneNumber: string;
+  supportEmail: string;
+}
+
 interface PlatformSettings {
   _id: string;
   defaultPricing: {
@@ -54,6 +61,7 @@ interface PlatformSettings {
     professionalCancellationHours: number;
   };
   emailSettings: EmailSettings;
+  platformContact?: PlatformContact;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,8 +71,32 @@ const EMAIL_TEMPLATE_INFO: Record<
   string,
   { name: string; description: string; category: string }
 > = {
+  service_request_onboarding: {
+    name: "Courriel de bienvenue (formulaire de demande)",
+    description:
+      "Envoyé automatiquement à un client lorsqu'il soumet le formulaire de demande pour lui-même ou un proche.",
+    category: "Bienvenue & Relances",
+  },
+  professional_approval: {
+    name: "Courriel de bienvenue professionnel (profil complété)",
+    description:
+      "Envoyé au professionnel une fois son profil approuvé / complété.",
+    category: "Bienvenue & Relances",
+  },
+  payment_guarantee_day1_reminder: {
+    name: "Relance — choix du mode de paiement (J+1)",
+    description:
+      "Relance envoyée le lendemain de l'inscription si le client n'a pas configuré de mode de paiement.",
+    category: "Bienvenue & Relances",
+  },
+  payment_guarantee_48h_client: {
+    name: "Relance — choix du mode de paiement (48 h avant la séance)",
+    description:
+      "Relance urgente envoyée 48 h avant la séance si le client n'a toujours pas configuré de mode de paiement.",
+    category: "Bienvenue & Relances",
+  },
   welcome: {
-    name: "Courriel de bienvenue",
+    name: "Courriel de bienvenue (création de compte)",
     description: "Envoyé lors de la création d'un nouveau compte",
     category: "Authentification",
   },
@@ -128,11 +160,6 @@ const EMAIL_TEMPLATE_INFO: Record<
     description: "Envoyé lorsque le lien de réunion est ajouté au rendez-vous",
     category: "Rendez-vous",
   },
-  professional_approval: {
-    name: "Approbation professionnel",
-    description: "Envoyé lorsque la candidature d'un professionnel est approuvée",
-    category: "Professionnels",
-  },
   professional_rejection: {
     name: "Refus de candidature professionnel",
     description: "Envoyé lorsque la candidature d'un professionnel est refusée",
@@ -141,6 +168,7 @@ const EMAIL_TEMPLATE_INFO: Record<
 };
 
 const TEMPLATE_CATEGORIES = [
+  "Bienvenue & Relances",
   "Authentification",
   "Rendez-vous",
   "Réservation invité",
@@ -156,7 +184,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(["Authentification", "Rendez-vous"]),
+    new Set(["Bienvenue & Relances", "Authentification", "Rendez-vous"]),
   );
 
   const fetchSettings = async () => {
@@ -199,6 +227,7 @@ export default function SettingsPage() {
           currency: settings.currency,
           cancellationPolicy: settings.cancellationPolicy,
           emailSettings: settings.emailSettings,
+          platformContact: settings.platformContact,
         }),
       });
 
@@ -244,6 +273,24 @@ export default function SettingsPage() {
       return {
         ...prev,
         [field]: value,
+      };
+    });
+  };
+
+  const updatePlatformContact = (
+    field: keyof PlatformContact,
+    value: string,
+  ) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const current = prev.platformContact || {
+        physicalAddress: "",
+        phoneNumber: "",
+        supportEmail: "",
+      };
+      return {
+        ...prev,
+        platformContact: { ...current, [field]: value },
       };
     });
   };
@@ -451,6 +498,75 @@ export default function SettingsPage() {
       )}
 
       <div className="space-y-6">
+        {/* Platform Contact / Configuration Section */}
+        <div className="rounded-xl bg-card p-6 border border-border/40">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-serif font-light text-foreground">
+              {t("platformContact")}
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground font-light mb-6">
+            {t("platformContactDescription")}
+          </p>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("physicalAddress")}
+              </label>
+              <input
+                type="text"
+                value={settings.platformContact?.physicalAddress ?? ""}
+                onChange={(e) =>
+                  updatePlatformContact("physicalAddress", e.target.value)
+                }
+                placeholder={t("physicalAddressPlaceholder")}
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("physicalAddressHelp")}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("phoneNumber")}
+              </label>
+              <input
+                type="tel"
+                value={settings.platformContact?.phoneNumber ?? ""}
+                onChange={(e) =>
+                  updatePlatformContact("phoneNumber", e.target.value)
+                }
+                placeholder={t("phoneNumberPlaceholder")}
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("phoneNumberHelp")}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("supportEmail")}
+              </label>
+              <input
+                type="email"
+                value={settings.platformContact?.supportEmail ?? ""}
+                onChange={(e) =>
+                  updatePlatformContact("supportEmail", e.target.value)
+                }
+                placeholder={t("supportEmailPlaceholder")}
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("supportEmailHelp")}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Default Pricing Section */}
         <div className="rounded-xl bg-card p-6 border border-border/40">
           <div className="flex items-center gap-2 mb-6">

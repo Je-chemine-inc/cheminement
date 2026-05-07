@@ -72,23 +72,54 @@ export default function ClientBillingPage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [managedAccountName, setManagedAccountName] = useState<string | null>(null);
+  const [preferredPaymentMethod, setPreferredPaymentMethod] = useState<
+    "interac" | "card" | "direct_debit" | "payment_plan" | null
+  >(null);
+  const [preferredIsExplicit, setPreferredIsExplicit] = useState(false);
 
   const t = useTranslations("Client.billing");
   const tManaged = useTranslations("managedAccounts");
   const router = useRouter();
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
+  const action = searchParams.get("action");
 
   // Fetch real appointments from API
   useEffect(() => {
     fetchAppointments();
     if (!accountId) {
       fetchPaymentMethods();
+      fetchPreferredPaymentMethod();
     }
     if (accountId) {
       fetchManagedAccountInfo();
     }
   }, [accountId]);
+
+  const fetchPreferredPaymentMethod = async () => {
+    try {
+      const me = await apiClient.get<{
+        preferredPaymentMethod?: "interac" | "card" | "direct_debit" | "payment_plan";
+      }>("/users/me");
+      setPreferredPaymentMethod(me.preferredPaymentMethod || "interac");
+      setPreferredIsExplicit(Boolean(me.preferredPaymentMethod));
+    } catch (err) {
+      console.error("Error fetching preferred payment method:", err);
+      setPreferredPaymentMethod("interac");
+      setPreferredIsExplicit(false);
+    }
+  };
+
+  // Deep-link: emails (e.g. jumelage-success) can land here with ?action=addPaymentMethod
+  // to drop the user straight into the payment-method-choice modal.
+  useEffect(() => {
+    if (action === "addPaymentMethod" && !accountId) {
+      setShowAddPaymentMethod(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("action");
+      router.replace(url.pathname + (url.search || ""));
+    }
+  }, [action, accountId, router]);
 
   const fetchReceipts = async () => {
     try {
@@ -387,6 +418,55 @@ export default function ClientBillingPage() {
           </div>
         </div>
       </div>
+
+      {/* Chosen Payment Method (always visible) */}
+      {!accountId && (
+        <section className="rounded-3xl border border-border/20 bg-card/80 p-6 shadow-lg">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-primary/10 p-3">
+                {preferredPaymentMethod === "interac" ? (
+                  <Landmark className="h-5 w-5 text-primary" />
+                ) : preferredPaymentMethod === "card" ? (
+                  <CreditCard className="h-5 w-5 text-primary" />
+                ) : preferredPaymentMethod === "direct_debit" ? (
+                  <Landmark className="h-5 w-5 text-primary" />
+                ) : (
+                  <FileText className="h-5 w-5 text-primary" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {t("chosenPaymentMethod")}
+                </p>
+                <p className="text-lg font-medium text-foreground">
+                  {preferredPaymentMethod === "interac"
+                    ? t("methodInterac")
+                    : preferredPaymentMethod === "card"
+                    ? t("methodCard")
+                    : preferredPaymentMethod === "direct_debit"
+                    ? t("methodDirectDebit")
+                    : preferredPaymentMethod === "payment_plan"
+                    ? t("methodPaymentPlan")
+                    : t("methodInterac")}
+                  {!preferredIsExplicit && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      ({t("methodDefault")})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setShowAddPaymentMethod(true)}
+            >
+              {t("changeMethod")}
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Payment Methods Section */}
       <section className="rounded-3xl border border-border/20 bg-card/80 p-7 shadow-lg">

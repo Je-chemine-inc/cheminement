@@ -12,8 +12,19 @@ import {
   Clock,
   AlertCircle,
   RefreshCw,
+  Flag,
 } from "lucide-react";
 import Link from "next/link";
+
+interface PaymentFlag {
+  appointmentId: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  professionalName: string | null;
+  sessionAt: string | null;
+  hoursUntilSession: number | null;
+}
 
 interface DashboardData {
   stats: {
@@ -41,6 +52,7 @@ interface DashboardData {
     revenue: number;
   }>;
   pendingApprovals: number;
+  paymentFlags?: PaymentFlag[];
 }
 
 export default function AdminDashboardPage() {
@@ -181,6 +193,7 @@ export default function AdminDashboardPage() {
   if (!dashboardData) return null;
 
   const { stats, recentActivity, topProfessionals } = dashboardData;
+  const paymentFlags = dashboardData.paymentFlags ?? [];
 
   return (
     <div className="space-y-6">
@@ -292,6 +305,77 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {paymentFlags.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50/50 p-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-red-100 p-2">
+                <Flag className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-serif font-light text-red-900">
+                  {t("paymentFlags.title")}
+                </h2>
+                <p className="text-sm font-light text-red-700/80 mt-1">
+                  {t("paymentFlags.subtitle", { count: paymentFlags.length })}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {paymentFlags.slice(0, 8).map((flag) => {
+              const sessionLabel = flag.sessionAt
+                ? new Date(flag.sessionAt).toLocaleString("fr-CA", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "—";
+              return (
+                <Link
+                  key={flag.appointmentId}
+                  href={`/admin/dashboard/patients/${flag.clientId}`}
+                  className="flex items-center justify-between gap-4 rounded-lg bg-white/70 border border-red-100 px-4 py-3 hover:bg-white transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Flag className="h-4 w-4 text-red-600 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {flag.clientName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {flag.professionalName
+                          ? `${t("paymentFlags.with")} ${flag.professionalName} · `
+                          : ""}
+                        {sessionLabel}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-medium text-red-700 bg-red-100 rounded-full px-2 py-1">
+                      {flag.hoursUntilSession !== null
+                        ? t("paymentFlags.hoursLeft", {
+                            hours: flag.hoursUntilSession,
+                          })
+                        : t("paymentFlags.urgent")}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          {paymentFlags.length > 8 && (
+            <p className="text-xs text-red-700/70 mt-3 font-light">
+              {t("paymentFlags.moreCount", {
+                count: paymentFlags.length - 8,
+              })}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl bg-card p-6 border border-border/40">

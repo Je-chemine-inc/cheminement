@@ -4,6 +4,8 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
+import { getAppointmentStartAt } from "@/lib/appointment-start";
+import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 
 export async function GET() {
   try {
@@ -193,6 +195,96 @@ export async function GET() {
       status: "pending",
     });
 
+    // Payment-method flags: clients with an upcoming session within 48h who
+    // have not configured a payment method (card / PAD / approved Interac).
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
+    const upcomingCutoff = new Date(now.getTime() + TWO_DAYS_MS);
+    const upcomingForFlags = await Appointment.find({
+      status: "scheduled",
+      $or: [
+        { scheduledStartAt: { $gte: now, $lte: upcomingCutoff } },
+        { date: { $gte: now, $lte: upcomingCutoff } },
+      ],
+    })
+      .populate("clientId", "firstName lastName email paymentGuaranteeStatus paymentGuaranteeSource")
+      .populate("professionalId", "firstName lastName")
+      .lean();
+
+    const flagSeenClients = new Set<string>();
+    const paymentFlags: Array<{
+      appointmentId: string;
+      clientId: string;
+      clientName: string;
+      clientEmail: string;
+      professionalName: string | null;
+      sessionAt: string | null;
+      hoursUntilSession: number | null;
+    }> = [];
+
+    for (const apt of upcomingForFlags) {
+      const start = getAppointmentStartAt({
+        date: apt.date as Date | undefined,
+        time: apt.time as string | undefined,
+        scheduledStartAt: apt.scheduledStartAt as Date | undefined,
+      });
+      if (!start) continue;
+      const msUntil = start.getTime() - now.getTime();
+      if (msUntil < 0 || msUntil > TWO_DAYS_MS) continue;
+
+      const clientPop = apt.clientId as unknown as {
+        _id: { toString: () => string };
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        paymentGuaranteeStatus?: string;
+        paymentGuaranteeSource?: string;
+      } | null;
+      if (!clientPop) continue;
+      const clientIdStr = clientPop._id.toString();
+      if (flagSeenClients.has(clientIdStr)) continue;
+
+      const lacks = clientLacksPaymentGuaranteeForAppointment(
+        apt as { payment?: { stripePaymentMethodId?: string; method?: string } },
+        {
+          paymentGuaranteeStatus: clientPop.paymentGuaranteeStatus,
+          paymentGuaranteeSource: clientPop.paymentGuaranteeSource,
+        } as never,
+      );
+      if (!lacks) continue;
+
+      flagSeenClients.add(clientIdStr);
+
+      const professionalPop = apt.professionalId as unknown as {
+        firstName?: string;
+        lastName?: string;
+      } | null;
+      const professionalName = professionalPop
+        ? [professionalPop.firstName, professionalPop.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || null
+        : null;
+
+      paymentFlags.push({
+        appointmentId: (apt._id as { toString: () => string }).toString(),
+        clientId: clientIdStr,
+        clientName:
+          [clientPop.firstName, clientPop.lastName].filter(Boolean).join(" ").trim() ||
+          clientPop.email ||
+          clientIdStr,
+        clientEmail: clientPop.email || "",
+        professionalName,
+        sessionAt: start.toISOString(),
+        hoursUntilSession: Math.max(0, Math.round(msUntil / (60 * 60 * 1000))),
+      });
+    }
+
+    paymentFlags.sort((a, b) => {
+      const aH = a.hoursUntilSession ?? Number.POSITIVE_INFINITY;
+      const bH = b.hoursUntilSession ?? Number.POSITIVE_INFINITY;
+      return aH - bH;
+    });
+
     if (pendingProfessionals > 0) {
       recentActivity.unshift({
         id: "pending_professionals",
@@ -218,6 +310,7 @@ export async function GET() {
       recentActivity,
       topProfessionals: topProfessionalsData,
       pendingApprovals: pendingProfessionals,
+      paymentFlags,
     };
 
     return NextResponse.json(dashboardData);

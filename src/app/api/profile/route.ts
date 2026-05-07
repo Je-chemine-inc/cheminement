@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Profile from "@/models/Profile";
+import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
 import { LEGAL_VERSIONS } from "@/lib/legal";
+import { sendProfessionalProfileCompletedEmail } from "@/lib/notifications";
 
 export async function GET() {
   try {
@@ -66,11 +68,43 @@ export async function PUT(req: NextRequest) {
       update.profileCompleted = true;
     }
 
+    const wasAlreadyCompleted = Boolean(existing?.profileCompleted);
+
     const profile = await Profile.findOneAndUpdate(
       { userId: session.user.id },
       update,
       { new: true, upsert: true },
     );
+
+    // First-time profile completion → send welcome / "admin will reach out" email.
+    // Idempotent because we only fire on the false→true transition.
+    if (
+      !wasAlreadyCompleted &&
+      profile?.profileCompleted &&
+      session.user.role === "professional"
+    ) {
+      void (async () => {
+        try {
+          const user = await User.findById(session.user.id)
+            .select("firstName lastName email")
+            .lean();
+          if (user?.email) {
+            await sendProfessionalProfileCompletedEmail({
+              name:
+                `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                "Professionnel(le)",
+              email: user.email,
+              role: "professional",
+            });
+          }
+        } catch (err) {
+          console.error(
+            "sendProfessionalProfileCompletedEmail failed:",
+            err,
+          );
+        }
+      })();
+    }
 
     return NextResponse.json(profile);
   } catch (error: unknown) {

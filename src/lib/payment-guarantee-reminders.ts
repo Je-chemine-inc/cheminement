@@ -50,7 +50,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
 }> {
   await connectToDatabase();
   const now = Date.now();
-  const billingUrl = `${getBaseUrl()}/client/dashboard/billing`;
+  const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
 
   let day1Sent = 0;
   let h48ClientSent = 0;

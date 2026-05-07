@@ -55,6 +55,11 @@ export interface IUser extends Document {
   paymentGuaranteeStatus?: "none" | "pending_admin" | "green";
   /** Origine du statut vert : carte/PAD Stripe ou entente Interac validée par l’admin. */
   paymentGuaranteeSource?: "stripe" | "interac_trust";
+  /**
+   * Mode de paiement choisi par le client (visible profil + admin).
+   * Défaut implicite : "interac" si non défini.
+   */
+  preferredPaymentMethod?: "interac" | "card" | "direct_debit" | "payment_plan";
   stripeConnectAccountId?: string; // For professionals to receive payouts
   guardianId?: mongoose.Types.ObjectId; // Reference to parent/guardian User (for minors)
   accountManagerId?: mongoose.Types.ObjectId; // Alias for guardianId (same field, different name for clarity)
@@ -164,6 +169,10 @@ const UserSchema = new Schema<IUser>(
     paymentGuaranteeSource: {
       type: String,
       enum: ["stripe", "interac_trust"],
+    },
+    preferredPaymentMethod: {
+      type: String,
+      enum: ["interac", "card", "direct_debit", "payment_plan"],
     },
     stripeConnectAccountId: String, // For professionals to receive payouts
     guardianId: {

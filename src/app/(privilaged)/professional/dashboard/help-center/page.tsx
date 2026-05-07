@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { HelpCircle } from "lucide-react";
+import FaqList from "@/components/faqs/FaqList";
 
 export default function HelpCenterPage() {
   const t = useTranslations("Dashboard.helpCenter");
@@ -34,16 +35,21 @@ export default function HelpCenterPage() {
         <p className="text-sm text-muted-foreground mb-4">
           {t("faqDescription")}
         </p>
-        <ul className="space-y-4">
-          <li className="border-b border-border/20 pb-4">
-            <h3 className="font-medium text-foreground">{t("faq1.question")}</h3>
-            <p className="text-sm text-muted-foreground">{t("faq1.answer")}</p>
-          </li>
-          <li className="border-b border-border/20 pb-4">
-            <h3 className="font-medium text-foreground">{t("faq2.question")}</h3>
-            <p className="text-sm text-muted-foreground">{t("faq2.answer")}</p>
-          </li>
-        </ul>
+        <FaqList
+          audience="professional"
+          fallback={
+            <ul className="space-y-4">
+              <li className="border-b border-border/20 pb-4">
+                <h3 className="font-medium text-foreground">{t("faq1.question")}</h3>
+                <p className="text-sm text-muted-foreground">{t("faq1.answer")}</p>
+              </li>
+              <li className="border-b border-border/20 pb-4">
+                <h3 className="font-medium text-foreground">{t("faq2.question")}</h3>
+                <p className="text-sm text-muted-foreground">{t("faq2.answer")}</p>
+              </li>
+            </ul>
+          }
+        />
       </section>
     </div>
   );

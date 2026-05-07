@@ -18,6 +18,9 @@ import {
   Inbox,
   FileText,
   Tags,
+  HelpCircle,
+  Library,
+  MessageSquare,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -51,6 +54,11 @@ export function AdminSidebar() {
           title: t("overview"),
           url: "/admin/dashboard",
           icon: Home,
+        },
+        {
+          title: t("messages"),
+          url: "/admin/dashboard/messages",
+          icon: MessageSquare,
         },
       ],
     },
@@ -101,6 +109,16 @@ export function AdminSidebar() {
           title: t("motifs"),
           url: "/admin/dashboard/motifs",
           icon: Tags,
+        },
+        {
+          title: t("faqs"),
+          url: "/admin/dashboard/faqs",
+          icon: HelpCircle,
+        },
+        {
+          title: t("library"),
+          url: "/admin/dashboard/library",
+          icon: Library,
         },
       ],
     },

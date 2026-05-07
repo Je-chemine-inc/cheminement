@@ -82,6 +82,7 @@ export async function GET(
         language: user.language || "fr",
         paymentGuaranteeStatus: user.paymentGuaranteeStatus || "none",
         paymentGuaranteeSource: user.paymentGuaranteeSource || null,
+        preferredPaymentMethod: user.preferredPaymentMethod || "interac",
         stripeCustomerId: user.stripeCustomerId || null,
         stripeConnectAccountId: user.stripeConnectAccountId || null,
         professionalLicenseStatus: user.professionalLicenseStatus || "not_applicable",

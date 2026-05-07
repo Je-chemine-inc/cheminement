@@ -91,11 +91,11 @@ export default function SessionDetailsPage() {
         setRescheduleDate(response.date.split("T")[0]);
         setRescheduleTime(response.time);
 
-        // Initialize timer if session is already ongoing
-        // Always count from scheduledStartAt (server-derived), not from "now"
-        if (response.status === "ongoing") {
+        // Initialize timer if session is already ongoing.
+        // Counts from scheduledStartAt (server-derived), capped at session
+        // duration so abandoned/forgotten sessions don't show runaway times.
+        if (response.status === "ongoing" && !response.sessionCompletedAt) {
           try {
-            // scheduledStartAt is a full ISO datetime string from backend
             const startSource = response.scheduledStartAt || response.date;
             const start = new Date(startSource);
             if (!isNaN(start.getTime())) {
@@ -104,7 +104,12 @@ export default function SessionDetailsPage() {
                 0,
                 Math.floor((now.getTime() - start.getTime()) / 1000),
               );
-              setElapsedSeconds(diffSeconds);
+              const durationSeconds = (response.duration || 0) * 60;
+              const capped =
+                durationSeconds > 0
+                  ? Math.min(diffSeconds, durationSeconds)
+                  : diffSeconds;
+              setElapsedSeconds(capped);
             } else {
               setElapsedSeconds(0);
             }
@@ -123,14 +128,6 @@ export default function SessionDetailsPage() {
     fetchAppointment();
   }, [sessionId]);
 
-  // Start timer helper
-  const startTimer = () => {
-    if (timerRef.current) return;
-    timerRef.current = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
-  };
-
   // Stop timer helper
   const stopTimer = () => {
     if (timerRef.current) {
@@ -139,7 +136,10 @@ export default function SessionDetailsPage() {
     }
   };
 
-  // Manage timer lifecycle based on appointment status
+  // Manage timer lifecycle based on appointment status.
+  // The timer must stop once the session ends — either explicitly closed
+  // (sessionCompletedAt set / status no longer "ongoing") or once the planned
+  // duration has elapsed, so the counter doesn't run forever on forgotten sessions.
   useEffect(() => {
     if (!appointment) {
       stopTimer();
@@ -147,12 +147,28 @@ export default function SessionDetailsPage() {
       return;
     }
 
-    if (appointment.status === "ongoing") {
-      startTimer();
-    } else {
+    const isLive =
+      appointment.status === "ongoing" && !appointment.sessionCompletedAt;
+
+    if (!isLive) {
       stopTimer();
       setElapsedSeconds(0);
+      return;
     }
+
+    const durationSeconds = (appointment.duration || 0) * 60;
+    const cap = durationSeconds > 0 ? durationSeconds : Infinity;
+
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => {
+        const next = prev + 1;
+        if (next >= cap) {
+          stopTimer();
+          return cap;
+        }
+        return next;
+      });
+    }, 1000);
 
     return () => {
       stopTimer();

@@ -6,6 +6,7 @@ import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
 import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
+import { getAllowedRecipientIds } from "@/lib/messaging-permissions";
 
 // GET /api/messages — list my conversations (inbox)
 export async function GET() {
@@ -61,9 +62,24 @@ export async function POST(req: NextRequest) {
 
   await connectToDatabase();
 
+  if (!mongoose.Types.ObjectId.isValid(recipientId)) {
+    return NextResponse.json({ error: "Invalid recipient" }, { status: 400 });
+  }
+
   const recipient = await User.findById(recipientId).select("_id").lean();
   if (!recipient) {
     return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+  }
+
+  const allowedIds = await getAllowedRecipientIds(
+    session.user.id,
+    session.user.role as string,
+  );
+  if (!allowedIds.has(recipientId)) {
+    return NextResponse.json(
+      { error: "You are not allowed to message this recipient" },
+      { status: 403 },
+    );
   }
 
   const senderId = new mongoose.Types.ObjectId(session.user.id);

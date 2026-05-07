@@ -667,6 +667,51 @@ export async function sendWelcomeEmail(
   return sendEmail({ to: data.email, subject, html, text }, "welcome");
 }
 
+export async function sendProfessionalProfileCompletedEmail(
+  data: WelcomeEmailData,
+): Promise<boolean> {
+  const branding = await getBranding();
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard`;
+
+  const html = buildEmailHtml({
+    title: "Bienvenue dans l'équipe Je chemine !",
+    subtitle: "Profil complété — un administrateur prendra contact avec vous",
+    theme: "success",
+    greeting: `Bonjour ${data.name},`,
+    intro:
+      "C'est un réel plaisir de vous compter parmi nos nouveaux collaborateurs ! Votre expertise est une valeur précieuse pour notre communauté, et nous avons hâte de vous voir accompagner vos futurs clients via la plateforme Je chemine.",
+    infoBox: {
+      title: "🌟 Prochaine étape : activation de votre compte",
+      content:
+        "Pour garantir la qualité de notre réseau et assurer une expérience optimale pour tous, un administrateur communiquera avec vous très bientôt. Cet échange rapide permettra de valider les derniers détails et de rendre votre profil officiellement actif sur la plateforme afin que vous puissiez commencer à recevoir des demandes.",
+      theme: "info",
+    },
+    button: { text: "Accéder au tableau de bord", url: dashboardUrl },
+    outro:
+      "✅ Un profil évolutif que vous pouvez modifier à votre guise — vous pourrez l'ajuster, l'enrichir ou modifier vos disponibilités en tout temps, même une fois votre compte activé.\n\nChaleureusement,\nL'équipe de Je chemine",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Bienvenue dans l'équipe Je chemine !",
+    `Bonjour ${data.name},`,
+    "C'est un réel plaisir de vous compter parmi nos nouveaux collaborateurs ! Votre expertise est une valeur précieuse pour notre communauté, et nous avons hâte de vous voir accompagner vos futurs clients via la plateforme Je chemine.",
+    "Prochaine étape : activation de votre compte",
+    "Pour garantir la qualité de notre réseau et assurer une expérience optimale pour tous, un administrateur communiquera avec vous très bientôt. Cet échange rapide permettra de valider les derniers détails et de rendre votre profil officiellement actif sur la plateforme afin que vous puissiez commencer à recevoir des demandes.",
+    "Un profil évolutif que vous pouvez modifier à votre guise — vous pourrez l'ajuster, l'enrichir ou modifier vos disponibilités en tout temps, même une fois votre compte activé.",
+    `Tableau de bord : ${dashboardUrl}`,
+    "Chaleureusement,",
+    "L'équipe de Je chemine",
+  ]);
+
+  const subject = await getSubject(
+    "welcome",
+    "Bienvenue dans l'équipe Je chemine !",
+  );
+
+  return sendEmail({ to: data.email, subject, html, text }, "welcome");
+}
+
 export async function sendPasswordResetEmail(
   data: PasswordResetEmailData,
 ): Promise<boolean> {
@@ -1126,10 +1171,12 @@ export async function sendServiceRequestOnboardingEmail(data: {
       : "Complete your profile to speed up your matching.",
   ]);
 
-  const subject =
+  const subject = await getSubject(
+    "service_request_onboarding",
     lang === "fr"
       ? "Merci pour votre demande — Je Chemine"
-      : "Thank you for your request — Je Chemine";
+      : "Thank you for your request — Je Chemine",
+  );
 
   return sendEmail(
     { to: data.toEmail, subject, html, text },
@@ -2257,7 +2304,7 @@ export async function sendJumelageSuccessEmail(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const billingUrl = `${base}/client/dashboard/billing`;
+  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
 
   const title =
     lang === "fr"
@@ -2342,7 +2389,7 @@ export async function sendPostMeetingPaymentReminder(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const billingUrl = `${base}/client/dashboard/billing`;
+  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
 
   const intro =
     lang === "fr"

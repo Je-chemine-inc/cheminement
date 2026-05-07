@@ -291,7 +291,7 @@ export const appointmentsAPI = {
   completeSession: (
     id: string,
     data: {
-      sessionActNature: string;
+      sessionActNature?: string;
       sessionActNatureOther?: string;
       sessionOutcome: string;
       nextAppointmentDate?: string;

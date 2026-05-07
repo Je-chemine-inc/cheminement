@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\merie\\\\cheminement\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\merie\\\\cheminement\" -Depth 1)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(tee c:/Users/merie/cheminement/.tsc-out.txt)",
+      "Bash(echo \"---EXIT:$?---\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx --no-install tsc --noEmit -p tsconfig.json)",
+      "Bash(tee tsc_output.txt)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json)",
+      "Bash(echo \"---exit:$?\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\merie\\.claude\\projects\\c--Users-merie-cheminement\\memory"
+    ]
+  }
+}

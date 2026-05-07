@@ -53,7 +53,7 @@ export async function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/explore" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
+                <Link href="/book#resources" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
                   {t("exploreResources")}
                 </Link>
               </li>

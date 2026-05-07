@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Calendar,
   Clock,
+  CreditCard,
   MapPin,
   Video,
   Phone,
@@ -26,7 +27,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { appointmentsAPI, apiClient } from "@/lib/api-client";
-import { CancelAppointmentDialog, ReviewDialog } from "@/components/appointments";
+import {
+  CancelAppointmentDialog,
+  ReviewDialog,
+  RequestNextAppointmentModal,
+} from "@/components/appointments";
 import Link from "next/link";
 import type { AppointmentResponse } from "@/types/api";
 
@@ -43,6 +48,7 @@ export default function ClientAppointmentsPage() {
     useState<AppointmentResponse | null>(null);
   const [managedAccountName, setManagedAccountName] = useState<string | null>(null);
   const [rescheduleInfoId, setRescheduleInfoId] = useState<string | null>(null);
+  const [showRequestNextModal, setShowRequestNextModal] = useState(false);
   const t = useTranslations("Client.appointments");
   const tManaged = useTranslations("managedAccounts");
   const locale = useLocale();
@@ -132,6 +138,15 @@ export default function ClientAppointmentsPage() {
     return false;
   };
 
+  // The appointment is fully secured for joining only when a payment method exists
+  // (or the session is already paid). When neither is true we still display the
+  // appointment, but with an "Awaiting payment" notice instead of hiding actions.
+  const isAwaitingPayment = (appointment: AppointmentResponse): boolean => {
+    if (appointment.status !== "scheduled") return false;
+    if (appointment.payment.status === "paid") return false;
+    return !appointment.payment.stripePaymentMethodId;
+  };
+
   const canModifyAppointment = (appointment: AppointmentResponse): boolean => {
     if (!appointment.date || !appointment.time) return false;
     const [hours, minutes] = appointment.time.split(":").map(Number);
@@ -184,6 +199,28 @@ export default function ClientAppointmentsPage() {
 
   const currentAppointments =
     activeTab === "upcoming" ? upcomingAppointments : pastAppointments;
+
+  // Identify the client's current professional from the most recent matched appointment.
+  // Used to surface the "request another session with [pro]" button.
+  const currentProfessional = (() => {
+    const matched = appointments
+      .filter(
+        (a) =>
+          a.professionalId &&
+          ["scheduled", "completed", "ongoing"].includes(a.status),
+      )
+      .sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db = b.date ? new Date(b.date).getTime() : 0;
+        return db - da;
+      });
+    const latest = matched[0];
+    if (!latest?.professionalId) return null;
+    const fullName = `${latest.professionalId.firstName ?? ""} ${
+      latest.professionalId.lastName ?? ""
+    }`.trim();
+    return fullName ? { name: fullName, duration: latest.duration } : null;
+  })();
 
   const getModalityIcon = (type: string) => {
     switch (type) {
@@ -265,12 +302,29 @@ export default function ClientAppointmentsPage() {
               : t("subtitle")}
           </p>
         </div>
-        <Button asChild className="gap-2 rounded-full">
-          <Link href="/appointment">
-            <Calendar className="h-4 w-4" />
-            {t("requestNew")}
-          </Link>
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          {currentProfessional ? (
+            <Button
+              onClick={() => setShowRequestNextModal(true)}
+              className="gap-2 rounded-full"
+            >
+              <Calendar className="h-4 w-4" />
+              {t("requestNew")}
+            </Button>
+          ) : (
+            <Button asChild className="gap-2 rounded-full">
+              <Link href="/appointment">
+                <Calendar className="h-4 w-4" />
+                {t("requestNew")}
+              </Link>
+            </Button>
+          )}
+          <Button asChild variant="outline" className="gap-2 rounded-full">
+            <Link href="/appointment">
+              {t("requestWithOtherPro")}
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -323,7 +377,11 @@ export default function ClientAppointmentsPage() {
           </h3>
           {activeTab === "upcoming" && (
             <Button
-              onClick={() => router.push("/appointment")}
+              onClick={() =>
+                currentProfessional
+                  ? setShowRequestNextModal(true)
+                  : router.push("/appointment")
+              }
               className="mt-6 gap-2 rounded-full"
             >
               <Calendar className="h-4 w-4" />
@@ -366,6 +424,12 @@ export default function ClientAppointmentsPage() {
                         >
                           {appointmentStatusLabel(appointment.status)}
                         </span>
+                        {activeTab === "upcoming" &&
+                          isAwaitingPayment(appointment) && (
+                            <span className="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                              {t("awaitingPayment.badge")}
+                            </span>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -468,6 +532,32 @@ export default function ClientAppointmentsPage() {
                         )}
                     </div>
 
+                    {/* Awaiting payment notice */}
+                    {activeTab === "upcoming" &&
+                      isAwaitingPayment(appointment) && (
+                        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/40 dark:bg-amber-950/20">
+                          <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <div className="flex-1 space-y-2">
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                              {t("awaitingPayment.title")}
+                            </p>
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                              {t("awaitingPayment.message")}
+                            </p>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-950/40"
+                            >
+                              <Link href="/client/dashboard/billing?action=addPaymentMethod">
+                                {t("awaitingPayment.addPaymentMethod")}
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
                     {/* 48h lock alert */}
                     {activeTab === "upcoming" &&
                       appointment.status === "scheduled" &&
@@ -546,6 +636,16 @@ export default function ClientAppointmentsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {currentProfessional && (
+        <RequestNextAppointmentModal
+          open={showRequestNextModal}
+          onOpenChange={setShowRequestNextModal}
+          professionalName={currentProfessional.name}
+          defaultDuration={currentProfessional.duration}
+          onCreated={fetchAppointments}
+        />
       )}
 
       {/* Cancel Appointment Dialog */}

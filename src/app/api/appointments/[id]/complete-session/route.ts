@@ -57,18 +57,6 @@ export async function POST(
     const nextAppointmentTime = body.nextAppointmentTime as string | undefined;
 
     if (
-      !sessionActNature ||
-      !SESSION_ACT_NATURE_VALUES.includes(
-        sessionActNature as SessionActNature,
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Invalid or missing sessionActNature" },
-        { status: 400 },
-      );
-    }
-
-    if (
       !sessionOutcome ||
       !SESSION_OUTCOME_VALUES.includes(sessionOutcome as SessionOutcome)
     ) {
@@ -79,6 +67,32 @@ export async function POST(
     }
 
     const outcome = sessionOutcome as SessionOutcome;
+
+    // sessionActNature is required EXCEPT for no-show / late cancellation,
+    // where the invoice is automatically labelled "Frais de gestion de dossier"
+    // and no clinical act was performed.
+    const isNoShowClosure = outcome === "absence_or_late_cancel";
+    if (!isNoShowClosure) {
+      if (
+        !sessionActNature ||
+        !SESSION_ACT_NATURE_VALUES.includes(
+          sessionActNature as SessionActNature,
+        )
+      ) {
+        return NextResponse.json(
+          { error: "Invalid or missing sessionActNature" },
+          { status: 400 },
+        );
+      }
+    } else if (
+      sessionActNature &&
+      !SESSION_ACT_NATURE_VALUES.includes(sessionActNature as SessionActNature)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid sessionActNature" },
+        { status: 400 },
+      );
+    }
     const nextAt = parseNextAppointmentAt(
       nextAppointmentDate,
       nextAppointmentTime,
@@ -154,63 +168,40 @@ export async function POST(
     let stripeChargePaymentIntentId: string | undefined;
     let interacRefToSet: string | undefined;
 
+    // Tracks whether closure had to skip the auto-charge so the caller can
+    // surface a soft warning ("billing profile incomplete — invoice is pending").
+    let chargeSkippedReason: string | undefined;
+
     if (billableForPayment) {
       const payMethod = apt.payment.method || "card";
       if (payMethod === "card" || payMethod === "direct_debit") {
         const clientUser = await User.findById(apt.clientId);
         if (!clientUser?.stripeCustomerId) {
-          return NextResponse.json(
-            {
-              error:
-                "Profil de facturation du client introuvable. Le client doit enregistrer une carte ou un PAD avant la clôture.",
-            },
-            { status: 400 },
-          );
-        }
-        if (!apt.payment.stripePaymentMethodId) {
-          return NextResponse.json(
-            {
-              error:
-                "Aucun moyen de paiement enregistré pour ce rendez-vous. Le client doit compléter la garantie de paiement.",
-            },
-            { status: 400 },
-          );
-        }
-        try {
-          const { paymentIntentId } =
-            await chargeSavedPaymentMethodAfterSession({
-              appointmentId: id,
-              customerId: clientUser.stripeCustomerId,
-              encryptedPaymentMethodId: apt.payment.stripePaymentMethodId,
-              amountCad: price,
-              method: payMethod,
-            });
-          stripeChargePaymentIntentId = paymentIntentId;
-          paymentStatus = "paid";
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
-          if (msg === "PAYMENT_REQUIRES_ACTION") {
-            return NextResponse.json(
-              {
-                error:
-                  "Le paiement nécessite une action du client (authentification). Invitez-le à payer depuis Facturation.",
-              },
-              { status: 402 },
-            );
+          // Soft-skip: allow closure to proceed; invoice stays pending.
+          paymentStatus = "pending";
+          chargeSkippedReason = "MISSING_BILLING_PROFILE";
+        } else if (!apt.payment.stripePaymentMethodId) {
+          paymentStatus = "pending";
+          chargeSkippedReason = "MISSING_PAYMENT_METHOD";
+        } else {
+          try {
+            const { paymentIntentId } =
+              await chargeSavedPaymentMethodAfterSession({
+                appointmentId: id,
+                customerId: clientUser.stripeCustomerId,
+                encryptedPaymentMethodId: apt.payment.stripePaymentMethodId,
+                amountCad: price,
+                method: payMethod,
+              });
+            stripeChargePaymentIntentId = paymentIntentId;
+            paymentStatus = "paid";
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            // Auto-charge failure no longer blocks closure — leave invoice
+            // pending and surface a warning so the professional knows.
+            paymentStatus = "pending";
+            chargeSkippedReason = msg || "CHARGE_FAILED";
           }
-          if (msg === "MISSING_PAYMENT_METHOD") {
-            return NextResponse.json(
-              {
-                error:
-                  "Moyen de paiement manquant. Le client doit enregistrer une carte ou un PAD.",
-              },
-              { status: 400 },
-            );
-          }
-          return NextResponse.json(
-            { error: `Échec du prélèvement : ${msg}` },
-            { status: 402 },
-          );
         }
       } else if (payMethod === "transfer") {
         interacRefToSet =
@@ -228,14 +219,21 @@ export async function POST(
 
     const $set: Record<string, unknown> = {
       status: newStatus,
-      sessionActNature,
       sessionOutcome: outcome,
       sessionCompletedAt: now,
       "payment.listPrice": apt.payment.listPrice ?? listPrice,
     };
 
+    if (sessionActNature) {
+      $set.sessionActNature = sessionActNature;
+    } else if (isNoShowClosure) {
+      $set.sessionActNature = "";
+    }
+
     if (sessionActNatureOther?.trim()) {
       $set.sessionActNatureOther = sessionActNatureOther.trim();
+    } else if (isNoShowClosure) {
+      $set.sessionActNatureOther = "Frais de gestion de dossier";
     }
 
     if (!paymentLocked) {
@@ -300,7 +298,19 @@ export async function POST(
       .populate("clientId", "firstName lastName email phone location")
       .populate("professionalId", "firstName lastName email phone");
 
-    return NextResponse.json(finalDoc ?? updated);
+    const responseDoc = finalDoc ?? updated;
+    if (chargeSkippedReason) {
+      const responseObj =
+        typeof (responseDoc as { toObject?: () => unknown }).toObject ===
+        "function"
+          ? (responseDoc as { toObject: () => Record<string, unknown> }).toObject()
+          : (responseDoc as unknown as Record<string, unknown>);
+      return NextResponse.json({
+        ...responseObj,
+        chargeSkippedReason,
+      });
+    }
+    return NextResponse.json(responseDoc);
   } catch (error: unknown) {
     console.error("complete-session error:", error);
     return NextResponse.json(

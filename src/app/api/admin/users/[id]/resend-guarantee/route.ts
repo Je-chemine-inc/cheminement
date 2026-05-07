@@ -39,7 +39,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const billingUrl = `${getBaseUrl()}/client/dashboard/billing`;
+    const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
 
     await sendPaymentGuaranteeDay1Reminder({
       clientName: `${user.firstName} ${user.lastName}`,

@@ -5,6 +5,8 @@ import User from "@/models/User";
 import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
 import {
   EMAIL_VERIFY_TTL_MS,
+  PHONE_STEP_TTL_MS,
+  generatePhoneStepToken,
   hashVerificationSecret,
 } from "@/lib/account-init";
 
@@ -44,38 +46,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non trouvé" }, { status: 404 });
     }
 
-    if (!user.verificationEmailTokenHash || !user.verificationEmailExpires) {
-      // If the email was already verified, treat re-clicks of the link as success
-      // (handles double-click, refresh, or re-opening the email after first use).
-      if (user.emailVerified) {
-        return NextResponse.json({ ok: true, alreadyVerified: true });
+    const isReclick =
+      Boolean(user.emailVerified) &&
+      (!user.verificationEmailTokenHash || !user.verificationEmailExpires);
+
+    if (!isReclick) {
+      if (!user.verificationEmailTokenHash || !user.verificationEmailExpires) {
+        return NextResponse.json(
+          { error: "Lien invalide ou déjà utilisé" },
+          { status: 400 },
+        );
       }
-      return NextResponse.json(
-        { error: "Lien invalide ou déjà utilisé" },
-        { status: 400 },
-      );
+
+      if (user.verificationEmailExpires.getTime() < Date.now()) {
+        return NextResponse.json(
+          {
+            error: `Ce lien a expiré (${EMAIL_VERIFY_TTL_MS / 60000} min). Demandez un nouveau courriel.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      const expected = hashVerificationSecret(token);
+      if (!safeEqualHex(expected, user.verificationEmailTokenHash)) {
+        return NextResponse.json({ error: "Lien invalide" }, { status: 400 });
+      }
+
+      user.emailVerified = new Date();
+      user.verificationEmailTokenHash = undefined;
+      user.verificationEmailExpires = undefined;
     }
 
-    if (user.verificationEmailExpires.getTime() < Date.now()) {
-      return NextResponse.json(
-        { error: `Ce lien a expiré (${EMAIL_VERIFY_TTL_MS / 60000} min). Demandez un nouveau courriel.` },
-        { status: 400 },
-      );
+    // Two-factor activation: status flips to "active" only when BOTH email and
+    // phone are verified. Until then, kick off (or refresh) the SMS step so the
+    // verify-account page can chain straight into phone verification.
+    let phoneStepToken: string | undefined;
+    let phoneMasked: string | undefined;
+    if (user.phoneVerifiedAt) {
+      user.status = "active";
+    } else if (user.phone) {
+      phoneStepToken = generatePhoneStepToken();
+      user.phoneStepTokenHash = hashVerificationSecret(phoneStepToken);
+      user.phoneStepTokenExpires = new Date(Date.now() + PHONE_STEP_TTL_MS);
+      user.verificationSmsAttempts = 0;
+      const phone = user.phone;
+      phoneMasked =
+        phone.length >= 4
+          ? `${phone.slice(0, Math.min(3, phone.length - 2))}…${phone.slice(-2)}`
+          : "•••";
     }
-
-    const expected = hashVerificationSecret(token);
-    if (!safeEqualHex(expected, user.verificationEmailTokenHash)) {
-      return NextResponse.json({ error: "Lien invalide" }, { status: 400 });
-    }
-
-    user.emailVerified = new Date();
-    user.status = "active";
-    user.verificationEmailTokenHash = undefined;
-    user.verificationEmailExpires = undefined;
 
     await user.save();
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      alreadyVerified: isReclick || undefined,
+      userId: user._id.toString(),
+      phoneStepToken,
+      phoneMasked,
+      phoneAlreadyVerified: Boolean(user.phoneVerifiedAt),
+    });
   } catch (e) {
     console.error("verify-email:", e);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

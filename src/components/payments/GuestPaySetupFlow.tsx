@@ -8,6 +8,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Landmark } from "lucide-react";
 
@@ -28,6 +29,7 @@ function SetupInner({
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
+  const t = useTranslations("Client.guestPay");
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ function SetupInner({
     });
 
     if (error) {
-      const m = error.message || "An error occurred";
+      const m = error.message || t("errorLabel");
       setMessage(m);
       onError(m);
       setLoading(false);
@@ -69,12 +71,12 @@ function SetupInner({
         });
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Failed to confirm");
+          throw new Error(data.error || t("errorLabel"));
         }
         onSuccess();
       } catch (err) {
         const m =
-          err instanceof Error ? err.message : "Failed to save payment method";
+          err instanceof Error ? err.message : t("errorLabel");
         setMessage(m);
         onError(m);
       } finally {
@@ -83,8 +85,8 @@ function SetupInner({
       return;
     }
 
-    setMessage("Unable to complete setup");
-    onError("Unable to complete setup");
+    setMessage(t("errorLabel"));
+    onError(t("errorLabel"));
     setLoading(false);
   };
 
@@ -96,11 +98,10 @@ function SetupInner({
             <Landmark className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                Pre-authorized debit (Canada)
+                {t("padCanadaTitle")}
               </p>
               <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                No charge is made now. Your professional will confirm after the
-                session; Stripe then processes payment.
+                {t("padCanadaBody")}
               </p>
             </div>
           </div>
@@ -120,17 +121,17 @@ function SetupInner({
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Saving...
+            {t("saving")}
           </>
         ) : paymentMethodType === "acss_debit" ? (
-          "Link bank and confirm appointment"
+          t("linkBankConfirm")
         ) : (
-          "Save card and confirm appointment"
+          t("saveCardConfirm")
         )}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
-        Secured by Stripe. Banking details are not stored on this site.
+        {t("stripeSecuredFootnote")}
       </p>
     </form>
   );
@@ -149,6 +150,8 @@ export default function GuestPaySetupFlow({
   onSuccess: () => void;
   onError: (msg: string) => void;
 }) {
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
   const appearance = {
     theme: "stripe" as const,
     variables: {
@@ -162,6 +165,7 @@ export default function GuestPaySetupFlow({
       options={{
         clientSecret,
         appearance,
+        locale: stripeLocale,
       }}
       stripe={stripePromise}
     >

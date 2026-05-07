@@ -4,17 +4,24 @@ import User from "@/models/User";
 /**
  * Client "Statut vert" via Stripe : carte ou PAD enregistré chez Stripe.
  * @param setStripeDefault - Si true, enregistre ce moyen comme défaut chez Stripe.
+ * @param paymentMethodType - Type Stripe ("card" ou "acss_debit") pour traçabilité.
  */
 export async function markClientPaymentGuaranteeGreen(
   userId: string,
   stripeCustomerId: string,
   paymentMethodId: string,
   setStripeDefault = true,
+  paymentMethodType?: "card" | "acss_debit",
 ): Promise<void> {
-  await User.findByIdAndUpdate(userId, {
+  const update: Record<string, unknown> = {
     paymentGuaranteeStatus: "green",
     paymentGuaranteeSource: "stripe",
-  });
+  };
+  if (paymentMethodType === "card") update.preferredPaymentMethod = "card";
+  else if (paymentMethodType === "acss_debit")
+    update.preferredPaymentMethod = "direct_debit";
+
+  await User.findByIdAndUpdate(userId, update);
   if (!setStripeDefault) {
     return;
   }
@@ -39,6 +46,7 @@ export async function approveInteracTrustGreen(userId: string): Promise<void> {
   await User.findByIdAndUpdate(userId, {
     paymentGuaranteeStatus: "green",
     paymentGuaranteeSource: "interac_trust",
+    preferredPaymentMethod: "interac",
   });
 }
 

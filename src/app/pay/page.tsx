@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { GuestPaySetupFlow } from "@/components/payments";
 
 const stripePromise = loadStripe(
@@ -62,36 +62,20 @@ interface CheckoutFormProps {
   paymentMethod: PaymentMethodType;
 }
 
-const paymentMethodOptions: {
-  id: PaymentMethodType;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    id: "card",
-    label: "Credit/Debit Card",
-    description: "Pay instantly with your card",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "direct_debit",
-    label: "Pre-authorized Debit",
-    description: "Automatic debit from your account",
-    icon: <Landmark className="h-5 w-5" />,
-  },
-];
-
 function CheckoutForm({
   amount,
   onSuccess,
   onError,
   paymentMethod,
 }: CheckoutFormProps) {
+  const t = useTranslations("Client.guestPay");
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<"success" | "error" | null>(
+    null,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +86,7 @@ function CheckoutForm({
 
     setLoading(true);
     setMessage(null);
+    setMessageKind(null);
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -109,25 +94,28 @@ function CheckoutForm({
     });
 
     if (error) {
-      setMessage(error.message || "An error occurred");
-      onError(error.message || "Payment failed");
+      setMessage(error.message || t("errorLabel"));
+      setMessageKind("error");
+      onError(error.message || t("errorLabel"));
       setLoading(false);
     } else if (paymentIntent) {
       if (paymentIntent.status === "succeeded") {
-        setMessage("Payment successful!");
+        setMessage(t("paymentSuccessful"));
+        setMessageKind("success");
         onSuccess();
       } else if (paymentIntent.status === "processing") {
-        setMessage(
-          "Your payment is being processed. We'll notify you once it's complete.",
-        );
+        setMessage(t("paymentProcessingMessage"));
+        setMessageKind("success");
         setTimeout(() => {
           onSuccess();
         }, 2000);
       } else if (paymentIntent.status === "requires_action") {
-        setMessage("Please complete the additional verification step.");
+        setMessage(t("additionalVerification"));
+        setMessageKind("error");
         setLoading(false);
       } else {
-        setMessage("Payment processing...");
+        setMessage(t("paymentProcessing"));
+        setMessageKind("success");
         setLoading(false);
       }
     }
@@ -145,9 +133,9 @@ function CheckoutForm({
   const getPaymentMethodLabel = () => {
     switch (paymentMethod) {
       case "direct_debit":
-        return "Pre-authorized Debit";
+        return t("directDebitLabel");
       default:
-        return "Card Payment";
+        return t("cardPaymentLabel");
     }
   };
 
@@ -155,7 +143,9 @@ function CheckoutForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground">Amount to pay</span>
+          <span className="text-sm text-muted-foreground">
+            {t("amountToPayLabel")}
+          </span>
           <span className="text-2xl font-semibold text-foreground">
             ${amount.toFixed(2)} CAD
           </span>
@@ -172,12 +162,10 @@ function CheckoutForm({
             <Landmark className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                Pre-authorized Debit (PAD)
+                {t("padDisclaimerTitle")}
               </p>
               <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                Authorize a one-time debit from your Canadian bank account.
-                Processing typically takes 3-5 business days. You will receive a
-                confirmation email.
+                {t("padDisclaimerBody")}
               </p>
             </div>
           </div>
@@ -190,24 +178,21 @@ function CheckoutForm({
         }}
       />
 
-      {message &&
-        !message.includes("successful") &&
-        !message.includes("processing") && (
-          <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 mt-0.5 text-red-600 dark:text-red-400" />
-            <p className="text-sm text-red-800 dark:text-red-200">{message}</p>
-          </div>
-        )}
+      {message && messageKind === "error" && (
+        <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 mt-0.5 text-red-600 dark:text-red-400" />
+          <p className="text-sm text-red-800 dark:text-red-200">{message}</p>
+        </div>
+      )}
 
-      {message &&
-        (message.includes("successful") || message.includes("processing")) && (
-          <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 p-4 flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 mt-0.5 text-green-600 dark:text-green-400" />
-            <p className="text-sm text-green-800 dark:text-green-200">
-              {message}
-            </p>
-          </div>
-        )}
+      {message && messageKind === "success" && (
+        <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 p-4 flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 mt-0.5 text-green-600 dark:text-green-400" />
+          <p className="text-sm text-green-800 dark:text-green-200">
+            {message}
+          </p>
+        </div>
+      )}
 
       <Button
         type="submit"
@@ -218,17 +203,17 @@ function CheckoutForm({
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing...
+            {t("paymentProcessing")}
           </>
         ) : paymentMethod === "direct_debit" ? (
           <>
             <Landmark className="mr-2 h-4 w-4" />
-            Authorize Debit - ${amount.toFixed(2)} CAD
+            {t("linkBankConfirm")} — ${amount.toFixed(2)} CAD
           </>
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pay ${amount.toFixed(2)} CAD
+            {t("payNowAmount", { amount: `$${amount.toFixed(2)} CAD` })}
           </>
         )}
       </Button>
@@ -237,8 +222,8 @@ function CheckoutForm({
         <Shield className="h-4 w-4" />
         <span>
           {paymentMethod === "direct_debit"
-            ? "By authorizing, you agree to a one-time debit from your account."
-            : "Secured by Stripe"}
+            ? t("padAuthorizeFootnote")
+            : t("cardOptionDescription")}
         </span>
       </div>
     </form>
@@ -250,6 +235,28 @@ function GuestPaymentContent() {
   const router = useRouter();
   const token = searchParams.get("token");
   const t = useTranslations("Client.guestPay");
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
+
+  const paymentMethodOptions: {
+    id: PaymentMethodType;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }[] = [
+    {
+      id: "card",
+      label: t("cardOptionLabel"),
+      description: t("cardOptionDescription"),
+      icon: <CreditCard className="h-5 w-5" />,
+    },
+    {
+      id: "direct_debit",
+      label: t("padOptionLabel"),
+      description: t("padOptionDescription"),
+      icon: <Landmark className="h-5 w-5" />,
+    },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -274,7 +281,7 @@ function GuestPaymentContent() {
 
   const fetchAppointment = useCallback(async () => {
     if (!token) {
-      setError("Invalid payment link. Please check the link and try again.");
+      setError(t("invalidLink"));
       setLoading(false);
       return;
     }
@@ -287,7 +294,7 @@ function GuestPaymentContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to load appointment details");
+        throw new Error(data.error || t("loadFailed"));
       }
 
       setAppointment(data);
@@ -298,13 +305,11 @@ function GuestPaymentContent() {
       }
     } catch (err) {
       console.error("Error fetching appointment:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load payment details",
-      );
+      setError(err instanceof Error ? err.message : t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => {
     fetchAppointment();
@@ -328,16 +333,14 @@ function GuestPaymentContent() {
       const intentData = await intentResponse.json();
 
       if (!intentResponse.ok) {
-        throw new Error(intentData.error || "Failed to initialize payment");
+        throw new Error(intentData.error || t("intentInitFailed"));
       }
 
       setClientSecret(intentData.clientSecret);
       setPaymentMethodSelected(true);
     } catch (err) {
       console.error("Error creating payment intent:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to initialize payment",
-      );
+      setError(err instanceof Error ? err.message : t("intentInitFailed"));
     } finally {
       setCreatingIntent(false);
     }
@@ -372,14 +375,12 @@ function GuestPaymentContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to start setup");
+        throw new Error(data.error || t("setupInitFailed"));
       }
       setGuestSetupSecret(data.clientSecret);
       setGuestSetupStarted(true);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to start setup",
-      );
+      setError(err instanceof Error ? err.message : t("setupInitFailed"));
     } finally {
       setCreatingGuestSetup(false);
     }
@@ -401,14 +402,12 @@ function GuestPaymentContent() {
         });
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Request failed");
+          throw new Error(data.error || t("setupInitFailed"));
         }
         setInteracRequestSent(true);
         setMethodSetupSuccess(true);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Request failed",
-        );
+        setError(err instanceof Error ? err.message : t("setupInitFailed"));
       } finally {
         setCreatingGuestSetup(false);
       }
@@ -444,7 +443,7 @@ function GuestPaymentContent() {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to download receipt");
+        throw new Error(t("receiptDownloadFailed"));
       }
 
       const blob = await response.blob();
@@ -458,7 +457,7 @@ function GuestPaymentContent() {
       document.body.removeChild(a);
     } catch (err) {
       console.error("Error downloading receipt:", err);
-      setError("Failed to download receipt. Please try again.");
+      setError(t("receiptDownloadFailed"));
     } finally {
       setDownloadingReceipt(false);
     }
@@ -487,7 +486,7 @@ function GuestPaymentContent() {
       <div className="min-h-screen bg-linear-to-br from-background to-muted/20 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading payment details...</p>
+          <p className="text-muted-foreground">{t("loadingPaymentDetails")}</p>
         </div>
       </div>
     );
@@ -501,18 +500,16 @@ function GuestPaymentContent() {
             <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
           </div>
           <h1 className="text-2xl font-serif font-light text-foreground mb-2">
-            Payment Already Complete
+            {t("alreadyPaidTitle")}
           </h1>
-          <p className="text-muted-foreground mb-6">
-            This appointment has already been paid. Your session is confirmed!
-          </p>
+          <p className="text-muted-foreground mb-6">{t("alreadyPaidBody")}</p>
 
           <div className="bg-muted/30 rounded-lg p-4 mb-6 text-left">
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Professional</p>
+                  <p className="text-sm text-muted-foreground">{t("professionalLabel")}</p>
                   <p className="font-medium text-foreground">
                     {appointment.professionalName}
                   </p>
@@ -522,7 +519,7 @@ function GuestPaymentContent() {
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Date & Time</p>
+                  <p className="text-sm text-muted-foreground">{t("dateTimeLabel")}</p>
                   <p className="font-medium text-foreground">
                     {formatDate(appointment.date)}
                   </p>
@@ -534,7 +531,7 @@ function GuestPaymentContent() {
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">
-                  Amount Paid
+                  {t("amountPaid")}
                 </span>
                 <span className="font-semibold text-green-600 dark:text-green-400">
                   ${appointment.price.toFixed(2)} CAD
@@ -552,12 +549,12 @@ function GuestPaymentContent() {
               {downloadingReceipt ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Downloading...
+                  {t("downloading")}
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Download Receipt
+                  {t("downloadReceiptBtn")}
                 </>
               )}
             </Button>
@@ -567,7 +564,7 @@ function GuestPaymentContent() {
               className="w-full"
             >
               <Home className="mr-2 h-4 w-4" />
-              Return to Home
+              {t("returnHome")}
             </Button>
           </div>
         </div>
@@ -583,12 +580,12 @@ function GuestPaymentContent() {
             <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
           </div>
           <h1 className="text-2xl font-serif font-light text-foreground mb-2">
-            Payment Error
+            {t("paymentErrorTitle")}
           </h1>
           <p className="text-muted-foreground mb-6">{error}</p>
           <Button variant="outline" onClick={() => router.push("/")}>
             <Home className="mr-2 h-4 w-4" />
-            Return to Home
+            {t("returnHome")}
           </Button>
         </div>
       </div>
@@ -711,14 +708,14 @@ function GuestPaymentContent() {
     }[] = [
       {
         id: "card",
-        label: "Credit / debit card",
-        description: "Secured by Stripe",
+        label: t("cardOptionLabel"),
+        description: t("cardOptionDescription"),
         icon: <CreditCard className="h-5 w-5" />,
       },
       {
         id: "acss_debit",
-        label: "Pre-authorized debit (Canada)",
-        description: "PAD via Stripe",
+        label: t("padOptionLabel"),
+        description: t("padOptionDescription"),
         icon: <Landmark className="h-5 w-5" />,
       },
       {
@@ -744,15 +741,15 @@ function GuestPaymentContent() {
           {appointment && (
             <div className="rounded-xl bg-card border border-border/40 p-6 mb-6">
               <h2 className="text-lg font-medium text-foreground mb-4">
-                Appointment Details
+                {t("appointmentDetails")}
               </h2>
               <div className="space-y-3 text-left text-sm">
                 <p>
-                  <span className="text-muted-foreground">Professional: </span>
+                  <span className="text-muted-foreground">{t("professionalLabel")}: </span>
                   <span className="font-medium">{appointment.professionalName}</span>
                 </p>
                 <p>
-                  <span className="text-muted-foreground">When: </span>
+                  <span className="text-muted-foreground">{t("whenLabel")}: </span>
                   <span className="font-medium">
                     {formatDate(appointment.date)} {appointment.time}
                   </span>
@@ -836,7 +833,7 @@ function GuestPaymentContent() {
                     }}
                     className="text-sm text-muted-foreground hover:text-foreground"
                   >
-                    ← Change method
+                    ← {t("changeMethodLink")}
                   </button>
                   <GuestPaySetupFlow
                     token={token}
@@ -890,13 +887,13 @@ function GuestPaymentContent() {
           </div>
           <h1 className="text-2xl font-serif font-light text-foreground mb-2">
             {selectedPaymentMethod === "direct_debit"
-              ? "Pre-authorized Debit Set Up!"
-              : "Payment Successful!"}
+              ? t("padSetupTitle")
+              : t("paymentSuccessTitle")}
           </h1>
           <p className="text-muted-foreground mb-6">
             {selectedPaymentMethod === "direct_debit"
-              ? "Your pre-authorized debit has been set up. Your appointment will be confirmed once the payment is processed."
-              : "Your payment has been processed successfully. You will receive a confirmation email with your session details shortly."}
+              ? t("padSetupBody")
+              : t("paymentSuccessBody")}
           </p>
 
           {appointment && (
@@ -906,7 +903,7 @@ function GuestPaymentContent() {
                   <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Professional
+                      {t("professionalLabel")}
                     </p>
                     <p className="font-medium text-foreground">
                       {appointment.professionalName}
@@ -917,7 +914,7 @@ function GuestPaymentContent() {
                 <div className="flex items-start gap-3">
                   <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Date & Time</p>
+                    <p className="text-sm text-muted-foreground">{t("dateTimeLabel")}</p>
                     <p className="font-medium text-foreground">
                       {formatDate(appointment.date)}
                     </p>
@@ -932,7 +929,7 @@ function GuestPaymentContent() {
 
           <Button variant="outline" onClick={() => router.push("/")}>
             <Home className="mr-2 h-4 w-4" />
-            Return to Home
+            {t("returnHome")}
           </Button>
         </div>
       </div>
@@ -957,14 +954,14 @@ function GuestPaymentContent() {
           {appointment && (
             <div className="rounded-xl bg-card border border-border/40 p-6">
               <h2 className="text-lg font-medium text-foreground mb-4">
-                Appointment Details
+                {t("appointmentDetails")}
               </h2>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <User className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Professional
+                      {t("professionalLabel")}
                     </p>
                     <p className="font-medium text-foreground">
                       {appointment.professionalName}
@@ -975,7 +972,7 @@ function GuestPaymentContent() {
                 <div className="flex items-start gap-3">
                   <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Date</p>
+                    <p className="text-sm text-muted-foreground">{t("dateLabel")}</p>
                     <p className="font-medium text-foreground">
                       {formatDate(appointment.date)}
                     </p>
@@ -985,15 +982,15 @@ function GuestPaymentContent() {
                 <div className="flex items-start gap-3">
                   <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Time</p>
+                    <p className="text-sm text-muted-foreground">{t("timeLabel")}</p>
                     <p className="font-medium text-foreground">
-                      {appointment.time} ({appointment.duration} minutes)
+                      {appointment.time} ({t("durationMinutes", { duration: appointment.duration })})
                     </p>
                   </div>
                 </div>
                 <Separator />
                 <div className="flex justify-between items-center pt-2">
-                  <span className="text-muted-foreground">Total Amount</span>
+                  <span className="text-muted-foreground">{t("totalAmountLabel")}</span>
                   <span className="text-xl font-semibold text-foreground">
                     ${appointment.price.toFixed(2)} CAD
                   </span>
@@ -1007,7 +1004,7 @@ function GuestPaymentContent() {
             {!paymentMethodSelected ? (
               <>
                 <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
-                  Select Payment Method
+                  {t("selectMethod")}
                 </h2>
 
                 <div className="space-y-4">
@@ -1076,10 +1073,10 @@ function GuestPaymentContent() {
                     {creatingIntent ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Preparing...
+                        {t("preparingShort")}
                       </>
                     ) : (
-                      "Continue to Payment"
+                      t("continueToPaymentBtn")
                     )}
                   </Button>
                 </div>
@@ -1094,13 +1091,13 @@ function GuestPaymentContent() {
                     {selectedPaymentMethod === "direct_debit" && (
                       <Landmark className="h-5 w-5" />
                     )}
-                    Payment Information
+                    {t("paymentInformationTitle")}
                   </h2>
                   <button
                     onClick={handleBackToMethodSelection}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    ← Change method
+                    ← {t("changeMethodLink")}
                   </button>
                 </div>
 
@@ -1118,6 +1115,7 @@ function GuestPaymentContent() {
                     options={{
                       clientSecret,
                       appearance,
+                      locale: stripeLocale,
                     }}
                     stripe={stripePromise}
                   >
@@ -1135,8 +1133,7 @@ function GuestPaymentContent() {
 
           {/* Info */}
           <p className="text-xs text-muted-foreground text-center">
-            Your payment information is encrypted and securely processed by
-            Stripe. We never store your card details.
+            {t("encryptedFootnote")}
           </p>
         </div>
       </div>

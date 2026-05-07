@@ -33,6 +33,11 @@ import ClientDetailsModal from "@/components/dashboard/ClientDetailsModal";
 import { ClientStatusTierBadge } from "@/components/dashboard/ClientStatusTierBadge";
 import { clientStatusTierColors } from "@/config/colors";
 import type { ClientStatusTier } from "@/lib/client-status-tier";
+import {
+  ProfessionalBookAppointmentModal,
+  type BookableClient,
+} from "@/components/appointments/ProfessionalBookAppointmentModal";
+import { Button } from "@/components/ui/button";
 
 const STATUS_TIERS: ClientStatusTier[] = ["gray", "yellow", "green", "red"];
 
@@ -63,6 +68,10 @@ export default function ClientsPage() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [bookDefaultClientId, setBookDefaultClientId] = useState<
+    string | undefined
+  >(undefined);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -133,6 +142,26 @@ export default function ClientsPage() {
     setIsDetailsModalOpen(true);
   };
 
+  const openBookForClient = (client: Client) => {
+    setBookDefaultClientId(client.id);
+    setIsBookModalOpen(true);
+  };
+
+  const openBookForAny = () => {
+    setBookDefaultClientId(undefined);
+    setIsBookModalOpen(true);
+  };
+
+  const bookableClients: BookableClient[] = useMemo(
+    () =>
+      clients.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+      })),
+    [clients],
+  );
+
   const formatDate = (dateString: string) => {
     if (dateString === "-") return "-";
     const date = new Date(dateString);
@@ -145,11 +174,23 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-serif font-light text-foreground">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground font-light mt-2">{t("subtitle")}</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-serif font-light text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground font-light mt-2">
+            {t("subtitle")}
+          </p>
+        </div>
+        <Button
+          onClick={openBookForAny}
+          className="gap-2 rounded-full"
+          disabled={bookableClients.length === 0}
+        >
+          <Calendar className="h-4 w-4" />
+          {t("scheduleAppointment")}
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -538,6 +579,7 @@ export default function ClientsPage() {
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </button>
                       <button
+                        onClick={() => openBookForClient(client)}
                         className="p-2 rounded-lg hover:bg-muted transition-colors"
                         title={t("schedule")}
                       >
@@ -557,6 +599,21 @@ export default function ClientsPage() {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         client={selectedClient}
+      />
+
+      {/* Book Appointment Modal */}
+      <ProfessionalBookAppointmentModal
+        open={isBookModalOpen}
+        onOpenChange={setIsBookModalOpen}
+        clients={bookableClients}
+        defaultClientId={bookDefaultClientId}
+        onCreated={() => {
+          // Refresh client list so totals update.
+          clientsAPI
+            .list()
+            .then((data) => setClients(data as Client[]))
+            .catch(() => {});
+        }}
       />
     </div>
   );

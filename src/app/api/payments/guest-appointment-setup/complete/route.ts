@@ -107,10 +107,25 @@ export async function POST(req: NextRequest) {
     appointment.awaitingPaymentGuarantee = false;
     await appointment.save();
 
+    let pmType: "card" | "acss_debit" | undefined;
+    try {
+      const pmObj =
+        typeof pm === "object" && pm && "type" in pm
+          ? pm
+          : await stripe.paymentMethods.retrieve(paymentMethodId);
+      if (pmObj.type === "card" || pmObj.type === "acss_debit") {
+        pmType = pmObj.type;
+      }
+    } catch (e) {
+      console.warn("[guest-appointment-setup/complete] type lookup failed:", e);
+    }
+
     await markClientPaymentGuaranteeGreen(
       client._id.toString(),
       client.stripeCustomerId,
       paymentMethodId,
+      true,
+      pmType,
     );
 
     return NextResponse.json({ success: true });

@@ -143,7 +143,10 @@ export async function POST(req: NextRequest) {
     });
 
     await User.findByIdAndUpdate(clientUserId, {
-      $set: { paymentGuaranteeStatus: "pending_admin" },
+      $set: {
+        paymentGuaranteeStatus: "pending_admin",
+        preferredPaymentMethod: "interac",
+      },
       $unset: { paymentGuaranteeSource: "" },
     });
 

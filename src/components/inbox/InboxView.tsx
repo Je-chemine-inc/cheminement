@@ -42,7 +42,7 @@ interface Contact {
   role: string;
 }
 
-export default function InboxView() {
+export default function InboxView({ subtitleKey = "subtitle" }: { subtitleKey?: string } = {}) {
   const t = useTranslations("Dashboard.inbox");
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -186,7 +186,7 @@ export default function InboxView() {
         <div className="flex items-center justify-between gap-2 border-b border-border/20 px-4 py-4">
           <div>
             <h1 className="font-serif text-xl font-light text-foreground">{t("title")}</h1>
-            <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
+            <p className="text-xs text-muted-foreground">{t(subtitleKey)}</p>
           </div>
           <Button size="sm" className="rounded-full gap-1.5" onClick={openCompose}>
             <Plus className="h-3.5 w-3.5" />

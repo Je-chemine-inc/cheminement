@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { apiClient, ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
@@ -200,6 +200,8 @@ export default function AppointmentConfirmPaymentModal({
   onSuccess,
 }: AppointmentConfirmPaymentModalProps) {
   const t = useTranslations("Client.billing.appointmentConfirm");
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
   const [clientSecret, setClientSecret] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -386,7 +388,7 @@ export default function AppointmentConfirmPaymentModal({
                 ← {t("changeType")}
               </button>
               <Elements
-                options={{ clientSecret, appearance }}
+                options={{ clientSecret, appearance, locale: stripeLocale }}
                 stripe={stripePromise}
               >
                 <AppointmentSetupForm

@@ -45,7 +45,7 @@ export default function ApproachesCTASection() {
                 </Link>
 
                 <Link
-                  href="/book"
+                  href="/book#resources"
                   className="group flex items-center gap-3 px-8 py-5 text-foreground text-lg font-light tracking-wide transition-all duration-300 hover:gap-4 border border-muted-foreground/20 rounded-full hover:bg-muted/50"
                 >
                   <BookOpen className="h-5 w-5" />

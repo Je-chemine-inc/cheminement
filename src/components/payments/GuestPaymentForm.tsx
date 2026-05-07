@@ -8,6 +8,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -40,6 +41,7 @@ function SetupForm({
   onError,
   loading: externalLoading,
 }: SetupFormProps) {
+  const t = useTranslations("Client.guestPay");
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -62,14 +64,13 @@ function SetupForm({
     });
 
     if (error) {
-      setMessage(error.message || "An error occurred");
-      onError(error.message || "Failed to verify payment method");
+      const msg = error.message || t("errorLabel");
+      setMessage(msg);
+      onError(msg);
       setLoading(false);
     } else if (setupIntent && setupIntent.status === "succeeded") {
-      setMessage("Payment method verified!");
       setIsComplete(true);
 
-      // Pass the payment method ID back to the parent
       if (setupIntent.payment_method) {
         const paymentMethodId =
           typeof setupIntent.payment_method === "string"
@@ -80,7 +81,8 @@ function SetupForm({
         }, 1000);
       }
     } else {
-      setMessage("Unable to verify payment method");
+      const msg = t("errorLabel");
+      setMessage(msg);
       setLoading(false);
     }
   };
@@ -90,11 +92,9 @@ function SetupForm({
       <div className="text-center py-8">
         <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-xl font-medium text-foreground mb-2">
-          Payment Method Verified!
+          {t("verifiedTitle")}
         </h3>
-        <p className="text-muted-foreground">
-          Proceeding to book your appointment...
-        </p>
+        <p className="text-muted-foreground">{t("verifiedBody")}</p>
       </div>
     );
   }
@@ -107,7 +107,7 @@ function SetupForm({
         }}
       />
 
-      {message && !message.includes("verified") && (
+      {message && (
         <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 mt-0.5 text-red-600 dark:text-red-400" />
           <p className="text-sm text-red-800 dark:text-red-200">{message}</p>
@@ -123,7 +123,7 @@ function SetupForm({
         {(loading || externalLoading) && (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         )}
-        {loading ? "Verifying..." : "Verify & Continue"}
+        {loading ? t("verifying") : t("verifyContinue")}
       </Button>
     </form>
   );
@@ -136,6 +136,9 @@ export default function GuestPaymentForm({
   onBack,
   loading: externalLoading,
 }: GuestPaymentFormProps) {
+  const t = useTranslations("Client.guestPay");
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
   const [clientSecret, setClientSecret] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,22 +161,18 @@ export default function GuestPaymentForm({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to initialize payment form");
+        throw new Error(data.error || t("errorLabel"));
       }
 
       const data = await response.json();
       setClientSecret(data.clientSecret);
     } catch (err) {
       console.error("Error creating setup intent:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to initialize payment form",
-      );
+      setError(err instanceof Error ? err.message : t("errorLabel"));
     } finally {
       setLoading(false);
     }
-  }, [guestEmail, guestName]);
+  }, [guestEmail, guestName, t]);
 
   useEffect(() => {
     createSetupIntent();
@@ -194,28 +193,22 @@ export default function GuestPaymentForm({
         <div className="flex items-center gap-3 mb-2">
           <CreditCard className="h-5 w-5 text-primary" />
           <span className="text-sm font-medium text-foreground">
-            Payment Information Required
+            {t("paymentInfoRequired")}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Please enter your card details to continue with booking. Your card
-          will only be charged after your appointment is confirmed by the
-          professional.
-        </p>
+        <p className="text-xs text-muted-foreground">{t("paymentInfoBody")}</p>
       </div>
 
       {/* Security Note */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Shield className="h-4 w-4" />
-        <span>Your payment information is secured by Stripe</span>
+        <span>{t("securedByStripe")}</span>
       </div>
 
       {loading && (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-sm text-muted-foreground">
-            Preparing secure payment form...
-          </p>
+          <p className="text-sm text-muted-foreground">{t("preparingForm")}</p>
         </div>
       )}
 
@@ -224,7 +217,7 @@ export default function GuestPaymentForm({
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-red-800 dark:text-red-200">
-              Error
+              {t("errorLabel")}
             </p>
             <p className="text-sm text-red-700 dark:text-red-300 mt-1">
               {error}
@@ -235,7 +228,7 @@ export default function GuestPaymentForm({
               onClick={createSetupIntent}
               className="mt-3"
             >
-              Try Again
+              {t("tryAgain")}
             </Button>
           </div>
         </div>
@@ -246,6 +239,7 @@ export default function GuestPaymentForm({
           options={{
             clientSecret,
             appearance,
+            locale: stripeLocale,
           }}
           stripe={stripePromise}
         >
@@ -259,12 +253,12 @@ export default function GuestPaymentForm({
 
       <div className="flex justify-between pt-4">
         <Button variant="ghost" onClick={onBack} disabled={externalLoading}>
-          Back
+          {t("back")}
         </Button>
       </div>
 
       <p className="text-xs text-muted-foreground text-center">
-        Your card details are encrypted and never stored on our servers.
+        {t("cardEncryptedFootnote")}
       </p>
     </div>
   );

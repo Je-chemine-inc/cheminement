@@ -185,7 +185,7 @@ export async function POST(
           duration: updatedAppointment.duration || 60,
           type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
           price: updatedAppointment.payment?.price ?? 0,
-          paymentUrl: `${base}/client/dashboard/billing`,
+          paymentUrl: `${base}/client/dashboard/billing?action=addPaymentMethod`,
         }).catch((err) => console.error("Error sending payment invitation (active):", err));
       }
     }

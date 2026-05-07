@@ -752,8 +752,8 @@ export default function MedicalProfileCompletionModal({
               </div>
 
               <div className="grid gap-6 md:grid-cols-3">
-                <div>
-                  <Label className="font-light mb-3 text-base">
+                <div className="flex flex-col">
+                  <Label className="mb-3 block text-left text-base font-light">
                     {t("step3.severity")}
                   </Label>
                   <select
@@ -771,8 +771,8 @@ export default function MedicalProfileCompletionModal({
                   </select>
                 </div>
 
-                <div>
-                  <Label className="font-light mb-3 text-base">
+                <div className="flex flex-col">
+                  <Label className="mb-3 block text-left text-base font-light">
                     {t("step3.duration")}
                   </Label>
                   <select
@@ -790,10 +790,10 @@ export default function MedicalProfileCompletionModal({
                   </select>
                 </div>
 
-                <div>
+                <div className="flex flex-col">
                   <Label
                     htmlFor="triggeringSituation"
-                    className="font-light mb-3 text-base"
+                    className="mb-3 block text-left text-base font-light"
                   >
                     {t("step3.triggeringSituation")}
                   </Label>

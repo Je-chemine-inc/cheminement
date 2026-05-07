@@ -8,6 +8,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -38,26 +39,6 @@ interface AddPaymentMethodModalProps {
   onSuccess?: () => void;
 }
 
-const paymentMethodOptions: {
-  id: PaymentMethodType;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-}[] = [
-  {
-    id: "card",
-    label: "Credit/Debit Card",
-    description: "Add a card for instant payments",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "acss_debit",
-    label: "Pre-authorized Debit",
-    description: "Link your Canadian bank account",
-    icon: <Landmark className="h-5 w-5" />,
-  },
-];
-
 function SetupForm({
   onSuccess,
   onError,
@@ -67,10 +48,14 @@ function SetupForm({
   onError?: (error: string) => void;
   paymentMethodType: PaymentMethodType;
 }) {
+  const t = useTranslations("Client.billing.addPaymentMethodModal");
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<"success" | "error" | null>(
+    null,
+  );
   const [isComplete, setIsComplete] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +67,7 @@ function SetupForm({
 
     setLoading(true);
     setMessage(null);
+    setMessageKind(null);
 
     const { error, setupIntent } = await stripe.confirmSetup({
       elements,
@@ -89,11 +75,13 @@ function SetupForm({
     });
 
     if (error) {
-      setMessage(error.message || "An error occurred");
-      onError?.(error.message || "Failed to add payment method");
+      setMessage(error.message || t("addError"));
+      setMessageKind("error");
+      onError?.(error.message || t("unableToAdd"));
       setLoading(false);
     } else if (setupIntent && setupIntent.status === "succeeded") {
-      setMessage("Payment method added successfully!");
+      setMessage(t("addedSuccess"));
+      setMessageKind("success");
       setIsComplete(true);
 
       // Save payment method to backend
@@ -106,17 +94,20 @@ function SetupForm({
         }, 1500);
       } catch (err) {
         console.error("Error saving payment method:", err);
-        setMessage("Payment method added but failed to save");
+        setMessage(t("saveFailed"));
+        setMessageKind("error");
         setLoading(false);
       }
     } else if (setupIntent && setupIntent.status === "processing") {
-      setMessage("Verification in progress. This may take a moment...");
+      setMessage(t("verificationProgress"));
+      setMessageKind("success");
       setIsComplete(true);
       setTimeout(() => {
         onSuccess?.();
       }, 2000);
     } else {
-      setMessage("Unable to add payment method");
+      setMessage(t("unableToAdd"));
+      setMessageKind("error");
       setLoading(false);
     }
   };
@@ -129,10 +120,10 @@ function SetupForm({
     );
   };
 
-  const getLabel = () => {
+  const getSectionLabel = () => {
     return paymentMethodType === "acss_debit"
-      ? "Pre-authorized Debit"
-      : "Credit/Debit Card";
+      ? t("addPadSection")
+      : t("addCardSection");
   };
 
   if (isComplete) {
@@ -141,13 +132,13 @@ function SetupForm({
         <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-xl font-medium text-foreground mb-2">
           {paymentMethodType === "acss_debit"
-            ? "Bank Account Linked!"
-            : "Payment Method Added!"}
+            ? t("successPadTitle")
+            : t("successCardTitle")}
         </h3>
         <p className="text-muted-foreground">
           {paymentMethodType === "acss_debit"
-            ? "Your bank account has been linked successfully for pre-authorized debits."
-            : "Your payment method has been saved successfully."}
+            ? t("successPadBody")
+            : t("successCardBody")}
         </p>
       </div>
     );
@@ -159,13 +150,13 @@ function SetupForm({
         <div className="flex items-center gap-3 mb-2">
           {getIcon()}
           <span className="text-sm font-medium text-foreground">
-            Add {getLabel()}
+            {getSectionLabel()}
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
           {paymentMethodType === "acss_debit"
-            ? "Link your Canadian bank account for pre-authorized debits. No charge will be made now."
-            : "This card will be saved for future payments. No charge will be made now."}
+            ? t("padNote")
+            : t("cardSavedNote")}
         </p>
       </div>
 
@@ -175,12 +166,10 @@ function SetupForm({
             <Landmark className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                Pre-authorized Debit Agreement
+                {t("padAgreementTitle")}
               </p>
               <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                By adding your bank account, you authorize us to debit your
-                account for future payments. You can remove this payment method
-                at any time.
+                {t("padAgreementBody")}
               </p>
             </div>
           </div>
@@ -196,12 +185,12 @@ function SetupForm({
       {message && (
         <div
           className={`rounded-lg border p-4 flex items-start gap-3 ${
-            message.includes("success") || message.includes("progress")
+            messageKind === "success"
               ? "border-green-200 bg-green-50 text-green-800 dark:bg-green-950/20 dark:text-green-200"
               : "border-red-200 bg-red-50 text-red-800 dark:bg-red-950/20 dark:text-red-200"
           }`}
         >
-          {message.includes("success") || message.includes("progress") ? (
+          {messageKind === "success" ? (
             <CheckCircle2 className="h-5 w-5 mt-0.5" />
           ) : (
             <AlertCircle className="h-5 w-5 mt-0.5" />
@@ -218,16 +207,16 @@ function SetupForm({
       >
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {loading
-          ? "Adding..."
+          ? t("adding")
           : paymentMethodType === "acss_debit"
-            ? "Link Bank Account"
-            : "Add Card"}
+            ? t("linkBankAccount")
+            : t("addCardBtn")}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
         {paymentMethodType === "acss_debit"
-          ? "Your bank account information is securely processed by Stripe."
-          : "Secured by Stripe. Your card details are encrypted and never stored on our servers."}
+          ? t("padSecuredFootnote")
+          : t("cardSecuredFootnote")}
       </p>
     </form>
   );
@@ -238,36 +227,59 @@ export default function AddPaymentMethodModal({
   onOpenChange,
   onSuccess,
 }: AddPaymentMethodModalProps) {
+  const t = useTranslations("Client.billing.addPaymentMethodModal");
+  const locale = useLocale();
+  const stripeLocale = locale === "fr" ? "fr-CA" : "en-CA";
+  const paymentMethodOptions: {
+    id: PaymentMethodType;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }[] = [
+    {
+      id: "card",
+      label: t("cardLabel"),
+      description: t("cardDescription"),
+      icon: <CreditCard className="h-5 w-5" />,
+    },
+    {
+      id: "acss_debit",
+      label: t("padLabel"),
+      description: t("padDescription"),
+      icon: <Landmark className="h-5 w-5" />,
+    },
+  ];
   const [clientSecret, setClientSecret] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<PaymentMethodType>("card");
   const [typeSelected, setTypeSelected] = useState(false);
 
-  const createSetupIntent = useCallback(async (type: PaymentMethodType) => {
-    try {
-      setLoading(true);
-      setError(null);
+  const createSetupIntent = useCallback(
+    async (type: PaymentMethodType) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await apiClient.post<{
-        clientSecret: string;
-        setupIntentId: string;
-        paymentMethodType: string;
-      }>("/payments/setup-intent", { paymentMethodType: type });
+        const response = await apiClient.post<{
+          clientSecret: string;
+          setupIntentId: string;
+          paymentMethodType: string;
+        }>("/payments/setup-intent", { paymentMethodType: type });
 
-      setClientSecret(response.clientSecret);
-      setTypeSelected(true);
-    } catch (err) {
-      console.error("Error creating setup intent:", err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to initialize payment method form",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setClientSecret(response.clientSecret);
+        setTypeSelected(true);
+      } catch (err) {
+        console.error("Error creating setup intent:", err);
+        setError(
+          err instanceof Error ? err.message : t("addError"),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -308,12 +320,10 @@ export default function AddPaymentMethodModal({
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-serif font-light">
-            Add Payment Method
+            {t("title")}
           </DialogTitle>
           <DialogDescription>
-            {typeSelected
-              ? "Enter your payment details below"
-              : "Choose a payment method type to add"}
+            {typeSelected ? t("subtitleEnter") : t("subtitleSelect")}
           </DialogDescription>
         </DialogHeader>
 
@@ -378,7 +388,7 @@ export default function AddPaymentMethodModal({
               )}
 
               <Button onClick={handleContinue} className="w-full" size="lg">
-                Continue
+                {t("continue")}
               </Button>
             </div>
           )}
@@ -386,7 +396,7 @@ export default function AddPaymentMethodModal({
           {loading && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm text-muted-foreground">Preparing form...</p>
+              <p className="text-sm text-muted-foreground">{t("preparing")}</p>
             </div>
           )}
 
@@ -396,7 +406,7 @@ export default function AddPaymentMethodModal({
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                    Error
+                    {t("errorTitle")}
                   </p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                     {error}
@@ -404,7 +414,7 @@ export default function AddPaymentMethodModal({
                 </div>
               </div>
               <Button variant="outline" onClick={handleBack} className="w-full">
-                Go Back
+                {t("goBack")}
               </Button>
             </div>
           )}
@@ -415,12 +425,13 @@ export default function AddPaymentMethodModal({
                 onClick={handleBack}
                 className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
               >
-                ← Change payment method type
+                ← {t("changeType")}
               </button>
               <Elements
                 options={{
                   clientSecret,
                   appearance,
+                  locale: stripeLocale,
                 }}
                 stripe={stripePromise}
               >
