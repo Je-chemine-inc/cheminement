@@ -4,8 +4,9 @@ import { runAppointmentReminders } from "@/lib/appointment-reminders";
 /**
  * Planifier un appel HTTP périodique (cron) avec l'en-tête :
  *   Authorization: Bearer <CRON_SECRET>
- * Fréquence recommandée : toutes les heures (les fenêtres H-72 et H-48 sont
- * de 24 h chacune, ce qui laisse de la marge).
+ * Fréquence : une fois par jour (limite du plan Vercel Hobby). Les fenêtres
+ * H-72 (24 h) et H-48 (48 h) avec drapeaux de déduplication garantissent
+ * qu'un passage quotidien capte chaque rendez-vous une seule fois.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
