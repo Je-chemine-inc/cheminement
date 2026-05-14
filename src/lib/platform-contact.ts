@@ -1,0 +1,87 @@
+import "server-only";
+import connectToDatabase from "@/lib/mongodb";
+import PlatformSettings from "@/models/PlatformSettings";
+
+export type PlatformPhysicalAddress = {
+  street: string;
+  suite: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+};
+
+export type PlatformContactInfo = {
+  physicalAddress: PlatformPhysicalAddress;
+  phoneNumber: string;
+  supportEmail: string;
+  interacDepositEmail: string;
+  companyName: string;
+};
+
+const EMPTY_ADDRESS: PlatformPhysicalAddress = {
+  street: "",
+  suite: "",
+  city: "",
+  province: "",
+  postalCode: "",
+  country: "",
+};
+
+/**
+ * Loads the admin-configured platform coordinates used on fiscal receipts and
+ * other compliance surfaces. Returns empty strings (never undefined) so the
+ * caller can render unconditionally; a server warning is logged when the
+ * mandatory phone/address fields are missing so admins get visibility.
+ *
+ * Backward-compatibility: legacy installations where `physicalAddress` was
+ * stored as a free-text string are normalized into the structured shape with
+ * the legacy value placed in `street`.
+ */
+export async function getPlatformContactInfo(): Promise<PlatformContactInfo> {
+  await connectToDatabase();
+  const settings = await PlatformSettings.findOne().lean();
+
+  const rawAddress = settings?.platformContact?.physicalAddress as unknown;
+  let physicalAddress: PlatformPhysicalAddress = { ...EMPTY_ADDRESS };
+  if (typeof rawAddress === "string") {
+    physicalAddress = { ...EMPTY_ADDRESS, street: rawAddress.trim() };
+  } else if (rawAddress && typeof rawAddress === "object") {
+    const a = rawAddress as Partial<PlatformPhysicalAddress>;
+    physicalAddress = {
+      street: a.street?.trim() ?? "",
+      suite: a.suite?.trim() ?? "",
+      city: a.city?.trim() ?? "",
+      province: a.province?.trim() ?? "",
+      postalCode: a.postalCode?.trim() ?? "",
+      country: a.country?.trim() ?? "",
+    };
+  }
+
+  const phoneNumber = settings?.platformContact?.phoneNumber?.trim() ?? "";
+  const supportEmail = settings?.platformContact?.supportEmail?.trim() ?? "";
+  const interacDepositEmail = settings?.interacDepositEmail?.trim() ?? "";
+  const companyName =
+    settings?.emailSettings?.branding?.companyName?.trim() ?? "";
+
+  const hasAnyAddress = Boolean(
+    physicalAddress.street ||
+      physicalAddress.city ||
+      physicalAddress.postalCode,
+  );
+  if (!hasAnyAddress || !phoneNumber) {
+    console.warn(
+      "[platform-contact] Missing mandatory coordinates for receipts " +
+        `(hasAddress=${hasAnyAddress}, hasPhone=${!!phoneNumber}). ` +
+        "Set them in Admin → Settings → Configuration.",
+    );
+  }
+
+  return {
+    physicalAddress,
+    phoneNumber,
+    supportEmail,
+    interacDepositEmail,
+    companyName,
+  };
+}

@@ -12,6 +12,8 @@ import {
   buildFiscalReceiptInputFromPopulatedAppointment,
 } from "@/lib/receipt-pdf";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
+import { getPlatformContactInfo } from "@/lib/platform-contact";
+import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
 import mongoose from "mongoose";
 import { cycleKeyFromDateOrNow } from "@/lib/ledger-cycle";
 
@@ -25,7 +27,7 @@ export async function runSessionClosureSideEffects(
   await connectToDatabase();
 
   const appointment = await Appointment.findById(appointmentId)
-    .populate("clientId", "firstName lastName email")
+    .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName email");
 
   if (!appointment) return;
@@ -40,7 +42,9 @@ export async function runSessionClosureSideEffects(
     firstName: string;
     lastName: string;
     email: string;
+    language?: string;
   };
+  const clientLocale: "fr" | "en" = client.language === "en" ? "en" : "fr";
   const professional = appointment.professionalId as unknown as {
     _id: { toString: () => string };
     firstName?: string;
@@ -89,6 +93,9 @@ export async function runSessionClosureSideEffects(
   const license = profile?.license?.trim();
   const specialty = profile?.specialty?.trim();
 
+  // Platform coordinates (mandatory on receipts) — pulled live from Admin settings.
+  const platformContact = await getPlatformContactInfo();
+
   const pdfInput = buildFiscalReceiptInputFromPopulatedAppointment(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     appointment.toObject() as any,
@@ -96,6 +103,12 @@ export async function runSessionClosureSideEffects(
     specialty,
   );
   pdfInput.issuedAt = new Date();
+  pdfInput.platformAddressLines = formatStandardAddressBlock(
+    platformContact.physicalAddress,
+    platformContact.companyName,
+  );
+  pdfInput.platformPhoneNumber = platformContact.phoneNumber;
+  pdfInput.platformSupportEmail = platformContact.supportEmail;
 
   const aptDate = appointment.date ? new Date(appointment.date) : null;
   const dateLabel =
@@ -138,6 +151,7 @@ export async function runSessionClosureSideEffects(
     pdfBuffer,
     appointmentId: String(appointment._id),
     paymentPendingTransfer,
+    locale: clientLocale,
   }).catch((err) => console.error("sendFiscalReceiptEmail:", err));
 
   await ClientReceipt.create({

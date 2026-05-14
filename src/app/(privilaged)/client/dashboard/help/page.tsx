@@ -1,11 +1,70 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { HelpCircle, MessageCircle, Mail, Phone } from "lucide-react";
 import FaqList from "@/components/faqs/FaqList";
+import { formatCanadianPhone } from "@/lib/format-platform-contact";
+
+type PlatformContact = {
+  physicalAddress: {
+    street?: string;
+    suite?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  phoneNumber: string;
+  supportEmail: string;
+  interacDepositEmail: string;
+};
 
 export default function HelpCenterPage() {
   const t = useTranslations("Dashboard.helpCenter");
+  const [contact, setContact] = useState<PlatformContact | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchOnce = () => {
+      fetch("/api/platform-contact", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: PlatformContact | null) => {
+          if (active && data) setContact(data);
+        })
+        .catch(() => {});
+    };
+
+    fetchOnce();
+
+    let es: EventSource | null = null;
+    if (typeof window !== "undefined" && "EventSource" in window) {
+      es = new EventSource("/api/platform-contact/stream");
+      es.addEventListener("contact", (event) => {
+        try {
+          const data = JSON.parse((event as MessageEvent).data);
+          if (active && data) setContact(data);
+        } catch {
+          /* ignore malformed payload */
+        }
+      });
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchOnce();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      active = false;
+      es?.close();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  const supportEmail = contact?.supportEmail?.trim() || "support@jechemine.ca";
+  const phoneNumber = formatCanadianPhone(contact?.phoneNumber);
 
   return (
     <div className="space-y-8">
@@ -84,14 +143,16 @@ export default function HelpCenterPage() {
             <Mail className="h-5 w-5 text-primary" />
             <div>
               <p className="text-sm font-medium text-foreground">{t("email")}</p>
-              <p className="text-xs text-muted-foreground">support@jechemine.ca</p>
+              <p className="text-xs text-muted-foreground break-all">{supportEmail}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-border/20 bg-card/60 p-4">
             <Phone className="h-5 w-5 text-primary" />
             <div>
               <p className="text-sm font-medium text-foreground">{t("phone")}</p>
-              <p className="text-xs text-muted-foreground">1-800-XXX-XXXX</p>
+              <p className="text-xs text-muted-foreground">
+                {phoneNumber || t("phoneFallback")}
+              </p>
             </div>
           </div>
         </div>

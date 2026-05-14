@@ -371,10 +371,34 @@ export async function POST(req: NextRequest) {
     // Meeting link will be added by professional after confirming appointment
     // No automatic generation
 
+    // "Demander un rendez-vous avec un autre professionnel" — server-trusted
+    // signal that this client is returning and explicitly wants a *different*
+    // professional. We bypass the per-pro auto-router and drop the request
+    // straight into the general queue. Admins see an "Ancien client" badge so
+    // they don't create duplicates. Confirm via DB rather than trusting only
+    // the client flag: the user must already have ≥1 appointment.
+    const changeProfessional = data.changeProfessional === true;
+    let isReturningClient = false;
+    if (
+      changeProfessional &&
+      (session.user.role === "client" ||
+        session.user.role === "guest" ||
+        session.user.role === "prospect")
+    ) {
+      const priorCount = await Appointment.countDocuments({
+        clientId: session.user.id,
+      });
+      if (priorCount > 0) {
+        isReturningClient = true;
+      }
+    }
+    delete data.changeProfessional;
+
     // Set status to pending if no professional assigned (request flow)
     if (!data.professionalId) {
       data.status = "pending";
-      data.routingStatus = "pending"; // Will be routed after creation
+      data.routingStatus = isReturningClient ? "general" : "pending";
+      data.isReturningClient = isReturningClient;
     }
 
     // Set booking context defaults
@@ -522,8 +546,10 @@ export async function POST(req: NextRequest) {
       }
     })();
 
-    // Route the appointment to professionals if no professional is assigned
-    if (!data.professionalId) {
+    // Route the appointment to professionals if no professional is assigned.
+    // Skip auto-routing for returning clients explicitly asking for a different
+    // professional — those land directly in the general list.
+    if (!data.professionalId && !isReturningClient) {
       // Route in background (non-blocking)
       routeAppointmentToProfessionals(appointment._id.toString()).catch((err) =>
         console.error("Error routing appointment:", err),

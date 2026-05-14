@@ -77,6 +77,8 @@ export async function GET(
         payment: {
           price: apt.payment?.price || 0,
           status: apt.payment?.status || "pending",
+          method: apt.payment?.method,
+          paidAt: apt.payment?.paidAt ?? null,
         },
         createdAt: apt.createdAt,
       };

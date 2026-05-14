@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
 
 export default function SchoolManagerPage() {
   const t = useTranslations("SchoolManagerForm");
+  const locale = useLocale();
   const serviceTypes = t.raw("serviceTypes") as string[];
 
   const [name, setName] = useState("");
@@ -48,8 +49,23 @@ export default function SchoolManagerPage() {
 
     setIsSubmitting(true);
     try {
-      // TODO: envoyer vers l’API (demande gestionnaire scolaire)
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const response = await fetch("/api/school-manager/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          school,
+          role,
+          phone,
+          email,
+          serviceType,
+          message,
+          locale,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Submit failed");
+      }
       setSuccess(true);
       setName("");
       setSchool("");
@@ -58,6 +74,8 @@ export default function SchoolManagerPage() {
       setEmail("");
       setServiceType("");
       setMessage("");
+    } catch (err) {
+      console.error("School manager form error:", err);
     } finally {
       setIsSubmitting(false);
     }

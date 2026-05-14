@@ -55,6 +55,7 @@ export async function GET() {
         therapyType: a.therapyType,
         bookingFor: a.bookingFor,
         routingStatus: a.routingStatus,
+        isReturningClient: Boolean(a.isReturningClient),
         preferredAvailability: a.preferredAvailability,
         clientName: client
           ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()

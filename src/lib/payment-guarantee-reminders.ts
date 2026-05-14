@@ -5,6 +5,7 @@ import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 import {
   sendPaymentGuaranteeDay1Reminder,
+  sendPaymentGuaranteeDay2Reminder,
   sendPaymentGuarantee48hClientReminder,
   sendPaymentGuarantee48hProfessionalAlert,
   sendPostMeetingPaymentReminder,
@@ -44,6 +45,7 @@ function formatAppointmentDateLabel(apt: {
  */
 export async function runPaymentGuaranteeReminders(): Promise<{
   day1Sent: number;
+  day2Sent: number;
   h48ClientSent: number;
   h48ProSent: number;
   postMeetingSent: number;
@@ -53,15 +55,17 @@ export async function runPaymentGuaranteeReminders(): Promise<{
   const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
 
   let day1Sent = 0;
+  let day2Sent = 0;
   let h48ClientSent = 0;
   let h48ProSent = 0;
 
+  // J+24h reminder: 24h after first scheduling, still no payment guarantee.
   const day1Cutoff = new Date(now - DAY_MS);
   const day1Candidates = await Appointment.find({
     status: "scheduled",
     firstScheduledAt: { $lte: day1Cutoff, $exists: true },
     guaranteeDay1ReminderSent: { $ne: true },
-  }).populate("clientId", "firstName lastName email");
+  }).populate("clientId", "firstName lastName email language");
 
   for (const apt of day1Candidates) {
     const clientPop = apt.clientId as unknown as {
@@ -69,6 +73,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
     const user = await User.findById(clientPop._id);
     if (!user) continue;
@@ -78,12 +83,47 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       clientName: `${clientPop.firstName} ${clientPop.lastName}`,
       clientEmail: clientPop.email,
       billingUrl,
+      locale: clientPop.language === "en" ? "en" : "fr",
     });
     if (ok) {
       await Appointment.findByIdAndUpdate(apt._id, {
         guaranteeDay1ReminderSent: true,
       });
       day1Sent++;
+    }
+  }
+
+  // J+48h reminder (final): 48h after first scheduling, still no payment guarantee.
+  const day2Cutoff = new Date(now - 2 * DAY_MS);
+  const day2Candidates = await Appointment.find({
+    status: "scheduled",
+    firstScheduledAt: { $lte: day2Cutoff, $exists: true },
+    guaranteeDay2ReminderSent: { $ne: true },
+  }).populate("clientId", "firstName lastName email language");
+
+  for (const apt of day2Candidates) {
+    const clientPop = apt.clientId as unknown as {
+      _id: { toString: () => string };
+      firstName: string;
+      lastName: string;
+      email: string;
+      language?: string;
+    };
+    const user = await User.findById(clientPop._id);
+    if (!user) continue;
+    if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
+
+    const ok = await sendPaymentGuaranteeDay2Reminder({
+      clientName: `${clientPop.firstName} ${clientPop.lastName}`,
+      clientEmail: clientPop.email,
+      billingUrl,
+      locale: clientPop.language === "en" ? "en" : "fr",
+    });
+    if (ok) {
+      await Appointment.findByIdAndUpdate(apt._id, {
+        guaranteeDay2ReminderSent: true,
+      });
+      day2Sent++;
     }
   }
 
@@ -206,5 +246,5 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     }
   }
 
-  return { day1Sent, h48ClientSent, h48ProSent, postMeetingSent };
+  return { day1Sent, day2Sent, h48ClientSent, h48ProSent, postMeetingSent };
 }

@@ -466,15 +466,45 @@ export async function POST(req: NextRequest) {
       appointmentId: String(appointment._id),
     }).catch((err) => console.error("Error sending admin alert:", err));
 
-    // Automatically send onboarding invitation to new prospects (Step 2 of the workflow)
-    if (isNewGuest) {
-      sendServiceRequestOnboardingEmail({
-        toName: firstName,
-        toEmail: email,
-        locale: notificationLocale === "fr" ? "fr" : "en",
-      }).catch((err) => 
-        console.error("Error sending onboarding email:", err)
-      );
+    // Automatically send onboarding invitation (Email 1 — Confirmation immédiate)
+    // Recipient rules:
+    //   - self           → the requester (themselves)
+    //   - loved-one minor → the requester (parent) — they manage the child's profile
+    //   - loved-one adult → the loved one directly (the person who will have the follow-up)
+    //   - patient referral → the referrer (kept as-is)
+    // We always send on first submission so a fresh requester gets the welcome.
+    {
+      const emailLocale: "fr" | "en" =
+        notificationLocale === "en" ? "en" : "fr";
+      const bookingFor = appointmentData.bookingFor || "self";
+      const lovedOneInfo = (appointmentData as { lovedOneInfo?: { firstName?: string; email?: string } }).lovedOneInfo;
+
+      let onboardingToName = firstName;
+      let onboardingToEmail = email;
+
+      if (bookingFor === "loved-one" && !lovedOneIsMinor && lovedOneInfo?.email) {
+        onboardingToName = lovedOneInfo.firstName || firstName;
+        onboardingToEmail = lovedOneInfo.email;
+      }
+
+      // Only send if we haven't already emailed this address as a previously-known prospect
+      // for this exact recipient (re-submissions from the same email should still receive it
+      // since prospects can re-engage; admin alerts dedupe via DB state).
+      const shouldSendOnboarding =
+        isNewGuest ||
+        (bookingFor === "loved-one" &&
+          !lovedOneIsMinor &&
+          onboardingToEmail !== email);
+
+      if (shouldSendOnboarding) {
+        sendServiceRequestOnboardingEmail({
+          toName: onboardingToName,
+          toEmail: onboardingToEmail,
+          locale: emailLocale,
+        }).catch((err) =>
+          console.error("Error sending onboarding email:", err),
+        );
+      }
     }
 
     return NextResponse.json(

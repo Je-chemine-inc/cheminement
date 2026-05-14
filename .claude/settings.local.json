@@ -14,7 +14,12 @@
       "Bash(tee tsc_output.txt)",
       "Bash(echo \"exit:$?\")",
       "Bash(node node_modules/typescript/bin/tsc --noEmit -p tsconfig.json)",
-      "Bash(echo \"---exit:$?\")"
+      "Bash(echo \"---exit:$?\")",
+      "PowerShell(npx tsc --noEmit 2>&1)",
+      "Bash(npx eslint *)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('OK'\\)\")",
+      "Bash(findstr -E \"User|Appointment\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\.claude\\projects\\c--Users-merie-cheminement\\memory"

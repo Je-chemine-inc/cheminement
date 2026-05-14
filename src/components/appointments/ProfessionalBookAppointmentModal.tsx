@@ -32,12 +32,27 @@ export type BookableClient = {
   email?: string;
 };
 
+export type BookableProfessional = {
+  id: string;
+  name: string;
+  email?: string;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: BookableClient[];
   defaultClientId?: string;
   onCreated?: (apt: AppointmentResponse) => void;
+  /**
+   * When provided, the modal switches to admin mode:
+   *  - shows a professional picker (defaulted to `defaultProfessionalId`)
+   *  - posts to `/api/admin/appointments` with explicit `professionalId`
+   * When omitted, the modal stays in pro mode and posts on behalf of the
+   * logged-in professional (original behavior).
+   */
+  professionals?: BookableProfessional[];
+  defaultProfessionalId?: string;
 };
 
 const DURATION_OPTIONS = [30, 50, 60, 90];
@@ -49,14 +64,19 @@ export function ProfessionalBookAppointmentModal({
   clients,
   defaultClientId,
   onCreated,
+  professionals,
+  defaultProfessionalId,
 }: Props) {
   const t = useTranslations("Dashboard.bookAppointmentModal");
   const locale = useLocale();
   const { data: authSession } = useSession();
   const { motifs, loading: motifsLoading } = useMotifs();
 
+  const isAdminMode = Array.isArray(professionals);
+
   const [clientId, setClientId] = useState<string>("");
   const [clientSearch, setClientSearch] = useState("");
+  const [professionalId, setProfessionalId] = useState<string>("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState<number>(50);
@@ -71,6 +91,7 @@ export function ProfessionalBookAppointmentModal({
     if (!open) return;
     setClientId(defaultClientId ?? "");
     setClientSearch("");
+    setProfessionalId(defaultProfessionalId ?? "");
     setDate("");
     setTime("");
     setDuration(50);
@@ -80,7 +101,7 @@ export function ProfessionalBookAppointmentModal({
     setNotes("");
     setSaving(false);
     setErrorMsg(null);
-  }, [open, defaultClientId]);
+  }, [open, defaultClientId, defaultProfessionalId]);
 
   const filteredClients = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();
@@ -102,6 +123,7 @@ export function ProfessionalBookAppointmentModal({
     Boolean(date) &&
     Boolean(time) &&
     Boolean(motifLabel) &&
+    (!isAdminMode || Boolean(professionalId)) &&
     !saving;
 
   const handleSubmit = async () => {
@@ -109,15 +131,42 @@ export function ProfessionalBookAppointmentModal({
     setSaving(true);
     setErrorMsg(null);
     try {
-      const professionalId = authSession?.user?.id;
-      if (!professionalId) {
+      if (isAdminMode) {
+        const res = await fetch("/api/admin/appointments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientId,
+            professionalId,
+            date,
+            time,
+            duration,
+            type,
+            motif: motifLabel,
+            notes: notes.trim() || undefined,
+            location:
+              type === "in-person" ? location.trim() || undefined : undefined,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || t("genericError"));
+        }
+        const apt = (await res.json()) as AppointmentResponse;
+        onCreated?.(apt);
+        onOpenChange(false);
+        return;
+      }
+
+      const sessionProId = authSession?.user?.id;
+      if (!sessionProId) {
         setErrorMsg(t("genericError"));
         setSaving(false);
         return;
       }
       const payload: Record<string, unknown> = {
         clientId,
-        professionalId,
+        professionalId: sessionProId,
         date,
         time,
         duration,
@@ -193,6 +242,35 @@ export function ProfessionalBookAppointmentModal({
               </>
             )}
           </div>
+
+          {/* Professional (admin mode only) */}
+          {isAdminMode && professionals ? (
+            <div className="space-y-2">
+              <Label>{t("professionalLabel")}</Label>
+              <Select
+                value={professionalId || undefined}
+                onValueChange={setProfessionalId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("professionalPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {professionals.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      {t("noProfessionals")}
+                    </div>
+                  ) : (
+                    professionals.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                        {p.email ? ` — ${p.email}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">

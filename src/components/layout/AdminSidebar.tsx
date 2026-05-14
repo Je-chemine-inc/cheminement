@@ -21,6 +21,9 @@ import {
   HelpCircle,
   Library,
   MessageSquare,
+  Mail,
+  AtSign,
+  Briefcase,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -59,6 +62,11 @@ export function AdminSidebar() {
           title: t("messages"),
           url: "/admin/dashboard/messages",
           icon: MessageSquare,
+        },
+        {
+          title: t("externalMessages"),
+          url: "/admin/dashboard/external-messages",
+          icon: AtSign,
         },
       ],
     },
@@ -106,6 +114,11 @@ export function AdminSidebar() {
           icon: FileText,
         },
         {
+          title: t("emailTemplates"),
+          url: "/admin/dashboard/email-templates",
+          icon: Mail,
+        },
+        {
           title: t("motifs"),
           url: "/admin/dashboard/motifs",
           icon: Tags,
@@ -125,6 +138,11 @@ export function AdminSidebar() {
     {
       title: t("administration"),
       items: [
+        {
+          title: t("employees"),
+          url: "/admin/dashboard/employees",
+          icon: Briefcase,
+        },
         {
           title: "Admins",
           url: "/admin/dashboard/admins",

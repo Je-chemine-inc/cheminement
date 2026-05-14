@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         verifyUrl,
+        locale: user.language === "en" ? "en" : "fr",
       });
     } catch (err) {
       console.error("resend-email send:", err);

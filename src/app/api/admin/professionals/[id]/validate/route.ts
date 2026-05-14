@@ -4,7 +4,27 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
+import {
+  EMAIL_VERIFY_TTL_MS,
+  generateUrlToken,
+  hashVerificationSecret,
+} from "@/lib/account-init";
+import { sendAccountEmailVerificationEmail } from "@/lib/notifications";
 
+// SMTP send can be slow on cold start; give the route headroom.
+export const maxDuration = 30;
+
+/**
+ * Admin "Valider" action for a professional. Per spec:
+ *   - Admin approval triggers the 2FA activation email (email + SMS link).
+ *   - The account becomes `active` ONLY after BOTH admin approval AND the pro
+ *     completing email + SMS verification.
+ * So this endpoint flips `adminApproved: true` and arms the verification flow
+ * (bumps `accountSecurityVersion` to 1, generates a fresh email token, sends
+ * the verify-account link). The pro's `status` stays `"pending"` until they
+ * click the link and finish phone verification — that final transition is
+ * handled in `/api/auth/account/verify-phone`.
+ */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -43,17 +63,61 @@ export async function POST(
       );
     }
 
-    user.status = "active";
+    user.adminApproved = true;
     user.professionalLicenseStatus = "verified";
-    await user.save();
+
+    // If the pro has already completed email + SMS verification (e.g. they
+    // went through the secure flow earlier), activate immediately. Otherwise
+    // arm the 2FA flow and send the activation link.
+    let verificationEmailSent = false;
+    if (user.emailVerified && user.phoneVerifiedAt) {
+      user.status = "active";
+      await user.save();
+    } else {
+      user.accountSecurityVersion = 1;
+      // Clear any stale verification state so the new link is the source of truth.
+      user.phoneVerifiedAt = undefined;
+      user.emailVerified = undefined;
+      user.phoneStepTokenHash = undefined;
+      user.phoneStepTokenExpires = undefined;
+      user.verificationSmsCodeHash = undefined;
+      user.verificationSmsExpires = undefined;
+      user.verificationSmsAttempts = 0;
+
+      const token = generateUrlToken();
+      user.verificationEmailTokenHash = hashVerificationSecret(token);
+      user.verificationEmailExpires = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
+      await user.save();
+
+      const base =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        new URL(req.url).origin;
+      const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(
+        user._id.toString(),
+      )}&token=${encodeURIComponent(token)}`;
+      try {
+        await sendAccountEmailVerificationEmail({
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          verifyUrl,
+          locale: user.language === "en" ? "en" : "fr",
+        });
+        verificationEmailSent = true;
+      } catch (err) {
+        console.error("Admin approve: 2FA email send failed:", err);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       status: user.status,
+      adminApproved: user.adminApproved,
       professionalLicenseStatus: user.professionalLicenseStatus,
+      verificationEmailSent,
     });
   } catch (error) {
-    console.error("Admin force-validate professional error:", error);
+    console.error("Admin validate professional error:", error);
     return NextResponse.json(
       {
         error: "Failed to validate professional",

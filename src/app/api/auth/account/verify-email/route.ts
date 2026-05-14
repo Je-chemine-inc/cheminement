@@ -78,12 +78,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Two-factor activation: status flips to "active" only when BOTH email and
-    // phone are verified. Until then, kick off (or refresh) the SMS step so the
-    // verify-account page can chain straight into phone verification.
+    // phone are verified. For professionals, admin approval is also required.
+    // Until then, kick off (or refresh) the SMS step so the verify-account page
+    // can chain straight into phone verification.
     let phoneStepToken: string | undefined;
     let phoneMasked: string | undefined;
     if (user.phoneVerifiedAt) {
-      user.status = "active";
+      if (user.role === "professional") {
+        if (user.adminApproved) {
+          user.status = "active";
+        }
+      } else {
+        user.status = "active";
+      }
     } else if (user.phone) {
       phoneStepToken = generatePhoneStepToken();
       user.phoneStepTokenHash = hashVerificationSecret(phoneStepToken);

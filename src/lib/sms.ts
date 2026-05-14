@@ -76,9 +76,36 @@ export async function sendSmsOtp(toPhone: string, code: string, lang: "fr" | "en
 
 /** SMS de bienvenue après inscription. */
 export async function sendWelcomeSms(toPhone: string, name: string, lang: "fr" | "en" = "fr"): Promise<void> {
-  const body = 
+  const body =
     lang === "en"
       ? `Welcome to JeChemine, ${name}! We're thrilled to accompany you on your wellness journey.`
       : `Bienvenue chez JeChemine, ${name} ! Nous sommes ravis de vous accompagner dans votre cheminement vers le bien-être.`;
+  return sendSms(toPhone, body);
+}
+
+/** Rappel H-72 : RDV dans 72h, fenêtre d'annulation gratuite encore ouverte. */
+export async function sendAppointment72hSms(
+  toPhone: string,
+  appointmentDateLabel: string,
+  cancelUrl: string,
+  lang: "fr" | "en" = "fr",
+): Promise<void> {
+  const body =
+    lang === "en"
+      ? `Je chemine: your appointment is in 72h (${appointmentDateLabel}). You can still cancel/reschedule free of charge: ${cancelUrl}`
+      : `Je chemine : votre rendez-vous est dans 72 h (${appointmentDateLabel}). Annulation gratuite encore possible : ${cancelUrl}`;
+  return sendSms(toPhone, body);
+}
+
+/** Rappel H-48 : RDV dans 48h, plus d'annulation gratuite (15 % de frais). */
+export async function sendAppointment48hSms(
+  toPhone: string,
+  appointmentDateLabel: string,
+  lang: "fr" | "en" = "fr",
+): Promise<void> {
+  const body =
+    lang === "en"
+      ? `Je chemine: appointment in 48h (${appointmentDateLabel}). Free-cancellation window closed (15% fee applies).`
+      : `Je chemine : rendez-vous dans 48 h (${appointmentDateLabel}). Délai gratuit dépassé (15 % de frais en cas d'annulation).`;
   return sendSms(toPhone, body);
 }

@@ -1,14 +1,76 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Mail, Info, Users, ClipboardList, Wallet, MessageSquare } from "lucide-react";
+import { Mail, Info, Users, ClipboardList, Wallet, MessageSquare, Phone, MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import type { AnimationVariant } from "@/components/ui/ScrollReveal";
 import { Button } from "@/components/ui/button";
+import {
+  formatCanadianPhone,
+  formatStandardAddressBlock,
+  type StandardAddress,
+} from "@/lib/format-platform-contact";
+
+type PlatformContact = {
+  physicalAddress: StandardAddress;
+  phoneNumber: string;
+  supportEmail: string;
+  interacDepositEmail?: string;
+  companyName?: string;
+};
 
 export default function ContactChannelsSection() {
   const t = useTranslations("Contact.channels");
+  const [contact, setContact] = useState<PlatformContact | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchOnce = () => {
+      fetch("/api/platform-contact", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: PlatformContact | null) => {
+          if (active && data) setContact(data);
+        })
+        .catch(() => {});
+    };
+
+    fetchOnce();
+
+    let es: EventSource | null = null;
+    if (typeof window !== "undefined" && "EventSource" in window) {
+      es = new EventSource("/api/platform-contact/stream");
+      es.addEventListener("contact", (event) => {
+        try {
+          const data = JSON.parse((event as MessageEvent).data);
+          if (active && data) setContact(data);
+        } catch {
+          /* ignore malformed payload */
+        }
+      });
+      // EventSource auto-reconnects on error; no explicit handler needed.
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchOnce();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      active = false;
+      es?.close();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  const fallback = t("phone");
+  const emailDisplay = contact?.supportEmail?.trim() || t("email");
+  const formattedPhone = formatCanadianPhone(contact?.phoneNumber);
+  const phoneDisplay = formattedPhone || fallback;
+  const addressLines = formatStandardAddressBlock(contact?.physicalAddress);
+
   const inquiries = [
     {
       icon: Info,
@@ -65,16 +127,35 @@ export default function ContactChannelsSection() {
                     <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                       {t("emailLabel")}
                     </p>
-                    <p className="text-base text-foreground">{t("email")}</p>
+                    <p className="text-base text-foreground break-all">
+                      {emailDisplay}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 rounded-3xl border border-border/20 bg-card/70 px-6 py-4 text-sm font-medium text-muted-foreground">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <Phone className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                       {t("phoneLabel")}
                     </p>
-                    <p className="text-base text-foreground">{t("phone")}</p>
+                    <p className="text-base text-foreground">{phoneDisplay}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 rounded-3xl border border-border/20 bg-card/70 px-6 py-4 text-sm font-medium text-muted-foreground">
+                  <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                      {t("addressLabel")}
+                    </p>
+                    <address className="not-italic text-base text-foreground leading-relaxed">
+                      {addressLines.length > 0
+                        ? addressLines.map((line, i) => (
+                            <span key={i} className="block">
+                              {line}
+                            </span>
+                          ))
+                        : fallback}
+                    </address>
                   </div>
                 </div>
                 <Button asChild variant="default" className="mt-4 w-full sm:w-auto">

@@ -40,10 +40,45 @@ interface EmailSettings {
   templates: Record<string, EmailTemplateConfig>;
 }
 
+interface PhysicalAddress {
+  street: string;
+  suite: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+}
+
 interface PlatformContact {
-  physicalAddress: string;
+  physicalAddress: PhysicalAddress | string;
   phoneNumber: string;
   supportEmail: string;
+}
+
+const EMPTY_ADDRESS: PhysicalAddress = {
+  street: "",
+  suite: "",
+  city: "",
+  province: "",
+  postalCode: "",
+  country: "Canada",
+};
+
+function normalizePhysicalAddress(
+  raw: PhysicalAddress | string | undefined,
+): PhysicalAddress {
+  if (!raw) return { ...EMPTY_ADDRESS };
+  if (typeof raw === "string") {
+    return { ...EMPTY_ADDRESS, street: raw };
+  }
+  return {
+    street: raw.street ?? "",
+    suite: raw.suite ?? "",
+    city: raw.city ?? "",
+    province: raw.province ?? "",
+    postalCode: raw.postalCode ?? "",
+    country: raw.country ?? "Canada",
+  };
 }
 
 interface PlatformSettings {
@@ -62,6 +97,7 @@ interface PlatformSettings {
   };
   emailSettings: EmailSettings;
   platformContact?: PlatformContact;
+  interacDepositEmail?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +264,7 @@ export default function SettingsPage() {
           cancellationPolicy: settings.cancellationPolicy,
           emailSettings: settings.emailSettings,
           platformContact: settings.platformContact,
+          interacDepositEmail: settings.interacDepositEmail,
         }),
       });
 
@@ -278,19 +315,41 @@ export default function SettingsPage() {
   };
 
   const updatePlatformContact = (
-    field: keyof PlatformContact,
+    field: "phoneNumber" | "supportEmail",
     value: string,
   ) => {
     setSettings((prev) => {
       if (!prev) return prev;
       const current = prev.platformContact || {
-        physicalAddress: "",
+        physicalAddress: { ...EMPTY_ADDRESS },
         phoneNumber: "",
         supportEmail: "",
       };
       return {
         ...prev,
         platformContact: { ...current, [field]: value },
+      };
+    });
+  };
+
+  const updatePhysicalAddress = (
+    field: keyof PhysicalAddress,
+    value: string,
+  ) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const current = prev.platformContact || {
+        physicalAddress: { ...EMPTY_ADDRESS },
+        phoneNumber: "",
+        supportEmail: "",
+      };
+      const currentAddress = normalizePhysicalAddress(current.physicalAddress);
+      return {
+        ...prev,
+        platformContact: {
+          ...current,
+          physicalAddress: { ...currentAddress, [field]: value },
+        },
       };
     });
   };
@@ -511,22 +570,132 @@ export default function SettingsPage() {
           </p>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-light text-muted-foreground mb-2">
+            <div className="md:col-span-2 rounded-lg border border-border/30 bg-background/50 p-4">
+              <h3 className="text-sm font-medium text-foreground mb-1">
                 {t("physicalAddress")}
-              </label>
-              <input
-                type="text"
-                value={settings.platformContact?.physicalAddress ?? ""}
-                onChange={(e) =>
-                  updatePlatformContact("physicalAddress", e.target.value)
-                }
-                placeholder={t("physicalAddressPlaceholder")}
-                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4">
                 {t("physicalAddressHelp")}
               </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressStreet")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).street
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress("street", e.target.value)
+                    }
+                    placeholder={t("addressStreetPlaceholder")}
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressSuite")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).suite
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress("suite", e.target.value)
+                    }
+                    placeholder={t("addressSuitePlaceholder")}
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressCity")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).city
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress("city", e.target.value)
+                    }
+                    placeholder={t("addressCityPlaceholder")}
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressProvince")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).province
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress("province", e.target.value)
+                    }
+                    placeholder={t("addressProvincePlaceholder")}
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressPostalCode")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).postalCode
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress(
+                        "postalCode",
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                    placeholder={t("addressPostalCodePlaceholder")}
+                    maxLength={7}
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary uppercase"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-light text-muted-foreground mb-1">
+                    {t("addressCountry")}
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      normalizePhysicalAddress(
+                        settings.platformContact?.physicalAddress,
+                      ).country
+                    }
+                    onChange={(e) =>
+                      updatePhysicalAddress("country", e.target.value)
+                    }
+                    placeholder="Canada"
+                    className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
@@ -562,6 +731,24 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 {t("supportEmailHelp")}
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("interacDepositEmail")}
+              </label>
+              <input
+                type="email"
+                value={settings.interacDepositEmail ?? ""}
+                onChange={(e) =>
+                  updateSettings("interacDepositEmail", e.target.value)
+                }
+                placeholder={t("interacDepositEmailPlaceholder")}
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("interacDepositEmailHelp")}
               </p>
             </div>
           </div>

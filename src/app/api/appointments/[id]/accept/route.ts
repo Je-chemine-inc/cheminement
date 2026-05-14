@@ -134,21 +134,32 @@ export async function POST(
       // Mark appointment as awaiting payment guarantee
       await Appointment.findByIdAndUpdate(id, { awaitingPaymentGuarantee: true, firstScheduledAt: new Date() });
 
-      // Send jumelage confirmation email
-      void sendJumelageSuccessEmail({
-        clientName: `${client.firstName} ${client.lastName}`.trim(),
-        clientEmail: client.email,
-        professionalName,
-        locale,
-      }).catch((err) => console.error("Error sending jumelage success email:", err));
-
-      // Send payment invitation — with a tokenized link for unclaimed accounts,
-      // or a dashboard link for already-active clients.
+      // Resolve fresh user state — drives both the jumelage email's
+      // "complete account" CTA and the payment-invitation link below.
       const freshClientUser = await User.findById(client._id).select("role status stripeCustomerId").lean();
       const isActiveClient = (freshClientUser as { role?: string; status?: string } | null)?.role === "client" &&
         (freshClientUser as { status?: string } | null)?.status === "active";
 
       const base = getBaseUrl();
+
+      // "Compléter mon compte" CTA:
+      //   - unclaimed account → /signup/member?email=... (the claim flow)
+      //   - active client     → /client/dashboard/profile (finalize profile)
+      const completeAccountUrl = isActiveClient
+        ? `${base}/client/dashboard/profile`
+        : `${base}/signup/member?email=${encodeURIComponent(client.email)}`;
+
+      // Send jumelage confirmation email (with the two distinct CTAs)
+      void sendJumelageSuccessEmail({
+        clientName: `${client.firstName} ${client.lastName}`.trim(),
+        clientEmail: client.email,
+        professionalName,
+        locale,
+        completeAccountUrl,
+      }).catch((err) => console.error("Error sending jumelage success email:", err));
+
+      // Send payment invitation — with a tokenized link for unclaimed accounts,
+      // or a dashboard link for already-active clients.
 
       if (!isActiveClient) {
         // Client hasn't claimed their account — send tokenized /pay link

@@ -6,7 +6,17 @@ export interface IUser extends Document {
   password?: string;
   firstName: string;
   lastName: string;
-  role: "client" | "professional" | "admin" | "guest" | "prospect";
+  role: "client" | "professional" | "admin" | "guest" | "prospect" | "employee";
+  /** Postal address (employee/staff records — separate from `location` which is the city). */
+  address?: string;
+  /** Highest diploma / qualification (employee record). */
+  diploma?: string;
+  /** Free-text professional experience summary (employee record). */
+  experience?: string;
+  /** Stored URL of uploaded CV PDF/image (employee record). */
+  cvDocumentUrl?: string;
+  /** Original filename of the uploaded CV, shown in the admin UI. */
+  cvDocumentName?: string;
   isAdmin: boolean;
   adminId?: mongoose.Types.ObjectId; // Reference to Admin document if user is admin
   profile?: mongoose.Types.ObjectId; // Reference to Profile document
@@ -35,6 +45,13 @@ export interface IUser extends Document {
     | "pending_review"
     | "verified"
     | "rejected";
+  /**
+   * Professionnel : l'admin a approuvé le dossier. Devient `true` quand l'admin
+   * clique "Valider" et déclenche l'envoi du lien d'activation 2FA. Le compte
+   * passe à `status: "active"` uniquement quand `adminApproved && emailVerified
+   * && phoneVerifiedAt`.
+   */
+  adminApproved?: boolean;
   /** Consentement explicite à la politique de confidentialité (Loi 25), à l’inscription. */
   privacyPolicyAcceptedAt?: Date;
   /** Version de la politique de confidentialité acceptée (ex. "2026-04-13"). */
@@ -80,7 +97,13 @@ const UserSchema = new Schema<IUser>(
     password: {
       type: String,
       required: function (this: IUser) {
-        return this.role !== "guest" && this.role !== "prospect";
+        // Employee records may exist without login credentials until promoted
+        // to admin (or a password is set later via the admin UI).
+        return (
+          this.role !== "guest" &&
+          this.role !== "prospect" &&
+          this.role !== "employee"
+        );
       },
     },
     firstName: {
@@ -95,10 +118,22 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["client", "professional", "admin", "guest", "prospect"],
+      enum: [
+        "client",
+        "professional",
+        "admin",
+        "guest",
+        "prospect",
+        "employee",
+      ],
       required: [true, "Role is required"],
       default: "client",
     },
+    address: { type: String, trim: true },
+    diploma: { type: String, trim: true },
+    experience: { type: String, trim: true },
+    cvDocumentUrl: { type: String, trim: true },
+    cvDocumentName: { type: String, trim: true },
     isAdmin: {
       type: Boolean,
       default: false,
@@ -153,6 +188,7 @@ const UserSchema = new Schema<IUser>(
       enum: ["not_applicable", "pending_review", "verified", "rejected"],
       default: "not_applicable",
     },
+    adminApproved: { type: Boolean, default: false },
     privacyPolicyAcceptedAt: Date,
     privacyPolicyVersion: String,
     termsAcceptedAt: Date,

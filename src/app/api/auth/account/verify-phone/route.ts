@@ -89,7 +89,19 @@ export async function POST(req: NextRequest) {
     }
 
     user.phoneVerifiedAt = new Date();
-    user.status = "active";
+    // Activation rules:
+    //   - Clients: phone verified (+ email already verified earlier) → active.
+    //   - Professionals: active only after BOTH adminApproved AND the 2FA pair
+    //     (emailVerified + phoneVerifiedAt) are all true. The 2FA flow itself
+    //     is triggered by admin approval, so reaching this point on a pro
+    //     means the admin has already approved.
+    if (user.role === "professional") {
+      if (user.adminApproved && user.emailVerified) {
+        user.status = "active";
+      }
+    } else {
+      user.status = "active";
+    }
     user.phoneStepTokenHash = undefined;
     user.phoneStepTokenExpires = undefined;
     user.verificationSmsCodeHash = undefined;
@@ -97,19 +109,24 @@ export async function POST(req: NextRequest) {
     user.verificationSmsAttempts = 0;
     await user.save();
 
-    sendWelcomeEmail({
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      role: user.role as "client" | "professional" | "guest" | "prospect",
-    }).catch((err) => console.error("welcome after verify email:", err));
+    // Professionals receive a dedicated welcome email when they complete their
+    // profile (sendProfessionalProfileCompletedEmail in /api/profile). Sending
+    // the generic welcome here would be a duplicate, so skip it for pros.
+    if (user.role !== "professional") {
+      sendWelcomeEmail({
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role as "client" | "professional" | "guest" | "prospect",
+      }).catch((err) => console.error("welcome after verify email:", err));
 
-    if (user.phone) {
-      const { sendWelcomeSms } = await import("@/lib/sms");
-      sendWelcomeSms(
-        user.phone,
-        user.firstName,
-        (user.language as "fr" | "en") || "fr",
-      ).catch((err) => console.error("welcome after verify sms:", err));
+      if (user.phone) {
+        const { sendWelcomeSms } = await import("@/lib/sms");
+        sendWelcomeSms(
+          user.phone,
+          user.firstName,
+          (user.language as "fr" | "en") || "fr",
+        ).catch((err) => console.error("welcome after verify sms:", err));
+      }
     }
 
     return NextResponse.json({ ok: true });

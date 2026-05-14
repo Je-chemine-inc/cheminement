@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ClipboardPen, Send, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 
 export default function ContactFormSection() {
   const t = useTranslations("Contact.form");
+  const locale = useLocale();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -37,15 +38,15 @@ export default function ContactFormSection() {
     setSubmitStatus("idle");
 
     try {
-      // TODO: Implémenter l'envoi du formulaire vers l'API
-      // const response = await fetch("/api/contact", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(formData),
-      // });
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, locale }),
+      });
 
-      // Simuler un délai d'envoi
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        throw new Error("Submit failed");
+      }
 
       setSubmitStatus("success");
       setFormData({

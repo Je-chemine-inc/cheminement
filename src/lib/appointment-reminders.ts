@@ -1,0 +1,156 @@
+import connectToDatabase from "@/lib/mongodb";
+import Appointment from "@/models/Appointment";
+import { getAppointmentStartAt } from "@/lib/appointment-start";
+import {
+  sendAppointment72hReminder,
+  sendAppointment48hReminder,
+} from "@/lib/notifications";
+import {
+  sendAppointment72hSms,
+  sendAppointment48hSms,
+} from "@/lib/sms";
+
+const HOUR_MS = 60 * 60 * 1000;
+
+function getBaseUrl(): string {
+  return (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000"
+  );
+}
+
+function formatAppointmentDateLabel(
+  apt: { date?: Date; time?: string },
+  lang: "fr" | "en",
+): string {
+  if (!apt.date) return "—";
+  const d = new Date(apt.date);
+  if (isNaN(d.getTime())) return "—";
+  const dateStr = d.toLocaleDateString(lang === "fr" ? "fr-CA" : "en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const at = lang === "fr" ? "à" : "at";
+  return apt.time ? `${dateStr} ${at} ${apt.time}` : dateStr;
+}
+
+/**
+ * Sends two reminders before each scheduled appointment:
+ *   - H-72 (window 72h..48h before): email + SMS, includes cancel + reschedule links
+ *   - H-48 (window 48h..0h  before): email + SMS, NO cancel/reschedule (policy)
+ *
+ * Designed to be safe under hourly cron: each branch dedupes via boolean
+ * flags on the Appointment document.
+ */
+export async function runAppointmentReminders(): Promise<{
+  reminder72hSent: number;
+  reminder48hSent: number;
+}> {
+  await connectToDatabase();
+  const now = Date.now();
+  const baseUrl = getBaseUrl();
+
+  let reminder72hSent = 0;
+  let reminder48hSent = 0;
+
+  // Pull every upcoming scheduled appointment that might still need a reminder.
+  const upcoming = await Appointment.find({
+    status: "scheduled",
+    date: { $exists: true },
+    $or: [
+      { reminder72hSent: { $ne: true } },
+      { reminder48hSent: { $ne: true } },
+    ],
+  })
+    .populate("clientId", "firstName lastName email phone language")
+    .populate("professionalId", "firstName lastName")
+    .limit(500);
+
+  for (const apt of upcoming) {
+    const start = getAppointmentStartAt(apt);
+    if (!start) continue;
+    const hoursUntil = (start.getTime() - now) / HOUR_MS;
+    if (hoursUntil <= 0) continue;
+
+    const client = apt.clientId as unknown as {
+      _id: { toString: () => string };
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      language?: string;
+    } | null;
+    if (!client?.email) continue;
+
+    const professional = apt.professionalId as unknown as {
+      firstName?: string;
+      lastName?: string;
+    } | null;
+    const professionalName = professional
+      ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
+      : undefined;
+
+    const locale: "fr" | "en" = client.language === "en" ? "en" : "fr";
+    const dateLabel = formatAppointmentDateLabel(apt, locale);
+    const cancelUrl = `${baseUrl}/client/dashboard/appointments?id=${apt._id}&action=cancel`;
+    const rescheduleUrl = `${baseUrl}/appointment?for=self`;
+    const clientName = `${client.firstName} ${client.lastName}`.trim();
+    const updates: Record<string, boolean> = {};
+
+    // H-72 window: 48h < hoursUntil <= 72h
+    if (!apt.reminder72hSent && hoursUntil > 48 && hoursUntil <= 72) {
+      const ok = await sendAppointment72hReminder({
+        clientName,
+        clientEmail: client.email,
+        professionalName,
+        appointmentDateLabel: dateLabel,
+        cancelUrl,
+        rescheduleUrl,
+        locale,
+      });
+      if (ok) {
+        updates.reminder72hSent = true;
+        reminder72hSent++;
+        if (client.phone) {
+          await sendAppointment72hSms(
+            client.phone,
+            dateLabel,
+            cancelUrl,
+            locale,
+          ).catch((err) =>
+            console.error("sendAppointment72hSms:", err),
+          );
+        }
+      }
+    }
+
+    // H-48 window: 0h < hoursUntil <= 48h
+    if (!apt.reminder48hSent && hoursUntil > 0 && hoursUntil <= 48) {
+      const ok = await sendAppointment48hReminder({
+        clientName,
+        clientEmail: client.email,
+        professionalName,
+        appointmentDateLabel: dateLabel,
+        locale,
+      });
+      if (ok) {
+        updates.reminder48hSent = true;
+        reminder48hSent++;
+        if (client.phone) {
+          await sendAppointment48hSms(client.phone, dateLabel, locale).catch(
+            (err) => console.error("sendAppointment48hSms:", err),
+          );
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await Appointment.findByIdAndUpdate(apt._id, { $set: updates });
+    }
+  }
+
+  return { reminder72hSent, reminder48hSent };
+}

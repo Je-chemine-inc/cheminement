@@ -29,11 +29,13 @@ export async function GET() {
 
     await connectToDatabase();
 
-    // Get all users who are not admins and are active (both clients and professionals)
+    // Only employees (staff records) are promotable to admin. Clients and
+    // professionals are no longer eligible — an admin must be an employee
+    // first ("dossier employé" workflow).
     const users = await User.find({
       isAdmin: { $ne: true },
       status: "active",
-      role: { $in: ["client", "professional"] }, // Explicitly include both roles
+      role: "employee",
     })
       .select("firstName lastName email role _id createdAt")
       .sort({ createdAt: -1 })

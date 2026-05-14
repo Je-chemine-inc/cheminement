@@ -320,7 +320,7 @@ export default function ClientAppointmentsPage() {
             </Button>
           )}
           <Button asChild variant="outline" className="gap-2 rounded-full">
-            <Link href="/appointment">
+            <Link href="/appointment?changeProfessional=true">
               {t("requestWithOtherPro")}
             </Link>
           </Button>

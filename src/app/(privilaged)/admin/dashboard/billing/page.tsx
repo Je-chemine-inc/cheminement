@@ -646,17 +646,35 @@ export default function AdminBillingPage() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">
-                      {payment.status === "paid" && (
-                        <Button
-                          variant="outline"
-                          className="gap-2 rounded-full"
-                          size="sm"
-                          onClick={() => handleDownloadReceipt(payment.id)}
-                        >
-                          <Download className="h-4 w-4" />
-                          {t("downloadInvoice")}
-                        </Button>
-                      )}
+                      {/* Manual receipt — admin override: always available so admins
+                          can produce a receipt for any appointment, regardless of
+                          payment state. The PDF surfaces a "pending_transfer"
+                          marker when payment is not yet recorded. */}
+                      <Button
+                        variant="outline"
+                        className="gap-2 rounded-full"
+                        size="sm"
+                        onClick={() => handleDownloadReceipt(payment.id)}
+                      >
+                        <Download className="h-4 w-4" />
+                        {payment.status === "paid"
+                          ? t("downloadInvoice")
+                          : t("manualReceipt")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="gap-2 rounded-full"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `/api/payments/receipt?appointmentId=${payment.id}&inline=1`,
+                            "_blank",
+                            "noopener",
+                          )
+                        }
+                      >
+                        {t("previewReceipt")}
+                      </Button>
 
                       {/* Relancer button — Interac pending/overdue only */}
                       {payment.paymentMethod === "transfer" &&

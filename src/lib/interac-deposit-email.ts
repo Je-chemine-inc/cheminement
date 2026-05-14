@@ -11,5 +11,5 @@ export async function getInteracDepositEmail(): Promise<string> {
   const fromDb = s?.interacDepositEmail?.trim();
   if (fromDb) return fromDb;
 
-  return "paiements@votreplateforme.com";
+  return "paiements@jechemine.ca";
 }

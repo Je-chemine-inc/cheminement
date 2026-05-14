@@ -78,15 +78,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Send welcome email
-    try {
-      await sendWelcomeEmail({
-        name: `${firstName} ${lastName}`,
-        email: email.toLowerCase().trim(),
-        role,
-      });
-    } catch (emailErr) {
-      console.error("Failed to send welcome email:", emailErr);
+    // Professionals get a dedicated welcome email on profile completion
+    // (sendProfessionalProfileCompletedEmail in /api/profile). Sending the
+    // generic welcome here for a pro would be a duplicate, so skip it.
+    if (role !== "professional") {
+      try {
+        await sendWelcomeEmail({
+          name: `${firstName} ${lastName}`,
+          email: email.toLowerCase().trim(),
+          role,
+        });
+      } catch (emailErr) {
+        console.error("Failed to send welcome email:", emailErr);
+      }
     }
 
     return NextResponse.json({

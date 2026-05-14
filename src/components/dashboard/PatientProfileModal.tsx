@@ -10,6 +10,7 @@ import MedicalProfile from "./MedicalProfile";
 import { appointmentsAPI } from "@/lib/api-client";
 import { useState } from "react";
 import { AppointmentResponse } from "@/types/api";
+import { useLocale, useTranslations } from "next-intl";
 
 interface AppointmentDetailsModalProps {
   isOpen: boolean;
@@ -24,11 +25,39 @@ export default function AppointmentDetailsModal({
   appointment,
   onAction,
 }: AppointmentDetailsModalProps) {
+  const t = useTranslations("Professional.proposals.modal");
+  const locale = useLocale();
   const [meetingLink, setMeetingLink] = useState("");
   const [showMeetingLinkInput, setShowMeetingLinkInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen || !appointment) return null;
+
+  const typeKeyMap: Record<string, string> = {
+    video: "video",
+    "in-person": "inPerson",
+    phone: "phone",
+    both: "both",
+  };
+
+  const statusKeyMap: Record<string, string> = {
+    pending: "pending",
+    scheduled: "scheduled",
+    cancelled: "cancelled",
+    completed: "completed",
+    "no-show": "noShow",
+  };
+
+  const getTypeLabel = (type: AppointmentResponse["type"] | undefined) => {
+    if (!type) return t("notAvailable");
+    const key = typeKeyMap[type];
+    return key ? t(`sessionType.${key}`) : type;
+  };
+
+  const getStatusLabel = (status: AppointmentResponse["status"]) => {
+    const key = statusKeyMap[status];
+    return key ? t(`status.${key}`) : status;
+  };
 
   const getTypeBadge = (type: AppointmentResponse["type"] | undefined) => {
     if (!type) return null;
@@ -43,7 +72,7 @@ export default function AppointmentDetailsModal({
       <span
         className={`px-3 py-1 rounded-full text-xs font-light ${styles[type] ?? "bg-muted text-muted-foreground"}`}
       >
-        {type.charAt(0).toUpperCase() + type.slice(1)}
+        {getTypeLabel(type)}
       </span>
     );
   };
@@ -51,15 +80,15 @@ export default function AppointmentDetailsModal({
   const getStatusBadge = (status: AppointmentResponse["status"]) => {
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-light`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {getStatusLabel(status)}
       </span>
     );
   };
 
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "To be scheduled";
+    if (!dateString) return t("toBeScheduled");
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(locale === "fr" ? "fr-CA" : "en-US", {
       month: "long",
       day: "numeric",
       year: "numeric",
@@ -98,10 +127,12 @@ export default function AppointmentDetailsModal({
           <Tabs defaultValue="appointment-details" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="appointment-details">
-                Appointment Details
+                {t("tabs.appointmentDetails")}
               </TabsTrigger>
-              <TabsTrigger value="basic-info">Basic Info</TabsTrigger>
-              <TabsTrigger value="medical-info">Medical Info</TabsTrigger>
+              <TabsTrigger value="basic-info">{t("tabs.basicInfo")}</TabsTrigger>
+              <TabsTrigger value="medical-info">
+                {t("tabs.medicalInfo")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="appointment-details" className="space-y-6 mt-6">
@@ -109,13 +140,13 @@ export default function AppointmentDetailsModal({
               <div className="rounded-xl bg-card p-6 border border-border/40">
                 <h3 className="text-lg font-serif font-light text-foreground mb-4 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
-                  Appointment Details
+                  {t("sectionTitle")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground font-light mb-1">
-                        Date
+                        {t("date")}
                       </p>
                       <p className="text-sm text-foreground font-light">
                         {formatDate(appointment.date)}
@@ -123,45 +154,42 @@ export default function AppointmentDetailsModal({
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground font-light mb-1">
-                        Time
+                        {t("time")}
                       </p>
                       <p className="text-sm text-foreground font-light">
-                        {appointment.time || "To be scheduled"}
+                        {appointment.time || t("toBeScheduled")}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground font-light mb-1">
-                        Duration
+                        {t("duration")}
                       </p>
                       <p className="text-sm text-foreground font-light">
-                        {appointment.duration} minutes
+                        {t("minutes", { count: appointment.duration })}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground font-light mb-1">
-                        Type
+                        {t("type")}
                       </p>
                       <p className="text-sm text-foreground font-light">
-                        {appointment.type
-                          ? appointment.type.charAt(0).toUpperCase() +
-                            appointment.type.slice(1)
-                          : "N/A"}
+                        {getTypeLabel(appointment.type)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground font-light mb-1">
-                        Issue Type
+                        {t("issueType")}
                       </p>
                       <p className="text-sm text-foreground font-light">
-                        {appointment.issueType || "N/A"}
+                        {appointment.issueType || t("notAvailable")}
                       </p>
                     </div>
                     {appointment.location && (
                       <div>
                         <p className="text-xs text-muted-foreground font-light mb-1">
-                          Location
+                          {t("location")}
                         </p>
                         <p className="text-sm text-foreground font-light">
                           {appointment.location}
@@ -173,7 +201,7 @@ export default function AppointmentDetailsModal({
                 {appointment.notes && (
                   <div className="mt-6 pt-6 border-t border-border/40">
                     <p className="text-xs text-muted-foreground font-light mb-2">
-                      Notes
+                      {t("notes")}
                     </p>
                     <p className="text-sm text-foreground font-light leading-relaxed">
                       {appointment.notes}
@@ -183,7 +211,7 @@ export default function AppointmentDetailsModal({
                 {appointment.meetingLink && (
                   <div className="mt-6 pt-6 border-t border-border/40">
                     <p className="text-xs text-muted-foreground font-light mb-2">
-                      Meeting Link
+                      {t("meetingLink")}
                     </p>
                     <a
                       href={appointment.meetingLink}
@@ -204,7 +232,7 @@ export default function AppointmentDetailsModal({
                   variant="outline"
                   className="rounded-full"
                 >
-                  Close
+                  {t("close")}
                 </Button>
                 {appointment.status === "pending" && (
                   <>
@@ -224,7 +252,7 @@ export default function AppointmentDetailsModal({
                       className="gap-2 rounded-full"
                     >
                       <XIcon className="h-4 w-4" />
-                      Deny Request
+                      {t("denyRequest")}
                     </Button>
                     <Button
                       onClick={async () => {
@@ -241,7 +269,7 @@ export default function AppointmentDetailsModal({
                       className="gap-2 rounded-full"
                     >
                       <Check className="h-4 w-4" />
-                      Accept Request
+                      {t("acceptRequest")}
                     </Button>
                   </>
                 )}
@@ -253,7 +281,7 @@ export default function AppointmentDetailsModal({
                       className="gap-2 rounded-full"
                     >
                       <Video className="h-4 w-4" />
-                      Add Meeting Link
+                      {t("addMeetingLink")}
                     </Button>
                   )}
                 {appointment.status === "scheduled" && (
@@ -273,7 +301,7 @@ export default function AppointmentDetailsModal({
                     className="gap-2 rounded-full"
                   >
                     <XIcon className="h-4 w-4" />
-                    Cancel Appointment
+                    {t("cancelAppointment")}
                   </Button>
                 )}
               </div>
@@ -284,21 +312,20 @@ export default function AppointmentDetailsModal({
                   <div className="flex items-center gap-2">
                     <Video className="h-5 w-5 text-primary" />
                     <h3 className="text-lg font-serif font-light text-foreground">
-                      Add Meeting Link
+                      {t("addMeetingLink")}
                     </h3>
                   </div>
                   <p className="text-sm text-muted-foreground font-light">
-                    Provide an external meeting link (Zoom, Google Meet,
-                    Microsoft Teams, etc.)
+                    {t("meetingLinkPrompt")}
                   </p>
                   <div className="space-y-2">
                     <Label htmlFor="meetingLink" className="text-sm font-light">
-                      Meeting Link URL
+                      {t("meetingLinkUrlLabel")}
                     </Label>
                     <Input
                       id="meetingLink"
                       type="url"
-                      placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                      placeholder={t("meetingLinkPlaceholder")}
                       value={meetingLink}
                       onChange={(e) => setMeetingLink(e.target.value)}
                       className="font-light"
@@ -314,7 +341,7 @@ export default function AppointmentDetailsModal({
                       className="rounded-full"
                       disabled={isSubmitting}
                     >
-                      Cancel
+                      {t("cancel")}
                     </Button>
                     <Button
                       onClick={async () => {
@@ -340,7 +367,7 @@ export default function AppointmentDetailsModal({
                       disabled={!meetingLink || isSubmitting}
                     >
                       <Check className="h-4 w-4" />
-                      {isSubmitting ? "Saving..." : "Confirm & Accept"}
+                      {isSubmitting ? t("saving") : t("confirmAndAccept")}
                     </Button>
                   </div>
                 </div>

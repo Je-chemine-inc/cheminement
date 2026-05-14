@@ -160,29 +160,81 @@ export async function PUT(req: NextRequest) {
 
       if (data.platformContact) {
         const incoming = data.platformContact as Partial<{
-          physicalAddress: string;
+          physicalAddress: Partial<{
+            street: string;
+            suite: string;
+            city: string;
+            province: string;
+            postalCode: string;
+            country: string;
+          }>;
           phoneNumber: string;
           supportEmail: string;
         }>;
-        const current = settings.platformContact || {
-          physicalAddress: "",
-          phoneNumber: "",
-          supportEmail: "support@jechemine.ca",
+        const currentAddress = settings.platformContact?.physicalAddress;
+        const isLegacyStringAddress = typeof currentAddress === "string";
+        const baseAddress = {
+          street: isLegacyStringAddress
+            ? String(currentAddress).trim()
+            : currentAddress?.street ?? "",
+          suite: isLegacyStringAddress ? "" : currentAddress?.suite ?? "",
+          city: isLegacyStringAddress ? "" : currentAddress?.city ?? "",
+          province: isLegacyStringAddress
+            ? ""
+            : currentAddress?.province ?? "",
+          postalCode: isLegacyStringAddress
+            ? ""
+            : currentAddress?.postalCode ?? "",
+          country: isLegacyStringAddress
+            ? "Canada"
+            : currentAddress?.country ?? "Canada",
         };
+        const inAddr = incoming.physicalAddress;
+        const nextAddress = inAddr
+          ? {
+              street:
+                inAddr.street !== undefined
+                  ? String(inAddr.street).trim()
+                  : baseAddress.street,
+              suite:
+                inAddr.suite !== undefined
+                  ? String(inAddr.suite).trim()
+                  : baseAddress.suite,
+              city:
+                inAddr.city !== undefined
+                  ? String(inAddr.city).trim()
+                  : baseAddress.city,
+              province:
+                inAddr.province !== undefined
+                  ? String(inAddr.province).trim()
+                  : baseAddress.province,
+              postalCode:
+                inAddr.postalCode !== undefined
+                  ? String(inAddr.postalCode).trim().toUpperCase()
+                  : baseAddress.postalCode,
+              country:
+                inAddr.country !== undefined
+                  ? String(inAddr.country).trim()
+                  : baseAddress.country,
+            }
+          : baseAddress;
+
         settings.platformContact = {
-          physicalAddress:
-            incoming.physicalAddress !== undefined
-              ? String(incoming.physicalAddress).trim()
-              : current.physicalAddress,
+          physicalAddress: nextAddress,
           phoneNumber:
             incoming.phoneNumber !== undefined
               ? String(incoming.phoneNumber).trim()
-              : current.phoneNumber,
+              : settings.platformContact?.phoneNumber ?? "",
           supportEmail:
             incoming.supportEmail !== undefined
               ? String(incoming.supportEmail).trim()
-              : current.supportEmail,
+              : settings.platformContact?.supportEmail ??
+                "support@jechemine.ca",
         };
+      }
+
+      if (data.interacDepositEmail !== undefined) {
+        settings.interacDepositEmail = String(data.interacDepositEmail).trim();
       }
 
       // Handle email settings updates

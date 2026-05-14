@@ -45,27 +45,35 @@ export default function SchedulePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Get appointments for current view
-      const startDate = new Date(currentDate);
-      if (view === "week") {
-        startDate.setDate(currentDate.getDate() - currentDate.getDay());
-      } else if (view === "month") {
-        startDate.setDate(1);
-      }
-      startDate.setHours(0, 0, 0, 0);
+      // Anchor the window to UTC midnight of the LOCAL date so it includes
+      // appointments stored at UTC midnight (e.g. 2026-05-13T00:00:00Z),
+      // regardless of the user's timezone offset. Otherwise day view in
+      // a UTC-4/-5 timezone produces $gte 2026-05-13T04:00:00Z and excludes
+      // appointments at 00:00Z — which is why day view appeared empty.
+      const y = currentDate.getFullYear();
+      const m = currentDate.getMonth();
+      const d = currentDate.getDate();
+      const dow = currentDate.getDay();
 
-      const endDate = new Date(startDate);
-      if (view === "day") {
-        endDate.setDate(startDate.getDate() + 1);
-      } else if (view === "week") {
-        endDate.setDate(startDate.getDate() + 7);
+      let startDate: Date;
+      let endDate: Date;
+      if (view === "week") {
+        startDate = new Date(Date.UTC(y, m, d - dow));
+        endDate = new Date(startDate);
+        endDate.setUTCDate(startDate.getUTCDate() + 7);
+      } else if (view === "month") {
+        startDate = new Date(Date.UTC(y, m, 1));
+        endDate = new Date(startDate);
+        endDate.setUTCMonth(startDate.getUTCMonth() + 1);
       } else {
-        endDate.setMonth(startDate.getMonth() + 1);
+        startDate = new Date(Date.UTC(y, m, d));
+        endDate = new Date(startDate);
+        endDate.setUTCDate(startDate.getUTCDate() + 1);
       }
 
       const appointmentsData = await appointmentsAPI.list({
         startDate: startDate.toISOString(),
-        endDate: endDate.toDateString(),
+        endDate: endDate.toISOString(),
       });
       setAppointments(appointmentsData);
     } catch (err: unknown) {
@@ -196,22 +204,35 @@ export default function SchedulePage() {
     }
   };
 
+  // Build a local-date key (avoid UTC shift from toISOString)
+  const localDateKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   // Get appointments for a specific date and hour
   const getAppointmentsForSlot = (date: Date, hour: number) => {
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = localDateKey(date);
     return appointments.filter((apt) => {
-      const aptDate = new Date(apt.date).toISOString().split("T")[0];
+      const aptDate = localDateKey(new Date(apt.date));
       const aptHour = parseInt(apt.time.split(":")[0]);
       return aptDate === dateStr && aptHour === hour;
     });
   };
 
-  // Get today's appointments
-  const getTodayAppointments = () => {
-    const today = new Date().toISOString().split("T")[0];
+  // Get appointments scheduled on the day currently being viewed
+  const getDayAppointments = (date: Date) => {
+    const target = localDateKey(date);
     return appointments.filter((apt) => {
-      const aptDate = new Date(apt.date).toISOString().split("T")[0];
-      return aptDate === today && apt.status === "scheduled";
+      const aptDate = localDateKey(new Date(apt.date));
+      return aptDate === target && apt.status === "scheduled";
+    });
+  };
+
+  // Get pending requests on the day currently being viewed
+  const getDayPendingRequests = (date: Date) => {
+    const target = localDateKey(date);
+    return appointments.filter((apt) => {
+      const aptDate = localDateKey(new Date(apt.date));
+      return aptDate === target && apt.status === "pending";
     });
   };
 
@@ -532,12 +553,15 @@ export default function SchedulePage() {
                     {t("totalSessions")}
                   </div>
                   <div className="text-2xl font-serif font-light text-foreground">
-                    {getTodayAppointments().length}
+                    {getDayAppointments(currentDate).length}
                   </div>
                 </div>
                 <div className="rounded-lg bg-muted/30 p-4">
                   <div className="text-sm font-light text-muted-foreground mb-1">
                     {t("pendingRequests")}
+                  </div>
+                  <div className="text-2xl font-serif font-light text-foreground">
+                    {getDayPendingRequests(currentDate).length}
                   </div>
                 </div>
               </div>

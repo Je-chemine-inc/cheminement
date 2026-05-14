@@ -12,7 +12,15 @@ import {
   CheckCircle2,
   ShieldAlert,
   Calendar,
+  CalendarPlus,
+  BadgeCheck,
+  FileDown,
+  Eye,
 } from "lucide-react";
+import {
+  ProfessionalBookAppointmentModal,
+  type BookableProfessional,
+} from "@/components/appointments/ProfessionalBookAppointmentModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +67,10 @@ export default function PatientDetailPage({
   const [data, setData] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
-  
+  const [professionals, setProfessionals] = useState<BookableProfessional[]>([]);
+  const [bookModalOpen, setBookModalOpen] = useState(false);
+  const [paymentActionLoading, setPaymentActionLoading] = useState<string | null>(null);
+
   // Feedback states
   const [feedback, setFeedback] = useState<{type: "success" | "error", message: string} | null>(null);
   
@@ -119,6 +130,70 @@ export default function PatientDetailPage({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/professionals?status=active&limit=200");
+        if (!res.ok) return;
+        const json = await res.json();
+        const list: BookableProfessional[] = (json.professionals ?? []).map(
+          (p: { id: string; name: string; email: string }) => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+          }),
+        );
+        setProfessionals(list);
+      } catch (err) {
+        console.error("Failed to load professionals list:", err);
+      }
+    })();
+  }, []);
+
+  const currentProfessionalId = (() => {
+    const scheduled = appointments.find(
+      (a) => a.professional && a.status === "scheduled",
+    );
+    if (scheduled) return scheduled.professional.id as string;
+    const anyWithPro = appointments.find((a) => a.professional);
+    return anyWithPro ? (anyWithPro.professional.id as string) : undefined;
+  })();
+
+  const handleMarkPaid = async (appointmentId: string) => {
+    setPaymentActionLoading(`paid-${appointmentId}`);
+    try {
+      const res = await fetch(
+        `/api/admin/appointments/${appointmentId}/mark-paid`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error();
+      setFeedback({ type: "success", message: t("markPaidSuccess") });
+      setTimeout(() => setFeedback(null), 3000);
+      fetchData();
+    } catch {
+      setFeedback({ type: "error", message: t("markPaidError") });
+      setTimeout(() => setFeedback(null), 3000);
+    } finally {
+      setPaymentActionLoading(null);
+    }
+  };
+
+  const handleDownloadReceipt = (appointmentId: string) => {
+    window.open(
+      `/api/payments/receipt?appointmentId=${appointmentId}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const handleViewReceipt = (appointmentId: string) => {
+    window.open(
+      `/api/payments/receipt?appointmentId=${appointmentId}&inline=1`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -293,6 +368,133 @@ export default function PatientDetailPage({
         </div>
       )}
 
+      <div className="bg-card border border-border/40 rounded-xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-xl font-serif font-light flex items-center gap-2">
+            <Calendar className="h-5 w-5" /> {t("clinicalTracking")}
+          </h2>
+          <Button
+            type="button"
+            onClick={() => setBookModalOpen(true)}
+            className="gap-2"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            {t("bookAppointment")}
+          </Button>
+        </div>
+        {appointments.length === 0 ? (
+          <p className="text-muted-foreground text-sm font-light py-4 text-center">{t("noSessions")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("colDate")}</TableHead>
+                  <TableHead>{t("colPro")}</TableHead>
+                  <TableHead>{t("colStatus")}</TableHead>
+                  <TableHead>{t("colPayment")}</TableHead>
+                  <TableHead>{t("colAction")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {appointments.map((apt) => {
+                  const paymentStatus = apt.payment?.status ?? "pending";
+                  const isPaid = paymentStatus === "paid";
+                  const canMarkPaid =
+                    !isPaid &&
+                    paymentStatus !== "refunded" &&
+                    paymentStatus !== "cancelled";
+                  return (
+                    <TableRow key={apt.id}>
+                      <TableCell className="text-sm">
+                        {apt.date ? new Date(apt.date).toLocaleDateString("fr-CA") : "—"}<br />
+                        {apt.time || "—"} ({apt.duration}min)
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {apt.professional ? apt.professional.name : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {tStatus(apt.status)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex flex-col gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                              isPaid
+                                ? "bg-green-50 text-green-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {isPaid ? t("paymentPaid") : t("paymentUnpaid")}
+                          </span>
+                          {canMarkPaid ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={() => handleMarkPaid(apt.id)}
+                              disabled={paymentActionLoading === `paid-${apt.id}`}
+                            >
+                              {paymentActionLoading === `paid-${apt.id}` ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <BadgeCheck className="h-3 w-3" />
+                              )}
+                              {t("markPaid")}
+                            </Button>
+                          ) : null}
+                          {isPaid ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1"
+                                onClick={() => handleViewReceipt(apt.id)}
+                              >
+                                <Eye className="h-3 w-3" />
+                                {t("viewReceipt")}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-xs gap-1"
+                                onClick={() => handleDownloadReceipt(apt.id)}
+                              >
+                                <FileDown className="h-3 w-3" />
+                                {t("downloadInvoice")}
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={apt.status}
+                          onValueChange={(v) => handleOverrideStatus(apt.id, v)}
+                        >
+                          <SelectTrigger className="h-8 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="scheduled">{tStatus("scheduled")}</SelectItem>
+                            <SelectItem value="completed">{tStatus("completed")}</SelectItem>
+                            <SelectItem value="cancelled">{tStatus("cancelled")}</SelectItem>
+                            <SelectItem value="no-show">{tStatus("noShow")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Col - Info */}
         <div className="col-span-1 md:col-span-2 space-y-6">
@@ -382,59 +584,6 @@ export default function PatientDetailPage({
             )}
           </div>
 
-          <div className="bg-card border border-border/40 rounded-xl p-6">
-            <h2 className="text-xl font-serif font-light mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5" /> {t("clinicalTracking")}
-            </h2>
-            {appointments.length === 0 ? (
-              <p className="text-muted-foreground text-sm font-light py-4 text-center">{t("noSessions")}</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("colDate")}</TableHead>
-                      <TableHead>{t("colPro")}</TableHead>
-                      <TableHead>{t("colStatus")}</TableHead>
-                      <TableHead>{t("colAction")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appointments.map((apt) => (
-                      <TableRow key={apt.id}>
-                        <TableCell className="text-sm">
-                          {apt.date ? new Date(apt.date).toLocaleDateString("fr-CA") : "—"}<br />
-                          {apt.time || "—"} ({apt.duration}min)
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {apt.professional ? apt.professional.name : "—"}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {tStatus(apt.status)}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={apt.status}
-                            onValueChange={(v) => handleOverrideStatus(apt.id, v)}
-                          >
-                            <SelectTrigger className="h-8 w-32 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="scheduled">{tStatus("scheduled")}</SelectItem>
-                              <SelectItem value="completed">{tStatus("completed")}</SelectItem>
-                              <SelectItem value="cancelled">{tStatus("cancelled")}</SelectItem>
-                              <SelectItem value="no-show">{tStatus("noShow")}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right Col - Actions */}
@@ -534,6 +683,27 @@ export default function PatientDetailPage({
           </div>
         </div>
       </div>
+
+      <ProfessionalBookAppointmentModal
+        open={bookModalOpen}
+        onOpenChange={setBookModalOpen}
+        clients={[
+          {
+            id,
+            name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+            email: user.email,
+          },
+        ]}
+        defaultClientId={id}
+        professionals={professionals}
+        defaultProfessionalId={currentProfessionalId}
+        onCreated={() => {
+          setBookModalOpen(false);
+          setFeedback({ type: "success", message: t("bookAppointmentSuccess") });
+          setTimeout(() => setFeedback(null), 3000);
+          fetchData();
+        }}
+      />
     </div>
   );
 }

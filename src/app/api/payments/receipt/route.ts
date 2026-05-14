@@ -8,6 +8,8 @@ import {
   buildFiscalReceiptPdfBuffer,
   buildFiscalReceiptInputFromPopulatedAppointment,
 } from "@/lib/receipt-pdf";
+import { getPlatformContactInfo } from "@/lib/platform-contact";
+import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,6 +21,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const appointmentId = searchParams.get("appointmentId");
+    const inline = searchParams.get("inline") === "1";
 
     if (!appointmentId) {
       return NextResponse.json(
@@ -66,7 +69,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Admins may produce a manual receipt for any appointment regardless of
+    // payment/closure state (operational override for support cases). Clients
+    // and professionals remain gated to paid or already-issued receipts.
+    const isAdmin = session.user.role === "admin";
     const canDownload =
+      isAdmin ||
       appointment.payment.status === "paid" ||
       Boolean(appointment.fiscalReceiptIssuedAt);
 
@@ -93,6 +101,15 @@ export async function GET(req: NextRequest) {
       specialty,
     );
 
+    // Platform coordinates (mandatory on receipts) — pulled live from Admin settings.
+    const platformContact = await getPlatformContactInfo();
+    pdfInput.platformAddressLines = formatStandardAddressBlock(
+      platformContact.physicalAddress,
+      platformContact.companyName,
+    );
+    pdfInput.platformPhoneNumber = platformContact.phoneNumber;
+    pdfInput.platformSupportEmail = platformContact.supportEmail;
+
     // Professionals never see the client's gross amount or the platform fee.
     const audience =
       session.user.id === professionalId
@@ -107,7 +124,7 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="receipt-${appointmentId.slice(-8)}.pdf"`,
+        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="receipt-${appointmentId.slice(-8)}.pdf"`,
         "Content-Length": pdfBuffer.length.toString(),
       },
     });

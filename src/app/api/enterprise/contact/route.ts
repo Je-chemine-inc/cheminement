@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import connectToDatabase from "@/lib/mongodb";
+import {
+  ValidationError,
+  createExternalMessage,
+} from "@/lib/external-messages";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,30 +15,38 @@ export async function POST(req: NextRequest) {
       company,
       position,
       coordinates,
-    } = body;
+      locale,
+    } = body as Record<string, string | undefined>;
 
-    // Validate required fields
-    if (!firstName || !lastName || !email || !phone || !company || !position) {
+    if (
+      !firstName?.trim() ||
+      !lastName?.trim() ||
+      !email?.trim() ||
+      !phone?.trim() ||
+      !company?.trim() ||
+      !position?.trim()
+    ) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    await connectToDatabase();
+    const senderName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
-    // TODO: Save to database if needed (create EnterpriseContact model)
-    // TODO: Send email notification using notification system
-    
-    // Log the contact request for now
-    console.log("Enterprise contact request received:", {
-      firstName,
-      lastName,
-      email,
-      phone,
-      company,
-      position,
-      coordinates,
+    await createExternalMessage({
+      source: "enterprise",
+      senderName,
+      senderEmail: email,
+      senderPhone: phone,
+      message: coordinates?.trim() ?? "",
+      subject: `${company} — ${position}`,
+      locale: locale === "en" ? "en" : "fr",
+      metadata: {
+        company,
+        position,
+        coordinates,
+      },
     });
 
     return NextResponse.json({
@@ -43,6 +54,9 @@ export async function POST(req: NextRequest) {
       message: "Contact request submitted successfully",
     });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Error processing enterprise contact:", error);
     return NextResponse.json(
       { error: "Failed to process contact request" },

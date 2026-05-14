@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -19,7 +19,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTranslations } from "next-intl";
+
+interface ProfessionalOption {
+  id: string;
+  name: string;
+  email: string;
+}
 
 interface ServiceRequestRow {
   id: string;
@@ -30,6 +43,7 @@ interface ServiceRequestRow {
   therapyType: string;
   bookingFor: string;
   routingStatus: string;
+  isReturningClient?: boolean;
   preferredAvailability?: string[];
   clientName: string;
   clientEmail: string;
@@ -43,6 +57,9 @@ export default function AdminServiceRequestsPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ServiceRequestRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
+  const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const modalityLabel = (type: string) => {
     switch (type) {
@@ -152,6 +169,50 @@ export default function AdminServiceRequestsPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/professionals?status=active&limit=200");
+        if (!res.ok) return;
+        const json = await res.json();
+        setProfessionals(json.professionals ?? []);
+      } catch (err) {
+        console.error("Failed to load professionals list:", err);
+      }
+    })();
+  }, []);
+
+  const assignProfessional = async (requestId: string) => {
+    const professionalId = assignDraft[requestId];
+    if (!professionalId) return;
+    try {
+      setAssigningId(requestId);
+      setError(null);
+      const res = await fetch(
+        `/api/admin/service-requests/${requestId}/assign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ professionalId }),
+        },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Failed to assign");
+      }
+      setAssignDraft((prev) => {
+        const next = { ...prev };
+        delete next[requestId];
+        return next;
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -209,7 +270,19 @@ export default function AdminServiceRequestsPage() {
                   <TableCell className="whitespace-nowrap text-sm">
                     {new Date(r.createdAt).toLocaleString()}
                   </TableCell>
-                  <TableCell>{r.clientName}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{r.clientName}</span>
+                      {r.isReturningClient ? (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
+                          title={t("returningClientHint")}
+                        >
+                          {t("returningClient")}
+                        </span>
+                      ) : null}
+                    </div>
+                  </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm">
                     {r.clientEmail}
                   </TableCell>
@@ -233,34 +306,80 @@ export default function AdminServiceRequestsPage() {
                     })()}
                   </TableCell>
                   <TableCell className="text-sm">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => approve(r.id, "requester")}
-                        disabled={loading || approvingId === r.id}
-                      >
-                        {t("sendToRequester")}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => approve(r.id, "loved-one")}
-                        disabled={loading || approvingId === r.id}
-                      >
-                        {t("sendToLovedOne")}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setDeleteTarget(r)}
-                        disabled={loading || approvingId === r.id}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        {t("delete")}
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => approve(r.id, "requester")}
+                          disabled={loading || approvingId === r.id}
+                        >
+                          {t("sendToRequester")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => approve(r.id, "loved-one")}
+                          disabled={loading || approvingId === r.id}
+                        >
+                          {t("sendToLovedOne")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDeleteTarget(r)}
+                          disabled={loading || approvingId === r.id}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          {t("delete")}
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/30">
+                        <Select
+                          value={assignDraft[r.id] || undefined}
+                          onValueChange={(v) =>
+                            setAssignDraft((prev) => ({ ...prev, [r.id]: v }))
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-52 text-xs">
+                            <SelectValue placeholder={t("assignPlaceholder")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {professionals.length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-muted-foreground">
+                                {t("assignNoProfessionals")}
+                              </div>
+                            ) : (
+                              professionals.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => assignProfessional(r.id)}
+                          disabled={
+                            !assignDraft[r.id] ||
+                            assigningId === r.id ||
+                            loading
+                          }
+                          className="h-8 text-xs gap-1"
+                        >
+                          {assigningId === r.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <UserCheck className="h-3 w-3" />
+                          )}
+                          {t("assignAction")}
+                        </Button>
+                      </div>
                     </div>
                   </TableCell>
                 </TableRow>

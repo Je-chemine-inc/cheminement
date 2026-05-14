@@ -1,6 +1,7 @@
 import "server-only";
 import jsPDF from "jspdf";
 import { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
+import { formatCanadianPhone } from "@/lib/format-platform-contact";
 export { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
 
 export type ReceiptAudience = "client" | "professional" | "admin";
@@ -17,6 +18,17 @@ export type FiscalReceiptPdfInput = {
   professionalEmail: string;
   professionalTitle?: string;
   professionalLicense?: string;
+  /**
+   * Pre-formatted, line-by-line platform address block shown in the header
+   * (compliance / insurance requirement). Each entry is one rendered line —
+   * the caller is responsible for producing the standard layout via
+   * `formatStandardAddressBlock`.
+   */
+  platformAddressLines?: string[];
+  /** Platform contact phone, rendered under the address in the header band. */
+  platformPhoneNumber?: string;
+  /** Support email shown in the footer; falls back to support@jechemine.ca when absent. */
+  platformSupportEmail?: string;
   appointmentDateLabel: string;
   sessionTime: string;
   durationMinutes: number;
@@ -35,6 +47,36 @@ export type FiscalReceiptPdfInput = {
   /** Hides client gross + platform fee; shows only the professional's net earnings. */
   audience?: ReceiptAudience;
 };
+
+/**
+ * Maps common English professional titles to the French equivalent used on
+ * insurance-bound receipts. Falls back to the input untouched, so titles that
+ * are already in French (or unknown) pass through.
+ */
+function translateProfessionalTitleToFr(title: string): string {
+  const normalized = title.trim().toLowerCase();
+  const map: Record<string, string> = {
+    psychologist: "Psychologue",
+    psychotherapist: "Psychothérapeute",
+    "social worker": "Travailleur social",
+    "sexologist": "Sexologue",
+    "marriage and family therapist": "Thérapeute conjugal et familial",
+    "family therapist": "Thérapeute familial",
+    counselor: "Conseiller",
+    counsellor: "Conseiller",
+    therapist: "Thérapeute",
+    coach: "Coach",
+    "art therapist": "Art-thérapeute",
+    "music therapist": "Musicothérapeute",
+    "occupational therapist": "Ergothérapeute",
+    "speech therapist": "Orthophoniste",
+    nutritionist: "Nutritionniste",
+    dietitian: "Diététiste",
+    nurse: "Infirmier",
+    psychiatrist: "Psychiatre",
+  };
+  return map[normalized] ?? title;
+}
 
 export function buildFiscalReceiptInputFromPopulatedAppointment(
   appointment: {
@@ -120,7 +162,9 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     professionalName:
       `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim(),
     professionalEmail: professional.email ?? "",
-    professionalTitle,
+    professionalTitle: professionalTitle
+      ? translateProfessionalTitleToFr(professionalTitle)
+      : undefined,
     professionalLicense,
     appointmentDateLabel: dateLabel,
     sessionTime: appointment.time || "—",
@@ -177,8 +221,10 @@ export function buildFiscalReceiptPdfBuffer(
   const isProVariant = input.audience === "professional";
 
   // ── HEADER ───────────────────────────────────────────────────────────────────
-  let headerBottomY = 40;
+  let headerBottomY = 30;
   let logoEmbedded = false;
+  const LOGO_W = 32;
+  const LOGO_H = 19;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -191,28 +237,57 @@ export function buildFiscalReceiptPdfBuffer(
       `data:image/png;base64,${logoData.toString("base64")}`,
       "PNG",
       MARGIN,
-      5,
-      50,
-      29,
+      6,
+      LOGO_W,
+      LOGO_H,
     );
     logoEmbedded = true;
-    headerBottomY = 36;
+    headerBottomY = 6 + LOGO_H + 4; // logo bottom + padding
   } catch {
     // Fallback: text banner when logo file is unavailable
     doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 40, "F");
+    doc.rect(0, 0, 210, 30, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("Je Chemine", MARGIN, 25);
-    doc.setFontSize(10);
+    doc.text("Je Chemine", MARGIN, 19);
+    headerBottomY = 30;
+  }
+
+  // Platform address block + phone — MANDATORY on every receipt
+  // (insurance / fiscal compliance). Always rendered, even when blank, so the
+  // section's absence is visibly an admin-configuration gap, not a rendering bug.
+  {
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text("Plateforme de services en santé mentale", MARGIN, 33);
+    doc.setTextColor(...grayColor);
+    let addrY = 10;
+    const addressLines =
+      input.platformAddressLines && input.platformAddressLines.length > 0
+        ? input.platformAddressLines
+        : ["—"];
+    // Width-wrap each address-block line in case a single segment is too long.
+    const renderedLines: string[] = [];
+    for (const line of addressLines) {
+      const wrapped = doc.splitTextToSize(line, 70) as string[];
+      renderedLines.push(...wrapped);
+    }
+    for (const line of renderedLines) {
+      doc.text(line, PAGE_RIGHT, addrY, { align: "right" });
+      addrY += 4;
+    }
+    const formattedPhone = formatCanadianPhone(input.platformPhoneNumber);
+    doc.text(
+      `Tél. : ${formattedPhone || "—"}`,
+      PAGE_RIGHT,
+      addrY,
+      { align: "right" },
+    );
   }
 
   if (logoEmbedded) {
     doc.setFillColor(...primaryColor);
-    doc.rect(0, headerBottomY, 210, 3, "F");
+    doc.rect(0, headerBottomY, 210, 2, "F");
   }
 
   // ── TITLE & RECEIPT META ─────────────────────────────────────────────────────
@@ -377,32 +452,21 @@ export function buildFiscalReceiptPdfBuffer(
   doc.setFont("helvetica", "normal");
 
   if (isProVariant) {
+    // Professional revenue statement still shows the full breakdown for the pro.
     doc.text("Revenu professionnel (séance)", MARGIN + 5, y);
     doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, PAGE_RIGHT, y, {
       align: "right",
     });
     y += 10;
   } else {
+    // Client receipt — only the gross amount the client paid is shown. The
+    // platform fee and the professional's net are intentionally omitted: the
+    // client does not need (and insurers should not see) the internal split.
     doc.text("Prestation (séance)", MARGIN + 5, y);
     doc.text(`$${input.amountCad.toFixed(2)}`, PAGE_RIGHT, y, {
       align: "right",
     });
     y += 10;
-
-    if (input.platformFeeCad > 0) {
-      doc.setTextColor(...grayColor);
-      doc.setFontSize(9);
-      doc.text("Frais plateforme", MARGIN + 8, y);
-      doc.text(`$${input.platformFeeCad.toFixed(2)}`, PAGE_RIGHT, y, {
-        align: "right",
-      });
-      y += 7;
-      doc.text("Montant net professionnel", MARGIN + 8, y);
-      doc.text(`$${input.professionalPayoutCad.toFixed(2)}`, PAGE_RIGHT, y, {
-        align: "right",
-      });
-      y += 9;
-    }
   }
 
   doc.setDrawColor(229, 231, 235);
@@ -422,15 +486,10 @@ export function buildFiscalReceiptPdfBuffer(
   doc.setTextColor(...grayColor);
   doc.text(`Mode : ${input.paymentMethodLabel}`, MARGIN + 5, y);
   y += 5;
-  if (input.paymentStatus === "pending_transfer") {
-    doc.setTextColor(180, 83, 9);
-    doc.text(
-      "Paiement en attente — virement Interac selon les instructions envoyées par courriel.",
-      MARGIN + 5,
-      y,
-    );
-    y += 8;
-  } else if (input.stripePaymentIntentId) {
+  // The pending-transfer warning and Interac instructions are kept *out* of the
+  // PDF on purpose: the receipt is a financial document. Interac instructions
+  // live in the companion email (sendInteracTransferInstructionsEmail).
+  if (input.paymentStatus !== "pending_transfer" && input.stripePaymentIntentId) {
     doc.setTextColor(...grayColor);
     doc.text(
       `Réf. transaction : ${input.stripePaymentIntentId.slice(-18)}`,
@@ -449,7 +508,12 @@ export function buildFiscalReceiptPdfBuffer(
   doc.text("Merci d'avoir choisi Je Chemine.", 105, footerY + 8, {
     align: "center",
   });
-  doc.text("support@jechemine.ca", 105, footerY + 14, { align: "center" });
+  doc.text(
+    input.platformSupportEmail?.trim() || "support@jechemine.ca",
+    105,
+    footerY + 14,
+    { align: "center" },
+  );
   doc.setFontSize(7);
   doc.text("Document généré automatiquement.", 105, footerY + 22, {
     align: "center",

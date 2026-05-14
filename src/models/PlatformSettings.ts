@@ -8,6 +8,8 @@ export type EmailNotificationType =
   | "appointment_confirmation"
   | "appointment_professional_notification"
   | "appointment_reminder"
+  | "appointment_reminder_72h"
+  | "appointment_reminder_48h"
   | "appointment_cancellation"
   | "guest_booking_confirmation"
   | "service_request_onboarding"
@@ -22,6 +24,7 @@ export type EmailNotificationType =
   | "admin_interac_trust_request"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
+  | "payment_guarantee_day2_reminder"
   | "payment_guarantee_48h_client"
   | "payment_guarantee_48h_professional"
   | "fiscal_receipt"
@@ -56,8 +59,21 @@ export interface IEmailSettings {
   templates: Record<EmailNotificationType, IEmailTemplateConfig>;
 }
 
+export interface IPlatformPhysicalAddress {
+  /** Civic number + street, e.g. "123, rue de l'Exemple". */
+  street: string;
+  /** Suite / office / unit (optional), e.g. "Bureau 101". */
+  suite: string;
+  city: string;
+  /** Full name or abbreviation, e.g. "Québec" or "QC". */
+  province: string;
+  /** Canadian postal code, format "A1B 2C3". */
+  postalCode: string;
+  country: string;
+}
+
 export interface IPlatformContact {
-  physicalAddress: string;
+  physicalAddress: IPlatformPhysicalAddress;
   phoneNumber: string;
   supportEmail: string;
 }
@@ -112,6 +128,14 @@ const defaultEmailTemplates: Record<
     enabled: true,
     subject: "Appointment Reminder - JeChemine",
   },
+  appointment_reminder_72h: {
+    enabled: true,
+    subject: "Rappel : rendez-vous dans 72 heures — Je chemine",
+  },
+  appointment_reminder_48h: {
+    enabled: true,
+    subject: "Rappel : rendez-vous dans 48 heures — Je chemine",
+  },
   appointment_cancellation: {
     enabled: true,
     subject: "Appointment Cancelled - JeChemine",
@@ -126,15 +150,15 @@ const defaultEmailTemplates: Record<
   },
   guest_payment_confirmation: {
     enabled: true,
-    subject: "Payment Required - Your Appointment is Confirmed",
+    subject: "Rendez-vous confirmé — prochaine étape : votre paiement",
   },
   guest_payment_complete: {
     enabled: true,
-    subject: "Payment Confirmed - JeChemine",
+    subject: "Paiement confirmé — Je chemine",
   },
   payment_invitation: {
     enabled: true,
-    subject: "Payment Required - Your Appointment is Confirmed",
+    subject: "Rendez-vous confirmé — prochaine étape : votre paiement",
   },
   payment_failed: {
     enabled: true,
@@ -167,6 +191,10 @@ const defaultEmailTemplates: Record<
   payment_guarantee_day1_reminder: {
     enabled: true,
     subject: "Rappel : ajoutez un moyen de paiement — JeChemine",
+  },
+  payment_guarantee_day2_reminder: {
+    enabled: true,
+    subject: "Dernier rappel : moyen de paiement requis — JeChemine",
   },
   payment_guarantee_48h_client: {
     enabled: true,
@@ -267,7 +295,14 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       default: "",
     },
     platformContact: {
-      physicalAddress: { type: String, trim: true, default: "" },
+      physicalAddress: {
+        street: { type: String, trim: true, default: "" },
+        suite: { type: String, trim: true, default: "" },
+        city: { type: String, trim: true, default: "" },
+        province: { type: String, trim: true, default: "" },
+        postalCode: { type: String, trim: true, default: "" },
+        country: { type: String, trim: true, default: "Canada" },
+      },
       phoneNumber: { type: String, trim: true, default: "" },
       supportEmail: {
         type: String,

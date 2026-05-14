@@ -268,6 +268,7 @@ export async function POST(req: NextRequest) {
           name: `${firstName} ${lastName}`,
           email: existingUser.email,
           verifyUrl,
+          locale: existingUser.language === "en" ? "en" : "fr",
         });
       } catch (err) {
         console.error("Claim account verify email:", err);
@@ -292,8 +293,11 @@ export async function POST(req: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const useSecureInit =
-      !bootstrapVerified && (role === "client" || role === "professional");
+    // Pros do NOT go through 2FA at signup — the link is sent only when the
+    // admin approves their dossier ("L'approbation manuelle par l'Admin déclenche
+    // l'envoi du lien de Double Authentification"). They sign in with email +
+    // password and can complete their profile while waiting for approval.
+    const useSecureInit = !bootstrapVerified && role === "client";
 
     // Create user
     const user = new User({
@@ -451,26 +455,31 @@ export async function POST(req: NextRequest) {
     }
 
     if (bootstrapVerified) {
-      try {
-        await sendWelcomeEmail({
-          name: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          role: user.role as "client" | "professional" | "guest" | "prospect",
-        });
-      } catch (err) {
-        console.error("Welcome email:", err);
-      }
-
-      if (user.phone) {
-        const { sendWelcomeSms } = await import("@/lib/sms");
+      // Professionals get a dedicated welcome email on profile completion
+      // (sendProfessionalProfileCompletedEmail in /api/profile). Sending the
+      // generic welcome here would be a duplicate — skip it for pros.
+      if (user.role !== "professional") {
         try {
-          await sendWelcomeSms(
-            user.phone,
-            user.firstName,
-            (user.language as "fr" | "en") || "fr",
-          );
+          await sendWelcomeEmail({
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            role: user.role as "client" | "professional" | "guest" | "prospect",
+          });
         } catch (err) {
-          console.error("Welcome SMS:", err);
+          console.error("Welcome email:", err);
+        }
+
+        if (user.phone) {
+          const { sendWelcomeSms } = await import("@/lib/sms");
+          try {
+            await sendWelcomeSms(
+              user.phone,
+              user.firstName,
+              (user.language as "fr" | "en") || "fr",
+            );
+          } catch (err) {
+            console.error("Welcome SMS:", err);
+          }
         }
       }
     }
@@ -488,6 +497,7 @@ export async function POST(req: NextRequest) {
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
           verifyUrl,
+          locale: user.language === "en" ? "en" : "fr",
         });
       } catch (err) {
         console.error("Verification email:", err);

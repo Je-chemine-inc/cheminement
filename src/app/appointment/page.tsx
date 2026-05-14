@@ -258,6 +258,12 @@ export default function BookAppointmentPage() {
     }
   }, [searchParams]);
 
+  // "Demander un rendez-vous avec un autre professionnel" sends the client back
+  // here with ?changeProfessional=true. The new request must skip per-pro
+  // routing (go straight to the general list) and carry an "Ancien client" flag
+  // so admins don't create duplicates.
+  const changeProfessional = searchParams.get("changeProfessional") === "true";
+
   // Fetch medical profile for defaults (authenticated users only)
   useEffect(() => {
     const fetchMedicalProfile = async () => {
@@ -793,6 +799,10 @@ export default function BookAppointmentPage() {
         preferredAvailability,
         preferredPaymentMethod: paymentMethod,
       };
+
+      if (changeProfessional) {
+        appointmentData.changeProfessional = true;
+      }
 
       // Include loved one info if booking for a loved one
       if (bookingFor === "loved-one" && lovedOneInfo.firstName) {

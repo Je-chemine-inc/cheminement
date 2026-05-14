@@ -23,12 +23,20 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import { appointmentsAPI, apiClient } from "@/lib/api-client";
 import { AppointmentResponse } from "@/types/api";
-import { CancelAppointmentDialog } from "@/components/appointments";
+import {
+  CancelAppointmentDialog,
+  RequestNextAppointmentModal,
+} from "@/components/appointments";
 
 export default function ClientDashboardPage() {
   const [upcomingAppointments, setUpcomingAppointments] = useState<
     AppointmentResponse[]
   >([]);
+  const [currentProfessional, setCurrentProfessional] = useState<{
+    name: string;
+    duration?: number;
+  } | null>(null);
+  const [showRequestNextModal, setShowRequestNextModal] = useState(false);
   const [hasManagedAccounts, setHasManagedAccounts] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] =
     useState<AppointmentResponse | null>(null);
@@ -41,25 +49,54 @@ export default function ClientDashboardPage() {
     "Client.appointments.awaitingPayment",
   );
 
-  useEffect(() => {
-    const fetchUpcomingAppointments = async () => {
-      try {
-        const data = await appointmentsAPI.list();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const upcoming = data.filter((apt) => {
-          const aptDate = apt.date ? new Date(apt.date) : null;
-          return (
-            aptDate &&
-            aptDate >= today &&
-            ["scheduled", "pending", "ongoing"].includes(apt.status)
-          );
+  const fetchUpcomingAppointments = async () => {
+    try {
+      const data = await appointmentsAPI.list();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = data.filter((apt) => {
+        const aptDate = apt.date ? new Date(apt.date) : null;
+        return (
+          aptDate &&
+          aptDate >= today &&
+          ["scheduled", "pending", "ongoing"].includes(apt.status)
+        );
+      });
+      setUpcomingAppointments(upcoming.slice(0, 3)); // Limit to next 3 upcoming
+
+      // Identify the client's current professional (most recent matched
+      // appointment). Drives the "request another session" CTA so it lands
+      // in the existing pro's queue instead of opening a brand-new request.
+      const matched = data
+        .filter(
+          (a) =>
+            a.professionalId &&
+            ["scheduled", "completed", "ongoing"].includes(a.status),
+        )
+        .sort((a, b) => {
+          const da = a.date ? new Date(a.date).getTime() : 0;
+          const db = b.date ? new Date(b.date).getTime() : 0;
+          return db - da;
         });
-        setUpcomingAppointments(upcoming.slice(0, 3)); // Limit to next 3 upcoming
-      } catch (err) {
-        console.error("Error fetching upcoming appointments:", err);
+      const latest = matched[0];
+      if (latest?.professionalId) {
+        const pro = latest.professionalId as unknown as {
+          firstName?: string;
+          lastName?: string;
+        };
+        const fullName = `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim();
+        setCurrentProfessional(
+          fullName ? { name: fullName, duration: latest.duration } : null,
+        );
+      } else {
+        setCurrentProfessional(null);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching upcoming appointments:", err);
+    }
+  };
+
+  useEffect(() => {
 
     const checkManagedAccounts = async () => {
       try {
@@ -375,12 +412,24 @@ export default function ClientDashboardPage() {
                 <p className="mt-4 text-sm text-muted-foreground">
                   {t("upcomingAppointments.noAppointments")}
                 </p>
-                <Button className="mt-4 gap-2 rounded-full">
-                  <Link href="/appointment" className="flex items-center gap-2">
+                {currentProfessional ? (
+                  // Returning client with a matched professional — the request
+                  // must land in the same pro's queue and notify them.
+                  <Button
+                    onClick={() => setShowRequestNextModal(true)}
+                    className="mt-4 gap-2 rounded-full"
+                  >
                     <Calendar className="h-4 w-4" />
                     {t("upcomingAppointments.requestAppointment")}
-                  </Link>
-                </Button>
+                  </Button>
+                ) : (
+                  <Button className="mt-4 gap-2 rounded-full">
+                    <Link href="/appointment" className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      {t("upcomingAppointments.requestAppointment")}
+                    </Link>
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="mt-6 space-y-4">
@@ -563,6 +612,16 @@ export default function ClientDashboardPage() {
           amount={appointmentToCancel.payment.price}
           isPaid={appointmentToCancel.payment.status === "paid"}
           onSuccess={handleCancelSuccess}
+        />
+      )}
+
+      {currentProfessional && (
+        <RequestNextAppointmentModal
+          open={showRequestNextModal}
+          onOpenChange={setShowRequestNextModal}
+          professionalName={currentProfessional.name}
+          defaultDuration={currentProfessional.duration}
+          onCreated={fetchUpcomingAppointments}
         />
       )}
     </div>

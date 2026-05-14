@@ -99,6 +99,13 @@ export interface IAppointment extends Document {
   // Routing status for professional assignment workflow
   routingStatus: "pending" | "proposed" | "accepted" | "refused" | "general";
 
+  /**
+   * Set when a client requests a fresh appointment with a *different* professional
+   * (the "Demander un rendez-vous avec un autre professionnel" CTA). Surfaced to
+   * admins as the "Ancien client" badge so they avoid duplicate-client mistakes.
+   */
+  isReturningClient?: boolean;
+
   // Array of professional IDs this appointment has been proposed to
   proposedTo?: mongoose.Types.ObjectId[];
 
@@ -128,7 +135,12 @@ export interface IAppointment extends Document {
   /** Premier passage en « scheduled » (pour relance J+1 garantie). */
   firstScheduledAt?: Date;
   guaranteeDay1ReminderSent?: boolean;
+  guaranteeDay2ReminderSent?: boolean;
   guarantee48hClientReminderSent?: boolean;
+
+  /** Rappels client/SMS H-72 et H-48 avant le rendez-vous (politique d'annulation). */
+  reminder72hSent?: boolean;
+  reminder48hSent?: boolean;
   guarantee48hProfessionalAlertSent?: boolean;
 
   /** Nature de l'acte (clôture professionnelle). */
@@ -343,6 +355,7 @@ const AppointmentSchema = new Schema<IAppointment>(
       enum: ["pending", "proposed", "accepted", "refused", "general"],
       default: "pending",
     },
+    isReturningClient: { type: Boolean, default: false },
     // Array of professional IDs this appointment has been proposed to
     proposedTo: [
       {
@@ -375,7 +388,11 @@ const AppointmentSchema = new Schema<IAppointment>(
 
     firstScheduledAt: Date,
     guaranteeDay1ReminderSent: { type: Boolean, default: false },
+    guaranteeDay2ReminderSent: { type: Boolean, default: false },
     guarantee48hClientReminderSent: { type: Boolean, default: false },
+
+    reminder72hSent: { type: Boolean, default: false },
+    reminder48hSent: { type: Boolean, default: false },
     guarantee48hProfessionalAlertSent: { type: Boolean, default: false },
 
     postMeetingPaymentReminderSent: { type: Boolean, default: false },
