@@ -1,72 +1,46 @@
 "use client";
 
-import {
-  Brain,
-  Flower2,
-  Layers,
-  Orbit,
-  Sparkles,
-  UsersRound,
-  Waves,
-  Workflow,
-  Puzzle,
-} from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import Image from "next/image";
+import { Layers, ArrowRight } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import type { AnimationVariant } from "@/components/ui/ScrollReveal";
 
+interface TraitementDTO {
+  slug: string;
+  title: string;
+  summary: string;
+  iconUrl?: string;
+}
+
 export default function ClinicalApproachesSection() {
   const t = useTranslations("Approaches.clinicalApproaches");
+  const locale = useLocale();
+  const [traitements, setTraitements] = useState<TraitementDTO[] | null>(null);
 
-  const approaches = [
-    {
-      icon: Layers,
-      title: t("approaches.cbt.title"),
-      description: t("approaches.cbt.description"),
-    },
-    {
-      icon: Orbit,
-      title: t("approaches.psychodynamic.title"),
-      description: t("approaches.psychodynamic.description"),
-    },
-    {
-      icon: UsersRound,
-      title: t("approaches.systemic.title"),
-      description: t("approaches.systemic.description"),
-    },
-    {
-      icon: Flower2,
-      title: t("approaches.humanistic.title"),
-      description: t("approaches.humanistic.description"),
-    },
-    {
-      icon: Waves,
-      title: t("approaches.mindfulness.title"),
-      description: t("approaches.mindfulness.description"),
-    },
-    {
-      icon: Workflow,
-      title: t("approaches.psychoeducation.title"),
-      description: t("approaches.psychoeducation.description"),
-    },
-    {
-      icon: Brain,
-      title: t("approaches.neuropsych.title"),
-      description: t("approaches.neuropsych.description"),
-    },
-    {
-      icon: Sparkles,
-      title: t("approaches.coaching.title"),
-      description: t("approaches.coaching.description"),
-    },
-    // Added to the same grid of "encadrés" for consistent styling
-    {
-      icon: Puzzle,
-      title: t("integrativeApproach.title"),
-      description: t("integrativeApproach.description"),
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/content/traitement?locale=${locale}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { items: TraitementDTO[] };
+        if (!cancelled) setTraitements(data.items);
+      } catch (err) {
+        console.error("Failed to load traitements:", err);
+        if (!cancelled) setTraitements([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
   const cardAnimations: AnimationVariant[] = [
     "fade-right",
     "zoom-in",
@@ -77,6 +51,14 @@ export default function ClinicalApproachesSection() {
     "swing-in",
     "bounce-in",
   ];
+
+  const otherItems = (() => {
+    try {
+      return t.raw("otherApproaches.items") as string[];
+    } catch {
+      return [];
+    }
+  })();
 
   return (
     <section className="relative overflow-hidden bg-linear-to-b from-muted via-muted to-muted py-24">
@@ -100,7 +82,6 @@ export default function ClinicalApproachesSection() {
           </div>
         </ScrollReveal>
 
-        {/* Image placeholder for approaches */}
         <ScrollReveal variant="zoom-in" delayMs={200} duration={800}>
           <div className="mt-12 mx-auto max-w-4xl">
             <div className="relative aspect-21/9 rounded-3xl overflow-hidden shadow-xl">
@@ -115,49 +96,70 @@ export default function ClinicalApproachesSection() {
           </div>
         </ScrollReveal>
 
-        <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {approaches.map(({ icon: Icon, title, description }, index) => (
-            <ScrollReveal
-              key={title}
-              variant={cardAnimations[index % cardAnimations.length]}
-              delayMs={400 + index * 100}
-              duration={700}
-            >
-              <div className="group relative overflow-hidden rounded-4xl border border-border/15 bg-card/85 p-6 text-left shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                <div className="absolute inset-0 bg-linear-to-tr from-primary/15 via-transparent to-accent/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className="relative z-10 space-y-4">
-                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground text-card">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-serif text-lg font-medium text-foreground">
-                    {title}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {description}
-                  </p>
-                </div>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-
-        <ScrollReveal variant="swing-in" delayMs={1100} duration={700}>
-          <div className="mx-auto mt-10 max-w-4xl rounded-4xl border border-dashed border-primary/30 bg-card/70 p-8 text-center shadow-inner">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              {t("otherApproaches.title")}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
-              {t.raw("otherApproaches.items").map((item: string) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-border/30 bg-muted/40 px-4 py-2"
+        {traitements && traitements.length > 0 ? (
+          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+            {traitements.map((traitement, index) => (
+              <ScrollReveal
+                key={traitement.slug}
+                variant={cardAnimations[index % cardAnimations.length]}
+                delayMs={400 + index * 100}
+                duration={700}
+              >
+                <Link
+                  href={`/approaches/${traitement.slug}`}
+                  className="group relative flex h-full min-h-[260px] flex-col overflow-hidden rounded-4xl border border-border/15 bg-card/85 p-6 text-left shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
                 >
-                  {item}
-                </span>
-              ))}
-            </div>
+                  <div className="absolute inset-0 bg-linear-to-tr from-primary/15 via-transparent to-accent/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="relative z-10 flex h-full flex-col space-y-4">
+                    {traitement.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={traitement.iconUrl}
+                        alt=""
+                        className="h-11 w-11 rounded-2xl object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground text-card">
+                        <Layers className="h-5 w-5" />
+                      </div>
+                    )}
+                    <h3 className="font-serif text-lg font-medium text-foreground line-clamp-2">
+                      {traitement.title}
+                    </h3>
+                    <p className="flex-1 text-sm leading-relaxed text-muted-foreground line-clamp-4">
+                      {traitement.summary}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-sm font-light text-primary transition-colors group-hover:text-primary/80">
+                      {t("learnMore")}
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </div>
+                </Link>
+              </ScrollReveal>
+            ))}
           </div>
-        </ScrollReveal>
+        ) : null}
+
+        {otherItems.length > 0 ? (
+          <ScrollReveal variant="swing-in" delayMs={1100} duration={700}>
+            <div className="mx-auto mt-10 max-w-4xl rounded-4xl border border-dashed border-primary/30 bg-card/70 p-8 text-center shadow-inner">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                {t("otherApproaches.title")}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+                {otherItems.map((item: string) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-border/30 bg-muted/40 px-4 py-2"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </ScrollReveal>
+        ) : null}
       </div>
     </section>
   );

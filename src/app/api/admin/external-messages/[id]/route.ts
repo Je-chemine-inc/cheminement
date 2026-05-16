@@ -29,15 +29,19 @@ function serialize(
   return {
     id: m._id.toString(),
     source: m.source,
+    direction: m.direction ?? "inbound",
     locale: m.locale,
     senderName: m.senderName,
     senderEmail: m.senderEmail,
     senderPhone: m.senderPhone,
+    recipientEmail: m.recipientEmail,
+    recipientName: m.recipientName,
     subject: m.subject,
     message: m.message,
     metadata: m.metadata,
     status: m.status,
     adminNotes: m.adminNotes,
+    sentAt: m.sentAt,
     readAt: m.readAt,
     createdAt: m.createdAt,
     updatedAt: m.updatedAt,
@@ -62,8 +66,9 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Auto-mark as read on first open
-    if (msg.status === "new") {
+    // Auto-mark as read on first open — only for inbound messages. Outbound
+    // (admin-composed) are created as "read" already, so this is a no-op for them.
+    if (msg.status === "new" && msg.direction !== "outbound") {
       msg.status = "read";
       msg.readBy = new mongoose.Types.ObjectId(auth.userId);
       msg.readAt = new Date();

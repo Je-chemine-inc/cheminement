@@ -219,6 +219,27 @@ export default function BookAppointmentPage() {
   // Guardian/Account Manager state (for minors)
   const [linkAsGuardian, setLinkAsGuardian] = useState(false);
 
+  // Age of the loved one, derived from dateOfBirth. <14 triggers the legal
+  // protection branch where the parent's email becomes the auth identifier and
+  // the recipient of every booking communication. Kept null while DOB is empty
+  // or invalid so we can render the email field by default.
+  const lovedOneAge: number | null = (() => {
+    if (!lovedOneInfo.dateOfBirth) return null;
+    const birthDate = new Date(lovedOneInfo.dateOfBirth);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  })();
+  const isLovedOneUnder14 = lovedOneAge !== null && lovedOneAge < 14;
+
   // Referral info (for booking for a patient - medical professional referral)
   const [referralInfo, setReferralInfo] = useState<ReferralInfo>({
     referrerType: "doctor",
@@ -512,6 +533,21 @@ export default function BookAppointmentPage() {
     if (!lovedOneInfo.dateOfBirth.trim()) {
       setError(tB("errors.dateOfBirthRequired"));
       return false;
+    }
+    // Loved-one email rules by age:
+    //   <14  → legal protection: account uses the parent's email, child's email
+    //          is not asked. Skip validation entirely (the field is hidden).
+    //   14+  → loved one is the account holder, their own email is required.
+    if (!isLovedOneUnder14) {
+      if (!lovedOneInfo.email.trim()) {
+        setError(tB("errors.lovedOneEmailRequired"));
+        return false;
+      }
+      const lovedOneEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!lovedOneEmailRegex.test(lovedOneInfo.email)) {
+        setError(tB("errors.emailInvalid"));
+        return false;
+      }
     }
     if (!selectedType) {
       setError(tB("errors.modalityRequired"));
@@ -1709,30 +1745,37 @@ export default function BookAppointmentPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="lovedOneEmail">
-                          {tB("emailLabel")}{" "}
-                          <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
-                            {tB("optional")}
-                          </span>
-                        </Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="lovedOneEmail"
-                            type="email"
-                            value={lovedOneInfo.email}
-                            onChange={(e) =>
-                              setLovedOneInfo({
-                                ...lovedOneInfo,
-                                email: e.target.value,
-                              })
-                            }
-                            placeholder="their.email@example.com"
-                            className="pl-10"
-                          />
+                      {isLovedOneUnder14 ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                          {tB("lovedOneUnder14Notice")}
                         </div>
-                      </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="lovedOneEmail">
+                            {tB("emailLabel")} <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="lovedOneEmail"
+                              type="email"
+                              value={lovedOneInfo.email}
+                              required
+                              onChange={(e) =>
+                                setLovedOneInfo({
+                                  ...lovedOneInfo,
+                                  email: e.target.value,
+                                })
+                              }
+                              placeholder="their.email@example.com"
+                              className="pl-10"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {tB("lovedOneEmailHelper")}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Meeting Modality */}
                       <div className="space-y-3 pt-4 border-t border-border/40">

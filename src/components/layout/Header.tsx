@@ -155,6 +155,19 @@ export function Header() {
               {t("nav.approaches")}
             </Link>
 
+            {/* Nouveautés link */}
+            <Link
+              href="/nouveautes"
+              className={`text-sm font-semibold transition-all duration-300 ease-in-out ${
+                pathname === "/nouveautes" ||
+                pathname.startsWith("/nouveautes/")
+                  ? "text-primary font-semibold underline underline-offset-4"
+                  : "text-foreground hover:text-primary"
+              }`}
+            >
+              {t("nav.nouveautes")}
+            </Link>
+
             {/* Contact link */}
             <Link
               href="/contact"
@@ -385,6 +398,19 @@ export function Header() {
               }`}
             >
               {t("nav.approaches")}
+            </Link>
+
+            <Link
+              href="/nouveautes"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`text-sm font-semibold py-2 text-primary ${
+                pathname === "/nouveautes" ||
+                pathname.startsWith("/nouveautes/")
+                  ? "underline underline-offset-4"
+                  : ""
+              }`}
+            >
+              {t("nav.nouveautes")}
             </Link>
 
             <Link

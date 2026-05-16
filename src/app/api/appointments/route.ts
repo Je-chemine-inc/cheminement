@@ -13,7 +13,7 @@ import {
   sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
-import { linkGuardian, isMinor } from "@/lib/guardian-utils";
+import { linkGuardian, isMinor, isUnder14 } from "@/lib/guardian-utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -248,6 +248,32 @@ export async function POST(req: NextRequest) {
         if (!emailRegex.test(patientEmail)) {
           return NextResponse.json(
             { error: "Invalid patient email format" },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
+    // Loved-one email rules by age (legal protection of minors, LSSSS art. 14):
+    //   <14  → parent/requester email is the account identifier; child's email
+    //          is not required (or used).
+    //   14+  → loved one is the account holder; their own email is required.
+    if (data.bookingFor === "loved-one") {
+      const lovedOneUnder14 = isUnder14({
+        dateOfBirth: data.lovedOneInfo?.dateOfBirth,
+      });
+      if (!lovedOneUnder14) {
+        const lovedOneEmail = data.lovedOneInfo?.email?.trim();
+        if (!lovedOneEmail) {
+          return NextResponse.json(
+            { error: "Loved one's email is required" },
+            { status: 400 },
+          );
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(lovedOneEmail)) {
+          return NextResponse.json(
+            { error: "Invalid loved one email format" },
             { status: 400 },
           );
         }
@@ -604,16 +630,46 @@ export async function POST(req: NextRequest) {
         sendProfessionalNotification(emailData),
       ]).catch((err) => console.error("Error sending notifications:", err));
     } else {
-      // No professional assigned yet — send automatic acknowledgement to the requester.
-      // Covers: self, patient, loved-one (child onboarding) and adult loved-one pending admin.
+      // No professional assigned yet — send automatic acknowledgement.
+      // Recipient rules:
+      //   - self / patient        → the requester
+      //   - loved-one <14         → the requester (parent owns the account; legal
+      //                              protection of the minor)
+      //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
       const requester = await User.findById(session.user.id).select(
         "firstName lastName email language",
       );
-      if (requester?.email) {
+      const requesterLocale: "fr" | "en" =
+        requester?.language === "fr" ? "fr" : "en";
+      const lovedOneUnder14 =
+        data.bookingFor === "loved-one" &&
+        isUnder14({ dateOfBirth: data.lovedOneInfo?.dateOfBirth });
+
+      let toName: string | null = null;
+      let toEmail: string | null = null;
+
+      if (
+        data.bookingFor === "loved-one" &&
+        !lovedOneUnder14 &&
+        data.lovedOneInfo?.email
+      ) {
+        toName =
+          (data.lovedOneInfo.firstName as string | undefined) ||
+          `${requester?.firstName ?? ""} ${requester?.lastName ?? ""}`.trim() ||
+          "Client";
+        toEmail = data.lovedOneInfo.email as string;
+      } else if (requester?.email) {
+        toName =
+          `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() ||
+          "Client";
+        toEmail = requester.email;
+      }
+
+      if (toEmail && toName) {
         void sendServiceRequestOnboardingEmail({
-          toName: `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() || "Client",
-          toEmail: requester.email,
-          locale: requester.language === "fr" ? "fr" : "en",
+          toName,
+          toEmail,
+          locale: requesterLocale,
         }).catch((err) => console.error("Error sending acknowledgement email:", err));
       }
     }

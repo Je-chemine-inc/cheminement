@@ -5,13 +5,12 @@ import Profile from "@/models/Profile";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import {
-  sendGuestBookingConfirmation,
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
   sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
-import { isMinor } from "@/lib/guardian-utils";
+import { isMinor, isUnder14 } from "@/lib/guardian-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,6 +66,32 @@ export async function POST(req: NextRequest) {
         { error: "Invalid email format" },
         { status: 400 },
       );
+    }
+
+    // Loved-one email rules by age (legal protection of minors, LSSSS art. 14):
+    //   <14  → parent/requester email is the account identifier; child's email
+    //          is not required (or used).
+    //   14+  → loved one is the account holder; their own email is required.
+    if (appointmentData.bookingFor === "loved-one") {
+      const lovedOneDob = (appointmentData as { lovedOneInfo?: { dateOfBirth?: string } })
+        .lovedOneInfo?.dateOfBirth;
+      const lovedOneUnder14 = isUnder14({ dateOfBirth: lovedOneDob });
+      if (!lovedOneUnder14) {
+        const lovedOneEmail = (appointmentData as { lovedOneInfo?: { email?: string } })
+          .lovedOneInfo?.email?.trim();
+        if (!lovedOneEmail) {
+          return NextResponse.json(
+            { error: "Loved one's email is required" },
+            { status: 400 },
+          );
+        }
+        if (!emailRegex.test(lovedOneEmail)) {
+          return NextResponse.json(
+            { error: "Invalid loved one email format" },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     // Validate required appointment fields (professionalId is now optional)
@@ -352,9 +377,11 @@ export async function POST(req: NextRequest) {
     // - child (<18): onboarding link is sent automatically to the requester
     // - adult (>18): onboarding link is pending admin validation
     let lovedOneIsMinor = false;
+    let lovedOneIsUnder14 = false;
     if (appointmentData.bookingFor === "loved-one") {
       const dob = (appointmentData as any).lovedOneInfo?.dateOfBirth;
       lovedOneIsMinor = Boolean(dob) && isMinor({ dateOfBirth: dob });
+      lovedOneIsUnder14 = Boolean(dob) && isUnder14({ dateOfBirth: dob });
       appointmentData.accountActivationStatus = lovedOneIsMinor
         ? "sent_to_requester"
         : "pending_admin";
@@ -397,7 +424,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Send email notifications only if professional is assigned
+    // Notify the assigned professional if one was matched at submission time.
+    // The guest confirmation email is handled by sendServiceRequestOnboardingEmail below.
     if (populatedAppointment.professionalId) {
       const professionalDoc =
         populatedAppointment.professionalId as unknown as {
@@ -406,25 +434,6 @@ export async function POST(req: NextRequest) {
           email: string;
         };
 
-      // Send confirmation email to guest
-      sendGuestBookingConfirmation({
-        guestName: `${firstName} ${lastName}`,
-        guestEmail: email,
-        professionalName: `${professionalDoc.firstName} ${professionalDoc.lastName}`,
-        date: appointmentData.date || "To be scheduled",
-        time: appointmentData.time || "To be scheduled",
-        duration: appointmentData.duration || 60,
-        type: appointmentData.type,
-        therapyType: appointmentData.therapyType,
-        price: appointmentData.price,
-        locale: notificationLocale === "fr" ? "fr" : "en",
-        bookingFor: appointmentData.bookingFor,
-        lovedOneIsMinor,
-      }).catch((err) =>
-        console.error("Error sending guest confirmation email:", err),
-      );
-
-      // Send notification to professional
       sendProfessionalNotification({
         clientName: `${firstName} ${lastName}`,
         clientEmail: email,
@@ -436,24 +445,6 @@ export async function POST(req: NextRequest) {
         type: appointmentData.type,
       }).catch((err) =>
         console.error("Error sending professional notification email:", err),
-      );
-    } else {
-      // Send confirmation email to guest without professional info
-      sendGuestBookingConfirmation({
-        guestName: `${firstName} ${lastName}`,
-        guestEmail: email,
-        professionalName: "To be assigned",
-        date: appointmentData.date || "To be scheduled",
-        time: appointmentData.time || "To be scheduled",
-        duration: appointmentData.duration || 60,
-        type: appointmentData.type,
-        therapyType: appointmentData.therapyType,
-        price: appointmentData.price,
-        locale: notificationLocale === "fr" ? "fr" : "en",
-        bookingFor: appointmentData.bookingFor,
-        lovedOneIsMinor,
-      }).catch((err) =>
-        console.error("Error sending guest confirmation email:", err),
       );
     }
     
@@ -468,10 +459,11 @@ export async function POST(req: NextRequest) {
 
     // Automatically send onboarding invitation (Email 1 — Confirmation immédiate)
     // Recipient rules:
-    //   - self           → the requester (themselves)
-    //   - loved-one minor → the requester (parent) — they manage the child's profile
-    //   - loved-one adult → the loved one directly (the person who will have the follow-up)
-    //   - patient referral → the referrer (kept as-is)
+    //   - self                  → the requester (themselves)
+    //   - loved-one <14         → the requester (parent owns the account; legal
+    //                              protection of the minor, LSSSS art. 14)
+    //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
+    //   - patient referral      → the referrer (kept as-is)
     // We always send on first submission so a fresh requester gets the welcome.
     {
       const emailLocale: "fr" | "en" =
@@ -482,19 +474,21 @@ export async function POST(req: NextRequest) {
       let onboardingToName = firstName;
       let onboardingToEmail = email;
 
-      if (bookingFor === "loved-one" && !lovedOneIsMinor && lovedOneInfo?.email) {
+      if (
+        bookingFor === "loved-one" &&
+        !lovedOneIsUnder14 &&
+        lovedOneInfo?.email
+      ) {
         onboardingToName = lovedOneInfo.firstName || firstName;
         onboardingToEmail = lovedOneInfo.email;
       }
 
-      // Only send if we haven't already emailed this address as a previously-known prospect
-      // for this exact recipient (re-submissions from the same email should still receive it
-      // since prospects can re-engage; admin alerts dedupe via DB state).
+      // Send when the requester is new, or when the acknowledgment is going to a
+      // different mailbox than the requester (e.g. loved-one with their own email)
+      // so the loved one actually receives a confirmation.
       const shouldSendOnboarding =
         isNewGuest ||
-        (bookingFor === "loved-one" &&
-          !lovedOneIsMinor &&
-          onboardingToEmail !== email);
+        (bookingFor === "loved-one" && onboardingToEmail !== email);
 
       if (shouldSendOnboarding) {
         sendServiceRequestOnboardingEmail({

@@ -30,6 +30,16 @@ export function isMinor(user: IUser | { dateOfBirth?: Date | string }): boolean 
 }
 
 /**
+ * Under 14 → parent's email is the authentication identifier and the recipient
+ * for all booking communications (legal protection of the minor under Quebec's
+ * LSSSS art. 14, where consent to care alone starts at 14).
+ */
+export function isUnder14(user: { dateOfBirth?: Date | string }): boolean {
+  const age = calculateAge(user.dateOfBirth);
+  return age !== null && age < 14;
+}
+
+/**
  * Get guardian/account manager for a user
  */
 export async function getGuardian(

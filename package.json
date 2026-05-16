@@ -28,6 +28,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.5.3",
+    "@tiptap/extension-image": "^3.23.4",
     "@tiptap/extension-link": "^3.22.4",
     "@tiptap/extension-underline": "^3.22.4",
     "@tiptap/pm": "^3.22.4",
@@ -55,7 +56,13 @@
     "tailwind-merge": "^3.4.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@swc/core", "core-js", "esbuild", "sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "core-js",
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",

@@ -3,13 +3,48 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
-import { appointmentsAPI, clientsAPI } from "@/lib/api-client";
+import { appointmentsAPI, clientsAPI, usersAPI } from "@/lib/api-client";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const t = useTranslations("Dashboard.overview");
 
-  const isVerified = session?.user?.professionalLicenseStatus === "verified";
+  // The JWT only refreshes the license status at login, so an admin approval
+  // is invisible to a pro who is already signed in. Fetch the live value from
+  // /api/users/me on mount so the "Actif" badge appears without forcing a
+  // re-login. Fall back to the session value while the fetch is in flight.
+  const [liveLicenseStatus, setLiveLicenseStatus] = useState<string | null>(
+    null,
+  );
+  const [liveAccountStatus, setLiveAccountStatus] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    let cancelled = false;
+    usersAPI
+      .get()
+      .then((u: any) => {
+        if (cancelled) return;
+        if (u?.professionalLicenseStatus) {
+          setLiveLicenseStatus(u.professionalLicenseStatus);
+        }
+        if (u?.status) {
+          setLiveAccountStatus(u.status);
+        }
+      })
+      .catch(() => {
+        // Network failure: keep showing the session-derived state.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
+  const licenseStatus =
+    liveLicenseStatus ?? session?.user?.professionalLicenseStatus;
+  const isVerified = licenseStatus === "verified";
+  const isActive = (liveAccountStatus ?? "") === "active";
 
   const [totalClients, setTotalClients] = useState<number | null>(null);
   const [weekSessions, setWeekSessions] = useState<number | null>(null);

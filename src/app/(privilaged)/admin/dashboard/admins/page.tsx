@@ -13,6 +13,8 @@ import {
   Settings,
   Users,
   Wallet,
+  Loader2,
+  UserMinus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
@@ -34,11 +37,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { IUser } from "@/models/User";
 
 type AdminRole =
@@ -100,6 +105,29 @@ interface RoleInfo {
   permissions: AdminPermissions;
 }
 
+interface CurrentAdmin {
+  id: string;
+  userId: string;
+  role: AdminRole;
+  permissions: AdminPermissions;
+}
+
+const PERMISSION_KEYS: (keyof AdminPermissions)[] = [
+  "manageUsers",
+  "manageProfessionals",
+  "managePatients",
+  "approveProfessionals",
+  "manageContent",
+  "viewAnalytics",
+  "manageReports",
+  "manageBilling",
+  "manageAdmins",
+  "createAdmins",
+  "deleteAdmins",
+  "manageSettings",
+  "managePlatform",
+];
+
 const getRoleIcon = (role: AdminRole) => {
   switch (role) {
     case "super_admin":
@@ -139,6 +167,16 @@ export default function AdminsPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
+  const [currentAdmin, setCurrentAdmin] = useState<CurrentAdmin | null>(null);
+
+  const [permissionsTarget, setPermissionsTarget] = useState<AdminUser | null>(
+    null,
+  );
+  const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
+  const [demoteTarget, setDemoteTarget] = useState<AdminUser | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<AdminUser | null>(
+    null,
+  );
 
   const fetchAdmins = useCallback(async () => {
     try {
@@ -175,12 +213,43 @@ export default function AdminsPage() {
     }
   }, []);
 
+  const fetchCurrentAdmin = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/me");
+      if (response.ok) {
+        const result = await response.json();
+        setCurrentAdmin(result);
+      }
+    } catch (err) {
+      console.error("Failed to fetch current admin:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAdmins();
     fetchRoles();
-  }, [fetchAdmins, fetchRoles]);
+    fetchCurrentAdmin();
+  }, [fetchAdmins, fetchRoles, fetchCurrentAdmin]);
 
   const admins = data?.admins || [];
+
+  // Hierarchy: can the current admin act on this target?
+  const canActOn = useCallback(
+    (target: AdminUser): boolean => {
+      if (!currentAdmin) return false;
+      // Cannot act on self via this UI
+      if (target.id === currentAdmin.id) return false;
+      // Only super_admin can act on another super_admin
+      if (
+        target.role === "super_admin" &&
+        currentAdmin.role !== "super_admin"
+      ) {
+        return false;
+      }
+      return true;
+    },
+    [currentAdmin],
+  );
 
   if (loading) {
     return (
@@ -299,6 +368,7 @@ export default function AdminsPage() {
               </DialogHeader>
               <CreateAdminForm
                 roles={availableRoles}
+                currentAdmin={currentAdmin}
                 onSuccess={() => {
                   setShowCreateDialog(false);
                   fetchAdmins();
@@ -407,60 +477,98 @@ export default function AdminsPage() {
               </tr>
             </thead>
             <tbody>
-              {admins.map((admin) => (
-                <tr
-                  key={admin.id}
-                  className="border-t border-border/40 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="p-4">
-                    <div>
-                      <p className="font-light text-foreground">
-                        {admin.user.firstName} {admin.user.lastName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {admin.user.email}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <Badge
-                      className={`inline-flex items-center gap-1 ${getRoleBadgeColor(admin.role)}`}
-                    >
-                      {getRoleIcon(admin.role)}
-                      {admin.role.replace("_", " ").toUpperCase()}
-                    </Badge>
-                  </td>
-                  <td className="p-4 text-sm font-light text-muted-foreground">
-                    {admin.createdBy
-                      ? `${admin.createdBy.firstName} ${admin.createdBy.lastName}`
-                      : t("system")}
-                  </td>
-                  <td className="p-4 text-sm font-light text-muted-foreground">
-                    {admin.lastLogin
-                      ? new Date(admin.lastLogin).toLocaleDateString()
-                      : t("never")}
-                  </td>
-                  <td className="p-4 text-sm font-light text-muted-foreground">
-                    {new Date(admin.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="p-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>{t("viewPermissions")}</DropdownMenuItem>
-                        <DropdownMenuItem>{t("editRole")}</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          {t("deactivate")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
+              {admins.map((admin) => {
+                const isSelf =
+                  currentAdmin !== null && admin.id === currentAdmin.id;
+                const actAllowed = canActOn(admin);
+                return (
+                  <tr
+                    key={admin.id}
+                    className="border-t border-border/40 hover:bg-muted/20 transition-colors"
+                  >
+                    <td className="p-4">
+                      <div>
+                        <p className="font-light text-foreground">
+                          {admin.user.firstName} {admin.user.lastName}
+                          {isSelf ? (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              ({t("youLabel")})
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {admin.user.email}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <Badge
+                        className={`inline-flex items-center gap-1 ${getRoleBadgeColor(admin.role)}`}
+                      >
+                        {getRoleIcon(admin.role)}
+                        {admin.role.replace("_", " ").toUpperCase()}
+                      </Badge>
+                    </td>
+                    <td className="p-4 text-sm font-light text-muted-foreground">
+                      {admin.createdBy
+                        ? `${admin.createdBy.firstName} ${admin.createdBy.lastName}`
+                        : t("system")}
+                    </td>
+                    <td className="p-4 text-sm font-light text-muted-foreground">
+                      {admin.lastLogin
+                        ? new Date(admin.lastLogin).toLocaleDateString()
+                        : t("never")}
+                    </td>
+                    <td className="p-4 text-sm font-light text-muted-foreground">
+                      {new Date(admin.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setPermissionsTarget(admin)}
+                          >
+                            {t("viewPermissions")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!actAllowed}
+                            onClick={() => actAllowed && setEditTarget(admin)}
+                          >
+                            {t("editRole")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            disabled={!actAllowed}
+                            onClick={() => actAllowed && setDemoteTarget(admin)}
+                          >
+                            <UserMinus className="h-4 w-4 mr-2" />
+                            {t("demoteToEmployee")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            disabled={!actAllowed}
+                            onClick={() =>
+                              actAllowed && setDeactivateTarget(admin)
+                            }
+                            className="text-destructive focus:text-destructive"
+                          >
+                            {t("deactivate")}
+                          </DropdownMenuItem>
+                          {!actAllowed && !isSelf ? (
+                            <div className="px-2 py-1.5 text-[11px] text-muted-foreground border-t mt-1">
+                              {t("hierarchyBlocked")}
+                            </div>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -475,15 +583,383 @@ export default function AdminsPage() {
           )}
         </div>
       </div>
+
+      {/* View Permissions dialog */}
+      <Dialog
+        open={permissionsTarget !== null}
+        onOpenChange={(open) => !open && setPermissionsTarget(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("viewPermissionsTitle")}</DialogTitle>
+            <DialogDescription>
+              {permissionsTarget
+                ? `${permissionsTarget.user.firstName} ${permissionsTarget.user.lastName} — ${permissionsTarget.role
+                    .replace("_", " ")
+                    .toUpperCase()}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto">
+            {permissionsTarget &&
+              PERMISSION_KEYS.map((key) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2 text-sm"
+                >
+                  <span className="text-foreground">{t(`perm.${key}`)}</span>
+                  <span
+                    className={
+                      permissionsTarget.permissions[key]
+                        ? "text-green-600 dark:text-green-400 font-medium"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {permissionsTarget.permissions[key]
+                      ? t("permYes")
+                      : t("permNo")}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Role / Permissions dialog */}
+      <Dialog
+        open={editTarget !== null}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("editRoleTitle")}</DialogTitle>
+            <DialogDescription>
+              {editTarget
+                ? `${editTarget.user.firstName} ${editTarget.user.lastName} — ${editTarget.user.email}`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {editTarget && currentAdmin ? (
+            <EditAdminForm
+              admin={editTarget}
+              roles={availableRoles}
+              currentAdmin={currentAdmin}
+              onSuccess={() => {
+                setEditTarget(null);
+                fetchAdmins();
+              }}
+              onCancel={() => setEditTarget(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Demote-to-employee confirmation dialog */}
+      <Dialog
+        open={demoteTarget !== null}
+        onOpenChange={(open) => !open && setDemoteTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("demoteTitle")}</DialogTitle>
+            <DialogDescription>
+              {demoteTarget
+                ? t("demoteDesc", {
+                    name: `${demoteTarget.user.firstName} ${demoteTarget.user.lastName}`,
+                  })
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {demoteTarget ? (
+            <ConfirmAction
+              endpoint={`/api/admin/admins/${demoteTarget.id}/demote`}
+              method="POST"
+              confirmLabel={t("confirmDemote")}
+              cancelLabel={t("cancel")}
+              onSuccess={() => {
+                setDemoteTarget(null);
+                fetchAdmins();
+              }}
+              onCancel={() => setDemoteTarget(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate confirmation dialog */}
+      <Dialog
+        open={deactivateTarget !== null}
+        onOpenChange={(open) => !open && setDeactivateTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("deactivateTitle")}</DialogTitle>
+            <DialogDescription>
+              {deactivateTarget
+                ? t("deactivateDesc", {
+                    name: `${deactivateTarget.user.firstName} ${deactivateTarget.user.lastName}`,
+                  })
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {deactivateTarget ? (
+            <ConfirmAction
+              endpoint={`/api/admin/admins/${deactivateTarget.id}`}
+              method="DELETE"
+              destructive
+              confirmLabel={t("confirmDeactivate")}
+              cancelLabel={t("cancel")}
+              onSuccess={() => {
+                setDeactivateTarget(null);
+                fetchAdmins();
+              }}
+              onCancel={() => setDeactivateTarget(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ConfirmAction({
+  endpoint,
+  method,
+  confirmLabel,
+  cancelLabel,
+  destructive,
+  onSuccess,
+  onCancel,
+}: {
+  endpoint: string;
+  method: "POST" | "DELETE";
+  confirmLabel: string;
+  cancelLabel: string;
+  destructive?: boolean;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(endpoint, { method });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Request failed");
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      {error ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          {cancelLabel}
+        </Button>
+        <Button
+          type="button"
+          variant={destructive ? "destructive" : "default"}
+          onClick={handleConfirm}
+          disabled={submitting}
+          className="gap-2"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {confirmLabel}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+function EditAdminForm({
+  admin,
+  roles,
+  currentAdmin,
+  onSuccess,
+  onCancel,
+}: {
+  admin: AdminUser;
+  roles: RoleInfo[];
+  currentAdmin: CurrentAdmin;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const t = useTranslations("AdminDashboard.admins");
+  const [role, setRole] = useState<AdminRole>(admin.role);
+  const [permissions, setPermissions] = useState<AdminPermissions>(
+    admin.permissions,
+  );
+  const [usePreset, setUsePreset] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Only super_admin can assign the super_admin role
+  const canAssignSuper = currentAdmin.role === "super_admin";
+  const selectableRoles = roles.filter(
+    (r) => r.role !== "super_admin" || canAssignSuper,
+  );
+
+  const handleRoleChange = (newRole: AdminRole) => {
+    setRole(newRole);
+    if (usePreset) {
+      const preset = roles.find((r) => r.role === newRole)?.permissions;
+      if (preset) {
+        setPermissions(preset);
+      }
+    }
+  };
+
+  const togglePermission = (key: keyof AdminPermissions) => {
+    setUsePreset(false);
+    setPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/admins/${admin.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          permissions: usePreset ? undefined : permissions,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Update failed");
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>{t("adminRole")}</Label>
+        <Select
+          value={role}
+          onValueChange={(v) => handleRoleChange(v as AdminRole)}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {selectableRoles.map((r) => (
+              <SelectItem key={r.role} value={r.role}>
+                <div className="flex items-center gap-2">
+                  {getRoleIcon(r.role)}
+                  <span>{r.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {roles.find((r) => r.role === role)?.description}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>{t("permissionsLabel")}</Label>
+          <button
+            type="button"
+            onClick={() => {
+              const preset = roles.find((r) => r.role === role)?.permissions;
+              if (preset) {
+                setPermissions(preset);
+                setUsePreset(true);
+              }
+            }}
+            className="text-xs text-primary hover:underline"
+          >
+            {t("resetToPreset")}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto rounded-md border border-border/40 p-3">
+          {PERMISSION_KEYS.map((key) => (
+            <label
+              key={key}
+              className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/30 rounded px-2 py-1.5"
+            >
+              <input
+                type="checkbox"
+                checked={permissions[key]}
+                onChange={() => togglePermission(key)}
+                className="h-4 w-4 rounded border-border"
+              />
+              <span>{t(`perm.${key}`)}</span>
+            </label>
+          ))}
+        </div>
+        {!usePreset ? (
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            {t("customPermissionsNote")}
+          </p>
+        ) : null}
+      </div>
+
+      {error ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          {t("cancel")}
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="gap-2"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {t("save")}
+        </Button>
+      </DialogFooter>
     </div>
   );
 }
 
 function CreateAdminForm({
   roles,
+  currentAdmin,
   onSuccess,
 }: {
   roles: RoleInfo[];
+  currentAdmin: CurrentAdmin | null;
   onSuccess: () => void;
 }) {
   const t = useTranslations("AdminDashboard.admins");
@@ -493,6 +969,12 @@ function CreateAdminForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Only super_admin can promote directly to super_admin
+  const canAssignSuper = currentAdmin?.role === "super_admin";
+  const selectableRoles = roles.filter(
+    (r) => r.role !== "super_admin" || canAssignSuper,
+  );
 
   // Fetch available users (non-admin users)
   useEffect(() => {
@@ -619,7 +1101,7 @@ function CreateAdminForm({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {roles.map((role) => (
+            {selectableRoles.map((role) => (
               <SelectItem key={role.role} value={role.role}>
                 <div className="flex items-center gap-2">
                   {getRoleIcon(role.role)}

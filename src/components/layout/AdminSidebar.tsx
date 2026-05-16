@@ -24,6 +24,9 @@ import {
   Mail,
   AtSign,
   Briefcase,
+  BookOpenCheck,
+  Stethoscope,
+  Newspaper,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -129,6 +132,21 @@ export function AdminSidebar() {
           icon: HelpCircle,
         },
         {
+          title: t("problematiques"),
+          url: "/admin/dashboard/content/problematique",
+          icon: BookOpenCheck,
+        },
+        {
+          title: t("traitements"),
+          url: "/admin/dashboard/content/traitement",
+          icon: Stethoscope,
+        },
+        {
+          title: t("nouveautes"),
+          url: "/admin/dashboard/content/nouveaute",
+          icon: Newspaper,
+        },
+        {
           title: t("library"),
           url: "/admin/dashboard/library",
           icon: Library,
@@ -185,7 +203,9 @@ export function AdminSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.items.map((item) => {
-                  const isActive = pathname === item.url;
+                  const isActive =
+                    pathname === item.url ||
+                    pathname.startsWith(`${item.url}/`);
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton

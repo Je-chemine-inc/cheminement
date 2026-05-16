@@ -115,14 +115,30 @@ export async function PUT(
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
 
-    // Prevent super admin from modifying themselves
+    // Prevent self-modification (any admin)
+    if (id === (currentAdmin._id as any).toString()) {
+      return NextResponse.json(
+        { error: "You cannot modify your own admin account" },
+        { status: 400 },
+      );
+    }
+
+    // Hierarchy: only a super_admin can modify another super_admin
     if (
-      id === (currentAdmin._id as any).toString() &&
-      currentAdmin.role === "super_admin"
+      adminToUpdate.role === "super_admin" &&
+      currentAdmin.role !== "super_admin"
     ) {
       return NextResponse.json(
-        { error: "Super admin cannot modify their own permissions" },
-        { status: 400 },
+        { error: "Only a super admin can modify another super admin" },
+        { status: 403 },
+      );
+    }
+
+    // Hierarchy: only a super_admin can promote anyone TO super_admin
+    if (role === "super_admin" && currentAdmin.role !== "super_admin") {
+      return NextResponse.json(
+        { error: "Only a super admin can assign the super admin role" },
+        { status: 403 },
       );
     }
 
@@ -131,7 +147,7 @@ export async function PUT(
 
     if (role && role !== adminToUpdate.role) {
       updates.role = role;
-      // Update permissions to match new role unless custom permissions provided
+      // Reset permissions to match new role unless custom permissions provided
       if (!permissions) {
         updates.permissions = ADMIN_ROLE_PERMISSIONS[role as AdminRole];
       }
@@ -209,11 +225,22 @@ export async function DELETE(
       return NextResponse.json({ error: "Admin not found" }, { status: 404 });
     }
 
-    // Prevent super admin from deleting themselves
+    // Prevent self-deletion
     if (id === (currentAdmin._id as any).toString()) {
       return NextResponse.json(
         { error: "Cannot delete your own admin account" },
         { status: 400 },
+      );
+    }
+
+    // Hierarchy: only a super_admin can deactivate another super_admin
+    if (
+      adminToDelete.role === "super_admin" &&
+      currentAdmin.role !== "super_admin"
+    ) {
+      return NextResponse.json(
+        { error: "Only a super admin can deactivate another super admin" },
+        { status: 403 },
       );
     }
 

@@ -486,6 +486,13 @@ interface EmailTemplateOptions {
   infoBox?: { title: string; content: string; theme?: EmailTheme };
   badge?: { text: string; theme?: EmailTheme };
   button?: { text: string; url: string };
+  /**
+   * When true, the primary button renders directly under the intro (above
+   * any details/price/infoBox blocks). Used by security-critical emails like
+   * 2FA activation so the CTA stays above the typical mail-client fold and
+   * doesn't get clipped by Gmail/Yahoo's "view entire message" truncation.
+   */
+  buttonAboveInfo?: boolean;
   /** Optional second CTA (e.g. invite guest to create a full client account) */
   secondaryButton?: { preamble?: string; text: string; url: string };
   outro?: string;
@@ -506,6 +513,7 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
     infoBox,
     badge,
     button,
+    buttonAboveInfo,
     secondaryButton,
     outro,
     branding,
@@ -529,10 +537,11 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
             ${badge ? `<div style="text-align: center; margin-bottom: 20px;">${createBadge(badge.text, badge.theme, branding)}</div>` : ""}
             <p>${greeting}</p>
             <p>${intro}</p>
+            ${buttonAboveInfo && button ? createButton(button.text, button.url, branding) : ""}
             ${details ? createDetailsSection(details, detailsBorderColor || colors.primary, branding) : ""}
             ${price ? createPriceSection(price.amount, price.note, price.theme || theme, price.currency!, branding) : ""}
             ${infoBox ? createInfoBox(infoBox.title, infoBox.content, infoBox.theme, branding) : ""}
-            ${button ? createButton(button.text, button.url, branding) : ""}
+            ${!buttonAboveInfo && button ? createButton(button.text, button.url, branding) : ""}
             ${
               secondaryButton
                 ? `
@@ -648,6 +657,105 @@ async function getBranding(): Promise<IEmailBranding | undefined> {
 }
 
 // =============================================================================
+// Admin-composed outbound email
+// =============================================================================
+
+interface AdminComposedEmailData {
+  to: string;
+  subject: string;
+  /** Plain-text body authored by the admin. Newlines preserved. */
+  body: string;
+  /** Reply-To header — admin's own email so the recipient replies to them, not SMTP_USER. */
+  replyTo?: string;
+  /** Display name to render in the email greeting/footer (optional). */
+  recipientName?: string;
+  locale?: "fr" | "en";
+}
+
+/**
+ * Sends a free-form email composed by an admin from the dashboard. Uses the
+ * same SMTP credentials as platform emails (so the From address is the
+ * platform identity) but sets Reply-To to the admin so external recipients
+ * reach a real person if they reply.
+ *
+ * Bypasses the per-template enabled flag — admin-composed sends are
+ * intentional and shouldn't be silently dropped when the welcome template is
+ * disabled. Still honors the global `emailSettings.enabled` kill switch.
+ */
+export async function sendAdminComposedEmail(
+  data: AdminComposedEmailData,
+): Promise<boolean> {
+  const branding = await getBranding();
+  const settings = await getEmailSettings();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+
+  if (!settings.enabled) {
+    console.log("Email notifications globally disabled — admin compose skipped");
+    return false;
+  }
+
+  // Convert the plain-text body to HTML paragraphs while preserving newlines.
+  const bodyHtml = data.body
+    .split(/\n{2,}/)
+    .map((para) =>
+      `<p style="margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: #333;">${para
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\n/g, "<br>")}</p>`,
+    )
+    .join("");
+
+  const greeting = data.recipientName
+    ? lang === "fr"
+      ? `Bonjour ${data.recipientName},`
+      : `Hello ${data.recipientName},`
+    : lang === "fr"
+      ? "Bonjour,"
+      : "Hello,";
+
+  const html = buildEmailHtml({
+    title: data.subject,
+    theme: "info",
+    greeting,
+    intro: bodyHtml,
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText([data.subject, greeting, data.body], lang);
+
+  if (
+    !process.env.SMTP_HOST ||
+    !process.env.SMTP_USER ||
+    !process.env.SMTP_PASS
+  ) {
+    console.log("SMTP not configured. Admin email would be sent:", {
+      to: data.to,
+      subject: data.subject,
+    });
+    return true;
+  }
+
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"${branding?.companyName || settings.branding?.companyName || "JeChemine"}" <${process.env.SMTP_USER}>`,
+      to: data.to,
+      replyTo: data.replyTo,
+      subject: data.subject,
+      html,
+      text,
+    });
+    console.log("Admin-composed email sent to:", data.to);
+    return true;
+  } catch (error) {
+    console.error("Error sending admin-composed email:", error);
+    return false;
+  }
+}
+
+// =============================================================================
 // Public Email Functions - Authentication
 // =============================================================================
 
@@ -673,8 +781,16 @@ export async function sendAccountEmailVerificationEmail(
       lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
     intro:
       lang === "fr"
-        ? "Pour finaliser la création de votre compte, vous devez activer l'authentification à deux facteurs. Cliquez sur le bouton ci-dessous pour <strong>confirmer votre adresse courriel</strong> puis <strong>valider votre numéro de téléphone par code SMS</strong>. Les deux étapes se font en quelques secondes via le même lien."
-        : "To finalize your account, you need to activate two-factor authentication. Click the button below to <strong>confirm your email address</strong> and then <strong>verify your phone number with an SMS code</strong>. Both steps are completed in seconds through the same link.",
+        ? "Pour finaliser l'activation de votre compte, activez l'authentification à deux facteurs en cliquant sur le bouton ci-dessous."
+        : "To finalize your account activation, enable two-factor authentication by clicking the button below.",
+    button: {
+      text:
+        lang === "fr"
+          ? "Activer la double authentification"
+          : "Activate two-factor authentication",
+      url: data.verifyUrl,
+    },
+    buttonAboveInfo: true,
     infoBox: {
       title:
         lang === "fr"
@@ -682,15 +798,8 @@ export async function sendAccountEmailVerificationEmail(
           : "The two steps of 2FA activation",
       content:
         lang === "fr"
-          ? "1. Confirmation de votre adresse courriel via le lien sécurisé ci-dessous.<br>2. Réception et saisie d'un code SMS à 6 chiffres envoyé sur votre téléphone."
-          : "1. Confirmation of your email address via the secure link below.<br>2. Receive and enter a 6-digit SMS code sent to your phone.",
-    },
-    button: {
-      text:
-        lang === "fr"
-          ? "Activer la double authentification"
-          : "Activate two-factor authentication",
-      url: data.verifyUrl,
+          ? "1. Confirmation de votre adresse courriel via le lien sécurisé du bouton ci-dessus.<br>2. Réception et saisie d'un code SMS à 6 chiffres envoyé sur votre téléphone."
+          : "1. Confirmation of your email address via the secure link in the button above.<br>2. Receive and enter a 6-digit SMS code sent to your phone.",
     },
     outro:
       lang === "fr"
@@ -933,368 +1042,6 @@ export async function sendPasswordResetEmail(
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "password_reset");
-}
-
-// =============================================================================
-// Public Email Functions - Guest Booking
-// =============================================================================
-
-export async function sendGuestBookingConfirmation(
-  data: GuestBookingEmailData,
-): Promise<boolean> {
-  const branding = await getBranding();
-  const baseUrl = process.env.NEXTAUTH_URL || "";
-  const memberSignupUrl = `${baseUrl}/signup/member?email=${encodeURIComponent(data.guestEmail)}`;
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
-  const sessionType = formatSessionType(data.therapyType);
-  const isPendingSchedule = !data.date || !data.time || !data.professionalName;
-  const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
-  const appointmentType = formatAppointmentType(data.type, lang);
-
-  const isSelfServiceRequest =
-    isPendingSchedule && data.bookingFor === "self";
-
-  if (isSelfServiceRequest) {
-    const intro =
-      lang === "fr"
-        ? "Merci de votre demande. Pour accélérer votre jumelage, complétez votre profil en suivant le lien ci-dessous."
-        : "Thank you for your request. To speed up your matching, complete your profile using the link below.";
-
-    const nextSteps =
-      lang === "fr"
-        ? "Un professionnel vous sera proposé sous peu. Vous recevrez un autre courriel lorsque votre demande progressera."
-        : "A professional will be assigned to you soon. You will receive another email as your request moves forward.";
-
-    const detailLabels =
-      lang === "fr"
-        ? {
-            session: "Type de séance",
-            modality: "Modalité",
-            professional: "Professionnel",
-            date: "Date",
-            time: "Heure",
-            duration: "Durée",
-          }
-        : {
-            session: "Session type",
-            modality: "Modality",
-            professional: "Professional",
-            date: "Date",
-            time: "Time",
-            duration: "Duration",
-          };
-
-    const html = buildEmailHtml({
-      title:
-        lang === "fr" ? "Demande de service reçue" : "Service request received",
-      subtitle:
-        lang === "fr"
-          ? "Nous traitons votre demande"
-          : "We are processing your request",
-      theme: "info",
-      badge: {
-        text: lang === "fr" ? "⏳ En attente de jumelage" : "⏳ Pending matching",
-        theme: "warning",
-      },
-      greeting:
-        lang === "fr"
-          ? `Bonjour ${data.guestName},`
-          : `Dear ${data.guestName},`,
-      intro,
-      details: [
-        { label: detailLabels.session, value: sessionType },
-        { label: detailLabels.modality, value: appointmentType },
-        { label: detailLabels.professional, value: professionalName },
-        { label: detailLabels.date, value: formattedDate },
-        { label: detailLabels.time, value: formattedTime },
-        {
-          label: detailLabels.duration,
-          value:
-            lang === "fr"
-              ? `${data.duration} minutes`
-              : `${data.duration} minutes`,
-        },
-      ],
-      infoBox: {
-        title: lang === "fr" ? "Ensuite" : "Next steps",
-        content: nextSteps,
-      },
-      button: {
-        text:
-          lang === "fr"
-            ? "Compléter mon profil (onboarding)"
-            : "Complete my profile (onboarding)",
-        url: memberSignupUrl,
-      },
-      secondaryButton: {
-        preamble:
-          lang === "fr"
-            ? "Vous pouvez aussi créer un compte membre sécurisé avec la même adresse courriel pour suivre vos rendez-vous."
-            : "You can also create a secure member account with the same email to track your appointments.",
-        text:
-          lang === "fr" ? "Créer mon compte membre" : "Create my member account",
-        url: memberSignupUrl,
-      },
-      outro:
-        lang === "fr"
-          ? "Merci de votre confiance."
-          : "Thank you for choosing us.",
-      branding,
-    });
-
-    const text = buildEmailText([
-      lang === "fr" ? "Demande de service reçue" : "Service request received",
-      lang === "fr"
-        ? `Bonjour ${data.guestName},`
-        : `Dear ${data.guestName},`,
-      intro,
-      `${detailLabels.session}: ${sessionType}`,
-      `${detailLabels.modality}: ${appointmentType}`,
-      nextSteps,
-      lang === "fr" ? "Lien onboarding (profil)" : "Onboarding link (profile)",
-      memberSignupUrl,
-    ]);
-
-    const subject =
-      lang === "fr"
-        ? "Merci pour votre demande — Je Chemine"
-        : "Thank you for your request — Je Chemine";
-
-    return sendEmail(
-      { to: data.guestEmail, subject, html, text },
-      "guest_booking_confirmation",
-    );
-  }
-
-  // Loved-one booking (pending assignment):
-  // - child (<18): send onboarding link to the requester immediately
-  // - adult (>18): keep dossier pending until admin decides where to send the link
-  if (isPendingSchedule && data.bookingFor === "loved-one") {
-    if (data.lovedOneIsMinor) {
-      const intro =
-        lang === "fr"
-          ? "Merci de votre demande. Pour accélérer votre jumelage, complétez votre profil en suivant le lien ci-dessous."
-          : "Thank you for your request. To speed up your matching, complete your profile using the link below.";
-
-      const nextSteps =
-        lang === "fr"
-          ? "Un professionnel vous sera proposé sous peu."
-          : "A professional will be assigned to you soon.";
-
-      const detailLabels =
-        lang === "fr"
-          ? {
-              session: "Type de séance",
-              modality: "Modalité",
-              professional: "Professionnel",
-              date: "Date",
-              time: "Heure",
-              duration: "Durée",
-            }
-          : {
-              session: "Session type",
-              modality: "Modality",
-              professional: "Professional",
-              date: "Date",
-              time: "Time",
-              duration: "Duration",
-            };
-
-      const html = buildEmailHtml({
-        title: lang === "fr" ? "Demande de service reçue" : "Service request received",
-        subtitle: lang === "fr" ? "Nous traitons votre demande" : "We are processing your request",
-        theme: "info",
-        badge: {
-          text: lang === "fr" ? "⏳ En attente de jumelage" : "⏳ Pending matching",
-          theme: "warning",
-        },
-        greeting: lang === "fr" ? `Bonjour ${data.guestName},` : `Dear ${data.guestName},`,
-        intro,
-        details: [
-          { label: detailLabels.session, value: sessionType },
-          { label: detailLabels.modality, value: appointmentType },
-          { label: detailLabels.professional, value: professionalName },
-          { label: detailLabels.date, value: formattedDate },
-          { label: detailLabels.time, value: formattedTime },
-          { label: detailLabels.duration, value: `${data.duration} minutes` },
-        ],
-        infoBox: {
-          title: lang === "fr" ? "Ensuite" : "Next steps",
-          content: nextSteps,
-        },
-        button: {
-          text: lang === "fr" ? "Compléter mon profil (onboarding)" : "Complete my profile (onboarding)",
-          url: memberSignupUrl,
-        },
-        branding,
-      });
-
-      const text = buildEmailText([
-        lang === "fr" ? "Demande de service reçue" : "Service request received",
-        lang === "fr" ? `Bonjour ${data.guestName},` : `Dear ${data.guestName},`,
-        intro,
-        `Duration: ${data.duration} minutes`,
-        nextSteps,
-        lang === "fr" ? "Lien onboarding (profil)" : "Onboarding link (profile)",
-        memberSignupUrl,
-      ]);
-
-      const subject =
-        lang === "fr"
-          ? "Merci pour votre demande — Je Chemine"
-          : "Thank you for your request — Je Chemine";
-
-      return sendEmail(
-        { to: data.guestEmail, subject, html, text },
-        "guest_booking_confirmation",
-      );
-    }
-
-    // Adult (>18): no onboarding link until admin decision
-    const intro =
-      lang === "fr"
-        ? "Merci de votre demande. Votre dossier est en attente de validation par l’Admin. Selon votre situation, le lien de compte sera envoyé au demandeur ou directement au proche."
-        : "Thank you for your request. Your file is pending admin validation. Depending on your situation, the account link will be sent to the requester or directly to the loved one.";
-
-    const nextSteps =
-      lang === "fr"
-        ? "Un administrateur examinera votre demande avant l’envoi du lien de compte."
-        : "An admin will review your request before sending the account link.";
-
-    const html = buildEmailHtml({
-      title: lang === "fr" ? "Demande de service reçue" : "Service request received",
-      subtitle: lang === "fr" ? "Nous traitons votre demande" : "We are processing your request",
-      theme: "info",
-      badge: {
-        text: lang === "fr" ? "⏳ En attente de validation" : "⏳ Pending admin validation",
-        theme: "warning",
-      },
-      greeting: lang === "fr" ? `Bonjour ${data.guestName},` : `Dear ${data.guestName},`,
-      intro,
-      details: [
-        { label: "Type de séance", value: sessionType },
-        { label: "Type de rendez-vous", value: appointmentType },
-        { label: "Professionnel", value: professionalName },
-        { label: "Date", value: formattedDate },
-        { label: "Heure", value: formattedTime },
-        { label: "Durée", value: `${data.duration} minutes` },
-      ],
-      infoBox: {
-        title: lang === "fr" ? "Ensuite" : "Next steps",
-        content: nextSteps,
-      },
-      branding,
-    });
-
-    const text = buildEmailText([
-      lang === "fr" ? "Demande de service reçue" : "Service request received",
-      lang === "fr" ? `Bonjour ${data.guestName},` : `Dear ${data.guestName},`,
-      intro,
-      nextSteps,
-    ]);
-
-    const subject =
-      lang === "fr"
-        ? "Demande en attente de validation — Je Chemine"
-        : "Request pending admin validation — Je Chemine";
-
-    return sendEmail(
-      { to: data.guestEmail, subject, html, text },
-      "guest_booking_confirmation",
-    );
-  }
-
-  const intro = isPendingSchedule
-    ? "Nous avons reçu votre demande de réservation et nous vous associerons bientôt à un professionnel."
-    : "Votre demande de réservation a été reçue et est en cours de traitement.";
-
-  const nextSteps = isPendingSchedule
-    ? "Un professionnel vous sera assigné prochainement. Vous recevrez un autre courriel avec les détails de paiement une fois confirmé."
-    : "Veuillez attendre la confirmation de votre professionnel assigné. Vous recevrez les instructions de paiement une fois votre rendez-vous confirmé.";
-
-  const appointmentTypeFr = formatAppointmentType(data.type, "fr");
-
-  const html = buildEmailHtml({
-    title: "Demande de réservation reçue",
-    subtitle: isPendingSchedule
-      ? "Nous trouverons le bon professionnel pour vous"
-      : "Détails de votre séance",
-    theme: "info",
-    badge: {
-      text: isPendingSchedule
-        ? "⏳ En attente d'attribution"
-        : "📅 En attente de confirmation",
-      theme: "warning",
-    },
-    greeting: `Bonjour ${data.guestName},`,
-    intro,
-    details: [
-      { label: "Type de séance", value: sessionType },
-      { label: "Type de rendez-vous", value: appointmentTypeFr },
-      { label: "Professionnel", value: professionalName },
-      { label: "Date", value: formattedDate },
-      { label: "Heure", value: formattedTime },
-      { label: "Durée", value: `${data.duration} minutes` },
-    ],
-    infoBox: {
-      title: "Prochaines étapes",
-      content: nextSteps,
-    },
-    secondaryButton: {
-      preamble:
-        "Créez votre compte membre sécurisé Je Chemine avec le même courriel utilisé pour cette demande. Vous compléterez votre profil détaillé (informations cliniques de base) pour aider votre professionnel à préparer votre prise en charge.",
-      text: "Créer mon compte sécurisé",
-      url: memberSignupUrl,
-    },
-    outro:
-      "Merci de nous faire confiance. Nous vous contacterons bientôt avec plus de détails.",
-    branding,
-  });
-
-  const textNextSteps = isPendingSchedule
-    ? [
-        "PROCHAINES ÉTAPES :",
-        "1. Un professionnel vous sera assigné prochainement",
-        "2. Vous recevrez une confirmation avec les détails de paiement",
-        "3. Complétez le paiement pour sécuriser votre rendez-vous",
-        "4. Recevez votre lien de réunion avant la séance",
-      ]
-    : [
-        "PROCHAINES ÉTAPES :",
-        "1. Attendez la confirmation du professionnel",
-        "2. Vous recevrez les instructions de paiement une fois confirmé",
-        "3. Complétez le paiement pour sécuriser votre rendez-vous",
-        "4. Recevez votre lien de réunion avant la séance",
-      ];
-
-  const text = buildEmailText([
-    "Demande de réservation reçue",
-    `Bonjour ${data.guestName},`,
-    intro,
-    "DÉTAILS DE LA SÉANCE :",
-    `Type de séance : ${sessionType}`,
-    `Type de rendez-vous : ${appointmentTypeFr}`,
-    `Professionnel : ${professionalName}`,
-    `Date : ${formattedDate}`,
-    `Heure : ${formattedTime}`,
-    `Durée : ${data.duration} minutes`,
-    ...textNextSteps,
-    "CRÉER VOTRE COMPTE SÉCURISÉ :",
-    "Utilisez le lien ci-dessous pour vous inscrire et compléter votre profil clinique détaillé (même courriel que cette demande) :",
-    memberSignupUrl,
-  ]);
-
-  const subject = await getSubject(
-    "guest_booking_confirmation",
-    "Demande de réservation reçue — JeChemine",
-  );
-
-  return sendEmail(
-    { to: data.guestEmail, subject, html, text },
-    "guest_booking_confirmation",
-  );
 }
 
 // =============================================================================

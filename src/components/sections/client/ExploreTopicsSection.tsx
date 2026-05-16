@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
@@ -31,84 +32,43 @@ const scaleIn = {
   },
 };
 
+interface TopicDTO {
+  slug: string;
+  title: string;
+  summary: string;
+  iconUrl?: string;
+}
+
 export default function ExploreTopicsSection() {
   const t = useTranslations("ExploreTopics");
   const locale = useLocale();
+  const [topics, setTopics] = useState<TopicDTO[] | null>(null);
 
-  const topics = [
-    {
-      titleEn: "Depression",
-      titleFr: "Dépression",
-      descriptionEn:
-        "Persistent feelings of sadness, loss of interest, and lack of energy affecting daily life.",
-      descriptionFr:
-        "Sentiments persistants de tristesse, perte d'intérêt et manque d'énergie affectant la vie quotidienne.",
-      slug: "depression",
-    },
-    {
-      titleEn: "Anxiety",
-      titleFr: "Anxiété",
-      descriptionEn:
-        "Excessive worry and fear that interferes with daily activities and well-being.",
-      descriptionFr:
-        "Inquiétude et peur excessives qui interfèrent avec les activités quotidiennes et le bien-être.",
-      slug: "anxiete",
-    },
-    {
-      titleEn: "Panic Disorder",
-      titleFr: "Trouble panique",
-      descriptionEn:
-        "Recurring panic attacks with intense fear and physical symptoms like rapid heartbeat.",
-      descriptionFr:
-        "Crises de panique récurrentes avec peur intense et symptômes physiques comme des palpitations.",
-      slug: "trouble-panique",
-    },
-    {
-      titleEn: "Social Anxiety",
-      titleFr: "Anxiété sociale",
-      descriptionEn:
-        "Intense fear of social situations and being judged or scrutinized by others.",
-      descriptionFr:
-        "Peur intense des situations sociales et d'être jugé ou scruté par les autres.",
-      slug: "anxiete-sociale",
-    },
-    {
-      titleEn: "Post-Traumatic Stress",
-      titleFr: "État de stress post-traumatique",
-      descriptionEn:
-        "Anxiety and flashbacks triggered by traumatic events, affecting daily functioning.",
-      descriptionFr:
-        "Anxiété et flashbacks déclenchés par des événements traumatiques, affectant le fonctionnement quotidien.",
-      slug: "stress-post-traumatique",
-    },
-    {
-      titleEn: "ADHD",
-      titleFr: "TDAH",
-      descriptionEn:
-        "Difficulty focusing, controlling impulses, and hyperactivity affecting work and relationships.",
-      descriptionFr:
-        "Difficulté à se concentrer, à contrôler les impulsions et hyperactivité affectant le travail et les relations.",
-      slug: "tdah",
-    },
-    {
-      titleEn: "OCD",
-      titleFr: "Trouble obsessionnel-compulsif",
-      descriptionEn:
-        "Intrusive thoughts and repetitive behaviors that cause distress and consume time.",
-      descriptionFr:
-        "Pensées intrusives et comportements répétitifs qui causent de la détresse et consomment du temps.",
-      slug: "trouble-obsessionnel-compulsif",
-    },
-    {
-      titleEn: "Learning Difficulties",
-      titleFr: "Difficultés d'apprentissage",
-      descriptionEn:
-        "Challenges in acquiring and processing information that affect academic performance.",
-      descriptionFr:
-        "Difficultés à acquérir et traiter l'information qui affectent la performance académique.",
-      slug: "difficultes-apprentissage",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/content/problematique?locale=${locale}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { items: TopicDTO[] };
+        if (!cancelled) setTopics(data.items);
+      } catch (err) {
+        console.error("Failed to load topics:", err);
+        if (!cancelled) setTopics([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  // Hide the section entirely if there are no published topics yet.
+  if (topics !== null && topics.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-20 bg-background">
@@ -120,7 +80,6 @@ export default function ExploreTopicsSection() {
           variants={staggerContainer}
           className="max-w-6xl mx-auto"
         >
-          {/* Section Header */}
           <div className="text-center mb-16">
             <motion.div
               variants={fadeInUp}
@@ -150,47 +109,57 @@ export default function ExploreTopicsSection() {
             </motion.p>
           </div>
 
-          {/* Topics Grid */}
-          <motion.div
-            variants={staggerContainer}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6"
-          >
-            {topics.map((topic, index) => (
-              <motion.div
-                key={index}
-                variants={scaleIn}
-                transition={{ duration: 0.5 }}
-                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="p-6 rounded-xl bg-card/50 backdrop-blur-sm hover:bg-card transition-all duration-300 flex flex-col"
-              >
-                <h4 className="text-lg font-light text-foreground mb-3">
-                  {locale === "fr" ? topic.titleFr : topic.titleEn}
-                </h4>
-                <p className="text-muted-foreground text-sm leading-relaxed font-light mb-4 flex-1">
-                  {locale === "fr" ? topic.descriptionFr : topic.descriptionEn}
-                </p>
-                <Link
-                  href={`/explore/${topic.slug}`}
-                  className="inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors font-light"
+          {topics && topics.length > 0 ? (
+            <motion.div
+              variants={staggerContainer}
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-stretch"
+            >
+              {topics.map((topic) => (
+                <motion.div
+                  key={topic.slug}
+                  variants={scaleIn}
+                  transition={{ duration: 0.5 }}
+                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                  className="p-6 rounded-xl bg-card/50 backdrop-blur-sm hover:bg-card transition-all duration-300 flex flex-col h-full min-h-[240px]"
                 >
-                  {t("learnMore")}
-                  <svg
-                    className="w-4 h-4 ml-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
+                  {topic.iconUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={topic.iconUrl}
+                      alt=""
+                      className="mb-4 h-12 w-12 rounded-lg object-cover"
+                      loading="lazy"
                     />
-                  </svg>
-                </Link>
-              </motion.div>
-            ))}
-          </motion.div>
+                  ) : null}
+                  <h4 className="text-lg font-light text-foreground mb-3 line-clamp-2">
+                    {topic.title}
+                  </h4>
+                  <p className="text-muted-foreground text-sm leading-relaxed font-light mb-4 flex-1 line-clamp-4">
+                    {topic.summary}
+                  </p>
+                  <Link
+                    href={`/explore/${topic.slug}`}
+                    className="inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors font-light"
+                  >
+                    {t("learnMore")}
+                    <svg
+                      className="w-4 h-4 ml-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : null}
         </motion.div>
       </div>
     </section>

@@ -13,7 +13,16 @@
       "Bash(taskkill /F /PID 22448)",
       "PowerShell(Stop-Process -Id 22448 -Force -ErrorAction SilentlyContinue)",
       "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Force)"
+      "PowerShell(Stop-Process -Force)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json'\\)\\);JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json'\\)\\);console.log\\('JSON OK'\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const p='c:/Users/merie/cheminement/src/lib/notifications.ts';const lines=fs.readFileSync\\(p,'utf8'\\).split\\(/\\\\r?\\\\n/\\);const out=[...lines.slice\\(0,1050\\),...lines.slice\\(1407\\)];fs.writeFileSync\\(p,out.join\\('\\\\r\\\\n'\\)\\);console.log\\('removed',1407-1050,'lines; new length',out.length\\);\")",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(pnpm add *)",
+      "Bash(pnpm tsc *)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); console.log\\('fr.json OK'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('en.json OK'\\)\")",
+      "Bash(pnpm next *)",
+      "Bash(pnpm lint *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",
