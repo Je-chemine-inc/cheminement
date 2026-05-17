@@ -167,6 +167,8 @@ export default function ProfessionalSignupPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [termsOpened, setTermsOpened] = useState(false);
+  const [privacyOpened, setPrivacyOpened] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -465,7 +467,9 @@ export default function ProfessionalSignupPage() {
         setError(t("errors.accountCreatedButSignInFailed"));
         router.push("/login");
       } else {
-        router.push("/professional/dashboard");
+        // Status is "pending" until admin approval — go straight to the
+        // thank-you page so the dashboard never flashes for unapproved pros.
+        router.push("/professional/account-pending");
       }
     } catch (err) {
       setError(
@@ -1174,61 +1178,120 @@ export default function ProfessionalSignupPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="agreeToTerms"
-                  checked={formData.agreeToTerms}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      agreeToTerms: checked as boolean,
-                    }))
-                  }
-                />
-                <label
-                  htmlFor="agreeToTerms"
-                  className="text-sm cursor-pointer leading-tight"
-                >
-                  {t("termsAcceptBefore")}
-                  <Link
-                    href="/professional-terms?from=signup"
-                    className="text-primary underline"
-                  >
-                    {t("termsOfService")}
-                  </Link>
-                  {t("termsAcceptAfter")}
-                  <span className="text-red-500">*</span>
-                </label>
-              </div>
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="acceptPrivacyPolicy"
-                  checked={formData.acceptPrivacyPolicy}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      acceptPrivacyPolicy: checked as boolean,
-                    }))
-                  }
-                />
-                <div className="space-y-2">
-                  <label
-                    htmlFor="acceptPrivacyPolicy"
-                    className="text-sm cursor-pointer leading-tight block"
-                  >
-                    {t("privacyAcceptBefore")}
-                    <Link
-                      href="/privacy?from=signup"
-                      className="text-primary underline"
+              <p className="text-sm text-muted-foreground leading-snug">
+                {t("legalReviewInstruction")}
+              </p>
+
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="agreeToTerms"
+                    checked={formData.agreeToTerms}
+                    disabled={!termsOpened}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        agreeToTerms: checked as boolean,
+                      }))
+                    }
+                  />
+                  <div className="space-y-1 flex-1">
+                    <label
+                      htmlFor="agreeToTerms"
+                      className={`text-sm leading-tight block ${
+                        termsOpened ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground"
+                      }`}
                     >
-                      {t("privacyPolicy")}
-                    </Link>
-                    {t("privacyAcceptAfter")}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-xs text-muted-foreground leading-snug">
-                    {t("privacyConsentClinicalNote")}
-                  </p>
+                      {t("termsAcceptBefore")}
+                      <a
+                        href="/professional-terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setTermsOpened(true)}
+                        className="text-primary underline inline-flex items-center gap-1"
+                      >
+                        {t("termsOfService")}
+                        <svg
+                          className="h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                      {t("termsAcceptAfter")}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    {!termsOpened && (
+                      <p className="text-xs text-muted-foreground italic">
+                        {t("openToEnableCheckbox")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="acceptPrivacyPolicy"
+                    checked={formData.acceptPrivacyPolicy}
+                    disabled={!privacyOpened}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        acceptPrivacyPolicy: checked as boolean,
+                      }))
+                    }
+                  />
+                  <div className="space-y-1 flex-1">
+                    <label
+                      htmlFor="acceptPrivacyPolicy"
+                      className={`text-sm leading-tight block ${
+                        privacyOpened ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground"
+                      }`}
+                    >
+                      {t("privacyAcceptBefore")}
+                      <a
+                        href="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setPrivacyOpened(true)}
+                        className="text-primary underline inline-flex items-center gap-1"
+                      >
+                        {t("privacyPolicy")}
+                        <svg
+                          className="h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                      {t("privacyAcceptAfter")}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      {t("privacyConsentClinicalNote")}
+                    </p>
+                    {!privacyOpened && (
+                      <p className="text-xs text-muted-foreground italic">
+                        {t("openToEnableCheckbox")}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1366,6 +1429,8 @@ export default function ProfessionalSignupPage() {
                 type="submit"
                 disabled={
                   isLoading ||
+                  !termsOpened ||
+                  !privacyOpened ||
                   !formData.agreeToTerms ||
                   !formData.acceptPrivacyPolicy
                 }

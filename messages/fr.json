@@ -2042,7 +2042,9 @@
       "locationSummaryPlaceholder": "Ville, Province ou A1A 1A1",
       "requiredFieldsHint": "* Les champs obligatoires doivent être remplis",
       "next": "Suivant",
-      "approvalNotice": "Votre compte sera en attente d'approbation. Une fois approuvé par notre équipe, vous pourrez accéder à votre tableau de bord professionnel et commencer à accepter des clients."
+      "approvalNotice": "Votre compte sera en attente d'approbation. Une fois approuvé par notre équipe, vous pourrez accéder à votre tableau de bord professionnel et commencer à accepter des clients.",
+      "legalReviewInstruction": "Veuillez ouvrir et consulter les Conditions d'utilisation et la Politique de confidentialité. Chaque document s'ouvre dans un nouvel onglet. Les cases à cocher ne se débloqueront qu'une fois le document correspondant ouvert.",
+      "openToEnableCheckbox": "Ouvrez le document ci-dessus pour activer cette case."
     },
     "forgotPassword": {
       "title": "Réinitialisez votre mot de passe",
@@ -5453,6 +5455,10 @@
     "sourceSchool": "Gestionnaire d'école",
     "sourceEnterprise": "Entreprise",
     "sourceCompose": "Composé",
+    "sourceEmail": "Courriel",
+    "threadParent": "Voir le message d'origine du fil",
+    "composeReplyThreaded": "Cette réponse sera attachée au fil de courriels d'origine.",
+    "composeUnthread": "Détacher du fil",
     "statusNew": "Nouveau",
     "statusRead": "Lu",
     "statusArchived": "Archivé",

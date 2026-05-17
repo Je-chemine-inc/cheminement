@@ -5,6 +5,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
 import { authOptions } from "@/lib/auth";
+import { SUPPORT_RECIPIENT_ID } from "@/lib/messaging-permissions";
 
 // GET /api/messages/[conversationId] — fetch thread messages
 export async function GET(
@@ -48,24 +49,50 @@ export async function GET(
     { $addToSet: { readBy: userId } },
   );
 
+  const viewerRole = session.user.role as string;
+  const rawParticipants = conv.participants as unknown as Array<{
+    _id: mongoose.Types.ObjectId;
+    firstName: string;
+    lastName: string;
+    role: string;
+  }>;
+  const others = rawParticipants.filter(
+    (p) => p._id.toString() !== session.user.id,
+  );
+  const allAdmins =
+    others.length > 0 && others.every((p) => p.role === "admin");
+  const displayParticipants =
+    viewerRole === "client" && allAdmins
+      ? [{ id: SUPPORT_RECIPIENT_ID, name: "Support", role: "support" }]
+      : rawParticipants.map((p) => ({
+          id: p._id,
+          name: `${p.firstName} ${p.lastName}`,
+          role: p.role,
+        }));
+
   return NextResponse.json({
     conversation: {
       id: conv._id,
       subject: conv.subject,
-      participants: (conv.participants as unknown as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).map((p) => ({
-        id: p._id,
-        name: `${p.firstName} ${p.lastName}`,
-        role: p.role,
-      })),
+      participants: displayParticipants,
     },
     messages: messages.map((m) => {
-      const sender = m.senderId as unknown as { _id: mongoose.Types.ObjectId; firstName: string; lastName: string };
+      const sender = m.senderId as unknown as {
+        _id: mongoose.Types.ObjectId;
+        firstName: string;
+        lastName: string;
+        role: string;
+      };
+      const senderName =
+        viewerRole === "client" && sender.role === "admin"
+          ? "Support"
+          : `${sender.firstName} ${sender.lastName}`;
       return {
         id: m._id,
         body: m.body,
         createdAt: m.createdAt,
         isOwn: sender._id.toString() === session.user.id,
-        senderName: `${sender.firstName} ${sender.lastName}`,
+        senderName,
       };
     }),
   });

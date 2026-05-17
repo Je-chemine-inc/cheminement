@@ -18,7 +18,7 @@ import {
   Reply,
 } from "lucide-react";
 
-type Source = "contact" | "school-manager" | "enterprise" | "compose";
+type Source = "contact" | "school-manager" | "enterprise" | "compose" | "email";
 type Status = "new" | "read" | "archived";
 type Direction = "inbound" | "outbound";
 type Tab = "inbox" | "compose";
@@ -35,12 +35,17 @@ interface MessageRow {
   recipientName?: string;
   subject?: string;
   message: string;
+  htmlBody?: string;
   metadata?: Record<string, string>;
   status: Status;
   adminNotes?: string;
   sentAt?: string;
   createdAt: string;
   updatedAt?: string;
+  emailMessageId?: string;
+  emailInReplyTo?: string;
+  parentMessageId?: string;
+  userId?: string;
 }
 
 const SOURCE_META: Record<
@@ -51,6 +56,7 @@ const SOURCE_META: Record<
   "school-manager": { icon: School, colorClass: "text-amber-600" },
   enterprise: { icon: Building2, colorClass: "text-emerald-600" },
   compose: { icon: Send, colorClass: "text-sky-600" },
+  email: { icon: AtSign, colorClass: "text-indigo-600" },
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -77,6 +83,9 @@ export default function AdminExternalMessagesPage() {
   const [compRecipientName, setCompRecipientName] = useState("");
   const [compSubject, setCompSubject] = useState("");
   const [compMessage, setCompMessage] = useState("");
+  // When replying to an email thread, this carries the parent message id so
+  // the API can chain In-Reply-To / References for the recipient's mail client.
+  const [compInReplyToId, setCompInReplyToId] = useState<string | null>(null);
   const [compSending, setCompSending] = useState(false);
   const [compFeedback, setCompFeedback] = useState<{
     type: "success" | "error";
@@ -205,6 +214,7 @@ export default function AdminExternalMessagesPage() {
     setCompRecipientName("");
     setCompSubject("");
     setCompMessage("");
+    setCompInReplyToId(null);
     setCompFeedback(null);
   };
 
@@ -230,6 +240,9 @@ export default function AdminExternalMessagesPage() {
     setCompRecipientName(msg.senderName);
     setCompSubject(subject);
     setCompMessage(`\n\n${quoteHeader}\n${quotedBody}`);
+    // Only thread when we have a Message-Id to chain — non-email rows (web
+    // form submissions) don't have one, so the reply ships as a fresh thread.
+    setCompInReplyToId(msg.emailMessageId ? msg.id : null);
     setCompFeedback(null);
     setActiveTab("compose");
   };
@@ -260,6 +273,7 @@ export default function AdminExternalMessagesPage() {
           recipientName: compRecipientName.trim() || undefined,
           subject,
           message,
+          inReplyToId: compInReplyToId ?? undefined,
         }),
       });
       if (!res.ok) {
@@ -271,6 +285,9 @@ export default function AdminExternalMessagesPage() {
       setCompRecipientName("");
       setCompSubject("");
       setCompMessage("");
+      setCompInReplyToId(null);
+      // Refresh the inbox so the new outbound shows up if user switches tabs.
+      fetchList();
     } catch (err) {
       setCompFeedback({
         type: "error",
@@ -288,7 +305,9 @@ export default function AdminExternalMessagesPage() {
         ? t("sourceSchool")
         : source === "enterprise"
           ? t("sourceEnterprise")
-          : t("sourceCompose");
+          : source === "email"
+            ? t("sourceEmail")
+            : t("sourceCompose");
 
   return (
     <div className="space-y-6">
@@ -345,6 +364,11 @@ export default function AdminExternalMessagesPage() {
                   active={filterSource === "enterprise"}
                   onClick={() => setFilterSource("enterprise")}
                   label={t("sourceEnterprise")}
+                />
+                <FilterChip
+                  active={filterSource === "email"}
+                  onClick={() => setFilterSource("email")}
+                  label={t("sourceEmail")}
                 />
                 <span className="mx-1 h-5 w-px bg-border/60" />
               </>
@@ -586,6 +610,19 @@ export default function AdminExternalMessagesPage() {
                     </p>
                   </div>
 
+                  {detail.source === "email" && detail.parentMessageId ? (
+                    <div className="rounded-lg border border-indigo-200/40 bg-indigo-50/40 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-100">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(detail.parentMessageId!)}
+                        className="inline-flex items-center gap-1.5 underline-offset-2 hover:underline"
+                      >
+                        <Reply className="h-3.5 w-3.5 rotate-180" />
+                        {t("threadParent")}
+                      </button>
+                    </div>
+                  ) : null}
+
                   {detail.direction !== "outbound" ? (
                     <div className="border-t border-border/40 pt-4 space-y-2">
                       <label className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -728,6 +765,19 @@ export default function AdminExternalMessagesPage() {
               className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {compInReplyToId ? (
+            <div className="rounded-lg border border-indigo-200/40 bg-indigo-50/40 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-100">
+              {t("composeReplyThreaded")}
+              <button
+                type="button"
+                onClick={() => setCompInReplyToId(null)}
+                className="ml-2 underline underline-offset-2 hover:no-underline"
+              >
+                {t("composeUnthread")}
+              </button>
+            </div>
+          ) : null}
 
           <div className="space-y-1.5">
             <label

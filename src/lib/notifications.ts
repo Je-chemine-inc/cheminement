@@ -1,10 +1,14 @@
 /**
  * Email notification utilities for appointment scheduling
- * Uses nodemailer with SMTP for sending emails
- * Configurable from admin portal via PlatformSettings
+ * Sends via Mailgun HTTP API in production, SMTP fallback in dev.
+ * Configurable from admin portal via PlatformSettings.
  */
 
-import nodemailer from "nodemailer";
+import {
+  sendMail as transportSendMail,
+  resolveFromAddress,
+  emailTransportStatus,
+} from "@/lib/email-transport";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import PlatformSettings, {
@@ -193,20 +197,11 @@ export function clearEmailSettingsCache(): void {
 }
 
 // =============================================================================
-// Configuration & Transport
+// Configuration
 // =============================================================================
-
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: process.env.SMTP_PORT === "465",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-};
+// Transport (Mailgun + SMTP fallback) lives in src/lib/email-transport.ts.
+// All sending goes through `transportSendMail` so the From address, threading
+// headers, and message-id capture stay consistent across the codebase.
 
 // =============================================================================
 // Formatting Helpers
@@ -593,13 +588,9 @@ const sendEmail = async (
       return false;
     }
 
-    // Check SMTP configuration
-    if (
-      !process.env.SMTP_HOST ||
-      !process.env.SMTP_USER ||
-      !process.env.SMTP_PASS
-    ) {
-      console.log("SMTP not configured. Email would be sent:", {
+    const transportStatus = emailTransportStatus();
+    if (!transportStatus.configured) {
+      console.log("Email transport not configured. Would have sent:", {
         to: data.to,
         subject: data.subject,
         type: emailType,
@@ -607,17 +598,23 @@ const sendEmail = async (
       return true;
     }
 
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"${settings.branding?.companyName || "JeChemine"}" <${process.env.SMTP_USER}>`,
+    const result = await transportSendMail({
+      from: resolveFromAddress(
+        undefined,
+        settings.branding?.companyName ?? undefined,
+      ),
       to: data.to,
       subject: data.subject,
       html: data.html,
       text: data.text,
       attachments: data.attachments,
+      tags: [emailType],
     });
 
-    console.log(`Email sent successfully [${emailType}] to:`, data.to);
+    console.log(
+      `Email sent [${emailType}] via ${result.backend} to ${data.to}` +
+        (result.messageId ? ` (id=${result.messageId})` : ""),
+    );
     return true;
   } catch (error) {
     console.error(`Error sending email [${emailType}]:`, error);
@@ -665,18 +662,28 @@ interface AdminComposedEmailData {
   subject: string;
   /** Plain-text body authored by the admin. Newlines preserved. */
   body: string;
-  /** Reply-To header — admin's own email so the recipient replies to them, not SMTP_USER. */
+  /** Reply-To header — defaults to the platform support address so replies land back in the shared inbox. */
   replyTo?: string;
   /** Display name to render in the email greeting/footer (optional). */
   recipientName?: string;
   locale?: "fr" | "en";
+  /** RFC Message-Id (with brackets) this email is replying to. Enables threading. */
+  inReplyTo?: string;
+  /** Existing References chain to append our reply to. */
+  references?: string;
+}
+
+export interface AdminComposedEmailResult {
+  sent: boolean;
+  /** RFC Message-Id of the sent email (with angle brackets). Used to thread future replies. */
+  messageId: string | null;
 }
 
 /**
- * Sends a free-form email composed by an admin from the dashboard. Uses the
- * same SMTP credentials as platform emails (so the From address is the
- * platform identity) but sets Reply-To to the admin so external recipients
- * reach a real person if they reply.
+ * Sends a free-form email composed by an admin from the dashboard. The From
+ * address resolves to the platform support inbox (support@jechemine.ca) via
+ * `resolveFromAddress`. Reply-To defaults to the same inbox so the
+ * conversation stays in the platform — overridable per-call.
  *
  * Bypasses the per-template enabled flag — admin-composed sends are
  * intentional and shouldn't be silently dropped when the welcome template is
@@ -684,14 +691,14 @@ interface AdminComposedEmailData {
  */
 export async function sendAdminComposedEmail(
   data: AdminComposedEmailData,
-): Promise<boolean> {
+): Promise<AdminComposedEmailResult> {
   const branding = await getBranding();
   const settings = await getEmailSettings();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
   if (!settings.enabled) {
     console.log("Email notifications globally disabled — admin compose skipped");
-    return false;
+    return { sent: false, messageId: null };
   }
 
   // Convert the plain-text body to HTML paragraphs while preserving newlines.
@@ -725,33 +732,46 @@ export async function sendAdminComposedEmail(
 
   const text = buildEmailText([data.subject, greeting, data.body], lang);
 
-  if (
-    !process.env.SMTP_HOST ||
-    !process.env.SMTP_USER ||
-    !process.env.SMTP_PASS
-  ) {
-    console.log("SMTP not configured. Admin email would be sent:", {
+  const transportStatus = emailTransportStatus();
+  if (!transportStatus.configured) {
+    console.log("Email transport not configured. Admin email would be sent:", {
       to: data.to,
       subject: data.subject,
     });
-    return true;
+    // Surface as "sent" so the dev environment doesn't 502 the composer; the
+    // record still lands in the inbox but with messageId=null (no threading).
+    return { sent: true, messageId: null };
   }
 
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"${branding?.companyName || settings.branding?.companyName || "JeChemine"}" <${process.env.SMTP_USER}>`,
+    const supportInbox =
+      process.env.MAIL_FROM ||
+      process.env.SUPPORT_EMAIL ||
+      "support@jechemine.ca";
+    const result = await transportSendMail({
+      from: resolveFromAddress(
+        undefined,
+        branding?.companyName || settings.branding?.companyName,
+      ),
       to: data.to,
-      replyTo: data.replyTo,
+      // Default replies back to the shared support inbox so the next reply
+      // is captured by the inbound webhook (not the admin's personal inbox).
+      replyTo: data.replyTo || supportInbox,
       subject: data.subject,
       html,
       text,
+      inReplyTo: data.inReplyTo,
+      references: data.references,
+      tags: ["admin-compose"],
     });
-    console.log("Admin-composed email sent to:", data.to);
-    return true;
+    console.log(
+      `Admin-composed email sent via ${result.backend} to ${data.to}` +
+        (result.messageId ? ` (id=${result.messageId})` : ""),
+    );
+    return { sent: true, messageId: result.messageId };
   } catch (error) {
     console.error("Error sending admin-composed email:", error);
-    return false;
+    return { sent: false, messageId: null };
   }
 }
 
@@ -784,10 +804,7 @@ export async function sendAccountEmailVerificationEmail(
         ? "Pour finaliser l'activation de votre compte, activez l'authentification à deux facteurs en cliquant sur le bouton ci-dessous."
         : "To finalize your account activation, enable two-factor authentication by clicking the button below.",
     button: {
-      text:
-        lang === "fr"
-          ? "Activer la double authentification"
-          : "Activate two-factor authentication",
+      text: lang === "fr" ? "Activer mon compte" : "Activate my account",
       url: data.verifyUrl,
     },
     buttonAboveInfo: true,

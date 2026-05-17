@@ -290,6 +290,7 @@ function groupPairs(docs: IContentEntry[]): ContentEntryPairDTO[] {
 
 async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
   if (seeds.length === 0) return;
+  const now = new Date();
   const ops = seeds.flatMap((s) => [
     {
       kind,
@@ -298,8 +299,9 @@ async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
       title: s.titleFr,
       summary: s.summaryFr,
       contentHtml: "",
-      status: "draft" as const,
+      status: "published" as const,
       sortOrder: s.sortOrder,
+      publishedAt: now,
     },
     {
       kind,
@@ -308,11 +310,35 @@ async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
       title: s.titleEn,
       summary: s.summaryEn,
       contentHtml: "",
-      status: "draft" as const,
+      status: "published" as const,
       sortOrder: s.sortOrder,
+      publishedAt: now,
     },
   ]);
   await ContentEntry.insertMany(ops, { ordered: false }).catch(() => {});
+}
+
+/**
+ * Backfill: rows seeded by an earlier build started life as draft, which left
+ * every public surface empty. Promote any seed row that has never been published
+ * (no `publishedAt`) to "published". Admin-initiated unpublishes are preserved
+ * because they carry a `publishedAt` from their original publish.
+ */
+async function publishUntouchedSeeds(
+  kind: ContentKind,
+  seeds: BilingualSeed[],
+) {
+  if (seeds.length === 0) return;
+  const slugs = seeds.map((s) => s.slug);
+  await ContentEntry.updateMany(
+    {
+      kind,
+      slug: { $in: slugs },
+      status: "draft",
+      publishedAt: { $exists: false },
+    },
+    { $set: { status: "published", publishedAt: new Date() } },
+  );
 }
 
 /** Migrate from the legacy Problematique collection if it has rows. Idempotent. */
@@ -351,13 +377,17 @@ export async function ensureSeeded(): Promise<void> {
   if (problematiqueCount === 0) {
     const migrated = await migrateLegacyProblematiques();
     if (!migrated) await seedKind("problematique", PROBLEMATIQUE_SEEDS);
+  } else {
+    await publishUntouchedSeeds("problematique", PROBLEMATIQUE_SEEDS);
   }
-  // Traitement — seed clinical approaches as drafts.
+  // Traitement — seed clinical approaches.
   const traitementCount = await ContentEntry.countDocuments({
     kind: "traitement",
   });
   if (traitementCount === 0) {
     await seedKind("traitement", TRAITEMENT_SEEDS);
+  } else {
+    await publishUntouchedSeeds("traitement", TRAITEMENT_SEEDS);
   }
   // Nouveauté — no initial seed; admin creates from scratch.
 }

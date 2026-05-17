@@ -22,7 +22,16 @@
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); console.log\\('fr.json OK'\\)\")",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('en.json OK'\\)\")",
       "Bash(pnpm next *)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\merie\\\\cheminement\" -Force)",
+      "Bash(tee /tmp/tsc-output.log)",
+      "Bash(npx vitest *)",
+      "Bash([ -s \"C:\\\\\\\\tmp\\\\\\\\next-dev.log\" ])",
+      "Bash(grep -q -E \"Ready|Local:|http://|error|Error\" \"C:\\\\\\\\tmp\\\\\\\\next-dev.log\")",
+      "Bash(tail -30 \"C:\\\\\\\\tmp\\\\\\\\next-dev.log\")",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri http://localhost:3000 -UseBasicParsing -TimeoutSec 5 -MaximumRedirection 0 -ErrorAction Stop; Write-Output \"STATUS: $\\($r.StatusCode\\)\" } catch { Write-Output \"STATUS: $\\($_.Exception.Response.StatusCode.value__\\) \\($\\($_.Exception.Message\\)\\)\" })",
+      "PowerShell(Get-NetTCPConnection -State Listen -LocalPort 3000,3001,3002 -ErrorAction SilentlyContinue | Select-Object LocalPort, OwningProcess | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; \"Port $\\($_.LocalPort\\) -> PID $\\($_.OwningProcess\\) \\($\\($p.ProcessName\\)\\)\" })",
+      "Bash(iconv -f UTF-16LE -t UTF-8 \"C:/tmp/next-dev.log\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

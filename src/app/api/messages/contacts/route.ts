@@ -4,12 +4,18 @@ import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
-import { getAllowedRecipientIds } from "@/lib/messaging-permissions";
+import {
+  SUPPORT_RECIPIENT_ID,
+  getAllowedRecipientIds,
+  getClientPrimaryProfessionalId,
+} from "@/lib/messaging-permissions";
 
 // GET /api/messages/contacts — people I can message
 //
 // Permission rules (client feedback):
-//  - client       → their professional(s) + admins (support)
+//  - client       → restricted to TWO entries: "Support" (sentinel, routed to
+//                   all active admins server-side) + their assigned
+//                   professional (most recent matched appointment), if any.
 //  - professional → their clients + other professionals + admins
 //  - admin        → any active user
 export async function GET() {
@@ -19,6 +25,27 @@ export async function GET() {
   }
 
   await connectToDatabase();
+
+  if (session.user.role === "client") {
+    const contacts: Array<{ id: string; name: string; role: string }> = [
+      { id: SUPPORT_RECIPIENT_ID, name: "Support", role: "support" },
+    ];
+    const primaryProId = await getClientPrimaryProfessionalId(session.user.id);
+    if (primaryProId) {
+      const pro = await User.findById(primaryProId)
+        .select("firstName lastName role")
+        .lean<{ firstName: string; lastName: string; role: string }>();
+      if (pro) {
+        contacts.push({
+          id: primaryProId,
+          name: `${pro.firstName} ${pro.lastName}`.trim(),
+          role: pro.role,
+        });
+      }
+    }
+    return NextResponse.json({ contacts });
+  }
+
   const allowedIds = await getAllowedRecipientIds(
     session.user.id,
     session.user.role as string,

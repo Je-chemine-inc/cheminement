@@ -6,7 +6,11 @@ import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
 import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
-import { getAllowedRecipientIds } from "@/lib/messaging-permissions";
+import {
+  SUPPORT_RECIPIENT_ID,
+  getActiveAdminIds,
+  getAllowedRecipientIds,
+} from "@/lib/messaging-permissions";
 
 // GET /api/messages — list my conversations (inbox)
 export async function GET() {
@@ -24,20 +28,41 @@ export async function GET() {
     .populate("participants", "firstName lastName role")
     .lean();
 
-  const result = conversations.map((conv) => ({
-    id: conv._id,
-    subject: conv.subject,
-    lastMessageAt: conv.lastMessageAt,
-    lastMessagePreview: conv.lastMessagePreview,
-    unread: (conv.unreadCounts as Record<string, number>)?.[session.user.id] ?? 0,
-    participants: (conv.participants as unknown as Array<{ _id: mongoose.Types.ObjectId; firstName: string; lastName: string; role: string }>).filter(
-      (p) => p._id.toString() !== session.user.id,
-    ).map((p) => ({
-      id: p._id,
-      name: `${p.firstName} ${p.lastName}`,
-      role: p.role,
-    })),
-  }));
+  const viewerRole = session.user.role as string;
+
+  const result = conversations.map((conv) => {
+    const others = (
+      conv.participants as unknown as Array<{
+        _id: mongoose.Types.ObjectId;
+        firstName: string;
+        lastName: string;
+        role: string;
+      }>
+    ).filter((p) => p._id.toString() !== session.user.id);
+
+    // Collapse multi-admin "Support" threads into a single Support label for
+    // clients so the inbox never exposes individual admin identities.
+    const allAdmins =
+      others.length > 0 && others.every((p) => p.role === "admin");
+    const displayParticipants =
+      viewerRole === "client" && allAdmins
+        ? [{ id: SUPPORT_RECIPIENT_ID, name: "Support", role: "support" }]
+        : others.map((p) => ({
+            id: p._id,
+            name: `${p.firstName} ${p.lastName}`,
+            role: p.role,
+          }));
+
+    return {
+      id: conv._id,
+      subject: conv.subject,
+      lastMessageAt: conv.lastMessageAt,
+      lastMessagePreview: conv.lastMessagePreview,
+      unread:
+        (conv.unreadCounts as Record<string, number>)?.[session.user.id] ?? 0,
+      participants: displayParticipants,
+    };
+  });
 
   return NextResponse.json({ conversations: result });
 }
@@ -62,6 +87,52 @@ export async function POST(req: NextRequest) {
 
   await connectToDatabase();
 
+  const senderId = new mongoose.Types.ObjectId(session.user.id);
+
+  // "Support" sentinel — clients write to the entire active admin group.
+  if (recipientId === SUPPORT_RECIPIENT_ID) {
+    if (session.user.role !== "client") {
+      return NextResponse.json(
+        { error: "Support recipient is reserved for clients" },
+        { status: 403 },
+      );
+    }
+    const adminIds = await getActiveAdminIds();
+    if (adminIds.length === 0) {
+      return NextResponse.json(
+        { error: "No support recipient available" },
+        { status: 503 },
+      );
+    }
+    const participantIds = [session.user.id, ...adminIds];
+    const unreadCounts: Record<string, number> = {};
+    adminIds.forEach((id) => {
+      unreadCounts[id] = 1;
+    });
+
+    const conversation = await Conversation.create({
+      participants: participantIds.map(
+        (id) => new mongoose.Types.ObjectId(id),
+      ),
+      subject: subject.trim(),
+      lastMessageAt: new Date(),
+      lastMessagePreview: message.trim().slice(0, 300),
+      unreadCounts,
+    });
+
+    await Message.create({
+      conversationId: conversation._id,
+      senderId,
+      body: message.trim(),
+      readBy: [senderId],
+    });
+
+    return NextResponse.json(
+      { conversationId: conversation._id },
+      { status: 201 },
+    );
+  }
+
   if (!mongoose.Types.ObjectId.isValid(recipientId)) {
     return NextResponse.json({ error: "Invalid recipient" }, { status: 400 });
   }
@@ -82,7 +153,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const senderId = new mongoose.Types.ObjectId(session.user.id);
   const recipientObjId = new mongoose.Types.ObjectId(recipientId);
 
   const conversation = await Conversation.create({

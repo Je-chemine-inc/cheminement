@@ -2041,7 +2041,9 @@
       "locationSummaryPlaceholder": "City, Province or A1A 1A1",
       "requiredFieldsHint": "* Required fields must be completed",
       "next": "Next",
-      "approvalNotice": "Your account will be pending approval. Once approved by our team, you'll be able to access your professional dashboard and start accepting clients."
+      "approvalNotice": "Your account will be pending approval. Once approved by our team, you'll be able to access your professional dashboard and start accepting clients.",
+      "legalReviewInstruction": "Please open and review the Terms of Service and the Privacy Policy. Each opens in a new tab. The checkboxes are unlocked only after you open the corresponding document.",
+      "openToEnableCheckbox": "Open the document above to enable this checkbox."
     },
     "forgotPassword": {
       "title": "Reset Your Password",
@@ -5454,6 +5456,10 @@
     "sourceSchool": "School manager",
     "sourceEnterprise": "Enterprise",
     "sourceCompose": "Composed",
+    "sourceEmail": "Email",
+    "threadParent": "View the original message in this thread",
+    "composeReplyThreaded": "This reply will be attached to the original email thread.",
+    "composeUnthread": "Detach from thread",
     "statusNew": "New",
     "statusRead": "Read",
     "statusArchived": "Archived",

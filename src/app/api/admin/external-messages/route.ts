@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
@@ -40,7 +41,12 @@ export async function GET(req: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: Record<string, any> = {};
-    if (source && ["contact", "school-manager", "enterprise", "compose"].includes(source)) {
+    if (
+      source &&
+      ["contact", "school-manager", "enterprise", "compose", "email"].includes(
+        source,
+      )
+    ) {
       filter.source = source;
     }
     if (status && ["new", "read", "archived"].includes(status)) {
@@ -76,6 +82,10 @@ export async function GET(req: NextRequest) {
         status: m.status,
         sentAt: m.sentAt,
         createdAt: m.createdAt,
+        emailMessageId: m.emailMessageId,
+        emailInReplyTo: m.emailInReplyTo,
+        parentMessageId: m.parentMessageId?.toString(),
+        userId: m.userId?.toString(),
       })),
     );
   } catch (error) {
@@ -103,12 +113,15 @@ export async function POST(req: NextRequest) {
       subject,
       message,
       locale,
+      inReplyToId,
     } = body as {
       to?: string;
       recipientName?: string;
       subject?: string;
       message?: string;
       locale?: string;
+      /** Optional ExternalMessage id this reply threads under. */
+      inReplyToId?: string;
     };
 
     const trimmedTo = typeof to === "string" ? to.trim().toLowerCase() : "";
@@ -135,33 +148,67 @@ export async function POST(req: NextRequest) {
 
     const langValue: "fr" | "en" = locale === "en" ? "en" : "fr";
 
-    const sent = await sendAdminComposedEmail({
+    // If this is a reply to an existing thread, look up the parent so we can
+    // chain Message-Id / References headers. Without this the recipient's
+    // mail client won't render the reply in the same conversation.
+    let parent: {
+      _id: mongoose.Types.ObjectId;
+      emailMessageId?: string;
+      emailReferences?: string;
+      userId?: mongoose.Types.ObjectId;
+    } | null = null;
+    if (
+      typeof inReplyToId === "string" &&
+      mongoose.Types.ObjectId.isValid(inReplyToId)
+    ) {
+      const parentDoc = await ExternalMessage.findById(inReplyToId)
+        .select("emailMessageId emailReferences userId")
+        .lean();
+      if (parentDoc) {
+        parent = {
+          _id: parentDoc._id,
+          emailMessageId: parentDoc.emailMessageId,
+          emailReferences: parentDoc.emailReferences,
+          userId: parentDoc.userId,
+        };
+      }
+    }
+
+    const referencesChain = parent?.emailMessageId
+      ? [parent.emailReferences, parent.emailMessageId]
+          .filter(Boolean)
+          .join(" ")
+      : undefined;
+
+    const sendResult = await sendAdminComposedEmail({
       to: trimmedTo,
       subject: trimmedSubject,
       body: trimmedMessage,
-      replyTo: adminEmail,
+      // Reply-To now defaults to the shared support inbox inside
+      // sendAdminComposedEmail so replies are captured by the platform
+      // webhook, not the admin's personal inbox.
       recipientName: recipientName?.trim() || undefined,
       locale: langValue,
+      inReplyTo: parent?.emailMessageId,
+      references: referencesChain,
     });
 
-    if (!sent) {
-      // SMTP failed or is disabled. Don't persist a record that suggests we
-      // emailed the recipient when we didn't.
+    if (!sendResult.sent) {
       return NextResponse.json(
         {
-          error: "Failed to send email — check SMTP configuration",
+          error: "Failed to send email — check Mailgun / SMTP configuration",
         },
         { status: 502 },
       );
     }
 
     const record = await ExternalMessage.create({
-      source: "compose",
+      source: parent ? "email" : "compose",
       direction: "outbound",
       locale: langValue,
       // For outbound, "sender" is the admin/platform; "recipient" is the external destination.
       senderName: adminName,
-      senderEmail: adminEmail ?? process.env.SMTP_USER ?? "noreply@jechemine.ca",
+      senderEmail: adminEmail ?? process.env.MAIL_FROM ?? "support@jechemine.ca",
       recipientEmail: trimmedTo,
       recipientName: recipientName?.trim() || undefined,
       subject: trimmedSubject,
@@ -171,12 +218,18 @@ export async function POST(req: NextRequest) {
       sentBy: auth.userId,
       sentAt: new Date(),
       readAt: new Date(),
+      emailMessageId: sendResult.messageId ?? undefined,
+      emailInReplyTo: parent?.emailMessageId,
+      emailReferences: referencesChain,
+      parentMessageId: parent?._id,
+      userId: parent?.userId,
     });
 
     return NextResponse.json(
       {
         id: record._id.toString(),
         sent: true,
+        messageId: sendResult.messageId,
       },
       { status: 201 },
     );

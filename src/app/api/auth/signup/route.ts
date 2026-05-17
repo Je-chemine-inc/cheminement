@@ -336,6 +336,12 @@ export async function POST(req: NextRequest) {
       privacyPolicyVersion: LEGAL_VERSIONS.privacy,
       termsAcceptedAt: new Date(),
       termsVersion: LEGAL_VERSIONS.terms,
+      ...(role === "professional"
+        ? {
+            professionalTermsAcceptedAt: new Date(),
+            professionalTermsVersion: LEGAL_VERSIONS.professionalTerms,
+          }
+        : {}),
     });
 
     await user.save();

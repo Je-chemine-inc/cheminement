@@ -38,6 +38,7 @@ function serialize(
     recipientName: m.recipientName,
     subject: m.subject,
     message: m.message,
+    htmlBody: m.htmlBody,
     metadata: m.metadata,
     status: m.status,
     adminNotes: m.adminNotes,
@@ -45,6 +46,11 @@ function serialize(
     readAt: m.readAt,
     createdAt: m.createdAt,
     updatedAt: m.updatedAt,
+    emailMessageId: m.emailMessageId,
+    emailInReplyTo: m.emailInReplyTo,
+    emailReferences: m.emailReferences,
+    parentMessageId: m.parentMessageId?.toString(),
+    userId: m.userId?.toString(),
   };
 }
 

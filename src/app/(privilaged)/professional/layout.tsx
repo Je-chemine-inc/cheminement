@@ -41,10 +41,23 @@ export default async function ProfessionalLayout({
     redirect("/professional/dashboard");
   }
 
+  const locale = await getLocale();
+
+  // Pending pros only see the thank-you page — no sidebar / no dashboard chrome,
+  // and no terms-acceptance modal (terms are captured during signup).
+  if (dbUser?.status === "pending") {
+    return (
+      <div className="flex min-h-screen w-full flex-col bg-background">
+        <div className="flex h-14 items-center justify-end gap-4 border-b border-border/40 px-4 sm:px-6">
+          <LocaleSwitcher currentLocale={locale} />
+        </div>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      </div>
+    );
+  }
+
   const needsTermsAcceptance =
     dbUser?.professionalTermsVersion !== LEGAL_VERSIONS.professionalTerms;
-
-  const locale = await getLocale();
 
   return (
     <SidebarProvider>
