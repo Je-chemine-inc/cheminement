@@ -59,7 +59,8 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\merie\\\\cheminement\" -Recurse -Filter \"*professional*\" -Include \"*.tsx\", \"*.ts\", \"*.jsx\", \"*.js\")",
       "Bash(Select-Object FullName)",
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\")",
-      "Bash(node check-user.mjs)"
+      "Bash(node check-user.mjs)",
+      "Bash(awk -F= '{print $1}')"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

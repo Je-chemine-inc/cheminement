@@ -163,7 +163,7 @@ let cachedEmailSettings: IEmailSettings | null = null;
 let settingsCacheTime: number = 0;
 const CACHE_TTL_MS = 60000; // 1 minute cache
 
-async function getEmailSettings(): Promise<IEmailSettings> {
+export async function getEmailSettings(): Promise<IEmailSettings> {
   const now = Date.now();
 
   // Return cached settings if still valid
