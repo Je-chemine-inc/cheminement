@@ -712,16 +712,20 @@
       "lifetimeBalance": "Lifetime balance (since signup)",
       "currentCycleBalance": "Current cycle balance",
       "noEntries": "No transactions found.",
-      "forceValidateButton": "Approve and send activation link",
-      "forceValidateConfirmTitle": "Approve this professional?",
-      "forceValidateConfirmDesc": "The license will be marked as Verified and a two-factor activation link (email + SMS) will be sent to the professional. The account becomes Active only after they complete two-factor activation.",
-      "forceValidateConfirm": "Approve and send",
-      "forceValidateSuccess": "Professional approved. The 2FA activation link has been emailed.",
+      "forceValidateButton": "Validate the account",
+      "forceValidateConfirmTitle": "Validate this professional?",
+      "forceValidateConfirmDesc": "Choose how to validate this professional account. In both cases the license is marked as Verified and admin approval is granted.",
+      "forceValidateManualHint": "Manual activation skips the email link entirely — use it for accounts you created yourself or when the professional cannot receive email. The account becomes Active immediately.",
+      "forceValidateConfirm": "Approve and send activation link",
+      "forceValidateManualConfirm": "Activate manually (no link sent)",
+      "forceValidateSuccess": "Professional approved. The activation link has been emailed.",
+      "forceValidateManualSuccess": "Professional activated manually. The account is now active — no email was sent.",
       "forceValidateError": "Approval failed. Please retry.",
       "reviewTitle": "Review checklist",
       "reviewSubtitle": "Quick consistency check on the information submitted by this professional.",
       "reviewCheckStatus": "Account status",
       "reviewCheckLicense": "License verification",
+      "reviewCheckAdminApproved": "Admin approval granted",
       "reviewCheckEmailVerified": "Email address verified",
       "reviewCheckLicenseNumber": "License number on file",
       "reviewCheckSpecialty": "Main specialty filled in",
@@ -1452,7 +1456,7 @@
       "nextStep1": "Our team verifies your dossier (professional license with the Order, references, etc.).",
       "nextStep2": "You will be notified by email at the address provided during your registration.",
       "nextStep3": "Once activated, you will be able to access your dashboard and complete your profile.",
-      "signOut": "Sign out"
+      "goToHome": "Go to home page"
     },
     "signupSelection": {
       "title": "Create Your Account",
@@ -2041,8 +2045,7 @@
       "locationSummaryPlaceholder": "City, Province or A1A 1A1",
       "requiredFieldsHint": "* Required fields must be completed",
       "next": "Next",
-      "approvalNotice": "Your account will be pending approval. Once approved by our team, you'll be able to access your professional dashboard and start accepting clients.",
-      "legalReviewInstruction": "Please open and review the Terms of Service and the Privacy Policy. Each opens in a new tab. The checkboxes are unlocked only after you open the corresponding document.",
+      "legalReviewInstruction": "Please review the Terms of Service and the Privacy Policy. Click each link to open the full document in a new tab.",
       "openToEnableCheckbox": "Open the document above to enable this checkbox."
     },
     "forgotPassword": {
@@ -5094,8 +5097,7 @@
       "backToTop": "Back to top",
       "tableOfContents": "Contents",
       "readFullDocument": "Read the full document",
-      "contactUs": "Contact us",
-      "backToForm": "Back to registration form"
+      "contactUs": "Contact us"
     },
     "terms": {
       "title": "Terms of Use",
@@ -5342,15 +5344,16 @@
         }
       ],
       "acceptanceModal": {
-        "title": "Professional Terms of Use",
-        "description": "Accepting these terms is mandatory to access the platform. Please read them carefully before accepting. Declining will automatically sign you out.",
-        "scrollHint": "Scroll to the bottom to enable acceptance.",
-        "readyToAccept": "You can now accept the terms.",
-        "checkboxLabel": "I acknowledge having read and accept Je chemine's Professional Terms of Use.",
+        "title": "Final consent required",
+        "description": "To finish accessing your professional workspace, please review and accept both documents below. Accepting both is mandatory; declining will automatically sign you out.",
+        "introInstruction": "Open each document in a new tab to read it, then check the corresponding box to confirm your acceptance.",
+        "openTermsLink": "Open the Professional Terms of Use",
+        "openPrivacyLink": "Open the Privacy Policy",
+        "termsCheckboxLabel": "I acknowledge having read and accept Je chemine's Professional Terms of Use.",
+        "privacyCheckboxLabel": "I acknowledge having read and accept Je chemine's Privacy Policy.",
+        "openToEnableHint": "Open the document above to enable this checkbox.",
         "acceptButton": "Accept and access my workspace",
         "laterButton": "Decline and sign out",
-        "openFullPage": "Open the full document in a new tab",
-        "versionLabel": "Version of April 13, 2026",
         "submitting": "Submitting…",
         "errorGeneric": "An error occurred. Please try again."
       }

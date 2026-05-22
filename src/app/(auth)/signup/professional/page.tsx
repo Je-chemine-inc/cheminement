@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { translateFromMap } from "@/lib/bilingual";
 import { authAPI } from "@/lib/api-client";
-import { signIn } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
@@ -167,8 +166,6 @@ export default function ProfessionalSignupPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [direction, setDirection] = useState(1);
-  const [termsOpened, setTermsOpened] = useState(false);
-  const [privacyOpened, setPrivacyOpened] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -457,20 +454,13 @@ export default function ProfessionalSignupPage() {
         return;
       }
 
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError(t("errors.accountCreatedButSignInFailed"));
-        router.push("/login");
-      } else {
-        // Status is "pending" until admin approval — go straight to the
-        // thank-you page so the dashboard never flashes for unapproved pros.
-        router.push("/professional/account-pending");
-      }
+      // Professionals MUST NOT be auto-logged in after signup — they remain
+      // pending until an admin validates the dossier. Auto-signing them in
+      // would create a session and let them browse, even though the layout
+      // gate keeps them on the pending screen. The strict requirement is
+      // "le tableau de bord doit lui être totalement inaccessible" — so we
+      // skip signIn() entirely and redirect to a public confirmation page.
+      router.push("/signup/professional/pending");
     } catch (err) {
       setError(
         err instanceof Error
@@ -1187,7 +1177,6 @@ export default function ProfessionalSignupPage() {
                   <Checkbox
                     id="agreeToTerms"
                     checked={formData.agreeToTerms}
-                    disabled={!termsOpened}
                     onCheckedChange={(checked) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -1198,16 +1187,13 @@ export default function ProfessionalSignupPage() {
                   <div className="space-y-1 flex-1">
                     <label
                       htmlFor="agreeToTerms"
-                      className={`text-sm leading-tight block ${
-                        termsOpened ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground"
-                      }`}
+                      className="text-sm leading-tight block cursor-pointer"
                     >
                       {t("termsAcceptBefore")}
                       <a
                         href="/professional-terms"
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => setTermsOpened(true)}
                         className="text-primary underline inline-flex items-center gap-1"
                       >
                         {t("termsOfService")}
@@ -1229,11 +1215,6 @@ export default function ProfessionalSignupPage() {
                       {t("termsAcceptAfter")}
                       <span className="text-red-500">*</span>
                     </label>
-                    {!termsOpened && (
-                      <p className="text-xs text-muted-foreground italic">
-                        {t("openToEnableCheckbox")}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -1241,7 +1222,6 @@ export default function ProfessionalSignupPage() {
                   <Checkbox
                     id="acceptPrivacyPolicy"
                     checked={formData.acceptPrivacyPolicy}
-                    disabled={!privacyOpened}
                     onCheckedChange={(checked) =>
                       setFormData((prev) => ({
                         ...prev,
@@ -1252,16 +1232,13 @@ export default function ProfessionalSignupPage() {
                   <div className="space-y-1 flex-1">
                     <label
                       htmlFor="acceptPrivacyPolicy"
-                      className={`text-sm leading-tight block ${
-                        privacyOpened ? "cursor-pointer" : "cursor-not-allowed text-muted-foreground"
-                      }`}
+                      className="text-sm leading-tight block cursor-pointer"
                     >
                       {t("privacyAcceptBefore")}
                       <a
                         href="/privacy"
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => setPrivacyOpened(true)}
                         className="text-primary underline inline-flex items-center gap-1"
                       >
                         {t("privacyPolicy")}
@@ -1286,21 +1263,11 @@ export default function ProfessionalSignupPage() {
                     <p className="text-xs text-muted-foreground leading-snug">
                       {t("privacyConsentClinicalNote")}
                     </p>
-                    {!privacyOpened && (
-                      <p className="text-xs text-muted-foreground italic">
-                        {t("openToEnableCheckbox")}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                {t("approvalNotice")}
-              </p>
-            </div>
           </div>
         );
 
@@ -1429,8 +1396,6 @@ export default function ProfessionalSignupPage() {
                 type="submit"
                 disabled={
                   isLoading ||
-                  !termsOpened ||
-                  !privacyOpened ||
                   !formData.agreeToTerms ||
                   !formData.acceptPrivacyPolicy
                 }

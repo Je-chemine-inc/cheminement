@@ -1,8 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { Suspense } from "react";
 import type { LegalDocumentDTO } from "@/lib/legal-content";
-import LegalBackButton from "./LegalBackButton";
-import LegalBackButtonBottom from "./LegalBackButtonBottom";
 
 function slugify(value: string) {
   return value
@@ -53,9 +50,6 @@ export default async function LegalPage({
 
   return (
     <article className="bg-background">
-      <Suspense>
-        <LegalBackButton />
-      </Suspense>
       {/* Header */}
       <header className="border-b border-border/60 bg-accent/30">
         <div className="container mx-auto px-6 py-16 md:py-20">
@@ -108,10 +102,6 @@ export default async function LegalPage({
           />
         </div>
       </div>
-
-      <Suspense>
-        <LegalBackButtonBottom />
-      </Suspense>
     </article>
   );
 }

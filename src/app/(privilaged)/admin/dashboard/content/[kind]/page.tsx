@@ -14,10 +14,7 @@ import {
   Circle,
   Trash2,
 } from "lucide-react";
-import {
-  isContentKind,
-  type ContentKind,
-} from "@/lib/content-entry";
+import { isContentKind, type ContentKind } from "@/lib/content-kind";
 
 interface ContentDTO {
   id: string;

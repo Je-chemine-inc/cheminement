@@ -147,24 +147,50 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    let existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      // Allow a client to claim an account that was never email-verified.
-      // Covers: (1) admin-provisioned inactive accounts, (2) zombie accounts where
-      // the user created an account but never clicked the verification link.
-      // Once emailVerified is set the account belongs to someone — not claimable.
-      const isClaimableAccount =
+      // "Claimable" = the existing record is a zombie that can't actually log in
+      // (admin-provisioned, never-verified, or a lead-capture prospect/guest).
+      // We allow a new signup to take over the email in those cases:
+      //   - client → client: in-place claim (preserves MedicalProfile data)
+      //   - any other zombie (prospect, guest, unverified pro): wipe the
+      //     orphan record + its Profile/MedicalProfile and fall through to
+      //     the normal create path below.
+      const isClientReclaim =
         existingUser.role === "client" &&
         role === "client" &&
         (existingUser.status === "inactive" || !existingUser.emailVerified);
 
-      if (!isClaimableAccount) {
+      // Generalized "zombie" detection: a record that has never been
+      // activated and so can't actually log in. Covers prospects/guests
+      // (no credentials), unverified clients (never confirmed email),
+      // and unverified-unapproved pros. The client→client case is handled
+      // by isClientReclaim above (preserves MedicalProfile data) and takes
+      // precedence.
+      const isUnusableZombie =
+        !existingUser.emailVerified &&
+        existingUser.adminApproved !== true &&
+        existingUser.status !== "active";
+
+      const isWipeableZombie = !isClientReclaim && isUnusableZombie;
+
+      if (isWipeableZombie) {
+        // Cascade-delete the orphan and its dependent docs, then let the
+        // regular create path run (existingUser=null → falls through).
+        await Profile.deleteMany({ userId: existingUser._id });
+        await MedicalProfile.deleteMany({ userId: existingUser._id });
+        await User.deleteOne({ _id: existingUser._id });
+        existingUser = null;
+      } else if (!isClientReclaim) {
         return NextResponse.json(
           { error: "User already exists with this email" },
           { status: 400 },
         );
       }
+    }
+
+    if (existingUser) {
 
       // Activate the pre-provisioned account with the client's chosen password
       const hashedPassword = await bcrypt.hash(password, 12);
@@ -388,11 +414,16 @@ export async function POST(req: NextRequest) {
         profileCompleted: false,
       });
 
-      await profile.save();
-
-      // Link the profile to the user
-      user.profile = profile.id;
-      await user.save();
+      try {
+        await profile.save();
+        // Link the profile to the user
+        user.profile = profile.id;
+        await user.save();
+      } catch (profileErr) {
+        // Roll back the user to avoid an orphan record that blocks re-signup.
+        await User.deleteOne({ _id: user._id }).catch(() => {});
+        throw profileErr;
+      }
     } else if (user.role === "client") {
       // Create medical profile for the client with signup data
       const medicalProfile = new MedicalProfile({

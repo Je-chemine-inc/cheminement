@@ -207,14 +207,21 @@ export default function ProfessionalDetailPage({
     }
   };
 
-  const handleForceValidate = async () => {
+  const handleForceValidate = async (skipEmail = false) => {
     setForceValidating(true);
     try {
       const res = await fetch(`/api/admin/professionals/${id}/validate`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skipEmail }),
       });
       if (!res.ok) throw new Error();
-      setFeedback({ type: "success", message: t("forceValidateSuccess") });
+      setFeedback({
+        type: "success",
+        message: skipEmail
+          ? t("forceValidateManualSuccess")
+          : t("forceValidateSuccess"),
+      });
       setTimeout(() => setFeedback(null), 3000);
       setForceValidateOpen(false);
       fetchData();
@@ -316,7 +323,9 @@ export default function ProfessionalDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {user.status !== "active" && (
+          {(user.status !== "active" ||
+            !user.adminApproved ||
+            user.professionalLicenseStatus !== "verified") && (
             <Dialog open={forceValidateOpen} onOpenChange={setForceValidateOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2 border-green-600/40 text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20">
@@ -331,11 +340,29 @@ export default function ProfessionalDetailPage({
                     {t("forceValidateConfirmDesc")}
                   </DialogDescription>
                 </DialogHeader>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setForceValidateOpen(false)}>{t("cancel")}</Button>
-                  <Button onClick={handleForceValidate} disabled={forceValidating} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-3 text-xs text-amber-900 dark:text-amber-200">
+                  {t("forceValidateManualHint")}
+                </div>
+                <DialogFooter className="flex-col gap-2 sm:flex-col sm:gap-2">
+                  <Button
+                    onClick={() => handleForceValidate(false)}
+                    disabled={forceValidating}
+                    className="gap-2 bg-green-600 hover:bg-green-700 text-white w-full"
+                  >
                     {forceValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {t("forceValidateConfirm")}
+                  </Button>
+                  <Button
+                    onClick={() => handleForceValidate(true)}
+                    disabled={forceValidating}
+                    variant="outline"
+                    className="gap-2 border-green-600/40 text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20 w-full"
+                  >
+                    {forceValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {t("forceValidateManualConfirm")}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setForceValidateOpen(false)} className="w-full">
+                    {t("cancel")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -371,6 +398,11 @@ export default function ProfessionalDetailPage({
               label: t("reviewCheckLicense"),
               state: licenseStatus === "verified" ? "ok" : licenseStatus === "rejected" ? "fail" : "warn",
               hint: t(`reviewLicenseStatus_${licenseStatus}`),
+            });
+            checks.push({
+              key: "adminApproved",
+              label: t("reviewCheckAdminApproved"),
+              state: user.adminApproved ? "ok" : "fail",
             });
             checks.push({
               key: "emailVerified",

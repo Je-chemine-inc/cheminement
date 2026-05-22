@@ -15,15 +15,20 @@ import { sendAccountEmailVerificationEmail } from "@/lib/notifications";
 export const maxDuration = 30;
 
 /**
- * Admin "Valider" action for a professional. Per spec:
- *   - Admin approval triggers the 2FA activation email (email + SMS link).
- *   - The account becomes `active` ONLY after BOTH admin approval AND the pro
- *     completing email + SMS verification.
- * So this endpoint flips `adminApproved: true` and arms the verification flow
- * (bumps `accountSecurityVersion` to 1, generates a fresh email token, sends
- * the verify-account link). The pro's `status` stays `"pending"` until they
- * click the link and finish phone verification — that final transition is
- * handled in `/api/auth/account/verify-phone`.
+ * Admin "Valider" action for a professional. Two modes:
+ *
+ * 1. Default (`skipEmail` false / omitted) — Admin approval arms the 2FA flow:
+ *    bumps `accountSecurityVersion`, generates a fresh email token, sends the
+ *    verify-account link. Status stays `"pending"` until the pro completes
+ *    email + SMS verification (final transition happens in verify-phone).
+ *    If the pro is *already* email + SMS verified, status flips to "active"
+ *    immediately and no email is sent.
+ *
+ * 2. Manual activation (`skipEmail: true`) — Admin activates the account
+ *    fully without sending any email/SMS. Pre-fills emailVerified +
+ *    phoneVerifiedAt if missing, sets status="active". Use case: admin has
+ *    already shared credentials with the pro out-of-band, or is fixing a
+ *    half-validated account created via the "Ajouter un profil" form.
  */
 export async function POST(
   req: NextRequest,
@@ -52,6 +57,14 @@ export async function POST(
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
+    let skipEmail = false;
+    try {
+      const body = await req.json();
+      skipEmail = body?.skipEmail === true;
+    } catch {
+      // No body — default to email flow.
+    }
+
     const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -66,11 +79,27 @@ export async function POST(
     user.adminApproved = true;
     user.professionalLicenseStatus = "verified";
 
-    // If the pro has already completed email + SMS verification (e.g. they
-    // went through the secure flow earlier), activate immediately. Otherwise
-    // arm the 2FA flow and send the activation link.
     let verificationEmailSent = false;
-    if (user.emailVerified && user.phoneVerifiedAt) {
+
+    if (skipEmail) {
+      // Manual activation: stamp any missing verification timestamps and flip
+      // status to "active". Do NOT touch accountSecurityVersion — leaving it
+      // alone preserves any existing session the pro may already have.
+      const now = new Date();
+      if (!user.emailVerified) user.emailVerified = now;
+      if (!user.phoneVerifiedAt) user.phoneVerifiedAt = now;
+      // Clear any in-flight verification tokens so a stale link can't be reused.
+      user.verificationEmailTokenHash = undefined;
+      user.verificationEmailExpires = undefined;
+      user.phoneStepTokenHash = undefined;
+      user.phoneStepTokenExpires = undefined;
+      user.verificationSmsCodeHash = undefined;
+      user.verificationSmsExpires = undefined;
+      user.verificationSmsAttempts = 0;
+      user.status = "active";
+      await user.save();
+    } else if (user.emailVerified && user.phoneVerifiedAt) {
+      // Already fully verified — activate immediately, no email needed.
       user.status = "active";
       await user.save();
     } else {
@@ -102,10 +131,12 @@ export async function POST(
           email: user.email,
           verifyUrl,
           locale: user.language === "en" ? "en" : "fr",
+          // Admin-approved pros: one-click activation, no SMS step.
+          singleFactor: true,
         });
         verificationEmailSent = true;
       } catch (err) {
-        console.error("Admin approve: 2FA email send failed:", err);
+        console.error("Admin approve: activation email send failed:", err);
       }
     }
 
@@ -115,6 +146,7 @@ export async function POST(
       adminApproved: user.adminApproved,
       professionalLicenseStatus: user.professionalLicenseStatus,
       verificationEmailSent,
+      skipEmail,
     });
   } catch (error) {
     console.error("Admin validate professional error:", error);

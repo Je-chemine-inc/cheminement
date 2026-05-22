@@ -1,13 +1,13 @@
 import type { Types } from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
-import ContentEntry, {
+import ContentEntry, { type IContentEntry } from "@/models/ContentEntry";
+import Problematique from "@/models/Problematique";
+import {
   CONTENT_KINDS,
   CONTENT_KIND_PUBLIC_BASE,
   type ContentKind,
   type ContentLocale,
-  type IContentEntry,
-} from "@/models/ContentEntry";
-import Problematique from "@/models/Problematique";
+} from "@/lib/content-kind";
 
 // --- Seed sources ---
 
@@ -18,6 +18,8 @@ type BilingualSeed = {
   titleEn: string;
   summaryFr: string;
   summaryEn: string;
+  /** Optional: days before "now" for publishedAt (used by nouveaute to stagger dates). */
+  daysAgo?: number;
 };
 
 /** Problématiques — the 8 mental-health topics originally shown on /book. */
@@ -198,6 +200,54 @@ export const TRAITEMENT_SEEDS: BilingualSeed[] = [
   },
 ];
 
+/** Nouveautés — sample announcements shown on /nouveautes. Date-sorted (newest first). */
+export const NOUVEAUTE_SEEDS: BilingualSeed[] = [
+  {
+    slug: "bienvenue-sur-je-chemine",
+    sortOrder: 0,
+    daysAgo: 0,
+    titleFr: "Bienvenue sur Je chemine",
+    titleEn: "Welcome to Je chemine",
+    summaryFr:
+      "Une nouvelle plateforme québécoise pour vous accompagner dans votre cheminement en santé mentale, avec des professionnels qualifiés et des ressources accessibles.",
+    summaryEn:
+      "A new Quebec platform to support your mental health journey, with qualified professionals and accessible resources.",
+  },
+  {
+    slug: "comprendre-anxiete-au-quotidien",
+    sortOrder: 0,
+    daysAgo: 7,
+    titleFr: "Comprendre l'anxiété au quotidien",
+    titleEn: "Understanding Everyday Anxiety",
+    summaryFr:
+      "Découvrez les signes de l'anxiété, ses causes et des stratégies concrètes pour mieux la gérer dans votre vie de tous les jours.",
+    summaryEn:
+      "Learn the signs of anxiety, its causes, and practical strategies to better manage it in everyday life.",
+  },
+  {
+    slug: "conseils-pour-mieux-dormir",
+    sortOrder: 0,
+    daysAgo: 14,
+    titleFr: "Conseils pour mieux dormir",
+    titleEn: "Tips for Better Sleep",
+    summaryFr:
+      "Le sommeil joue un rôle clé dans votre santé mentale. Voici quelques habitudes simples pour favoriser un sommeil réparateur.",
+    summaryEn:
+      "Sleep plays a key role in your mental health. Here are simple habits to promote restorative sleep.",
+  },
+  {
+    slug: "prendre-soin-de-sa-sante-mentale",
+    sortOrder: 0,
+    daysAgo: 21,
+    titleFr: "Prendre soin de sa santé mentale",
+    titleEn: "Taking Care of Your Mental Health",
+    summaryFr:
+      "Quelques gestes simples au quotidien peuvent faire une grande différence pour votre bien-être psychologique.",
+    summaryEn:
+      "A few simple daily habits can make a big difference for your psychological well-being.",
+  },
+];
+
 // --- DTOs ---
 
 export interface ContentEntryDTO {
@@ -290,32 +340,52 @@ function groupPairs(docs: IContentEntry[]): ContentEntryPairDTO[] {
 
 async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
   if (seeds.length === 0) return;
-  const now = new Date();
-  const ops = seeds.flatMap((s) => [
-    {
-      kind,
-      slug: s.slug,
-      locale: "fr" as const,
-      title: s.titleFr,
-      summary: s.summaryFr,
-      contentHtml: "",
-      status: "published" as const,
-      sortOrder: s.sortOrder,
-      publishedAt: now,
-    },
-    {
-      kind,
-      slug: s.slug,
-      locale: "en" as const,
-      title: s.titleEn,
-      summary: s.summaryEn,
-      contentHtml: "",
-      status: "published" as const,
-      sortOrder: s.sortOrder,
-      publishedAt: now,
-    },
-  ]);
-  await ContentEntry.insertMany(ops, { ordered: false }).catch(() => {});
+  const now = Date.now();
+  const ops = seeds.flatMap((s) => {
+    const publishedAt = new Date(
+      now - (s.daysAgo ?? 0) * 24 * 60 * 60 * 1000,
+    );
+    return [
+      {
+        kind,
+        slug: s.slug,
+        locale: "fr" as const,
+        title: s.titleFr,
+        summary: s.summaryFr,
+        contentHtml: "",
+        status: "published" as const,
+        sortOrder: s.sortOrder,
+        publishedAt,
+      },
+      {
+        kind,
+        slug: s.slug,
+        locale: "en" as const,
+        title: s.titleEn,
+        summary: s.summaryEn,
+        contentHtml: "",
+        status: "published" as const,
+        sortOrder: s.sortOrder,
+        publishedAt,
+      },
+    ];
+  });
+  try {
+    const res = await ContentEntry.insertMany(ops, { ordered: false });
+    console.log(`[seedKind] ${kind}: inserted ${res.length} docs`);
+  } catch (e) {
+    // Duplicate-key errors on retry are expected and benign; surface anything else.
+    const err = e as { code?: number; writeErrors?: unknown[]; message?: string };
+    const allDupes =
+      err.code === 11000 ||
+      (Array.isArray(err.writeErrors) &&
+        err.writeErrors.every(
+          (w) => (w as { code?: number })?.code === 11000,
+        ));
+    if (!allDupes) {
+      console.error(`[seedKind] ${kind} failed:`, err.message ?? e);
+    }
+  }
 }
 
 /**
@@ -359,7 +429,21 @@ async function migrateLegacyProblematiques(): Promise<boolean> {
       publishedAt: d.publishedAt,
       updatedBy: d.updatedBy,
     }));
-    await ContentEntry.insertMany(ops, { ordered: false }).catch(() => {});
+    try {
+      const res = await ContentEntry.insertMany(ops, { ordered: false });
+      console.log(`[migrateLegacyProblematiques] inserted ${res.length} docs`);
+    } catch (e) {
+      const err = e as { code?: number; writeErrors?: unknown[]; message?: string };
+      const allDupes =
+        err.code === 11000 ||
+        (Array.isArray(err.writeErrors) &&
+          err.writeErrors.every(
+            (w) => (w as { code?: number })?.code === 11000,
+          ));
+      if (!allDupes) {
+        console.error("[migrateLegacyProblematiques] failed:", err.message ?? e);
+      }
+    }
     return true;
   } catch (e) {
     console.warn("Legacy Problematique migration skipped:", e);
@@ -389,7 +473,15 @@ export async function ensureSeeded(): Promise<void> {
   } else {
     await publishUntouchedSeeds("traitement", TRAITEMENT_SEEDS);
   }
-  // Nouveauté — no initial seed; admin creates from scratch.
+  // Nouveauté — seed sample announcements; admins can edit or add more.
+  const nouveauteCount = await ContentEntry.countDocuments({
+    kind: "nouveaute",
+  });
+  if (nouveauteCount === 0) {
+    await seedKind("nouveaute", NOUVEAUTE_SEEDS);
+  } else {
+    await publishUntouchedSeeds("nouveaute", NOUVEAUTE_SEEDS);
+  }
 }
 
 // --- Queries ---
@@ -460,22 +552,8 @@ export async function getPublishedContent(
   return doc ? toDTO(doc) : null;
 }
 
-// --- Helpers ---
-
-export function slugify(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-export function isContentKind(value: string | undefined | null): value is ContentKind {
-  return value === "problematique" || value === "traitement" || value === "nouveaute";
-}
+// --- Helpers (re-exported for backward compat with existing importers) ---
 
 export { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE };
 export type { ContentKind, ContentLocale };
+export { isContentKind, slugify } from "@/lib/content-kind";

@@ -12,9 +12,12 @@ export async function POST() {
   }
 
   await connectToDatabase();
+  const now = new Date();
   await User.findByIdAndUpdate(session.user.id, {
-    professionalTermsAcceptedAt: new Date(),
+    professionalTermsAcceptedAt: now,
     professionalTermsVersion: LEGAL_VERSIONS.professionalTerms,
+    privacyPolicyAcceptedAt: now,
+    privacyPolicyVersion: LEGAL_VERSIONS.privacy,
   });
 
   return NextResponse.json({ ok: true });

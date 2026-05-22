@@ -55,7 +55,11 @@ export async function POST(req: NextRequest) {
     const tempPassword = Math.random().toString(36).slice(-10) + "A1!";
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
-    // Create user
+    // Admin-created accounts are pre-verified AND (for professionals)
+    // pre-approved: setting status="active" without also flipping adminApproved
+    // and professionalLicenseStatus leaves the pro in a half-validated state
+    // where the admin UI cannot show the "Valider" button anymore.
+    const isProfessional = role === "professional";
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -65,8 +69,14 @@ export async function POST(req: NextRequest) {
       location: location?.trim() || undefined,
       role,
       status: "active",
-      emailVerified: new Date(), // Admin-created accounts are pre-verified
+      emailVerified: new Date(),
       phoneVerifiedAt: new Date(),
+      ...(isProfessional
+        ? {
+            adminApproved: true,
+            professionalLicenseStatus: "verified" as const,
+          }
+        : {}),
     });
 
     // Create profile for professionals

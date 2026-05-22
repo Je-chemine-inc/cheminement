@@ -8,7 +8,7 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import ContentEntryForm, {
   type ContentEntryFormValues,
 } from "@/components/admin/ContentEntryForm";
-import { isContentKind, type ContentKind } from "@/lib/content-entry";
+import { isContentKind, type ContentKind } from "@/lib/content-kind";
 
 interface PairDTO {
   kind: ContentKind;

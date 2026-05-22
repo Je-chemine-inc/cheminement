@@ -44,6 +44,13 @@ export function rateLimit(
   limit: number,
   windowMs: number,
 ): RateLimitResult {
+  // In dev, localhost requests all share the same "unknown" IP bucket which
+  // makes hitting the limit during normal testing trivial. Skip rate limiting
+  // outside of production so iteration isn't blocked; prod stays protected.
+  if (process.env.NODE_ENV !== "production") {
+    return { allowed: true, remaining: limit, resetAt: Date.now() + windowMs };
+  }
+
   cleanup();
 
   const now = Date.now();

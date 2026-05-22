@@ -1,20 +1,18 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import {
+  CONTENT_KINDS,
+  CONTENT_KIND_PUBLIC_BASE,
+  type ContentKind,
+  type ContentLocale,
+  type ContentStatus,
+} from "@/lib/content-kind";
 
-export type ContentLocale = "fr" | "en";
-export type ContentKind = "problematique" | "traitement" | "nouveaute";
-export type ContentStatus = "draft" | "published";
-
-export const CONTENT_KINDS: ContentKind[] = [
-  "problematique",
-  "traitement",
-  "nouveaute",
-];
-
-/** Where each kind's public detail page lives. */
-export const CONTENT_KIND_PUBLIC_BASE: Record<ContentKind, string> = {
-  problematique: "/explore",
-  traitement: "/approaches",
-  nouveaute: "/nouveautes",
+export {
+  CONTENT_KINDS,
+  CONTENT_KIND_PUBLIC_BASE,
+  type ContentKind,
+  type ContentLocale,
+  type ContentStatus,
 };
 
 export interface IContentEntry extends Document {
@@ -56,9 +54,9 @@ const ContentEntrySchema = new Schema<IContentEntry>(
       required: true,
     },
     title: { type: String, required: true, trim: true },
-    summary: { type: String, required: true, default: "" },
+    summary: { type: String, default: "" },
     iconUrl: { type: String },
-    contentHtml: { type: String, required: true, default: "" },
+    contentHtml: { type: String, default: "" },
     status: {
       type: String,
       enum: ["draft", "published"],

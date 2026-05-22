@@ -712,16 +712,20 @@
       "lifetimeBalance": "Solde cumulé (depuis l'inscription)",
       "currentCycleBalance": "Solde du cycle actuel",
       "noEntries": "Aucune transaction.",
-      "forceValidateButton": "Approuver et envoyer le lien d'activation",
-      "forceValidateConfirmTitle": "Approuver ce professionnel ?",
-      "forceValidateConfirmDesc": "Le permis sera marqué comme Vérifié et un lien de double authentification (courriel + SMS) sera envoyé au professionnel. Le compte deviendra Actif uniquement après que le professionnel ait complété l'activation à deux facteurs.",
-      "forceValidateConfirm": "Approuver et envoyer",
-      "forceValidateSuccess": "Professionnel approuvé. Le lien d'activation 2FA a été envoyé par courriel.",
+      "forceValidateButton": "Valider le compte",
+      "forceValidateConfirmTitle": "Valider ce professionnel ?",
+      "forceValidateConfirmDesc": "Choisissez comment valider ce compte professionnel. Dans les deux cas, le permis est marqué comme Vérifié et l'approbation administrateur est accordée.",
+      "forceValidateManualHint": "L'activation manuelle ignore complètement le lien d'activation par courriel — utilisez-la pour les comptes que vous avez créés vous-même ou lorsque le professionnel ne peut pas recevoir le courriel. Le compte devient Actif immédiatement.",
+      "forceValidateConfirm": "Approuver et envoyer le lien d'activation",
+      "forceValidateManualConfirm": "Activer manuellement (sans envoyer de lien)",
+      "forceValidateSuccess": "Professionnel approuvé. Le lien d'activation a été envoyé par courriel.",
+      "forceValidateManualSuccess": "Professionnel activé manuellement. Le compte est maintenant actif — aucun courriel n'a été envoyé.",
       "forceValidateError": "Échec de l'approbation. Veuillez réessayer.",
       "reviewTitle": "Liste de révision",
       "reviewSubtitle": "Vérification rapide de la cohérence des informations soumises par ce professionnel.",
       "reviewCheckStatus": "Statut du compte",
       "reviewCheckLicense": "Vérification du permis",
+      "reviewCheckAdminApproved": "Approbation administrateur accordée",
       "reviewCheckEmailVerified": "Courriel vérifié",
       "reviewCheckLicenseNumber": "Numéro de permis renseigné",
       "reviewCheckSpecialty": "Spécialité principale renseignée",
@@ -1452,7 +1456,7 @@
       "nextStep1": "Notre équipe vérifie votre dossier (permis professionnel auprès de l'Ordre, références, etc.).",
       "nextStep2": "Vous serez notifié(e) par courriel à l'adresse fournie lors de votre inscription.",
       "nextStep3": "Une fois activé, vous pourrez accéder à votre tableau de bord et compléter votre profil.",
-      "signOut": "Se déconnecter"
+      "goToHome": "Aller à la page d'accueil"
     },
     "signupSelection": {
       "title": "Créez votre compte",
@@ -2042,8 +2046,7 @@
       "locationSummaryPlaceholder": "Ville, Province ou A1A 1A1",
       "requiredFieldsHint": "* Les champs obligatoires doivent être remplis",
       "next": "Suivant",
-      "approvalNotice": "Votre compte sera en attente d'approbation. Une fois approuvé par notre équipe, vous pourrez accéder à votre tableau de bord professionnel et commencer à accepter des clients.",
-      "legalReviewInstruction": "Veuillez ouvrir et consulter les Conditions d'utilisation et la Politique de confidentialité. Chaque document s'ouvre dans un nouvel onglet. Les cases à cocher ne se débloqueront qu'une fois le document correspondant ouvert.",
+      "legalReviewInstruction": "Veuillez consulter les Conditions d'utilisation et la Politique de confidentialité. Cliquez sur chaque lien pour ouvrir le document complet dans un nouvel onglet.",
       "openToEnableCheckbox": "Ouvrez le document ci-dessus pour activer cette case."
     },
     "forgotPassword": {
@@ -5093,8 +5096,7 @@
       "backToTop": "Retour en haut",
       "tableOfContents": "Sommaire",
       "readFullDocument": "Lire le document complet",
-      "contactUs": "Nous contacter",
-      "backToForm": "Retour au formulaire d'inscription"
+      "contactUs": "Nous contacter"
     },
     "terms": {
       "title": "Conditions d'utilisation",
@@ -5341,15 +5343,16 @@
         }
       ],
       "acceptanceModal": {
-        "title": "Conditions d'utilisation pour les professionnels",
-        "description": "L'acceptation de ces conditions est obligatoire pour accéder à la plateforme. Veuillez les lire attentivement avant d'accepter. Refuser entraîne la déconnexion automatique.",
-        "scrollHint": "Faites défiler jusqu'en bas pour activer l'acceptation.",
-        "readyToAccept": "Vous pouvez maintenant accepter les conditions.",
-        "checkboxLabel": "Je reconnais avoir lu et j'accepte les conditions d'utilisation pour les professionnels de Je chemine.",
+        "title": "Dernière étape : votre consentement",
+        "description": "Pour finaliser l'accès à votre espace professionnel, veuillez consulter et accepter les deux documents ci-dessous. L'acceptation des deux est obligatoire ; refuser entraîne la déconnexion automatique.",
+        "introInstruction": "Ouvrez chaque document dans un nouvel onglet pour le consulter, puis cochez la case correspondante pour confirmer votre acceptation.",
+        "openTermsLink": "Ouvrir les conditions d'utilisation pour les professionnels",
+        "openPrivacyLink": "Ouvrir la politique de confidentialité",
+        "termsCheckboxLabel": "Je reconnais avoir lu et j'accepte les conditions d'utilisation pour les professionnels de Je chemine.",
+        "privacyCheckboxLabel": "Je reconnais avoir lu et j'accepte la politique de confidentialité de Je chemine.",
+        "openToEnableHint": "Ouvrez le document ci-dessus pour activer cette case.",
         "acceptButton": "Accepter et accéder à mon espace",
         "laterButton": "Refuser et se déconnecter",
-        "openFullPage": "Ouvrir le document complet dans un nouvel onglet",
-        "versionLabel": "Version du 13 avril 2026",
         "submitting": "Envoi en cours…",
         "errorGeneric": "Une erreur est survenue. Veuillez réessayer."
       }

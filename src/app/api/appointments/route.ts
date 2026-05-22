@@ -130,10 +130,22 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
 
-    // Ensure the client is the current user if role is client, guest, or prospect
-    if (session.user.role === "client" || session.user.role === "guest" || session.user.role === "prospect") {
-      data.clientId = session.user.id;
+    // This endpoint is the client booking funnel. Admins / professionals /
+    // employees never have a clientId of their own; if they reach here, the
+    // page-level gate must have been bypassed. Refuse cleanly rather than
+    // letting Mongoose throw a "clientId required" validation error.
+    const allowedRoles = new Set(["client", "guest", "prospect"]);
+    if (!allowedRoles.has(session.user.role)) {
+      return NextResponse.json(
+        {
+          error:
+            "Only clients can book appointments through this endpoint. Use the admin or professional dashboard instead.",
+          code: "ROLE_NOT_ALLOWED",
+        },
+        { status: 403 },
+      );
     }
+    data.clientId = session.user.id;
 
     // Require phone verification for clients before their first booking
     if (session.user.role === "client") {

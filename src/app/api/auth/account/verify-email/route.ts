@@ -77,20 +77,19 @@ export async function POST(req: NextRequest) {
       user.verificationEmailExpires = undefined;
     }
 
-    // Two-factor activation: status flips to "active" only when BOTH email and
-    // phone are verified. For professionals, admin approval is also required.
-    // Until then, kick off (or refresh) the SMS step so the verify-account page
-    // can chain straight into phone verification.
+    // Activation logic:
+    //   - Admin-approved pros: dossier review = identity check; the email link
+    //     proves the pro owns the address, so no SMS step is required. Activate
+    //     directly.
+    //   - Phone already verified (re-click or pre-stamped): activate directly.
+    //   - Otherwise (typical client signup): chain into the SMS step so the
+    //     verify-account page can finish two-factor activation.
     let phoneStepToken: string | undefined;
     let phoneMasked: string | undefined;
-    if (user.phoneVerifiedAt) {
-      if (user.role === "professional") {
-        if (user.adminApproved) {
-          user.status = "active";
-        }
-      } else {
-        user.status = "active";
-      }
+    if (user.role === "professional" && user.adminApproved) {
+      user.status = "active";
+    } else if (user.phoneVerifiedAt) {
+      user.status = "active";
     } else if (user.phone) {
       phoneStepToken = generatePhoneStepToken();
       user.phoneStepTokenHash = hashVerificationSecret(phoneStepToken);
@@ -111,7 +110,11 @@ export async function POST(req: NextRequest) {
       userId: user._id.toString(),
       phoneStepToken,
       phoneMasked,
-      phoneAlreadyVerified: Boolean(user.phoneVerifiedAt),
+      // Tell the verify-account page to skip the SMS step when either the
+      // phone was already verified or the account is now fully active (the
+      // admin-approved pro path: SMS unnecessary).
+      phoneAlreadyVerified:
+        Boolean(user.phoneVerifiedAt) || user.status === "active",
     });
   } catch (e) {
     console.error("verify-email:", e);

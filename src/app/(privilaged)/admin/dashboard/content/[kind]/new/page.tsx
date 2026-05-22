@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import ContentEntryForm, {
   type ContentEntryFormValues,
 } from "@/components/admin/ContentEntryForm";
-import { isContentKind } from "@/lib/content-entry";
+import { isContentKind } from "@/lib/content-kind";
 
 const EMPTY_VALUES: ContentEntryFormValues = {
   slug: "",

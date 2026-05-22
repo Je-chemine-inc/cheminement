@@ -12,7 +12,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import ContentEntryEditor from "@/components/admin/ContentEntryEditor";
-import type { ContentKind } from "@/lib/content-entry";
+import type { ContentKind } from "@/lib/content-kind";
 
 export interface ContentEntryFormValues {
   slug: string;

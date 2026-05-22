@@ -26,16 +26,24 @@ export default async function ProfessionalLayout({
   const pathname = headerList.get("x-pathname") || "";
   await connectToDatabase();
   const dbUser = await User.findById(session.user.id).select(
-    "status professionalTermsVersion",
+    "status adminApproved professionalTermsVersion privacyPolicyVersion",
   );
+
+  // A professional is considered "not ready for the dashboard" if status is
+  // pending OR admin hasn't approved yet. This double-gate catches legacy
+  // accounts where status was bumped to "active" without adminApproved being
+  // flipped — those pros must stay on the account-pending screen.
+  const isAwaitingApproval =
+    dbUser?.status === "pending" || dbUser?.adminApproved !== true;
+
   if (
-    dbUser?.status === "pending" &&
+    isAwaitingApproval &&
     !pathname.startsWith("/professional/account-pending")
   ) {
     redirect("/professional/account-pending");
   }
   if (
-    dbUser?.status !== "pending" &&
+    !isAwaitingApproval &&
     pathname.startsWith("/professional/account-pending")
   ) {
     redirect("/professional/dashboard");
@@ -43,9 +51,10 @@ export default async function ProfessionalLayout({
 
   const locale = await getLocale();
 
-  // Pending pros only see the thank-you page — no sidebar / no dashboard chrome,
-  // and no terms-acceptance modal (terms are captured during signup).
-  if (dbUser?.status === "pending") {
+  // Pros awaiting approval only see the thank-you page — no sidebar / no
+  // dashboard chrome, and no terms-acceptance modal (consents are captured
+  // during signup).
+  if (isAwaitingApproval) {
     return (
       <div className="flex min-h-screen w-full flex-col bg-background">
         <div className="flex h-14 items-center justify-end gap-4 border-b border-border/40 px-4 sm:px-6">
@@ -56,8 +65,11 @@ export default async function ProfessionalLayout({
     );
   }
 
+  // Re-acceptance gate: triggered when either the professional terms OR the
+  // privacy policy version changes. The modal captures both at once.
   const needsTermsAcceptance =
-    dbUser?.professionalTermsVersion !== LEGAL_VERSIONS.professionalTerms;
+    dbUser?.professionalTermsVersion !== LEGAL_VERSIONS.professionalTerms ||
+    dbUser?.privacyPolicyVersion !== LEGAL_VERSIONS.privacy;
 
   return (
     <SidebarProvider>

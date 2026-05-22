@@ -123,6 +123,13 @@ interface AccountEmailVerificationData {
   email: string;
   verifyUrl: string;
   locale?: "fr" | "en";
+  /**
+   * When true, the email describes a single-step activation (no SMS code
+   * follow-up). Used for admin-approved professionals whose identity was
+   * already verified through dossier review. Defaults to false (full 2FA
+   * client flow: email link + SMS code).
+   */
+  singleFactor?: boolean;
 }
 
 interface PasswordResetEmailData {
@@ -784,40 +791,78 @@ export async function sendAccountEmailVerificationEmail(
 ): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const isSingleFactor = data.singleFactor === true;
+
+  // Two variants:
+  //   - singleFactor=true  → admin-approved professional. One click activates
+  //                          the account; no SMS step.
+  //   - default            → client 2FA flow (email link + SMS code).
+  const title = isSingleFactor
+    ? lang === "fr"
+      ? "Activez votre compte professionnel"
+      : "Activate your professional account"
+    : lang === "fr"
+      ? "Activez la sécurité à deux facteurs"
+      : "Activate two-factor security";
+
+  const badgeText = isSingleFactor
+    ? lang === "fr"
+      ? "✅ Compte approuvé par l'administration"
+      : "✅ Approved by the administration"
+    : lang === "fr"
+      ? "🔐 Activation 2FA requise"
+      : "🔐 2FA activation required";
+
+  const intro = isSingleFactor
+    ? lang === "fr"
+      ? "Bonne nouvelle : votre dossier professionnel a été validé par notre équipe administrative. Un seul clic suffit maintenant pour activer votre compte et accéder à votre espace."
+      : "Great news: your professional dossier has been approved by our administrative team. A single click is all you need to activate your account and access your workspace."
+    : lang === "fr"
+      ? "Pour finaliser l'activation de votre compte, activez l'authentification à deux facteurs en cliquant sur le bouton ci-dessous."
+      : "To finalize your account activation, enable two-factor authentication by clicking the button below.";
+
+  const buttonText = isSingleFactor
+    ? lang === "fr"
+      ? "Activer mon compte professionnel"
+      : "Activate my professional account"
+    : lang === "fr"
+      ? "Activer mon compte"
+      : "Activate my account";
+
+  const infoBox = isSingleFactor
+    ? {
+        title:
+          lang === "fr"
+            ? "Et ensuite ?"
+            : "What's next?",
+        content:
+          lang === "fr"
+            ? "Une fois le bouton ci-dessus cliqué, votre compte sera immédiatement actif. Connectez-vous sur Je chemine avec le courriel et le mot de passe que vous avez choisis lors de votre inscription pour accéder à votre tableau de bord."
+            : "Once you click the button above, your account will be immediately active. Sign in to Je chemine using the email and password you chose at signup to access your dashboard.",
+      }
+    : {
+        title:
+          lang === "fr"
+            ? "Les deux étapes de l'activation 2FA"
+            : "The two steps of 2FA activation",
+        content:
+          lang === "fr"
+            ? "1. Confirmation de votre adresse courriel via le lien sécurisé du bouton ci-dessus.<br>2. Réception et saisie d'un code SMS à 6 chiffres envoyé sur votre téléphone."
+            : "1. Confirmation of your email address via the secure link in the button above.<br>2. Receive and enter a 6-digit SMS code sent to your phone.",
+      };
 
   const html = buildEmailHtml({
-    title:
-      lang === "fr"
-        ? "Activez la sécurité à deux facteurs"
-        : "Activate two-factor security",
+    title,
     subtitle:
       lang === "fr" ? "Lien valide 15 minutes" : "Link valid for 15 minutes",
     theme: "info",
-    badge: {
-      text: lang === "fr" ? "🔐 Activation 2FA requise" : "🔐 2FA activation required",
-      theme: "info",
-    },
+    badge: { text: badgeText, theme: "info" },
     greeting:
       lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
-    intro:
-      lang === "fr"
-        ? "Pour finaliser l'activation de votre compte, activez l'authentification à deux facteurs en cliquant sur le bouton ci-dessous."
-        : "To finalize your account activation, enable two-factor authentication by clicking the button below.",
-    button: {
-      text: lang === "fr" ? "Activer mon compte" : "Activate my account",
-      url: data.verifyUrl,
-    },
+    intro,
+    button: { text: buttonText, url: data.verifyUrl },
     buttonAboveInfo: true,
-    infoBox: {
-      title:
-        lang === "fr"
-          ? "Les deux étapes de l'activation 2FA"
-          : "The two steps of 2FA activation",
-      content:
-        lang === "fr"
-          ? "1. Confirmation de votre adresse courriel via le lien sécurisé du bouton ci-dessus.<br>2. Réception et saisie d'un code SMS à 6 chiffres envoyé sur votre téléphone."
-          : "1. Confirmation of your email address via the secure link in the button above.<br>2. Receive and enter a 6-digit SMS code sent to your phone.",
-    },
+    infoBox,
     outro:
       lang === "fr"
         ? "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message."
@@ -825,8 +870,26 @@ export async function sendAccountEmailVerificationEmail(
     branding,
     lang,
   });
-  const text = buildEmailText(
-    lang === "fr"
+
+  const textLines: string[] = isSingleFactor
+    ? lang === "fr"
+      ? [
+          "Activez votre compte professionnel",
+          `Bonjour ${data.name},`,
+          "Votre dossier a été validé par l'administration. Cliquez sur le lien ci-dessous (valide 15 minutes) pour activer votre compte.",
+          data.verifyUrl,
+          "Une fois activé, connectez-vous avec le courriel et le mot de passe choisis à l'inscription pour accéder à votre tableau de bord.",
+          "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message.",
+        ]
+      : [
+          "Activate your professional account",
+          `Hello ${data.name},`,
+          "Your dossier has been approved by the administration. Click the link below (valid for 15 minutes) to activate your account.",
+          data.verifyUrl,
+          "Once activated, sign in with the email and password you chose at signup to access your dashboard.",
+          "If you did not request this account, you can safely ignore this message.",
+        ]
+    : lang === "fr"
       ? [
           "Activez la sécurité à deux facteurs",
           `Bonjour ${data.name},`,
@@ -846,15 +909,18 @@ export async function sendAccountEmailVerificationEmail(
           "1. Confirm your email address via the link above.",
           "2. Enter a 6-digit SMS code sent to your phone.",
           "If you did not request this account, you can safely ignore this message.",
-        ],
-    lang,
-  );
-  const subject = await getSubject(
-    "email_verification",
-    lang === "fr"
+        ];
+  const text = buildEmailText(textLines, lang);
+
+  const fallbackSubject = isSingleFactor
+    ? lang === "fr"
+      ? "Activez votre compte professionnel — Je chemine"
+      : "Activate your professional account — Je chemine"
+    : lang === "fr"
       ? "Activez votre compte (2FA) — Je chemine"
-      : "Activate your account (2FA) — Je chemine",
-  );
+      : "Activate your account (2FA) — Je chemine";
+  const subject = await getSubject("email_verification", fallbackSubject);
+
   return sendEmail(
     { to: data.email, subject, html, text },
     "email_verification",
