@@ -60,7 +60,10 @@
       "Bash(Select-Object FullName)",
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name = 'node.exe'\")",
       "Bash(node check-user.mjs)",
-      "Bash(awk -F= '{print $1}')"
+      "Bash(awk -F= '{print $1}')",
+      "Bash(curl -s https://cheminement-b77i.vercel.app/api/admin/email-status)",
+      "Bash(node c:/tmp/check-user.mjs)",
+      "Bash(node --experimental-vm-modules -e ' *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

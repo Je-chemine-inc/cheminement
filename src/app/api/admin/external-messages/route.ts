@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
     if (!sendResult.sent) {
       return NextResponse.json(
         {
-          error: "Failed to send email — check Mailgun / SMTP configuration",
+          error: "Failed to send email — check SMTP configuration",
         },
         { status: 502 },
       );

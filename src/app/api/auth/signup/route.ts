@@ -162,6 +162,16 @@ export async function POST(req: NextRequest) {
         role === "client" &&
         (existingUser.status === "inactive" || !existingUser.emailVerified);
 
+      // A passwordless record literally cannot log in — guest-booking
+      // prospects are created with status="active" but no credentials, so
+      // the status check below misses them. Admins/employees are excluded
+      // because admin-provisioned accounts may also be passwordless before
+      // the admin sets a password and shouldn't be wiped by a self-signup.
+      const isPasswordlessShell =
+        !existingUser.password &&
+        existingUser.role !== "admin" &&
+        existingUser.role !== "employee";
+
       // Generalized "zombie" detection: a record that has never been
       // activated and so can't actually log in. Covers prospects/guests
       // (no credentials), unverified clients (never confirmed email),
@@ -169,9 +179,10 @@ export async function POST(req: NextRequest) {
       // by isClientReclaim above (preserves MedicalProfile data) and takes
       // precedence.
       const isUnusableZombie =
-        !existingUser.emailVerified &&
-        existingUser.adminApproved !== true &&
-        existingUser.status !== "active";
+        isPasswordlessShell ||
+        (!existingUser.emailVerified &&
+          existingUser.adminApproved !== true &&
+          existingUser.status !== "active");
 
       const isWipeableZombie = !isClientReclaim && isUnusableZombie;
 

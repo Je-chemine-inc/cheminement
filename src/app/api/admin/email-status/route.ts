@@ -9,16 +9,15 @@ import { getEmailSettings } from "@/lib/notifications";
 /**
  * Admin diagnostic endpoint — answers "why aren't my emails sending?"
  * without exposing any secret values. Returns:
- *   - backend: "mailgun" | "smtp" | "none"  (which transport will be used)
- *   - configured: boolean                    (any transport reachable at all)
- *   - globallyEnabled: boolean               (admin email-notifications toggle)
- *   - mailFrom: string                       (effective From address)
- *   - envVars: { name: boolean }             (which env vars are populated;
- *                                            never the values themselves)
+ *   - backend: "smtp" | "none"   (transport status)
+ *   - configured: boolean         (SMTP reachable at all)
+ *   - globallyEnabled: boolean    (admin email-notifications toggle)
+ *   - mailFrom: string            (effective From address)
+ *   - envVars: { name: boolean }  (which env vars are populated;
+ *                                  never the values themselves)
  *
  * Use it from the prod host to confirm Vercel env vars are loaded — if
- * `backend === "none"` and every `envVars` entry is false, the transport
- * never had a chance to send.
+ * `backend === "none"`, SMTP_HOST / SMTP_USER / SMTP_PASS are missing.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -50,12 +49,6 @@ export async function GET() {
     ),
     nodeEnv: process.env.NODE_ENV,
     envVars: {
-      MAILGUN_API_KEY: Boolean(process.env.MAILGUN_API_KEY),
-      MAILGUN_DOMAIN: Boolean(process.env.MAILGUN_DOMAIN),
-      MAILGUN_WEBHOOK_SIGNING_KEY: Boolean(
-        process.env.MAILGUN_WEBHOOK_SIGNING_KEY,
-      ),
-      MAILGUN_REGION: Boolean(process.env.MAILGUN_REGION),
       SMTP_HOST: Boolean(process.env.SMTP_HOST),
       SMTP_PORT: Boolean(process.env.SMTP_PORT),
       SMTP_USER: Boolean(process.env.SMTP_USER),

@@ -1,7 +1,6 @@
 /**
- * Email notification utilities for appointment scheduling
- * Sends via Mailgun HTTP API in production, SMTP fallback in dev.
- * Configurable from admin portal via PlatformSettings.
+ * Email notification utilities for appointment scheduling.
+ * Sends via Nodemailer SMTP. Configurable from admin portal via PlatformSettings.
  */
 
 import {
@@ -206,7 +205,7 @@ export function clearEmailSettingsCache(): void {
 // =============================================================================
 // Configuration
 // =============================================================================
-// Transport (Mailgun + SMTP fallback) lives in src/lib/email-transport.ts.
+// Transport (Nodemailer SMTP) lives in src/lib/email-transport.ts.
 // All sending goes through `transportSendMail` so the From address, threading
 // headers, and message-id capture stay consistent across the codebase.
 
@@ -761,8 +760,7 @@ export async function sendAdminComposedEmail(
         branding?.companyName || settings.branding?.companyName,
       ),
       to: data.to,
-      // Default replies back to the shared support inbox so the next reply
-      // is captured by the inbound webhook (not the admin's personal inbox).
+      // Default replies back to the shared support inbox.
       replyTo: data.replyTo || supportInbox,
       subject: data.subject,
       html,
