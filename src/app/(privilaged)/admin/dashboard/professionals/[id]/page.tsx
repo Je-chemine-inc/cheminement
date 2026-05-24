@@ -670,21 +670,24 @@ export default function ProfessionalDetailPage({
             </h2>
             
             <Tabs defaultValue={initialTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-8">
-                <TabsTrigger value="proposed" className="flex items-center gap-2 text-xs sm:text-sm">
-                  <Inbox className="h-4 w-4" /> {t("proposed", { count: caseload.proposed.length })}
+              {/* Mobile: horizontal scroll so each tab can keep its full label
+                  (whitespace-nowrap is already on TabsTrigger). sm+ snaps to a
+                  5-column grid. */}
+              <TabsList className="flex w-full overflow-x-auto mb-8 h-auto sm:grid sm:grid-cols-5 sm:h-9">
+                <TabsTrigger value="proposed" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                  <Inbox className="h-4 w-4 shrink-0" /> {t("proposed", { count: caseload.proposed.length })}
                 </TabsTrigger>
-                <TabsTrigger value="accepted" className="flex items-center gap-2 text-xs sm:text-sm">
-                  <Clock className="h-4 w-4" /> {t("accepted", { count: caseload.accepted.length })}
+                <TabsTrigger value="accepted" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                  <Clock className="h-4 w-4 shrink-0" /> {t("accepted", { count: caseload.accepted.length })}
                 </TabsTrigger>
-                <TabsTrigger value="ongoing" className="flex items-center gap-2 text-xs sm:text-sm">
-                  <PlayCircle className="h-4 w-4" /> {t("ongoing", { count: caseload.ongoing.length })}
+                <TabsTrigger value="ongoing" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                  <PlayCircle className="h-4 w-4 shrink-0" /> {t("ongoing", { count: caseload.ongoing.length })}
                 </TabsTrigger>
-                <TabsTrigger value="completed" className="flex items-center gap-2 text-xs sm:text-sm">
-                  <CheckCircle2 className="h-4 w-4" /> {t("completed", { count: caseload.completed.length })}
+                <TabsTrigger value="completed" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" /> {t("completed", { count: caseload.completed.length })}
                 </TabsTrigger>
-                <TabsTrigger value="ledger" className="flex items-center gap-2 text-xs sm:text-sm">
-                  <History className="h-4 w-4" /> {t("ledgerTab")}
+                <TabsTrigger value="ledger" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                  <History className="h-4 w-4 shrink-0" /> {t("ledgerTab")}
                 </TabsTrigger>
               </TabsList>
               
