@@ -173,7 +173,7 @@ const MedicalProfileSchema = new Schema<IMedicalProfile>(
 );
 
 // Indexes for better query performance
-MedicalProfileSchema.index({ userId: 1 });
+// (userId already gets a unique index from `unique: true` on the field)
 MedicalProfileSchema.index({ profileCompleted: 1 });
 
 attachContactStringEncryption(MedicalProfileSchema, [
