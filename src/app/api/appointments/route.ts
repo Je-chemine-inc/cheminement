@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
@@ -589,8 +589,10 @@ export async function POST(req: NextRequest) {
     // professional — those land directly in the general list.
     if (!data.professionalId && !isReturningClient) {
       // Route in background (non-blocking)
-      routeAppointmentToProfessionals(appointment._id.toString()).catch((err) =>
-        console.error("Error routing appointment:", err),
+      after(() =>
+        routeAppointmentToProfessionals(appointment._id.toString()).catch(
+          (err) => console.error("Error routing appointment:", err),
+        ),
       );
     }
 

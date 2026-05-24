@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Profile from "@/models/Profile";
@@ -408,8 +408,10 @@ export async function POST(req: NextRequest) {
     // Route the appointment to professionals if no professional is assigned
     if (!appointmentData.professionalId) {
       // Route in background (non-blocking)
-      routeAppointmentToProfessionals(appointment._id.toString()).catch((err) =>
-        console.error("Error routing appointment:", err),
+      after(() =>
+        routeAppointmentToProfessionals(appointment._id.toString()).catch(
+          (err) => console.error("Error routing appointment:", err),
+        ),
       );
     }
 
