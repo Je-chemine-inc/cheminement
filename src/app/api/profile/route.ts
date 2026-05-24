@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Profile from "@/models/Profile";
@@ -78,14 +78,17 @@ export async function PUT(req: NextRequest) {
 
     // First-time profile completion → send welcome / "admin will reach out" email.
     // Idempotent because we only fire on the false→true transition.
+    // after() keeps the serverless function alive on Vercel until the SMTP
+    // send completes; without it, fire-and-forget is killed mid-flight.
     if (
       !wasAlreadyCompleted &&
       profile?.profileCompleted &&
       session.user.role === "professional"
     ) {
-      void (async () => {
+      const userId = session.user.id;
+      after(async () => {
         try {
-          const user = await User.findById(session.user.id)
+          const user = await User.findById(userId)
             .select("firstName lastName email")
             .lean();
           if (user?.email) {
@@ -103,7 +106,7 @@ export async function PUT(req: NextRequest) {
             err,
           );
         }
-      })();
+      });
     }
 
     return NextResponse.json(profile);

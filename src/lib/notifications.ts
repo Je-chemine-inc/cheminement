@@ -3192,6 +3192,76 @@ export async function sendAdminNewServiceRequestAlert(data: {
 }
 
 /**
+ * Alert admins when a new professional has submitted a signup application.
+ * Admins can then validate / activate from /admin/dashboard/professionals.
+ */
+export async function sendAdminNewProfessionalSignupAlert(data: {
+  professionalName: string;
+  professionalEmail: string;
+  professionalId: string;
+  phone?: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
+    .select("email")
+    .lean();
+  let adminEmails = adminUsers
+    .map((a) => a.email)
+    .filter((e): e is string => Boolean(e));
+  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
+    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
+  }
+  if (adminEmails.length === 0) {
+    console.warn("[sendAdminNewProfessionalSignupAlert] no admin recipients");
+    return;
+  }
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/professionals/${data.professionalId}`;
+
+  const details: Array<{ label: string; value: string }> = [
+    { label: "Nom", value: data.professionalName },
+    { label: "Courriel", value: data.professionalEmail },
+  ];
+  if (data.phone) details.push({ label: "Téléphone", value: data.phone });
+
+  const html = buildEmailHtml({
+    title: "Nouvelle inscription professionnel(le)",
+    theme: "info",
+    greeting: "Bonjour,",
+    intro: `Un(e) professionnel(le) vient de s'inscrire sur la plateforme et attend la validation de l'admin pour activer son compte.`,
+    details,
+    button: { text: "Examiner le dossier", url: adminUrl },
+    outro:
+      "Vous pouvez choisir d'envoyer le courriel d'activation 2FA ou d'activer le compte manuellement.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Nouvelle inscription professionnel(le)",
+    `Nom : ${data.professionalName}`,
+    `Courriel : ${data.professionalEmail}`,
+    data.phone ? `Téléphone : ${data.phone}` : "",
+    `Examiner : ${adminUrl}`,
+  ]);
+
+  const subject = `Nouveau professionnel — ${data.professionalName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) =>
+      console.error("sendAdminNewProfessionalSignupAlert:", e),
+    );
+  }
+}
+
+/**
  * Sent to proposed professionals whose request was taken by a colleague.
  */
 export async function sendAppointmentTakenNotification(data: {

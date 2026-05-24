@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { rateLimit, getClientIp, AuthRateLimits } from "@/lib/rate-limit";
@@ -16,6 +16,7 @@ import {
 import {
   sendWelcomeEmail,
   sendAccountEmailVerificationEmail,
+  sendAdminNewProfessionalSignupAlert,
 } from "@/lib/notifications";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 
@@ -550,6 +551,29 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error("Verification email:", err);
       }
+    }
+
+    // Notify admins that a new professional has applied — they will then
+    // validate or send the 2FA activation email from the admin dashboard.
+    // Wrapped in after() so the serverless function returns the 201 quickly
+    // while keeping the container alive until the SMTP send finishes.
+    if (user.role === "professional") {
+      const adminAlertArgs = {
+        professionalName:
+          `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+          "Professionnel(le)",
+        professionalEmail: user.email,
+        professionalId: user._id.toString(),
+        phone: user.phone,
+      };
+      after(() =>
+        sendAdminNewProfessionalSignupAlert(adminAlertArgs).catch((err) =>
+          console.error(
+            "sendAdminNewProfessionalSignupAlert (signup):",
+            err,
+          ),
+        ),
+      );
     }
 
     return NextResponse.json(
