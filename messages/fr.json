@@ -578,6 +578,14 @@
 
 
 
+    "passwordSetup": {
+      "sectionTitle": "Accès au compte",
+      "sectionDesc": "Envoyer un lien sécurisé pour que cet utilisateur définisse lui-même son mot de passe (valide 1 heure).",
+      "sendButton": "Envoyer un lien de mot de passe",
+      "sending": "Envoi en cours…",
+      "sendSuccess": "Lien envoyé. L'utilisateur a 1 heure pour définir son mot de passe.",
+      "sendError": "Échec de l'envoi du lien. Veuillez réessayer."
+    },
     "patientDetail": {
       "detailTitle": "Détails du Patient",
       "loadError": "Impossible de charger le dossier patient.",
@@ -2065,6 +2073,30 @@
       "checkEmailMessage": "Si un compte existe pour {email}, vous recevrez un lien de réinitialisation de mot de passe sous peu.",
       "checkEmailSpam": "Veuillez vérifier votre boîte de réception et votre dossier spam.",
       "resendEmail": "Renvoyer l'e-mail"
+    },
+    "resetPassword": {
+      "title": "Définissez votre mot de passe",
+      "description": "Choisissez un nouveau mot de passe pour accéder à votre compte.",
+      "password": "Nouveau mot de passe",
+      "passwordPlaceholder": "Au moins 8 caractères",
+      "passwordHint": "Minimum 8 caractères. Évitez les mots de passe que vous utilisez ailleurs.",
+      "confirm": "Confirmez le mot de passe",
+      "confirmPlaceholder": "Saisissez à nouveau le mot de passe",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "submit": "Enregistrer le mot de passe",
+      "submitting": "Enregistrement…",
+      "errorTooShort": "Le mot de passe doit comporter au moins 8 caractères.",
+      "errorMismatch": "Les deux mots de passe ne correspondent pas.",
+      "errorGeneric": "Le lien est invalide ou a expiré. Demandez à l'administrateur d'en envoyer un nouveau.",
+      "successTitle": "Mot de passe défini",
+      "successDescription": "Votre nouveau mot de passe a été enregistré.",
+      "successRedirect": "Redirection vers la page de connexion…",
+      "invalidTitle": "Lien invalide",
+      "invalidDescription": "Ce lien de configuration de mot de passe est incomplet ou a expiré.",
+      "invalidHint": "Demandez à l'administrateur de vous renvoyer un nouveau lien depuis votre fiche.",
+      "backToLogin": "Retour à la connexion",
+      "backToHome": "← Retour à l'accueil"
     }
   },
   "BasicInformation": {

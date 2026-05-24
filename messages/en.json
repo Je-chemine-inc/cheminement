@@ -578,6 +578,14 @@
 
 
 
+    "passwordSetup": {
+      "sectionTitle": "Account access",
+      "sectionDesc": "Send a secure link so this user can set their own password (valid for 1 hour).",
+      "sendButton": "Send password setup link",
+      "sending": "Sending…",
+      "sendSuccess": "Link sent. The user has 1 hour to set their password.",
+      "sendError": "Failed to send the link. Please try again."
+    },
     "patientDetail": {
       "detailTitle": "Patient Details",
       "loadError": "Failed to load patient record.",
@@ -2064,6 +2072,30 @@
       "checkEmailMessage": "If an account exists for {email}, you will receive a password reset link shortly.",
       "checkEmailSpam": "Please check your inbox and spam folder.",
       "resendEmail": "Resend Email"
+    },
+    "resetPassword": {
+      "title": "Set your password",
+      "description": "Choose a new password to access your account.",
+      "password": "New password",
+      "passwordPlaceholder": "At least 8 characters",
+      "passwordHint": "Minimum 8 characters. Avoid passwords you use elsewhere.",
+      "confirm": "Confirm password",
+      "confirmPlaceholder": "Re-enter the password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "submit": "Save password",
+      "submitting": "Saving…",
+      "errorTooShort": "Password must be at least 8 characters.",
+      "errorMismatch": "The two passwords don't match.",
+      "errorGeneric": "The link is invalid or has expired. Ask the administrator to send a new one.",
+      "successTitle": "Password set",
+      "successDescription": "Your new password has been saved.",
+      "successRedirect": "Redirecting to login…",
+      "invalidTitle": "Invalid link",
+      "invalidDescription": "This password setup link is incomplete or has expired.",
+      "invalidHint": "Ask the administrator to resend a new link from your profile.",
+      "backToLogin": "Back to login",
+      "backToHome": "← Back to home"
     }
   },
   "BasicInformation": {

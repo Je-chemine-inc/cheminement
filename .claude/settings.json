@@ -96,7 +96,21 @@
       "Bash(git -C c:/Users/merie/cheminement add src/models/MedicalProfile.ts .claude/settings.json)",
       "Bash(git -C c:/Users/merie/cheminement commit -m ' *)",
       "Bash(git -C c:/Users/merie/cheminement push origin main)",
-      "Bash(git -C c:/Users/merie/cheminement add src/app/api/appointments .claude/settings.json)"
+      "Bash(git -C c:/Users/merie/cheminement add src/app/api/appointments .claude/settings.json)",
+      "Bash(npx add-mcp *)",
+      "Bash(git -C c:/Users/merie/cheminement add src/app/api/appointments/\\\\[id\\\\]/route.ts)",
+      "mcp__vercel__list_teams",
+      "mcp__vercel__list_projects",
+      "mcp__vercel__list_deployments",
+      "mcp__vercel__get_project",
+      "mcp__vercel__get_runtime_logs",
+      "Bash(git -C c:/Users/merie/cheminement add src/lib/notifications.ts src/app/api/auth/signup/route.ts src/app/api/profile/route.ts)",
+      "Bash(node scripts/check-recent-pros.mjs)",
+      "Bash(git -C c:/Users/merie/cheminement add \"src/app/\\(privilaged\\)/admin/dashboard/professionals/[id]/page.tsx\")",
+      "Bash(git -C c:/Users/merie/cheminement add src/lib/notifications.ts)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); console.log\\('json OK'\\)\")",
+      "Bash(git -C c:/Users/merie/cheminement ls-files --others --exclude-standard)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/login)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

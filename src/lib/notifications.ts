@@ -1132,6 +1132,99 @@ export async function sendPasswordResetEmail(
   return sendEmail({ to: data.email, subject, html, text }, "password_reset");
 }
 
+/**
+ * Sent when an admin manually creates an account and wants the user to set
+ * their own password. Distinct from sendPasswordResetEmail because the user
+ * didn't initiate this — copy must reassure them why they got it.
+ */
+export async function sendPasswordSetupLinkEmail(data: {
+  name: string;
+  email: string;
+  setupLink: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+
+  const title =
+    lang === "fr"
+      ? "Définissez votre mot de passe"
+      : "Set your password";
+
+  const intro =
+    lang === "fr"
+      ? "Un administrateur de Je chemine a créé un compte pour vous. Cliquez sur le bouton ci-dessous pour définir votre propre mot de passe et accéder à votre espace en toute sécurité."
+      : "A Je chemine administrator created an account for you. Click the button below to set your own password and securely access your dashboard.";
+
+  const buttonText =
+    lang === "fr" ? "Définir mon mot de passe" : "Set my password";
+
+  const infoBox =
+    lang === "fr"
+      ? {
+          title: "Et ensuite ?",
+          content:
+            "Une fois votre mot de passe défini, vous pourrez vous connecter à Je chemine avec votre adresse courriel et le mot de passe que vous venez de choisir.",
+          theme: "info" as const,
+        }
+      : {
+          title: "What's next?",
+          content:
+            "Once your password is set, you can sign in to Je chemine with your email and the new password.",
+          theme: "info" as const,
+        };
+
+  const outro =
+    lang === "fr"
+      ? "Ce lien expirera dans 1 heure pour des raisons de sécurité. Si vous n'attendiez pas ce courriel, ignorez-le."
+      : "This link will expire in 1 hour for security reasons. If you weren't expecting this email, you can safely ignore it.";
+
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
+    intro,
+    button: { text: buttonText, url: data.setupLink },
+    buttonAboveInfo: true,
+    infoBox,
+    outro,
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Définissez votre mot de passe",
+          `Bonjour ${data.name},`,
+          "Un administrateur de Je chemine a créé un compte pour vous. Définissez votre propre mot de passe à l'aide du lien ci-dessous (valide 1 heure) :",
+          data.setupLink,
+          "Une fois votre mot de passe défini, connectez-vous avec votre adresse courriel et ce nouveau mot de passe.",
+          "Si vous n'attendiez pas ce courriel, ignorez-le.",
+        ]
+      : [
+          "Set your password",
+          `Hello ${data.name},`,
+          "A Je chemine administrator created an account for you. Set your own password using the link below (valid for 1 hour):",
+          data.setupLink,
+          "Once your password is set, sign in with your email and your new password.",
+          "If you weren't expecting this email, you can safely ignore it.",
+        ],
+    lang,
+  );
+
+  const fallbackSubject =
+    lang === "fr"
+      ? "Définissez votre mot de passe — Je chemine"
+      : "Set your password — Je chemine";
+  const subject = await getSubject("password_reset", fallbackSubject);
+
+  return sendEmail(
+    { to: data.email, subject, html, text },
+    "password_reset",
+  );
+}
+
 // =============================================================================
 // Public Email Functions - Service request onboarding link (admin approval)
 // =============================================================================

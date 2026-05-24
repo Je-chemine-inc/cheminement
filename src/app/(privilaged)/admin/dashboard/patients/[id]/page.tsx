@@ -16,6 +16,7 @@ import {
   BadgeCheck,
   FileDown,
   Eye,
+  KeyRound,
 } from "lucide-react";
 import {
   ProfessionalBookAppointmentModal,
@@ -60,6 +61,7 @@ export default function PatientDetailPage({
 }) {
   const router = useRouter();
   const t = useTranslations("AdminDashboard.patientDetail");
+  const tPwd = useTranslations("AdminDashboard.passwordSetup");
   const tStatus = useTranslations("AdminDashboard.appointmentStatus");
   const { id } = use(params);
 
@@ -73,7 +75,27 @@ export default function PatientDetailPage({
 
   // Feedback states
   const [feedback, setFeedback] = useState<{type: "success" | "error", message: string} | null>(null);
-  
+  const [sendingPwdLink, setSendingPwdLink] = useState(false);
+
+  const handleSendPasswordSetupLink = async () => {
+    if (sendingPwdLink) return;
+    setSendingPwdLink(true);
+    try {
+      const res = await fetch(
+        `/api/admin/users/${id}/send-password-setup-link`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error();
+      setFeedback({ type: "success", message: tPwd("sendSuccess") });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback({ type: "error", message: tPwd("sendError") });
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setSendingPwdLink(false);
+    }
+  };
+
   // Modals / actions states
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
@@ -645,6 +667,28 @@ export default function PatientDetailPage({
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className="bg-card border border-border/40 rounded-xl p-6">
+            <h2 className="text-lg font-serif font-light mb-2 flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" /> {tPwd("sectionTitle")}
+            </h2>
+            <p className="text-sm font-light mb-4 text-muted-foreground">
+              {tPwd("sectionDesc")}
+            </p>
+            <Button
+              onClick={handleSendPasswordSetupLink}
+              disabled={sendingPwdLink}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              {sendingPwdLink ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
+              )}
+              {sendingPwdLink ? tPwd("sending") : tPwd("sendButton")}
+            </Button>
           </div>
 
           <div className="bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-900 rounded-xl p-6">

@@ -32,6 +32,9 @@ export interface IUser extends Document {
   accountSecurityVersion?: number;
   verificationEmailTokenHash?: string;
   verificationEmailExpires?: Date;
+  /** Admin-issued token so the user can set/reset their own password. */
+  passwordResetTokenHash?: string;
+  passwordResetExpires?: Date;
   phoneStepTokenHash?: string;
   phoneStepTokenExpires?: Date;
   verificationSmsCodeHash?: string;
@@ -178,6 +181,8 @@ const UserSchema = new Schema<IUser>(
     accountSecurityVersion: { type: Number, default: 0 },
     verificationEmailTokenHash: String,
     verificationEmailExpires: Date,
+    passwordResetTokenHash: String,
+    passwordResetExpires: Date,
     phoneStepTokenHash: String,
     phoneStepTokenExpires: Date,
     verificationSmsCodeHash: String,
