@@ -431,7 +431,14 @@ const createButton = (
 ): string => {
   const primaryColor = branding?.primaryColor || "#8B7355";
   const secondaryColor = branding?.secondaryColor || "#6B5344";
-  return `<div style="text-align: center;"><a href="${url}" style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: white; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500;">${text}</a></div>`;
+  // Bulletproof email button: solid background-color is mandatory because most
+  // mail clients (mobile Gmail, Outlook, Yahoo) silently drop CSS gradients.
+  // Without a fallback the button rendered as invisible white-on-white. The
+  // `bgcolor` attribute also helps the oldest Outlook versions. The gradient
+  // is kept as a progressive enhancement for clients that support it (split
+  // into background-color + background-image so the shorthand doesn't reset
+  // the solid fill).
+  return `<div style="text-align: center;"><a href="${url}" bgcolor="${primaryColor}" style="display: inline-block; background-color: ${primaryColor}; background-image: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500;">${text}</a></div>`;
 };
 
 const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): string => {
