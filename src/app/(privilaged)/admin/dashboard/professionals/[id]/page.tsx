@@ -87,7 +87,10 @@ export default function ProfessionalDetailPage({
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [forceValidateOpen, setForceValidateOpen] = useState(false);
-  const [forceValidating, setForceValidating] = useState(false);
+  // Tracks which validate-button is in flight so only that button shows its
+  // spinner. Sharing a single boolean caused both buttons to animate together
+  // when either was clicked.
+  const [forceValidating, setForceValidating] = useState<"email" | "manual" | null>(null);
 
   // Ledger states
   const [ledger, setLedger] = useState<any>(null);
@@ -208,7 +211,7 @@ export default function ProfessionalDetailPage({
   };
 
   const handleForceValidate = async (skipEmail = false) => {
-    setForceValidating(true);
+    setForceValidating(skipEmail ? "manual" : "email");
     try {
       const res = await fetch(`/api/admin/professionals/${id}/validate`, {
         method: "POST",
@@ -229,7 +232,7 @@ export default function ProfessionalDetailPage({
       setFeedback({ type: "error", message: t("forceValidateError") });
       setTimeout(() => setFeedback(null), 3000);
     } finally {
-      setForceValidating(false);
+      setForceValidating(null);
     }
   };
 
@@ -346,19 +349,19 @@ export default function ProfessionalDetailPage({
                 <DialogFooter className="flex-col gap-2 sm:flex-col sm:gap-2">
                   <Button
                     onClick={() => handleForceValidate(false)}
-                    disabled={forceValidating}
+                    disabled={forceValidating !== null}
                     className="gap-2 bg-green-600 hover:bg-green-700 text-white w-full"
                   >
-                    {forceValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {forceValidating === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {t("forceValidateConfirm")}
                   </Button>
                   <Button
                     onClick={() => handleForceValidate(true)}
-                    disabled={forceValidating}
+                    disabled={forceValidating !== null}
                     variant="outline"
                     className="gap-2 border-green-600/40 text-green-700 hover:bg-green-50 dark:hover:bg-green-950/20 w-full"
                   >
-                    {forceValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {forceValidating === "manual" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {t("forceValidateManualConfirm")}
                   </Button>
                   <Button variant="ghost" onClick={() => setForceValidateOpen(false)} className="w-full">
