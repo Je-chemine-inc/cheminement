@@ -340,7 +340,7 @@ export async function PATCH(
       appointment.status === "cancelled" &&
       oldAppointment.status !== "cancelled"
     ) {
-      const cancelledBy =
+      const cancelledBy: "client" | "professional" =
         session.user.role === "client" ? "client" : "professional";
 
       // Update cancellation metadata
