@@ -436,7 +436,7 @@ export async function POST(req: NextRequest) {
           email: string;
         };
 
-      sendProfessionalNotification({
+      const proNotificationArgs = {
         clientName: `${firstName} ${lastName}`,
         clientEmail: email,
         professionalName: `${professionalDoc.firstName} ${professionalDoc.lastName}`,
@@ -445,19 +445,29 @@ export async function POST(req: NextRequest) {
         time: appointmentData.time || "To be scheduled",
         duration: appointmentData.duration || 60,
         type: appointmentData.type,
-      }).catch((err) =>
-        console.error("Error sending professional notification email:", err),
+      };
+      // after() keeps the serverless function alive on Vercel until the SMTP
+      // send completes; otherwise the container is killed before Gmail responds.
+      after(() =>
+        sendProfessionalNotification(proNotificationArgs).catch((err) =>
+          console.error("Error sending professional notification email:", err),
+        ),
       );
     }
-    
+
     // Notify admins of the new service request
-    void sendAdminNewServiceRequestAlert({
+    const adminAlertArgs = {
       clientName: `${firstName} ${lastName}`,
       clientEmail: email,
       bookingFor: appointmentData.bookingFor || "self",
       motifs: motifs as string[],
       appointmentId: String(appointment._id),
-    }).catch((err) => console.error("Error sending admin alert:", err));
+    };
+    after(() =>
+      sendAdminNewServiceRequestAlert(adminAlertArgs).catch((err) =>
+        console.error("Error sending admin alert:", err),
+      ),
+    );
 
     // Automatically send onboarding invitation (Email 1 — Confirmation immédiate)
     // Recipient rules:
@@ -493,12 +503,15 @@ export async function POST(req: NextRequest) {
         (bookingFor === "loved-one" && onboardingToEmail !== email);
 
       if (shouldSendOnboarding) {
-        sendServiceRequestOnboardingEmail({
+        const onboardingArgs = {
           toName: onboardingToName,
           toEmail: onboardingToEmail,
           locale: emailLocale,
-        }).catch((err) =>
-          console.error("Error sending onboarding email:", err),
+        };
+        after(() =>
+          sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
+            console.error("Error sending onboarding email:", err),
+          ),
         );
       }
     }

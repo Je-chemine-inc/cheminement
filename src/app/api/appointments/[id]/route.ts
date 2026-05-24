@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb";
@@ -249,7 +249,7 @@ export async function PATCH(
 
         const paymentLink = `${getBaseUrl()}/pay?token=${paymentToken}`;
 
-        sendGuestPaymentConfirmation({
+        const guestPayArgs = {
           guestName: `${client.firstName} ${client.lastName}`,
           guestEmail: client.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
@@ -262,11 +262,14 @@ export async function PATCH(
           therapyType: appointment.therapyType || "solo",
           price: appointment.payment.price,
           paymentLink,
-        }).catch((err) =>
-          console.error("Error sending guest payment invitation:", err),
+        };
+        after(() =>
+          sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
+            console.error("Error sending guest payment invitation:", err),
+          ),
         );
       } else if (clientUserBefore && clientUserBefore.role === "client") {
-        sendPaymentInvitation({
+        const payInviteArgs = {
           clientName: `${client.firstName} ${client.lastName}`,
           clientEmail: client.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
@@ -281,8 +284,11 @@ export async function PATCH(
           location: appointment.location,
           price: appointment.payment.price,
           paymentUrl: billingUrl,
-        }).catch((err) =>
-          console.error("Error sending payment invitation:", err),
+        };
+        after(() =>
+          sendPaymentInvitation(payInviteArgs).catch((err) =>
+            console.error("Error sending payment invitation:", err),
+          ),
         );
       }
     }
@@ -308,7 +314,7 @@ export async function PATCH(
       // Check if client is a guest user
       const clientUser = await User.findById(client._id);
       if (clientUser && (clientUser.role === "guest" || clientUser.role === "prospect")) {
-        sendMeetingLinkNotification({
+        const meetingArgs = {
           guestName: `${client.firstName} ${client.lastName}`,
           guestEmail: client.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
@@ -319,8 +325,11 @@ export async function PATCH(
           duration: appointment.duration || 60,
           type: appointment.type,
           meetingLink: appointment.meetingLink,
-        }).catch((err) =>
-          console.error("Error sending meeting link notification email:", err),
+        };
+        after(() =>
+          sendMeetingLinkNotification(meetingArgs).catch((err) =>
+            console.error("Error sending meeting link notification email:", err),
+          ),
         );
       }
     }
@@ -351,7 +360,7 @@ export async function PATCH(
       };
 
       // Send cancellation notification
-      sendCancellationNotification({
+      const cancelArgs = {
         clientName: `${client.firstName} ${client.lastName}`,
         clientEmail: client.email,
         professionalName: professional
@@ -367,8 +376,11 @@ export async function PATCH(
           | "phone"
           | "both",
         cancelledBy: cancelledBy,
-      }).catch((err) =>
-        console.error("Error sending cancellation notification:", err),
+      };
+      after(() =>
+        sendCancellationNotification(cancelArgs).catch((err) =>
+          console.error("Error sending cancellation notification:", err),
+        ),
       );
 
       // Process automatic refund with fee calculation if appointment was paid
@@ -431,13 +443,16 @@ export async function PATCH(
               lastName: string;
               email: string;
             };
-            sendRefundConfirmation({
+            const refundArgs = {
               name: `${clientForRefund.firstName} ${clientForRefund.lastName}`,
               email: clientForRefund.email,
               amount: refund.amount / 100,
               appointmentDate: appointment.date?.toISOString(),
-            }).catch((err) =>
-              console.error("Error sending refund confirmation:", err),
+            };
+            after(() =>
+              sendRefundConfirmation(refundArgs).catch((err) =>
+                console.error("Error sending refund confirmation:", err),
+              ),
             );
           } else {
             console.log(

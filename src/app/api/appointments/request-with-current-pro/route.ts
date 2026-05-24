@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
       const clientName =
         `${clientUser.firstName ?? ""} ${clientUser.lastName ?? ""}`.trim() ||
         "Client";
-      void sendProfessionalNotification({
+      const notifArgs = {
         clientName,
         clientEmail: clientUser.email,
         professionalName:
@@ -183,10 +183,13 @@ export async function POST(req: NextRequest) {
         time,
         duration: finalDuration,
         type: type as "video" | "in-person" | "phone" | "both",
-      }).catch((err) =>
-        console.error(
-          `[request-with-current-pro] notify professional failed:`,
-          err,
+      };
+      after(() =>
+        sendProfessionalNotification(notifArgs).catch((err) =>
+          console.error(
+            `[request-with-current-pro] notify professional failed:`,
+            err,
+          ),
         ),
       );
     }

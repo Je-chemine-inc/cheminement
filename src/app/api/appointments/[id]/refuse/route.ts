@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
@@ -127,12 +127,15 @@ export async function POST(
           (clientUser as { language?: string } | null)?.language === "fr"
             ? "fr"
             : "en";
-        void sendRequestMovedToGeneralListEmail({
+        const movedArgs = {
           clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
           clientEmail: c.email,
           locale,
-        }).catch((err) =>
-          console.error("[refuse] Failed to send general-list notification:", err),
+        };
+        after(() =>
+          sendRequestMovedToGeneralListEmail(movedArgs).catch((err) =>
+            console.error("[refuse] Failed to send general-list notification:", err),
+          ),
         );
       }
     }

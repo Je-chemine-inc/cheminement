@@ -94,7 +94,9 @@
       "Bash(git -C c:/Users/merie/cheminement show --stat b0713d3)",
       "Bash(git -C c:/Users/merie/cheminement diff src/models/MedicalProfile.ts)",
       "Bash(git -C c:/Users/merie/cheminement add src/models/MedicalProfile.ts .claude/settings.json)",
-      "Bash(git -C c:/Users/merie/cheminement commit -m ' *)"
+      "Bash(git -C c:/Users/merie/cheminement commit -m ' *)",
+      "Bash(git -C c:/Users/merie/cheminement push origin main)",
+      "Bash(git -C c:/Users/merie/cheminement add src/app/api/appointments .claude/settings.json)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

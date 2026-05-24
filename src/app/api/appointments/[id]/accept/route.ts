@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb";
@@ -149,14 +149,21 @@ export async function POST(
         ? `${base}/client/dashboard/profile`
         : `${base}/signup/member?email=${encodeURIComponent(client.email)}`;
 
-      // Send jumelage confirmation email (with the two distinct CTAs)
-      void sendJumelageSuccessEmail({
+      // Send jumelage confirmation email (with the two distinct CTAs).
+      // after() keeps the serverless function alive on Vercel until the
+      // SMTP send completes; without it, void sends are killed mid-flight.
+      const jumelageArgs = {
         clientName: `${client.firstName} ${client.lastName}`.trim(),
         clientEmail: client.email,
         professionalName,
         locale,
         completeAccountUrl,
-      }).catch((err) => console.error("Error sending jumelage success email:", err));
+      };
+      after(() =>
+        sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
+          console.error("Error sending jumelage success email:", err),
+        ),
+      );
 
       // Send payment invitation — with a tokenized link for unclaimed accounts,
       // or a dashboard link for already-active clients.
@@ -171,7 +178,7 @@ export async function POST(
           "payment.paymentTokenExpiry": paymentTokenExpiry,
         });
         const paymentLink = `${base}/pay?token=${paymentToken}`;
-        void sendGuestPaymentConfirmation({
+        const guestPayArgs = {
           guestName: `${client.firstName} ${client.lastName}`.trim(),
           guestEmail: client.email,
           professionalName,
@@ -183,10 +190,15 @@ export async function POST(
           price: updatedAppointment.payment?.price ?? 0,
           paymentLink,
           locale,
-        }).catch((err) => console.error("Error sending payment invitation (unclaimed):", err));
+        };
+        after(() =>
+          sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
+            console.error("Error sending payment invitation (unclaimed):", err),
+          ),
+        );
       } else {
         // Active client — send dashboard billing link
-        void sendPaymentInvitation({
+        const payInviteArgs = {
           clientName: `${client.firstName} ${client.lastName}`.trim(),
           clientEmail: client.email,
           professionalName: professionalName ?? "",
@@ -197,7 +209,12 @@ export async function POST(
           type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
           price: updatedAppointment.payment?.price ?? 0,
           paymentUrl: `${base}/client/dashboard/billing?action=addPaymentMethod`,
-        }).catch((err) => console.error("Error sending payment invitation (active):", err));
+        };
+        after(() =>
+          sendPaymentInvitation(payInviteArgs).catch((err) =>
+            console.error("Error sending payment invitation (active):", err),
+          ),
+        );
       }
     }
 
@@ -214,13 +231,17 @@ export async function POST(
         }).select("firstName lastName email");
 
         for (const pro of otherPros) {
-          void sendAppointmentTakenNotification({
+          const takenArgs = {
             professionalName: `${pro.firstName} ${pro.lastName}`,
             professionalEmail: pro.email,
-          }).catch((err) =>
-            console.error(
-              `[accept] Failed to notify professional ${pro._id}:`,
-              err,
+          };
+          const proIdStr = pro._id.toString();
+          after(() =>
+            sendAppointmentTakenNotification(takenArgs).catch((err) =>
+              console.error(
+                `[accept] Failed to notify professional ${proIdStr}:`,
+                err,
+              ),
             ),
           );
         }

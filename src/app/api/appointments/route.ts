@@ -564,8 +564,11 @@ export async function POST(req: NextRequest) {
     const appointment = new Appointment(data);
     await appointment.save();
 
-    // Notify admins of the new service request
-    void (async () => {
+    // Notify admins of the new service request.
+    // Wrapped in after() so Vercel keeps the serverless function alive until
+    // the SMTP send completes; otherwise the container is killed ~250ms after
+    // the response and Gmail SMTP (1-2s) never finishes.
+    after(async () => {
       try {
         const requester = await User.findById(session.user.id).select(
           "firstName lastName email",
@@ -582,7 +585,7 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         console.error("Error sending admin new service request alert:", e);
       }
-    })();
+    });
 
     // Route the appointment to professionals if no professional is assigned.
     // Skip auto-routing for returning clients explicitly asking for a different
@@ -638,11 +641,16 @@ export async function POST(req: NextRequest) {
         location: populatedAppointment.location,
       };
 
-      // Send notifications without blocking the response
-      Promise.all([
-        sendAppointmentConfirmation(emailData),
-        sendProfessionalNotification(emailData),
-      ]).catch((err) => console.error("Error sending notifications:", err));
+      // Send notifications without blocking the response. after() keeps the
+      // serverless function alive until the SMTP sends complete on Vercel.
+      after(() =>
+        Promise.all([
+          sendAppointmentConfirmation(emailData),
+          sendProfessionalNotification(emailData),
+        ]).catch((err) =>
+          console.error("Error sending notifications:", err),
+        ),
+      );
     } else {
       // No professional assigned yet — send automatic acknowledgement.
       // Recipient rules:
@@ -680,11 +688,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (toEmail && toName) {
-        void sendServiceRequestOnboardingEmail({
-          toName,
-          toEmail,
-          locale: requesterLocale,
-        }).catch((err) => console.error("Error sending acknowledgement email:", err));
+        const onboardingArgs = { toName, toEmail, locale: requesterLocale };
+        after(() =>
+          sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
+            console.error("Error sending acknowledgement email:", err),
+          ),
+        );
       }
     }
 
