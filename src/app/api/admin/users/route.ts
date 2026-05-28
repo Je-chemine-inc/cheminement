@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
           name: `${firstName} ${lastName}`,
           email: email.toLowerCase().trim(),
           role,
+          locale: user.language === "en" ? "en" : "fr",
         });
       } catch (emailErr) {
         console.error("Failed to send welcome email:", emailErr);

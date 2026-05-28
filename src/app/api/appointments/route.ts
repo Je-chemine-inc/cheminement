@@ -11,9 +11,15 @@ import {
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
   sendAdminNewServiceRequestAlert,
+  sendCancellationNotification,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
-import { linkGuardian, isMinor, isUnder14 } from "@/lib/guardian-utils";
+import {
+  linkGuardian,
+  isMinor,
+  isUnder14,
+  resolveAppointmentRecipient,
+} from "@/lib/guardian-utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -432,6 +438,79 @@ export async function POST(req: NextRequest) {
     }
     delete data.changeProfessional;
 
+    // Auto-cancel the client's existing scheduled appointment(s) with their
+    // previous professional when they explicitly request a different one.
+    // Without this they would end up with two live appointments at once.
+    // We only touch future-dated scheduled appointments — past/completed/
+    // already-cancelled rows are left untouched. Each cancelled appointment
+    // gets a sendCancellationNotification fired async so the previous pro
+    // and the client (LSSSS-routed via resolveAppointmentRecipient) both
+    // learn the slot is free.
+    if (isReturningClient) {
+      const nowDate = new Date();
+      const oldScheduledAppointments = await Appointment.find({
+        clientId: session.user.id,
+        status: "scheduled",
+        date: { $gte: nowDate },
+      })
+        .populate("clientId", "firstName lastName email language")
+        .populate("professionalId", "firstName lastName email");
+
+      for (const oldApt of oldScheduledAppointments) {
+        await Appointment.findByIdAndUpdate(oldApt._id, {
+          status: "cancelled",
+          cancelReason: "client_switched_professional",
+          cancelledBy: "client",
+          cancelledAt: nowDate,
+        });
+
+        const oldClient = oldApt.clientId as unknown as {
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+          language?: string;
+        } | null;
+        const oldPro = oldApt.professionalId as unknown as {
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+        } | null;
+
+        if (oldClient && oldPro?.email) {
+          const oldRecipient = resolveAppointmentRecipient(
+            {
+              bookingFor: oldApt.bookingFor,
+              lovedOneInfo: oldApt.lovedOneInfo,
+            },
+            oldClient,
+          );
+          after(() =>
+            sendCancellationNotification({
+              clientName: oldRecipient.name,
+              clientEmail: oldRecipient.email,
+              professionalName: `${oldPro.firstName ?? ""} ${oldPro.lastName ?? ""}`.trim(),
+              professionalEmail: oldPro.email ?? "",
+              date: oldApt.date?.toISOString(),
+              time: oldApt.time,
+              duration: oldApt.duration || 60,
+              type: oldApt.type as
+                | "video"
+                | "in-person"
+                | "phone"
+                | "both",
+              cancelledBy: "client",
+              locale: oldRecipient.language,
+            }).catch((err) =>
+              console.error(
+                "Error sending change-pro auto-cancel notification:",
+                err,
+              ),
+            ),
+          );
+        }
+      }
+    }
+
     // Set status to pending if no professional assigned (request flow)
     if (!data.professionalId) {
       data.status = "pending";
@@ -600,7 +679,7 @@ export async function POST(req: NextRequest) {
     }
 
     const populatedAppointment = await Appointment.findById(appointment._id)
-      .populate("clientId", "firstName lastName email phone location")
+      .populate("clientId", "firstName lastName email phone location language")
       .populate("professionalId", "firstName lastName email phone");
 
     if (!populatedAppointment) {
@@ -622,7 +701,11 @@ export async function POST(req: NextRequest) {
         firstName: string;
         lastName: string;
         email: string;
+        language?: string;
       };
+
+      const clientLocale: "fr" | "en" =
+        clientDoc.language === "en" ? "en" : "fr";
 
       const emailData = {
         clientName: `${clientDoc.firstName} ${clientDoc.lastName}`,
@@ -645,7 +728,7 @@ export async function POST(req: NextRequest) {
       // serverless function alive until the SMTP sends complete on Vercel.
       after(() =>
         Promise.all([
-          sendAppointmentConfirmation(emailData),
+          sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),
           sendProfessionalNotification(emailData),
         ]).catch((err) =>
           console.error("Error sending notifications:", err),

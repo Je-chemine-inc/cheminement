@@ -34,9 +34,24 @@ export async function POST(
 
     const { id } = await params;
     const user = await User.findById(id).lean();
-    
+
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // The reminder CTA points at the auth-gated billing dashboard. Non-active
+    // users (no password yet) would land on a login screen they cannot pass,
+    // so refuse the request rather than send a dead-end email. Admins who
+    // want to nudge an unclaimed user should resend the onboarding invite
+    // instead — those flows already mint tokenized links per-appointment.
+    if (user.status !== "active") {
+      return NextResponse.json(
+        {
+          error:
+            "User account is not active; resend the onboarding invitation instead",
+        },
+        { status: 400 },
+      );
     }
 
     const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
@@ -45,6 +60,7 @@ export async function POST(
       clientName: `${user.firstName} ${user.lastName}`,
       clientEmail: user.email,
       billingUrl,
+      locale: user.language === "en" ? "en" : "fr",
     });
 
     return NextResponse.json({ success: true });

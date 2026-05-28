@@ -4,6 +4,7 @@ import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import {
   sendPaymentGuaranteeDay1Reminder,
   sendPaymentGuaranteeDay2Reminder,
@@ -53,7 +54,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
 }> {
   await connectToDatabase();
   const now = Date.now();
-  const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
+  const base = getBaseUrl();
 
   let day1Sent = 0;
   let day2Sent = 0;
@@ -84,6 +85,11 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
       clientPop,
     );
+    const billingUrl = await resolveBillingUrl({
+      userStatus: user.status,
+      appointment: apt,
+      base,
+    });
     const ok = await sendPaymentGuaranteeDay1Reminder({
       clientName: recipient.name,
       clientEmail: recipient.email,
@@ -122,6 +128,11 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
       clientPop,
     );
+    const billingUrl = await resolveBillingUrl({
+      userStatus: user.status,
+      appointment: apt,
+      base,
+    });
     const ok = await sendPaymentGuaranteeDay2Reminder({
       clientName: recipient.name,
       clientEmail: recipient.email,
@@ -145,7 +156,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     ],
   })
     .populate("clientId", "firstName lastName email language")
-    .populate("professionalId", "firstName lastName email")
+    .populate("professionalId", "firstName lastName email language")
     .limit(500);
 
   for (const apt of upcoming) {
@@ -174,11 +185,17 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     const updates: Record<string, boolean> = {};
 
     if (!apt.guarantee48hClientReminderSent) {
+      const billingUrl = await resolveBillingUrl({
+        userStatus: user.status,
+        appointment: apt,
+        base,
+      });
       const ok = await sendPaymentGuarantee48hClientReminder({
         clientName: recipient.name,
         clientEmail: recipient.email,
         billingUrl,
         appointmentDateLabel: dateLabel,
+        locale: recipient.language,
       });
       if (ok) {
         updates.guarantee48hClientReminderSent = true;
@@ -191,14 +208,17 @@ export async function runPaymentGuaranteeReminders(): Promise<{
         firstName?: string;
         lastName?: string;
         email?: string;
+        language?: string;
       };
       if (pro.email) {
+        const proLocale: "fr" | "en" = pro.language === "en" ? "en" : "fr";
         const ok = await sendPaymentGuarantee48hProfessionalAlert({
           professionalEmail: pro.email,
           professionalName: `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim(),
           clientName: recipient.name,
           appointmentDateLabel: dateLabel,
           appointmentId: String(apt._id),
+          locale: proLocale,
         });
         if (ok) {
           updates.guarantee48hProfessionalAlertSent = true;
@@ -239,6 +259,11 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       clientPop,
     );
     const dateLabel = formatAppointmentDateLabel(apt);
+    const postMeetingBillingUrl = await resolveBillingUrl({
+      userStatus: user.status,
+      appointment: apt,
+      base,
+    });
 
     const [clientOk] = await Promise.all([
       sendPostMeetingPaymentReminder({
@@ -246,6 +271,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
         clientEmail: recipient.email,
         appointmentDateLabel: dateLabel,
         locale: recipient.language,
+        billingUrl: postMeetingBillingUrl,
       }),
       sendAdminNoPaymentBeforeMeetingAlert({
         clientName: recipient.name,

@@ -30,6 +30,17 @@ export async function GET(req: NextRequest) {
     const type = searchParams.get("type"); // video, in-person, phone
     const therapyType = searchParams.get("therapyType"); // solo, couple, group
 
+    // Clients who have already had an appointment with this pro: when those
+    // clients return via the "Demander un rendez-vous avec un autre
+    // professionnel" CTA (isReturningClient=true), they explicitly want a
+    // DIFFERENT pro. Hide their requests from this pro's general queue so we
+    // can't re-match them with the same one. Restricted to returning-client
+    // requests so brand-new requests from those same clients (if any) still
+    // show up.
+    const priorClientIds = await Appointment.distinct("clientId", {
+      professionalId: session.user.id,
+    });
+
     // Build query for appointments in general list
     // (either routing status is "general" or "refused" - meaning all professionals refused)
     const query: Record<string, unknown> = {
@@ -38,6 +49,12 @@ export async function GET(req: NextRequest) {
       // Exclude appointments this professional already refused
       refusedBy: { $ne: session.user.id },
     };
+
+    if (priorClientIds.length > 0) {
+      query.$nor = [
+        { isReturningClient: true, clientId: { $in: priorClientIds } },
+      ];
+    }
 
     // Optional filters
     if (issueType) {

@@ -513,6 +513,7 @@ export async function POST(req: NextRequest) {
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             role: user.role as "client" | "professional" | "guest" | "prospect",
+            locale: user.language === "en" ? "en" : "fr",
           });
         } catch (err) {
           console.error("Welcome email:", err);

@@ -156,6 +156,7 @@ export async function runSessionClosureSideEffects(
       interacReferenceCode: code,
       professionalName: pdfInput.professionalName,
       appointmentDateLabel: dateLabel,
+      locale: clientLocale,
     }).catch((err) =>
       console.error("sendInteracTransferInstructionsEmail:", err),
     );
@@ -163,7 +164,9 @@ export async function runSessionClosureSideEffects(
 
   await sendFiscalReceiptEmail({
     clientEmail: recipient.email,
-    clientName: pdfInput.clientName,
+    // Greeting must address the inbox owner (loved one for adult loved-one
+    // bookings), not the payer/legal client whose name appears on the PDF.
+    clientName: recipient.name,
     amountCad: price,
     pdfBuffer,
     appointmentId: String(appointment._id),

@@ -10,7 +10,10 @@ import {
 } from "@/lib/notifications";
 import { buildInteracReferenceCode } from "@/lib/interac-reference";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
-import { canSessionUserActForClient } from "@/lib/guardian-utils";
+import {
+  canSessionUserActForClient,
+  resolveAppointmentRecipient,
+} from "@/lib/guardian-utils";
 
 function appointmentClientUserId(clientRef: unknown): string {
   if (
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
 
     const appointment = await Appointment.findById(appointmentId)
-      .populate("clientId", "firstName lastName email")
+      .populate("clientId", "firstName lastName email language")
       .populate("professionalId", "firstName lastName");
 
     if (!appointment) {
@@ -154,12 +157,25 @@ export async function POST(req: NextRequest) {
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
+
+    // LSSSS art. 14: route the Interac instructions to the beneficiary inbox
+    // for adult loved-one bookings. The legal-name field on the email body
+    // (used as the "must match bank account name" instruction) is still the
+    // payer/requester — that's the bank reality, not a comms-routing concern.
+    const recipient = resolveAppointmentRecipient(
+      {
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
+      },
+      client,
+    );
 
     if (prevStatus !== "pending_admin") {
       sendAdminInteracTrustRequestAlert({
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         appointmentId: String(appointment._id),
       }).catch((err) =>
         console.error("sendAdminInteracTrustRequestAlert:", err),
@@ -181,8 +197,8 @@ export async function POST(req: NextRequest) {
         : "—";
 
     sendInteracTransferInstructionsEmail({
-      clientName: `${client.firstName} ${client.lastName}`,
-      clientEmail: client.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       clientLegalName: `${client.firstName} ${client.lastName}`,
       depositEmail,
       amountCad: appointment.payment?.price ?? 0,
@@ -191,6 +207,7 @@ export async function POST(req: NextRequest) {
         ? `${proDoc.firstName ?? ""} ${proDoc.lastName ?? ""}`.trim()
         : "Votre professionnel",
       appointmentDateLabel: dateLabel,
+      locale: recipient.language,
     }).catch((err) =>
       console.error("sendInteracTransferInstructionsEmail:", err),
     );

@@ -108,6 +108,7 @@ interface MeetingLinkEmailData {
   duration: number;
   type: "video" | "in-person" | "phone" | "both";
   meetingLink: string;
+  locale?: "fr" | "en";
 }
 
 interface WelcomeEmailData {
@@ -1094,39 +1095,75 @@ export async function sendProfessionalProfileCompletedEmail(
 }
 
 export async function sendPasswordResetEmail(
-  data: PasswordResetEmailData,
+  data: PasswordResetEmailData & { locale?: "fr" | "en" },
 ): Promise<boolean> {
   const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
   const html = buildEmailHtml({
-    title: "Réinitialisation du mot de passe",
+    title:
+      lang === "fr"
+        ? "Réinitialisation du mot de passe"
+        : "Password reset",
     theme: "info",
-    greeting: `Bonjour ${data.name},`,
+    greeting:
+      lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
     intro:
-      "Nous avons reçu une demande de réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe.",
-    button: { text: "Réinitialiser mon mot de passe", url: data.resetLink },
+      lang === "fr"
+        ? "Nous avons reçu une demande de réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe."
+        : "We received a request to reset your password. Click the button below to create a new password.",
+    button: {
+      text:
+        lang === "fr"
+          ? "Réinitialiser mon mot de passe"
+          : "Reset my password",
+      url: data.resetLink,
+    },
     infoBox: {
-      title: "Vous n'avez pas fait cette demande ?",
+      title:
+        lang === "fr"
+          ? "Vous n'avez pas fait cette demande ?"
+          : "Didn't request this?",
       content:
-        "Si vous n'avez pas demandé de réinitialisation, ignorez simplement ce message. Votre mot de passe reste inchangé.",
+        lang === "fr"
+          ? "Si vous n'avez pas demandé de réinitialisation, ignorez simplement ce message. Votre mot de passe reste inchangé."
+          : "If you didn't request a reset, simply ignore this message. Your password remains unchanged.",
       theme: "warning",
     },
-    outro: "Ce lien expirera dans 1 heure pour des raisons de sécurité.",
+    outro:
+      lang === "fr"
+        ? "Ce lien expirera dans 1 heure pour des raisons de sécurité."
+        : "This link will expire in 1 hour for security reasons.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Demande de réinitialisation du mot de passe",
-    `Bonjour ${data.name},`,
-    "Nous avons reçu une demande de réinitialisation de votre mot de passe.",
-    `Réinitialisez votre mot de passe : ${data.resetLink}`,
-    "Ce lien expirera dans 1 heure.",
-    "Si vous n'avez pas fait cette demande, ignorez ce message.",
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Demande de réinitialisation du mot de passe",
+          `Bonjour ${data.name},`,
+          "Nous avons reçu une demande de réinitialisation de votre mot de passe.",
+          `Réinitialisez votre mot de passe : ${data.resetLink}`,
+          "Ce lien expirera dans 1 heure.",
+          "Si vous n'avez pas fait cette demande, ignorez ce message.",
+        ]
+      : [
+          "Password reset request",
+          `Hello ${data.name},`,
+          "We received a request to reset your password.",
+          `Reset your password: ${data.resetLink}`,
+          "This link will expire in 1 hour.",
+          "If you didn't make this request, ignore this message.",
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "password_reset",
-    "Réinitialisation de votre mot de passe — JeChemine",
+    lang === "fr"
+      ? "Réinitialisation de votre mot de passe — JeChemine"
+      : "Your password reset — JeChemine",
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "password_reset");
@@ -1475,77 +1512,129 @@ export async function sendGuestPaymentComplete(
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
-  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
-  const formattedDate = formatEmailDate(data.date, "fr");
-  const formattedTime = formatTime(data.time, "fr");
-  const professionalName = formatProfessionalName(data.professionalName, "fr");
-  const sessionType = formatSessionType(data.therapyType);
-  const appointmentType = formatAppointmentType(data.type, "fr");
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const formattedDate = formatEmailDate(data.date, lang);
+  const formattedTime = formatTime(data.time, lang);
+  const professionalName = formatProfessionalName(data.professionalName, lang);
+  const sessionType = formatSessionType(data.therapyType, lang);
+  const appointmentType = formatAppointmentType(data.type, lang);
 
-  const details: Array<{ label: string; value: string; isLink?: boolean }> = [
-    { label: "Type de séance", value: sessionType },
-    { label: "Type de rendez-vous", value: appointmentType },
-    { label: "Professionnel", value: professionalName },
-    { label: "Date", value: formattedDate },
-    { label: "Heure", value: formattedTime },
-    { label: "Durée", value: `${data.duration} minutes` },
-  ];
+  const details: Array<{ label: string; value: string; isLink?: boolean }> =
+    lang === "fr"
+      ? [
+          { label: "Type de séance", value: sessionType },
+          { label: "Type de rendez-vous", value: appointmentType },
+          { label: "Professionnel", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Heure", value: formattedTime },
+          { label: "Durée", value: `${data.duration} minutes` },
+        ]
+      : [
+          { label: "Session type", value: sessionType },
+          { label: "Appointment type", value: appointmentType },
+          { label: "Professional", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Time", value: formattedTime },
+          { label: "Duration", value: `${data.duration} minutes` },
+        ];
 
   if (data.meetingLink) {
     details.push({
-      label: "Lien de réunion",
+      label: lang === "fr" ? "Lien de réunion" : "Meeting link",
       value: data.meetingLink,
       isLink: true,
     });
   }
 
   const html = buildEmailHtml({
-    title: "Paiement confirmé",
-    subtitle: "Vous êtes prêt pour votre séance",
+    title: lang === "fr" ? "Paiement confirmé" : "Payment confirmed",
+    subtitle:
+      lang === "fr"
+        ? "Vous êtes prêt pour votre séance"
+        : "You're ready for your session",
     theme: "success",
-    badge: { text: "💳 Paiement complété", theme: "success" },
-    greeting: `Bonjour ${data.guestName},`,
+    badge: {
+      text: lang === "fr" ? "💳 Paiement complété" : "💳 Payment completed",
+      theme: "success",
+    },
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.guestName},`
+        : `Hello ${data.guestName},`,
     intro:
-      "Merci ! Votre paiement a été traité avec succès. Votre rendez-vous est maintenant pleinement confirmé.",
+      lang === "fr"
+        ? "Merci ! Votre paiement a été traité avec succès. Votre rendez-vous est maintenant pleinement confirmé."
+        : "Thank you! Your payment has been processed successfully. Your appointment is now fully confirmed.",
     details,
     detailsBorderColor: "#22c55e",
     price: {
       amount: data.price,
-      note: "Paiement reçu — Merci !",
+      note:
+        lang === "fr" ? "Paiement reçu — Merci !" : "Payment received — Thank you!",
       theme: "success",
       currency,
     },
     button: data.meetingLink
-      ? { text: "Rejoindre la séance", url: data.meetingLink }
+      ? {
+          text:
+            lang === "fr" ? "Rejoindre la séance" : "Join the session",
+          url: data.meetingLink,
+        }
       : undefined,
     infoBox: {
-      title: "Avant votre séance",
+      title: lang === "fr" ? "Avant votre séance" : "Before your session",
       content: data.meetingLink
-        ? "Votre lien de réunion est prêt. Assurez-vous de vous connecter quelques minutes avant et d'avoir une connexion internet stable."
-        : "Votre lien de réunion vous sera envoyé avant l'heure prévue de votre séance.",
+        ? lang === "fr"
+          ? "Votre lien de réunion est prêt. Assurez-vous de vous connecter quelques minutes avant et d'avoir une connexion internet stable."
+          : "Your meeting link is ready. Make sure to connect a few minutes early and have a stable internet connection."
+        : lang === "fr"
+          ? "Votre lien de réunion vous sera envoyé avant l'heure prévue de votre séance."
+          : "Your meeting link will be sent before your scheduled session time.",
     },
     outro:
-      "Nous avons hâte de vous accompagner dans votre parcours de mieux-être. Si vous devez reporter, contactez-nous au moins 48 heures à l'avance.",
+      lang === "fr"
+        ? "Nous avons hâte de vous accompagner dans votre parcours de mieux-être. Si vous devez reporter, contactez-nous au moins 48 heures à l'avance."
+        : "We look forward to supporting you on your wellness journey. If you need to reschedule, contact us at least 48 hours in advance.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Paiement confirmé — Vous êtes prêt !",
-    `Bonjour ${data.guestName},`,
-    "Votre paiement a été traité avec succès.",
-    "DÉTAILS DU RENDEZ-VOUS :",
-    `Type de séance : ${sessionType}`,
-    `Professionnel : ${professionalName}`,
-    `Date : ${formattedDate}`,
-    `Heure : ${formattedTime}`,
-    `Durée : ${data.duration} minutes`,
-    `Montant payé : ${data.price.toFixed(2)} $ ${currency}`,
-    data.meetingLink ? `Lien de réunion : ${data.meetingLink}` : "",
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Paiement confirmé — Vous êtes prêt !",
+          `Bonjour ${data.guestName},`,
+          "Votre paiement a été traité avec succès.",
+          "DÉTAILS DU RENDEZ-VOUS :",
+          `Type de séance : ${sessionType}`,
+          `Professionnel : ${professionalName}`,
+          `Date : ${formattedDate}`,
+          `Heure : ${formattedTime}`,
+          `Durée : ${data.duration} minutes`,
+          `Montant payé : ${data.price.toFixed(2)} $ ${currency}`,
+          data.meetingLink ? `Lien de réunion : ${data.meetingLink}` : "",
+        ]
+      : [
+          "Payment confirmed — You're ready!",
+          `Hello ${data.guestName},`,
+          "Your payment has been processed successfully.",
+          "APPOINTMENT DETAILS:",
+          `Session type: ${sessionType}`,
+          `Professional: ${professionalName}`,
+          `Date: ${formattedDate}`,
+          `Time: ${formattedTime}`,
+          `Duration: ${data.duration} minutes`,
+          `Amount paid: ${currency} $${data.price.toFixed(2)}`,
+          data.meetingLink ? `Meeting link: ${data.meetingLink}` : "",
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "guest_payment_complete",
-    "Paiement confirmé — JeChemine",
+    lang === "fr"
+      ? "Paiement confirmé — JeChemine"
+      : "Payment confirmed — JeChemine",
   );
 
   return sendEmail(
@@ -1559,62 +1648,105 @@ export async function sendGuestPaymentComplete(
 // =============================================================================
 
 export async function sendAppointmentConfirmation(
-  data: AppointmentEmailData,
+  data: AppointmentEmailData & { locale?: "fr" | "en" },
 ): Promise<boolean> {
   const branding = await getBranding();
-  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
-  const formattedDate = formatEmailDate(data.date, "fr");
-  const formattedTime = formatTime(data.time, "fr");
-  const professionalName = formatProfessionalName(data.professionalName, "fr");
-  const appointmentType = formatAppointmentType(data.type, "fr");
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const formattedDate = formatEmailDate(data.date, lang);
+  const formattedTime = formatTime(data.time, lang);
+  const professionalName = formatProfessionalName(data.professionalName, lang);
+  const appointmentType = formatAppointmentType(data.type, lang);
 
-  const details: Array<{ label: string; value: string; isLink?: boolean }> = [
-    { label: "Professionnel", value: professionalName },
-    { label: "Date", value: formattedDate },
-    { label: "Heure", value: formattedTime },
-    { label: "Durée", value: `${data.duration} minutes` },
-  ];
+  const details: Array<{ label: string; value: string; isLink?: boolean }> =
+    lang === "fr"
+      ? [
+          { label: "Professionnel", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Heure", value: formattedTime },
+          { label: "Durée", value: `${data.duration} minutes` },
+        ]
+      : [
+          { label: "Professional", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Time", value: formattedTime },
+          { label: "Duration", value: `${data.duration} minutes` },
+        ];
 
   if (data.meetingLink) {
     details.push({
-      label: "Lien de réunion",
+      label: lang === "fr" ? "Lien de réunion" : "Meeting link",
       value: data.meetingLink,
       isLink: true,
     });
   } else if (data.location) {
-    details.push({ label: "Lieu", value: data.location });
+    details.push({
+      label: lang === "fr" ? "Lieu" : "Location",
+      value: data.location,
+    });
   }
 
   const html = buildEmailHtml({
-    title: "Rendez-vous confirmé",
+    title:
+      lang === "fr" ? "Rendez-vous confirmé" : "Appointment confirmed",
     theme: "success",
-    greeting: `Bonjour ${data.clientName},`,
-    intro: `Votre rendez-vous (${appointmentType.toLowerCase()}) est confirmé.`,
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.clientName},`
+        : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? `Votre rendez-vous (${appointmentType.toLowerCase()}) est confirmé.`
+        : `Your ${appointmentType.toLowerCase()} appointment is confirmed.`,
     details,
     button: data.meetingLink
-      ? { text: "Rejoindre la séance", url: data.meetingLink }
+      ? {
+          text:
+            lang === "fr" ? "Rejoindre la séance" : "Join the session",
+          url: data.meetingLink,
+        }
       : undefined,
     outro:
-      "Si vous devez reporter ou annuler, veuillez le faire au moins 48 heures à l'avance.",
+      lang === "fr"
+        ? "Si vous devez reporter ou annuler, veuillez le faire au moins 48 heures à l'avance."
+        : "If you need to reschedule or cancel, please do so at least 48 hours in advance.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Rendez-vous confirmé",
-    `Bonjour ${data.clientName},`,
-    `Votre rendez-vous (${appointmentType.toLowerCase()}) est confirmé.`,
-    "DÉTAILS :",
-    `Professionnel : ${professionalName}`,
-    `Date : ${formattedDate}`,
-    `Heure : ${formattedTime}`,
-    `Durée : ${data.duration} minutes`,
-    data.meetingLink ? `Lien de réunion : ${data.meetingLink}` : "",
-    data.location ? `Lieu : ${data.location}` : "",
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Rendez-vous confirmé",
+          `Bonjour ${data.clientName},`,
+          `Votre rendez-vous (${appointmentType.toLowerCase()}) est confirmé.`,
+          "DÉTAILS :",
+          `Professionnel : ${professionalName}`,
+          `Date : ${formattedDate}`,
+          `Heure : ${formattedTime}`,
+          `Durée : ${data.duration} minutes`,
+          data.meetingLink ? `Lien de réunion : ${data.meetingLink}` : "",
+          data.location ? `Lieu : ${data.location}` : "",
+        ]
+      : [
+          "Appointment confirmed",
+          `Hello ${data.clientName},`,
+          `Your ${appointmentType.toLowerCase()} appointment is confirmed.`,
+          "DETAILS:",
+          `Professional: ${professionalName}`,
+          `Date: ${formattedDate}`,
+          `Time: ${formattedTime}`,
+          `Duration: ${data.duration} minutes`,
+          data.meetingLink ? `Meeting link: ${data.meetingLink}` : "",
+          data.location ? `Location: ${data.location}` : "",
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "appointment_confirmation",
-    "Rendez-vous confirmé — JeChemine",
+    lang === "fr"
+      ? "Rendez-vous confirmé — JeChemine"
+      : "Appointment confirmed — JeChemine",
   );
 
   return sendEmail(
@@ -1624,81 +1756,150 @@ export async function sendAppointmentConfirmation(
 }
 
 export async function sendPaymentInvitation(
-  data: AppointmentEmailData & { price: number; paymentUrl?: string },
+  data: AppointmentEmailData & {
+    price: number;
+    paymentUrl?: string;
+    locale?: "fr" | "en";
+  },
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
-  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
-  const formattedDate = formatEmailDate(data.date, "fr");
-  const formattedTime = formatTime(data.time, "fr");
-  const professionalName = formatProfessionalName(data.professionalName, "fr");
-  const appointmentType = formatAppointmentType(data.type, "fr");
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const formattedDate = formatEmailDate(data.date, lang);
+  const formattedTime = formatTime(data.time, lang);
+  const professionalName = formatProfessionalName(data.professionalName, lang);
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/client/dashboard/appointments`;
 
-  const details: Array<{ label: string; value: string; isLink?: boolean }> = [
-    { label: "Professionnel", value: professionalName },
-    { label: "Date", value: formattedDate },
-    { label: "Heure", value: formattedTime },
-    { label: "Durée", value: `${data.duration} minutes` },
-  ];
+  const details: Array<{ label: string; value: string; isLink?: boolean }> =
+    lang === "fr"
+      ? [
+          { label: "Professionnel", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Heure", value: formattedTime },
+          { label: "Durée", value: `${data.duration} minutes` },
+        ]
+      : [
+          { label: "Professional", value: professionalName },
+          { label: "Date", value: formattedDate },
+          { label: "Time", value: formattedTime },
+          { label: "Duration", value: `${data.duration} minutes` },
+        ];
 
   if (data.meetingLink) {
     details.push({
-      label: "Lien de réunion",
+      label: lang === "fr" ? "Lien de réunion" : "Meeting link",
       value: data.meetingLink,
       isLink: true,
     });
   } else if (data.location) {
-    details.push({ label: "Lieu", value: data.location });
+    details.push({
+      label: lang === "fr" ? "Lieu" : "Location",
+      value: data.location,
+    });
   }
 
   const html = buildEmailHtml({
-    title: "Prochaine étape : confirmez votre rendez-vous",
-    subtitle: "Votre professionnel a confirmé votre séance",
+    title:
+      lang === "fr"
+        ? "Prochaine étape : confirmez votre rendez-vous"
+        : "Next step: confirm your appointment",
+    subtitle:
+      lang === "fr"
+        ? "Votre professionnel a confirmé votre séance"
+        : "Your professional has confirmed your session",
     theme: "info",
-    badge: { text: "✅ Rendez-vous confirmé", theme: "success" },
-    greeting: `Bonjour ${data.clientName},`,
+    badge: {
+      text:
+        lang === "fr" ? "✅ Rendez-vous confirmé" : "✅ Appointment confirmed",
+      theme: "success",
+    },
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.clientName},`
+        : `Hello ${data.clientName},`,
     intro:
-      "Votre rendez-vous est confirmé. Veuillez ajouter vos coordonnées de paiement (carte, virement Interac via Stripe, ou prélèvement automatique canadien) pour finaliser votre réservation. Aucun montant n'est prélevé avant que votre séance ait eu lieu et que votre professionnel la marque comme complétée. Les données de carte et bancaires sont traitées par Stripe — nous ne les stockons pas sur notre plateforme.",
+      lang === "fr"
+        ? "Votre rendez-vous est confirmé. Veuillez ajouter vos coordonnées de paiement (carte, virement Interac via Stripe, ou prélèvement automatique canadien) pour finaliser votre réservation. Aucun montant n'est prélevé avant que votre séance ait eu lieu et que votre professionnel la marque comme complétée. Les données de carte et bancaires sont traitées par Stripe — nous ne les stockons pas sur notre plateforme."
+        : "Your appointment is confirmed. Please add your payment details (card, Interac e-Transfer via Stripe, or Canadian pre-authorized debit) to finalize your booking. No amount is charged before your session has taken place and your professional marks it as completed. Card and banking data are processed by Stripe — we do not store them on our platform.",
     details,
     detailsBorderColor: branding?.primaryColor,
     price: {
       amount: data.price,
-      note: "Frais de séance (prélevés après la séance complétée)",
+      note:
+        lang === "fr"
+          ? "Frais de séance (prélevés après la séance complétée)"
+          : "Session fee (charged after the session is completed)",
       theme: "info",
       currency,
     },
     button: data.paymentUrl
-      ? { text: "Ouvrir la facturation et confirmer", url: data.paymentUrl }
-      : { text: "Voir le rendez-vous", url: dashboardUrl },
+      ? {
+          text:
+            lang === "fr"
+              ? "Ouvrir la facturation et confirmer"
+              : "Open billing and confirm",
+          url: data.paymentUrl,
+        }
+      : {
+          text: lang === "fr" ? "Voir le rendez-vous" : "View appointment",
+          url: dashboardUrl,
+        },
     infoBox: {
-      title: "Paiements sécurisés avec Stripe",
+      title:
+        lang === "fr"
+          ? "Paiements sécurisés avec Stripe"
+          : "Secure payments with Stripe",
       content:
-        "Vous recevrez votre lien de réunion une fois votre moyen de paiement enregistré. Le montant n'est prélevé qu'après confirmation de la séance par votre professionnel.",
+        lang === "fr"
+          ? "Vous recevrez votre lien de réunion une fois votre moyen de paiement enregistré. Le montant n'est prélevé qu'après confirmation de la séance par votre professionnel."
+          : "You will receive your meeting link once your payment method is saved. The amount is only charged after your professional confirms the session.",
     },
     outro:
-      "Pour toute question, répondez à ce courriel ou contactez le soutien depuis votre tableau de bord.",
+      lang === "fr"
+        ? "Pour toute question, répondez à ce courriel ou contactez le soutien depuis votre tableau de bord."
+        : "For any questions, reply to this email or contact support from your dashboard.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Confirmez votre rendez-vous (paiement après la séance)",
-    `Bonjour ${data.clientName},`,
-    "Votre rendez-vous est confirmé. Ajoutez votre moyen de paiement via le lien ci-dessous pour confirmer votre réservation. Vous ne serez facturé qu'après la complétion de votre séance. Stripe gère vos coordonnées bancaires ; nous ne les stockons pas.",
-    "DÉTAILS DU RENDEZ-VOUS :",
-    `Professionnel : ${professionalName}`,
-    `Date : ${formattedDate}`,
-    `Heure : ${formattedTime}`,
-    `Durée : ${data.duration} minutes`,
-    `Montant dû : ${data.price.toFixed(2)} $ ${currency}`,
-    data.paymentUrl
-      ? `Confirmer le paiement : ${data.paymentUrl}`
-      : `Voir le rendez-vous : ${dashboardUrl}`,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Confirmez votre rendez-vous (paiement après la séance)",
+          `Bonjour ${data.clientName},`,
+          "Votre rendez-vous est confirmé. Ajoutez votre moyen de paiement via le lien ci-dessous pour confirmer votre réservation. Vous ne serez facturé qu'après la complétion de votre séance. Stripe gère vos coordonnées bancaires ; nous ne les stockons pas.",
+          "DÉTAILS DU RENDEZ-VOUS :",
+          `Professionnel : ${professionalName}`,
+          `Date : ${formattedDate}`,
+          `Heure : ${formattedTime}`,
+          `Durée : ${data.duration} minutes`,
+          `Montant dû : ${data.price.toFixed(2)} $ ${currency}`,
+          data.paymentUrl
+            ? `Confirmer le paiement : ${data.paymentUrl}`
+            : `Voir le rendez-vous : ${dashboardUrl}`,
+        ]
+      : [
+          "Confirm your appointment (payment after the session)",
+          `Hello ${data.clientName},`,
+          "Your appointment is confirmed. Add your payment method via the link below to finalize your booking. You won't be charged until after your session is completed. Stripe handles your banking details; we do not store them.",
+          "APPOINTMENT DETAILS:",
+          `Professional: ${professionalName}`,
+          `Date: ${formattedDate}`,
+          `Time: ${formattedTime}`,
+          `Duration: ${data.duration} minutes`,
+          `Amount due: ${currency} $${data.price.toFixed(2)}`,
+          data.paymentUrl
+            ? `Confirm payment: ${data.paymentUrl}`
+            : `View appointment: ${dashboardUrl}`,
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "payment_invitation",
-    "Votre rendez-vous est confirmé — prochaine étape",
+    lang === "fr"
+      ? "Votre rendez-vous est confirmé — prochaine étape"
+      : "Your appointment is confirmed — next step",
   );
 
   return sendEmail(
@@ -1942,6 +2143,19 @@ export async function sendAppointment48hReminder(data: {
   /** True when the client has no card / direct debit / Interac choice yet. */
   noPaymentMethod?: boolean;
   locale?: "fr" | "en";
+  /**
+   * "Confirm my attendance" CTA target. Caller resolves it — auth-gated
+   * dashboard URL for active clients, claim-account URL for unclaimed
+   * (so they can set a password before managing the appointment).
+   * Falls back to the dashboard URL if not provided (legacy callers).
+   */
+  confirmUrl?: string;
+  /**
+   * "Choose my payment method" CTA target (only used when noPaymentMethod).
+   * Caller resolves it — auth-gated dashboard URL for active clients,
+   * tokenized `/pay?token=…` for unclaimed.
+   */
+  billingUrl?: string;
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
@@ -1950,10 +2164,14 @@ export async function sendAppointment48hReminder(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const confirmUrl = `${base}/client/dashboard/appointments?id=${encodeURIComponent(
-    data.appointmentId,
-  )}&action=confirm`;
-  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
+  const confirmUrl =
+    data.confirmUrl ??
+    `${base}/client/dashboard/appointments?id=${encodeURIComponent(
+      data.appointmentId,
+    )}&action=confirm`;
+  const billingUrl =
+    data.billingUrl ??
+    `${base}/client/dashboard/billing?action=addPaymentMethod`;
 
   const html = buildEmailHtml({
     title:
@@ -2051,50 +2269,92 @@ export async function sendMeetingLinkNotification(
   data: MeetingLinkEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
-  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
-  const formattedDate = formatEmailDate(data.date, "fr");
-  const formattedTime = formatTime(data.time, "fr");
-  const professionalName = formatProfessionalName(data.professionalName, "fr");
-  const appointmentType = formatAppointmentType(data.type, "fr");
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const formattedDate = formatEmailDate(data.date, lang);
+  const formattedTime = formatTime(data.time, lang);
+  const professionalName = formatProfessionalName(data.professionalName, lang);
+  const appointmentType = formatAppointmentType(data.type, lang);
 
   const html = buildEmailHtml({
-    title: "Lien de réunion prêt",
-    subtitle: "Détails de votre séance",
+    title: lang === "fr" ? "Lien de réunion prêt" : "Meeting link ready",
+    subtitle:
+      lang === "fr" ? "Détails de votre séance" : "Your session details",
     theme: "success",
-    badge: { text: "🔗 Lien prêt", theme: "success" },
-    greeting: `Bonjour ${data.guestName},`,
+    badge: {
+      text: lang === "fr" ? "🔗 Lien prêt" : "🔗 Link ready",
+      theme: "success",
+    },
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.guestName},`
+        : `Hello ${data.guestName},`,
     intro:
-      "Votre lien de réunion est maintenant disponible. Vous pouvez rejoindre la séance via le lien ci-dessous.",
-    details: [
-      { label: "Professionnel", value: professionalName },
-      { label: "Type", value: appointmentType },
-      { label: "Date", value: formattedDate },
-      { label: "Heure", value: formattedTime },
-      { label: "Durée", value: `${data.duration} minutes` },
-      { label: "Lien de réunion", value: data.meetingLink, isLink: true },
-    ],
+      lang === "fr"
+        ? "Votre lien de réunion est maintenant disponible. Vous pouvez rejoindre la séance via le lien ci-dessous."
+        : "Your meeting link is now available. You can join the session via the link below.",
+    details:
+      lang === "fr"
+        ? [
+            { label: "Professionnel", value: professionalName },
+            { label: "Type", value: appointmentType },
+            { label: "Date", value: formattedDate },
+            { label: "Heure", value: formattedTime },
+            { label: "Durée", value: `${data.duration} minutes` },
+            { label: "Lien de réunion", value: data.meetingLink, isLink: true },
+          ]
+        : [
+            { label: "Professional", value: professionalName },
+            { label: "Type", value: appointmentType },
+            { label: "Date", value: formattedDate },
+            { label: "Time", value: formattedTime },
+            { label: "Duration", value: `${data.duration} minutes` },
+            { label: "Meeting link", value: data.meetingLink, isLink: true },
+          ],
     detailsBorderColor: "#22c55e",
-    button: { text: "Rejoindre la séance", url: data.meetingLink },
+    button: {
+      text: lang === "fr" ? "Rejoindre la séance" : "Join the session",
+      url: data.meetingLink,
+    },
     outro:
-      "Veuillez vous connecter quelques minutes avant et vous assurer d'avoir une connexion internet stable.",
+      lang === "fr"
+        ? "Veuillez vous connecter quelques minutes avant et vous assurer d'avoir une connexion internet stable."
+        : "Please connect a few minutes early and make sure you have a stable internet connection.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Votre lien de réunion est prêt",
-    `Bonjour ${data.guestName},`,
-    "Détails de votre séance :",
-    `Professionnel : ${professionalName}`,
-    `Type : ${appointmentType}`,
-    `Date : ${formattedDate}`,
-    `Heure : ${formattedTime}`,
-    `Durée : ${data.duration} minutes`,
-    `Lien de réunion : ${data.meetingLink}`,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Votre lien de réunion est prêt",
+          `Bonjour ${data.guestName},`,
+          "Détails de votre séance :",
+          `Professionnel : ${professionalName}`,
+          `Type : ${appointmentType}`,
+          `Date : ${formattedDate}`,
+          `Heure : ${formattedTime}`,
+          `Durée : ${data.duration} minutes`,
+          `Lien de réunion : ${data.meetingLink}`,
+        ]
+      : [
+          "Your meeting link is ready",
+          `Hello ${data.guestName},`,
+          "Your session details:",
+          `Professional: ${professionalName}`,
+          `Type: ${appointmentType}`,
+          `Date: ${formattedDate}`,
+          `Time: ${formattedTime}`,
+          `Duration: ${data.duration} minutes`,
+          `Meeting link: ${data.meetingLink}`,
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "meeting_link",
-    "Votre lien de réunion est prêt — JeChemine",
+    lang === "fr"
+      ? "Votre lien de réunion est prêt — JeChemine"
+      : "Your meeting link is ready — JeChemine",
   );
 
   return sendEmail(
@@ -2104,57 +2364,87 @@ export async function sendMeetingLinkNotification(
 }
 
 export async function sendCancellationNotification(
-  data: AppointmentEmailData & { cancelledBy: "client" | "professional" },
+  data: AppointmentEmailData & {
+    cancelledBy: "client" | "professional";
+    locale?: "fr" | "en";
+  },
 ): Promise<boolean> {
   const branding = await getBranding();
-  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
-  const formattedDate = formatEmailDate(data.date, "fr");
-  const formattedTime = formatTime(data.time, "fr");
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const formattedDate = formatEmailDate(data.date, lang);
+  const formattedTime = formatTime(data.time, lang);
   const isClientCancellation = data.cancelledBy === "client";
   const recipientEmail = isClientCancellation
     ? data.professionalEmail
     : data.clientEmail;
   const recipientName = isClientCancellation
-    ? formatProfessionalName(data.professionalName, "fr")
+    ? formatProfessionalName(data.professionalName, lang)
     : data.clientName;
   const cancellerName = isClientCancellation
     ? data.clientName
-    : formatProfessionalName(data.professionalName, "fr");
+    : formatProfessionalName(data.professionalName, lang);
 
   const hasSchedule = data.date && data.time;
   const intro = hasSchedule
-    ? `Le rendez-vous prévu le ${formattedDate} à ${formattedTime} a été annulé par ${cancellerName}.`
-    : `Une demande de rendez-vous a été annulée par ${cancellerName}.`;
+    ? lang === "fr"
+      ? `Le rendez-vous prévu le ${formattedDate} à ${formattedTime} a été annulé par ${cancellerName}.`
+      : `The appointment scheduled on ${formattedDate} at ${formattedTime} has been cancelled by ${cancellerName}.`
+    : lang === "fr"
+      ? `Une demande de rendez-vous a été annulée par ${cancellerName}.`
+      : `An appointment request has been cancelled by ${cancellerName}.`;
 
   const html = buildEmailHtml({
-    title: "Rendez-vous annulé",
+    title: lang === "fr" ? "Rendez-vous annulé" : "Appointment cancelled",
     theme: "danger",
-    greeting: `Bonjour ${recipientName},`,
+    greeting:
+      lang === "fr" ? `Bonjour ${recipientName},` : `Hello ${recipientName},`,
     intro,
     details: hasSchedule
-      ? [
-          { label: "Date initiale", value: formattedDate },
-          { label: "Heure initiale", value: formattedTime },
-          { label: "Annulé par", value: cancellerName },
-        ]
+      ? lang === "fr"
+        ? [
+            { label: "Date initiale", value: formattedDate },
+            { label: "Heure initiale", value: formattedTime },
+            { label: "Annulé par", value: cancellerName },
+          ]
+        : [
+            { label: "Original date", value: formattedDate },
+            { label: "Original time", value: formattedTime },
+            { label: "Cancelled by", value: cancellerName },
+          ]
       : undefined,
     detailsBorderColor: "#ef4444",
     outro:
-      "Si vous avez des questions ou souhaitez reporter, veuillez nous contacter.",
+      lang === "fr"
+        ? "Si vous avez des questions ou souhaitez reporter, veuillez nous contacter."
+        : "If you have any questions or would like to reschedule, please contact us.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Rendez-vous annulé",
-    `Bonjour ${recipientName},`,
-    intro,
-    hasSchedule ? `Date initiale : ${formattedDate}` : "",
-    hasSchedule ? `Heure initiale : ${formattedTime}` : "",
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Rendez-vous annulé",
+          `Bonjour ${recipientName},`,
+          intro,
+          hasSchedule ? `Date initiale : ${formattedDate}` : "",
+          hasSchedule ? `Heure initiale : ${formattedTime}` : "",
+        ]
+      : [
+          "Appointment cancelled",
+          `Hello ${recipientName},`,
+          intro,
+          hasSchedule ? `Original date: ${formattedDate}` : "",
+          hasSchedule ? `Original time: ${formattedTime}` : "",
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "appointment_cancellation",
-    `Rendez-vous annulé${isClientCancellation ? " par le client" : ""} — JeChemine`,
+    lang === "fr"
+      ? `Rendez-vous annulé${isClientCancellation ? " par le client" : ""} — JeChemine`
+      : `Appointment cancelled${isClientCancellation ? " by client" : ""} — JeChemine`,
   );
 
   return sendEmail(
@@ -2168,103 +2458,185 @@ export async function sendCancellationNotification(
 // =============================================================================
 
 export async function sendPaymentFailedNotification(
-  data: PaymentEmailData,
+  data: PaymentEmailData & { locale?: "fr" | "en" },
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const paymentUrl = `${process.env.NEXTAUTH_URL}/payment`;
 
+  const amountStr =
+    lang === "fr"
+      ? `${data.amount.toFixed(2)} $ ${currency}`
+      : `${currency} $${data.amount.toFixed(2)}`;
+
   const html = buildEmailHtml({
-    title: "Paiement échoué",
-    subtitle: "Action requise",
+    title: lang === "fr" ? "Paiement échoué" : "Payment failed",
+    subtitle: lang === "fr" ? "Action requise" : "Action required",
     theme: "danger",
-    greeting: `Bonjour ${data.name},`,
+    greeting:
+      lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
     intro:
-      "Malheureusement, nous n'avons pas pu traiter votre paiement. Veuillez mettre à jour votre moyen de paiement et réessayer.",
+      lang === "fr"
+        ? "Malheureusement, nous n'avons pas pu traiter votre paiement. Veuillez mettre à jour votre moyen de paiement et réessayer."
+        : "Unfortunately, we were unable to process your payment. Please update your payment method and try again.",
     details: data.appointmentDate
-      ? [
-          { label: "Montant", value: `${data.amount.toFixed(2)} $ ${currency}` },
+      ? lang === "fr"
+        ? [
+            { label: "Montant", value: amountStr },
+            {
+              label: "Date du rendez-vous",
+              value: formatEmailDate(data.appointmentDate, "fr"),
+            },
+            {
+              label: "Professionnel",
+              value: formatProfessionalName(data.professionalName, "fr"),
+            },
+          ]
+        : [
+            { label: "Amount", value: amountStr },
+            {
+              label: "Appointment date",
+              value: formatEmailDate(data.appointmentDate, "en"),
+            },
+            {
+              label: "Professional",
+              value: formatProfessionalName(data.professionalName, "en"),
+            },
+          ]
+      : [
           {
-            label: "Date du rendez-vous",
-            value: formatEmailDate(data.appointmentDate, "fr"),
+            label: lang === "fr" ? "Montant" : "Amount",
+            value: amountStr,
           },
-          {
-            label: "Professionnel",
-            value: formatProfessionalName(data.professionalName, "fr"),
-          },
-        ]
-      : [{ label: "Montant", value: `${data.amount.toFixed(2)} $ ${currency}` }],
-    button: { text: "Réessayer le paiement", url: paymentUrl },
+        ],
+    button: {
+      text: lang === "fr" ? "Réessayer le paiement" : "Retry payment",
+      url: paymentUrl,
+    },
     infoBox: {
-      title: "Besoin d'aide ?",
+      title: lang === "fr" ? "Besoin d'aide ?" : "Need help?",
       content:
-        "Si les problèmes persistent, veuillez contacter notre équipe de soutien.",
+        lang === "fr"
+          ? "Si les problèmes persistent, veuillez contacter notre équipe de soutien."
+          : "If the problem persists, please contact our support team.",
       theme: "info",
     },
-    outro: "Veuillez résoudre ce problème dans les 24 heures pour conserver votre plage horaire.",
+    outro:
+      lang === "fr"
+        ? "Veuillez résoudre ce problème dans les 24 heures pour conserver votre plage horaire."
+        : "Please resolve this within 24 hours to keep your appointment slot.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Paiement échoué — Action requise",
-    `Bonjour ${data.name},`,
-    "Votre paiement n'a pas pu être traité.",
-    `Montant : ${data.amount.toFixed(2)} $ ${currency}`,
-    `Réessayer le paiement : ${paymentUrl}`,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Paiement échoué — Action requise",
+          `Bonjour ${data.name},`,
+          "Votre paiement n'a pas pu être traité.",
+          `Montant : ${amountStr}`,
+          `Réessayer le paiement : ${paymentUrl}`,
+        ]
+      : [
+          "Payment failed — Action required",
+          `Hello ${data.name},`,
+          "Your payment could not be processed.",
+          `Amount: ${amountStr}`,
+          `Retry payment: ${paymentUrl}`,
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "payment_failed",
-    "Paiement échoué — Action requise",
+    lang === "fr"
+      ? "Paiement échoué — Action requise"
+      : "Payment failed — Action required",
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "payment_failed");
 }
 
 export async function sendRefundConfirmation(
-  data: PaymentEmailData,
+  data: PaymentEmailData & { locale?: "fr" | "en" },
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+
+  const amountStr =
+    lang === "fr"
+      ? `${data.amount.toFixed(2)} $ ${currency}`
+      : `${currency} $${data.amount.toFixed(2)}`;
 
   const html = buildEmailHtml({
-    title: "Remboursement traité",
+    title: lang === "fr" ? "Remboursement traité" : "Refund processed",
     theme: "info",
-    greeting: `Bonjour ${data.name},`,
+    greeting:
+      lang === "fr" ? `Bonjour ${data.name},` : `Hello ${data.name},`,
     intro:
-      "Votre remboursement a été traité avec succès. Les fonds devraient apparaître dans votre compte dans un délai de 5 à 10 jours ouvrables.",
+      lang === "fr"
+        ? "Votre remboursement a été traité avec succès. Les fonds devraient apparaître dans votre compte dans un délai de 5 à 10 jours ouvrables."
+        : "Your refund has been processed successfully. The funds should appear in your account within 5 to 10 business days.",
     details: [
-      { label: "Montant remboursé", value: `${data.amount.toFixed(2)} $ ${currency}` },
+      {
+        label: lang === "fr" ? "Montant remboursé" : "Refunded amount",
+        value: amountStr,
+      },
       ...(data.appointmentDate
         ? [
             {
-              label: "Rendez-vous initial",
-              value: formatEmailDate(data.appointmentDate, "fr"),
+              label:
+                lang === "fr"
+                  ? "Rendez-vous initial"
+                  : "Original appointment",
+              value: formatEmailDate(data.appointmentDate, lang),
             },
           ]
         : []),
     ],
     infoBox: {
-      title: "Délai de traitement",
+      title:
+        lang === "fr" ? "Délai de traitement" : "Processing time",
       content:
-        "Les remboursements prennent généralement 5 à 10 jours ouvrables pour apparaître sur votre relevé, selon votre institution bancaire.",
+        lang === "fr"
+          ? "Les remboursements prennent généralement 5 à 10 jours ouvrables pour apparaître sur votre relevé, selon votre institution bancaire."
+          : "Refunds typically take 5 to 10 business days to appear on your statement, depending on your bank.",
     },
     outro:
-      "Si vous avez des questions concernant ce remboursement, veuillez contacter notre équipe de soutien.",
+      lang === "fr"
+        ? "Si vous avez des questions concernant ce remboursement, veuillez contacter notre équipe de soutien."
+        : "If you have any questions about this refund, please contact our support team.",
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Remboursement traité",
-    `Bonjour ${data.name},`,
-    "Votre remboursement a été traité.",
-    `Montant : ${data.amount.toFixed(2)} $ ${currency}`,
-    "Les fonds devraient apparaître dans votre compte dans un délai de 5 à 10 jours ouvrables.",
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Remboursement traité",
+          `Bonjour ${data.name},`,
+          "Votre remboursement a été traité.",
+          `Montant : ${amountStr}`,
+          "Les fonds devraient apparaître dans votre compte dans un délai de 5 à 10 jours ouvrables.",
+        ]
+      : [
+          "Refund processed",
+          `Hello ${data.name},`,
+          "Your refund has been processed.",
+          `Amount: ${amountStr}`,
+          "The funds should appear in your account within 5 to 10 business days.",
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "payment_refund",
-    "Remboursement traité — JeChemine",
+    lang === "fr"
+      ? "Remboursement traité — JeChemine"
+      : "Refund processed — JeChemine",
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "payment_refund");
@@ -2431,70 +2803,140 @@ export async function sendInteracTransferInstructionsEmail(data: {
   interacReferenceCode: string;
   professionalName: string;
   appointmentDateLabel: string;
+  locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
   const company = branding?.companyName || "JeChemine";
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
-  const smsBlock = [
-    "Paiement Interac Rapide ⚡",
-    `📧 Courriel : ${data.depositEmail}`,
-    `💰 Montant : ${data.amountCad.toFixed(2)} $`,
-    `📝 Message obligatoire : ${data.interacReferenceCode}`,
-    "",
-    "Le système pourra associer votre virement à votre dossier grâce à ce code.",
-  ].join("\n");
+  const smsBlock = (
+    lang === "fr"
+      ? [
+          "Paiement Interac Rapide ⚡",
+          `📧 Courriel : ${data.depositEmail}`,
+          `💰 Montant : ${data.amountCad.toFixed(2)} $`,
+          `📝 Message obligatoire : ${data.interacReferenceCode}`,
+          "",
+          "Le système pourra associer votre virement à votre dossier grâce à ce code.",
+        ]
+      : [
+          "Quick Interac e-Transfer ⚡",
+          `📧 Email: ${data.depositEmail}`,
+          `💰 Amount: CAD $${data.amountCad.toFixed(2)}`,
+          `📝 Mandatory message: ${data.interacReferenceCode}`,
+          "",
+          "The system uses this code to match your transfer to your file.",
+        ]
+  ).join("\n");
 
   const html = buildEmailHtml({
-    title: "Instructions — virement Interac",
+    title:
+      lang === "fr"
+        ? "Instructions — virement Interac"
+        : "Instructions — Interac e-Transfer",
     theme: "info",
-    greeting: `Bonjour ${data.clientName},`,
-    intro: `Voici comment envoyer votre virement pour votre séance avec ${data.professionalName} (${data.appointmentDateLabel}).`,
-    details: [
-      {
-        label: "1. Envoyez votre virement à",
-        value: data.depositEmail,
-      },
-      {
-        label: "2. Vérification du nom",
-        value: `Le nom associé à votre compte bancaire doit être identique à celui de votre dossier : ${data.clientLegalName}.`,
-      },
-      {
-        label: "3. Compte d’un tiers ou d’une entreprise",
-        value:
-          "Inscrivez votre nom complet dans le champ « Message » du virement pour que nous puissions identifier votre paiement.",
-      },
-      {
-        label: "4. Message obligatoire (référence unique)",
-        value: data.interacReferenceCode,
-      },
-    ],
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.clientName},`
+        : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? `Voici comment envoyer votre virement pour votre séance avec ${data.professionalName} (${data.appointmentDateLabel}).`
+        : `Here is how to send your transfer for your session with ${data.professionalName} (${data.appointmentDateLabel}).`,
+    details:
+      lang === "fr"
+        ? [
+            {
+              label: "1. Envoyez votre virement à",
+              value: data.depositEmail,
+            },
+            {
+              label: "2. Vérification du nom",
+              value: `Le nom associé à votre compte bancaire doit être identique à celui de votre dossier : ${data.clientLegalName}.`,
+            },
+            {
+              label: "3. Compte d’un tiers ou d’une entreprise",
+              value:
+                "Inscrivez votre nom complet dans le champ « Message » du virement pour que nous puissions identifier votre paiement.",
+            },
+            {
+              label: "4. Message obligatoire (référence unique)",
+              value: data.interacReferenceCode,
+            },
+          ]
+        : [
+            {
+              label: "1. Send your transfer to",
+              value: data.depositEmail,
+            },
+            {
+              label: "2. Name verification",
+              value: `The name on your bank account must match the one on file: ${data.clientLegalName}.`,
+            },
+            {
+              label: "3. Third-party or business account",
+              value:
+                "Add your full name in the e-Transfer Message field so we can identify your payment.",
+            },
+            {
+              label: "4. Mandatory message (unique reference)",
+              value: data.interacReferenceCode,
+            },
+          ],
     infoBox: {
-      title: "Format court (idéal mobile / SMS)",
+      title:
+        lang === "fr"
+          ? "Format court (idéal mobile / SMS)"
+          : "Short format (ideal for mobile / SMS)",
       content: smsBlock.split("\n").join("<br/>"),
       theme: "info",
     },
-    outro: `PAD et carte : vous pouvez aussi enregistrer un moyen de paiement sécurisé (Stripe) depuis votre espace Facturation. Pour les PME, des solutions type prélèvement avec mandat (ex. intégrations bancaires spécialisées) peuvent s’ajouter — contactez ${company} pour plus d’informations.`,
+    outro:
+      lang === "fr"
+        ? `PAD et carte : vous pouvez aussi enregistrer un moyen de paiement sécurisé (Stripe) depuis votre espace Facturation. Pour les PME, des solutions type prélèvement avec mandat (ex. intégrations bancaires spécialisées) peuvent s’ajouter — contactez ${company} pour plus d’informations.`
+        : `PAD and card: you can also save a secure payment method (Stripe) from your Billing area. For small businesses, mandate-based pre-authorized debit options may be available — contact ${company} for details.`,
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    "Instructions virement Interac",
-    `Bonjour ${data.clientName},`,
-    `Séance avec ${data.professionalName} — ${data.appointmentDateLabel}`,
-    "",
-    `1. Envoyer le virement à : ${data.depositEmail}`,
-    `2. Nom : doit correspondre à « ${data.clientLegalName} »`,
-    "3. Tiers / entreprise : indiquez votre nom complet dans le message du virement.",
-    `4. Message obligatoire : ${data.interacReferenceCode}`,
-    `Montant : ${data.amountCad.toFixed(2)} $`,
-    "",
-    "— Format SMS —",
-    smsBlock,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Instructions virement Interac",
+          `Bonjour ${data.clientName},`,
+          `Séance avec ${data.professionalName} — ${data.appointmentDateLabel}`,
+          "",
+          `1. Envoyer le virement à : ${data.depositEmail}`,
+          `2. Nom : doit correspondre à « ${data.clientLegalName} »`,
+          "3. Tiers / entreprise : indiquez votre nom complet dans le message du virement.",
+          `4. Message obligatoire : ${data.interacReferenceCode}`,
+          `Montant : ${data.amountCad.toFixed(2)} $`,
+          "",
+          "— Format SMS —",
+          smsBlock,
+        ]
+      : [
+          "Interac e-Transfer instructions",
+          `Hello ${data.clientName},`,
+          `Session with ${data.professionalName} — ${data.appointmentDateLabel}`,
+          "",
+          `1. Send transfer to: ${data.depositEmail}`,
+          `2. Name: must match "${data.clientLegalName}"`,
+          "3. Third-party / business: add your full name in the transfer Message field.",
+          `4. Mandatory message: ${data.interacReferenceCode}`,
+          `Amount: CAD $${data.amountCad.toFixed(2)}`,
+          "",
+          "— SMS format —",
+          smsBlock,
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "interac_transfer_instructions",
-    "Instructions virement Interac — JeChemine",
+    lang === "fr"
+      ? "Instructions virement Interac — JeChemine"
+      : "Interac e-Transfer instructions — JeChemine",
   );
 
   return sendEmail(
@@ -2512,63 +2954,151 @@ export async function sendInteracPaymentReminder(data: {
   interacReferenceCode: string;
   appointmentDateLabel: string;
   reminderNumber: 1 | 2;
+  locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
   const company = branding?.companyName || "JeChemine";
   const isUrgent = data.reminderNumber === 2;
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
-  const smsBlock = [
-    "Paiement Interac Rapide ⚡",
-    `📧 Courriel : ${data.depositEmail}`,
-    `💰 Montant : ${data.amountCad.toFixed(2)} $`,
-    `📝 Message obligatoire : ${data.interacReferenceCode}`,
-    "",
-    "Le système associera votre virement à votre dossier grâce à ce code.",
-  ].join("\n");
+  const smsBlock = (
+    lang === "fr"
+      ? [
+          "Paiement Interac Rapide ⚡",
+          `📧 Courriel : ${data.depositEmail}`,
+          `💰 Montant : ${data.amountCad.toFixed(2)} $`,
+          `📝 Message obligatoire : ${data.interacReferenceCode}`,
+          "",
+          "Le système associera votre virement à votre dossier grâce à ce code.",
+        ]
+      : [
+          "Quick Interac e-Transfer ⚡",
+          `📧 Email: ${data.depositEmail}`,
+          `💰 Amount: CAD $${data.amountCad.toFixed(2)}`,
+          `📝 Mandatory message: ${data.interacReferenceCode}`,
+          "",
+          "The system uses this code to match your transfer to your file.",
+        ]
+  ).join("\n");
 
   const html = buildEmailHtml({
-    title: `Rappel de paiement — Interac (${data.reminderNumber === 1 ? "J+1" : "J+2"})`,
+    title:
+      lang === "fr"
+        ? `Rappel de paiement — Interac (${data.reminderNumber === 1 ? "J+1" : "J+2"})`
+        : `Payment reminder — Interac (${data.reminderNumber === 1 ? "Day +1" : "Day +2"})`,
     theme: isUrgent ? "warning" : "info",
-    greeting: `Bonjour ${data.clientName},`,
-    intro: isUrgent
-      ? `Deuxième rappel : votre paiement Interac pour la séance du ${data.appointmentDateLabel} est toujours en attente. Veuillez envoyer votre virement dès que possible afin d'éviter un signalement de retard.`
-      : `Nous n'avons pas encore reçu votre virement Interac pour votre séance du ${data.appointmentDateLabel}. Voici un rappel des instructions de paiement.`,
-    details: [
-      { label: "1. Envoyer à", value: data.depositEmail },
-      { label: "2. Nom", value: `Le nom de votre compte bancaire doit correspondre à celui de votre dossier : ${data.clientName}.` },
-      { label: "3. Compte tiers / entreprise", value: "Indiquez votre nom complet dans le champ « Message » du virement." },
-      { label: "4. Message obligatoire (code unique)", value: data.interacReferenceCode },
-      { label: "Montant", value: `${data.amountCad.toFixed(2)} $ CAD` },
-    ],
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.clientName},`
+        : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? isUrgent
+          ? `Deuxième rappel : votre paiement Interac pour la séance du ${data.appointmentDateLabel} est toujours en attente. Veuillez envoyer votre virement dès que possible afin d'éviter un signalement de retard.`
+          : `Nous n'avons pas encore reçu votre virement Interac pour votre séance du ${data.appointmentDateLabel}. Voici un rappel des instructions de paiement.`
+        : isUrgent
+          ? `Second reminder: your Interac transfer for the session on ${data.appointmentDateLabel} is still pending. Please send your transfer as soon as possible to avoid a late-payment flag.`
+          : `We haven't received your Interac transfer for your session on ${data.appointmentDateLabel} yet. Here is a reminder of the payment instructions.`,
+    details:
+      lang === "fr"
+        ? [
+            { label: "1. Envoyer à", value: data.depositEmail },
+            {
+              label: "2. Nom",
+              value: `Le nom de votre compte bancaire doit correspondre à celui de votre dossier : ${data.clientName}.`,
+            },
+            {
+              label: "3. Compte tiers / entreprise",
+              value:
+                "Indiquez votre nom complet dans le champ « Message » du virement.",
+            },
+            {
+              label: "4. Message obligatoire (code unique)",
+              value: data.interacReferenceCode,
+            },
+            {
+              label: "Montant",
+              value: `${data.amountCad.toFixed(2)} $ CAD`,
+            },
+          ]
+        : [
+            { label: "1. Send to", value: data.depositEmail },
+            {
+              label: "2. Name",
+              value: `Your bank account name must match the one on file: ${data.clientName}.`,
+            },
+            {
+              label: "3. Third-party / business account",
+              value:
+                "Add your full name in the e-Transfer Message field.",
+            },
+            {
+              label: "4. Mandatory message (unique code)",
+              value: data.interacReferenceCode,
+            },
+            {
+              label: "Amount",
+              value: `CAD $${data.amountCad.toFixed(2)}`,
+            },
+          ],
     infoBox: {
-      title: "Format court (idéal mobile / SMS)",
+      title:
+        lang === "fr"
+          ? "Format court (idéal mobile / SMS)"
+          : "Short format (ideal for mobile / SMS)",
       content: smsBlock.split("\n").join("<br/>"),
       theme: isUrgent ? "warning" : "info",
     },
-    outro: isUrgent
-      ? `Votre paiement est en retard. Si vous rencontrez des difficultés, contactez le soutien de ${company} immédiatement.`
-      : `En cas de difficulté, contactez-nous à l'adresse de support de ${company}.`,
+    outro:
+      lang === "fr"
+        ? isUrgent
+          ? `Votre paiement est en retard. Si vous rencontrez des difficultés, contactez le soutien de ${company} immédiatement.`
+          : `En cas de difficulté, contactez-nous à l'adresse de support de ${company}.`
+        : isUrgent
+          ? `Your payment is overdue. If you run into any trouble, contact ${company} support immediately.`
+          : `If you encounter any difficulty, reach ${company} support.`,
     branding,
+    lang,
   });
 
-  const text = buildEmailText([
-    `Rappel paiement Interac (relance ${data.reminderNumber})`,
-    `Bonjour ${data.clientName},`,
-    `Séance du ${data.appointmentDateLabel}`,
-    "",
-    `1. Envoyer à : ${data.depositEmail}`,
-    `2. Nom : doit correspondre à « ${data.clientName} »`,
-    "3. Tiers / entreprise : indiquez votre nom dans le message.",
-    `4. Message obligatoire : ${data.interacReferenceCode}`,
-    `Montant : ${data.amountCad.toFixed(2)} $ CAD`,
-    "",
-    "— Format SMS —",
-    smsBlock,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          `Rappel paiement Interac (relance ${data.reminderNumber})`,
+          `Bonjour ${data.clientName},`,
+          `Séance du ${data.appointmentDateLabel}`,
+          "",
+          `1. Envoyer à : ${data.depositEmail}`,
+          `2. Nom : doit correspondre à « ${data.clientName} »`,
+          "3. Tiers / entreprise : indiquez votre nom dans le message.",
+          `4. Message obligatoire : ${data.interacReferenceCode}`,
+          `Montant : ${data.amountCad.toFixed(2)} $ CAD`,
+          "",
+          "— Format SMS —",
+          smsBlock,
+        ]
+      : [
+          `Interac payment reminder (reminder #${data.reminderNumber})`,
+          `Hello ${data.clientName},`,
+          `Session on ${data.appointmentDateLabel}`,
+          "",
+          `1. Send to: ${data.depositEmail}`,
+          `2. Name: must match "${data.clientName}"`,
+          "3. Third-party / business: add your name in the Message field.",
+          `4. Mandatory message: ${data.interacReferenceCode}`,
+          `Amount: CAD $${data.amountCad.toFixed(2)}`,
+          "",
+          "— SMS format —",
+          smsBlock,
+        ],
+    lang,
+  );
 
   const subject = await getSubject(
     "interac_payment_reminder",
-    `Rappel paiement Interac — ${company}`,
+    lang === "fr"
+      ? `Rappel paiement Interac — ${company}`
+      : `Interac payment reminder — ${company}`,
   );
 
   return sendEmail(
@@ -2860,25 +3390,53 @@ export async function sendPaymentGuarantee48hClientReminder(data: {
   clientEmail: string;
   billingUrl: string;
   appointmentDateLabel: string;
+  locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const html = buildEmailHtml({
-    title: "URGENT — rendez-vous proche",
+    title:
+      lang === "fr"
+        ? "URGENT — rendez-vous proche"
+        : "URGENT — appointment approaching",
     theme: "danger",
-    greeting: `Bonjour ${data.clientName},`,
-    intro: `Votre rendez-vous du ${data.appointmentDateLabel} approche. Aucune garantie de paiement (carte/PAD) n’est en place. Merci d’agir immédiatement pour éviter tout report.`,
-    button: { text: "Ajouter un moyen de paiement", url: data.billingUrl },
+    greeting:
+      lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? `Votre rendez-vous du ${data.appointmentDateLabel} approche. Aucune garantie de paiement (carte/PAD) n’est en place. Merci d’agir immédiatement pour éviter tout report.`
+        : `Your appointment on ${data.appointmentDateLabel} is approaching. No payment guarantee (card/PAD) is on file. Please act immediately to avoid any rescheduling.`,
+    button: {
+      text:
+        lang === "fr"
+          ? "Ajouter un moyen de paiement"
+          : "Add a payment method",
+      url: data.billingUrl,
+    },
     branding,
+    lang,
   });
-  const text = buildEmailText([
-    "URGENT — moyen de paiement",
-    `Bonjour ${data.clientName},`,
-    `Rendez-vous : ${data.appointmentDateLabel}`,
-    data.billingUrl,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "URGENT — moyen de paiement",
+          `Bonjour ${data.clientName},`,
+          `Rendez-vous : ${data.appointmentDateLabel}`,
+          data.billingUrl,
+        ]
+      : [
+          "URGENT — payment method required",
+          `Hello ${data.clientName},`,
+          `Appointment: ${data.appointmentDateLabel}`,
+          data.billingUrl,
+        ],
+    lang,
+  );
   const subject = await getSubject(
     "payment_guarantee_48h_client",
-    "URGENT : moyen de paiement — JeChemine",
+    lang === "fr"
+      ? "URGENT : moyen de paiement — JeChemine"
+      : "URGENT: payment method — JeChemine",
   );
   return sendEmail(
     { to: data.clientEmail, subject, html, text },
@@ -2892,8 +3450,10 @@ export async function sendPaymentGuarantee48hProfessionalAlert(data: {
   clientName: string;
   appointmentDateLabel: string;
   appointmentId: string;
+  locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const base =
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -2901,26 +3461,55 @@ export async function sendPaymentGuarantee48hProfessionalAlert(data: {
   const dashboardUrl = `${base}/professional/dashboard/sessions`;
 
   const html = buildEmailHtml({
-    title: "ALERTE — client sans garantie de paiement",
+    title:
+      lang === "fr"
+        ? "ALERTE — client sans garantie de paiement"
+        : "ALERT — client without payment guarantee",
     theme: "danger",
-    greeting: `Bonjour ${data.professionalName},`,
-    intro: `Le client ${data.clientName} n’a toujours pas de carte ni prélèvement enregistré pour le rendez-vous du ${data.appointmentDateLabel}. Dernière relance automatique envoyée au client.`,
+    greeting:
+      lang === "fr"
+        ? `Bonjour ${data.professionalName},`
+        : `Hello ${data.professionalName},`,
+    intro:
+      lang === "fr"
+        ? `Le client ${data.clientName} n’a toujours pas de carte ni prélèvement enregistré pour le rendez-vous du ${data.appointmentDateLabel}. Dernière relance automatique envoyée au client.`
+        : `Client ${data.clientName} still has no card or pre-authorized debit on file for the appointment on ${data.appointmentDateLabel}. Final automatic reminder sent to the client.`,
     details: [
-      { label: "Rendez-vous", value: data.appointmentId },
+      {
+        label: lang === "fr" ? "Rendez-vous" : "Appointment",
+        value: data.appointmentId,
+      },
     ],
-    button: { text: "Voir les séances", url: dashboardUrl },
+    button: {
+      text: lang === "fr" ? "Voir les séances" : "View sessions",
+      url: dashboardUrl,
+    },
     branding,
+    lang,
   });
-  const text = buildEmailText([
-    "ALERTE garantie paiement",
-    `Bonjour ${data.professionalName},`,
-    `Client : ${data.clientName}`,
-    `Date : ${data.appointmentDateLabel}`,
-    dashboardUrl,
-  ]);
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "ALERTE garantie paiement",
+          `Bonjour ${data.professionalName},`,
+          `Client : ${data.clientName}`,
+          `Date : ${data.appointmentDateLabel}`,
+          dashboardUrl,
+        ]
+      : [
+          "ALERT — payment guarantee",
+          `Hello ${data.professionalName},`,
+          `Client: ${data.clientName}`,
+          `Date: ${data.appointmentDateLabel}`,
+          dashboardUrl,
+        ],
+    lang,
+  );
   const subject = await getSubject(
     "payment_guarantee_48h_professional",
-    "ALERTE : client sans garantie — rendez-vous proche",
+    lang === "fr"
+      ? "ALERTE : client sans garantie — rendez-vous proche"
+      : "ALERT: client without payment guarantee — appointment approaching",
   );
   return sendEmail(
     { to: data.professionalEmail, subject, html, text },
@@ -3115,6 +3704,13 @@ export async function sendPostMeetingPaymentReminder(data: {
   clientEmail: string;
   appointmentDateLabel: string;
   locale?: "fr" | "en";
+  /**
+   * Override the dashboard CTA URL. For unclaimed accounts the caller mints a
+   * tokenized `/pay?token=…` via `resolveBillingUrl()`; active clients keep
+   * the auth-gated dashboard deep-link. Falls back to the dashboard URL when
+   * not provided (legacy callers).
+   */
+  billingUrl?: string;
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
@@ -3122,7 +3718,9 @@ export async function sendPostMeetingPaymentReminder(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
+  const billingUrl =
+    data.billingUrl ??
+    `${base}/client/dashboard/billing?action=addPaymentMethod`;
 
   const intro =
     lang === "fr"
@@ -3344,6 +3942,78 @@ export async function sendAdminNewServiceRequestAlert(data: {
       { to, subject, html, text },
       "service_request_onboarding",
     ).catch((e) => console.error("sendAdminNewServiceRequestAlert:", e));
+  }
+}
+
+/**
+ * Alert admins when every proposed professional has refused an appointment
+ * and the routing has cascaded to `routingStatus: "general"`. Without this
+ * notification the request silently drops into the general queue with no
+ * one watching — admins miss the chance to intervene (manually assign a
+ * specific pro, escalate, or contact the client).
+ */
+export async function sendAdminAppointmentMovedToGeneralAlert(data: {
+  clientName: string;
+  clientEmail: string;
+  motif?: string;
+  appointmentId: string;
+  refusalCount: number;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
+    .select("email")
+    .lean();
+  let adminEmails = adminUsers
+    .map((a) => a.email)
+    .filter((e): e is string => Boolean(e));
+  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
+    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
+  }
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  const html = buildEmailHtml({
+    title: "Demande basculée en liste générale",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `La demande de ${data.clientName} a été refusée par tous les professionnels proposés (${data.refusalCount}). Elle est maintenant visible dans la liste générale, accessible à tous les pros — mais elle peut rester sans suite si personne ne la prend.`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Motif", value: data.motif || "—" },
+      { label: "Refus reçus", value: String(data.refusalCount) },
+      { label: "ID Rendez-vous", value: data.appointmentId },
+    ],
+    button: { text: "Assigner manuellement", url: adminUrl },
+    outro:
+      "Vous pouvez assigner manuellement un professionnel depuis le tableau des demandes, ou contacter le client pour ajuster sa demande.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Demande basculée en liste générale",
+    `Client : ${data.clientName} — ${data.clientEmail}`,
+    `Motif : ${data.motif || "—"}`,
+    `Refus reçus : ${data.refusalCount}`,
+    `ID : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+
+  const subject = `Liste générale — refus en cascade pour ${data.clientName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) =>
+      console.error("sendAdminAppointmentMovedToGeneralAlert:", e),
+    );
   }
 }
 

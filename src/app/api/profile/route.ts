@@ -89,7 +89,7 @@ export async function PUT(req: NextRequest) {
       after(async () => {
         try {
           const user = await User.findById(userId)
-            .select("firstName lastName email")
+            .select("firstName lastName email language")
             .lean();
           if (user?.email) {
             await sendProfessionalProfileCompletedEmail({
@@ -98,6 +98,7 @@ export async function PUT(req: NextRequest) {
                 "Professionnel(le)",
               email: user.email,
               role: "professional",
+              locale: user.language === "en" ? "en" : "fr",
             });
           }
         } catch (err) {

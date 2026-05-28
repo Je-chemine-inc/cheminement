@@ -83,7 +83,14 @@ export async function sendWelcomeSms(toPhone: string, name: string, lang: "fr" |
   return sendSms(toPhone, body);
 }
 
-/** Rappel H-72 : RDV dans 72h, fenêtre d'annulation gratuite encore ouverte. */
+/**
+ * Rappel H-72 : RDV dans 72h. The link target depends on whether the recipient
+ * has claimed their account — for active clients it deep-links to the dashboard
+ * cancel action; for unclaimed it lands on the claim-account flow. SMS copy
+ * stays neutral ("manage" / "gérer") so it's honest in both cases — promising
+ * "cancel free of charge" would mislead unclaimed users who can't self-cancel
+ * until they've set a password.
+ */
 export async function sendAppointment72hSms(
   toPhone: string,
   appointmentDateLabel: string,
@@ -92,8 +99,8 @@ export async function sendAppointment72hSms(
 ): Promise<void> {
   const body =
     lang === "en"
-      ? `Je chemine: your appointment is in 72h (${appointmentDateLabel}). You can still cancel/reschedule free of charge: ${cancelUrl}`
-      : `Je chemine : votre rendez-vous est dans 72 h (${appointmentDateLabel}). Annulation gratuite encore possible : ${cancelUrl}`;
+      ? `Je chemine: appointment in 72h (${appointmentDateLabel}). Manage: ${cancelUrl}`
+      : `Je chemine : rendez-vous dans 72 h (${appointmentDateLabel}). Gérer : ${cancelUrl}`;
   return sendSms(toPhone, body);
 }
 

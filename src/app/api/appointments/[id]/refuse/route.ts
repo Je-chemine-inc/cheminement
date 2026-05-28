@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
+import { sendAdminAppointmentMovedToGeneralAlert } from "@/lib/notifications";
 
 /**
  * POST /api/appointments/[id]/refuse
@@ -109,6 +110,32 @@ export async function POST(
       updateData,
       { new: true },
     ).populate("clientId", "firstName lastName email phone location language");
+
+    // Alert admins when the request silently cascades to the general queue:
+    // without this, requests can sit in /admin/dashboard/service-requests
+    // (status: general) for hours with no one watching.
+    if (allRefused && updatedAppointment) {
+      const clientPop = updatedAppointment.clientId as unknown as {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+      } | null;
+      const clientName =
+        `${clientPop?.firstName ?? ""} ${clientPop?.lastName ?? ""}`.trim() ||
+        "Client";
+      const clientEmail = clientPop?.email?.trim() || "—";
+      after(() =>
+        sendAdminAppointmentMovedToGeneralAlert({
+          clientName,
+          clientEmail,
+          motif: updatedAppointment.issueType,
+          appointmentId: String(updatedAppointment._id),
+          refusalCount: updatedRefusedBy.length,
+        }).catch((err) =>
+          console.error("Error sending moved-to-general alert:", err),
+        ),
+      );
+    }
 
     return NextResponse.json({
       message: allRefused

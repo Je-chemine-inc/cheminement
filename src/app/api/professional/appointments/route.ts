@@ -168,6 +168,7 @@ export async function POST(req: NextRequest) {
         duration: resolvedDuration,
         type: type as "video" | "in-person" | "phone" | "both",
         location: appointment.location,
+        locale: (client.language === "en" ? "en" : "fr") as "fr" | "en",
       };
       after(() =>
         sendAppointmentConfirmation(emailData).catch((err) =>

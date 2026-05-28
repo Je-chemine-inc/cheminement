@@ -1,6 +1,7 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import {
   sendInteracPaymentReminder,
   sendAdminInteracTrustRequestAlert,
@@ -46,7 +47,7 @@ export async function runInteracReminders(): Promise<{
     "payment.status": { $nin: ["paid", "refunded", "cancelled"] },
     "payment.transferDueAt": { $exists: true, $lt: new Date(now - 24 * HOUR_MS) },
   })
-    .populate("clientId", "firstName lastName email")
+    .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName email")
     .limit(300);
 
@@ -55,8 +56,17 @@ export async function runInteracReminders(): Promise<{
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
     if (!client?.email) continue;
+
+    // Quebec LSSSS art. 14: for adult loved-one bookings, route the payment
+    // reminder to the beneficiary (lovedOneInfo.email), not the requester.
+    // Minors (< 14) still go through the requester (parent/guardian).
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      client,
+    );
 
     const dueAt = apt.payment.transferDueAt!.getTime();
     const hoursOverdue = (now - dueAt) / HOUR_MS;
@@ -75,8 +85,8 @@ export async function runInteracReminders(): Promise<{
       } | null;
       // Reuse existing admin alert with the interac trust context
       await sendAdminInteracTrustRequestAlert({
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         appointmentId: String(apt._id),
       }).catch(() => {});
       void pro; // alert already covers admin
@@ -85,13 +95,14 @@ export async function runInteracReminders(): Promise<{
     // 48h+ → second reminder (only if first was already sent)
     if (hoursOverdue >= 48 && !apt.interacReminder48hSent) {
       const ok = await sendInteracPaymentReminder({
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         depositEmail,
         amountCad: apt.payment.price,
         interacReferenceCode: apt.payment.interacReferenceCode || "",
         appointmentDateLabel: dateLabel,
         reminderNumber: 2,
+        locale: recipient.language,
       });
       if (ok) {
         updates.interacReminder48hSent = true;
@@ -102,13 +113,14 @@ export async function runInteracReminders(): Promise<{
     // 24h+ → first reminder
     if (hoursOverdue >= 24 && !apt.interacReminder24hSent) {
       const ok = await sendInteracPaymentReminder({
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         depositEmail,
         amountCad: apt.payment.price,
         interacReferenceCode: apt.payment.interacReferenceCode || "",
         appointmentDateLabel: dateLabel,
         reminderNumber: 1,
+        locale: recipient.language,
       });
       if (ok) {
         updates.interacReminder24hSent = true;

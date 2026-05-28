@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { runInteracReminders } from "@/lib/interac-reminders";
 
 /**
- * Appel périodique (cron toutes les heures) :
+ * Daily cron (10:00 UTC per vercel.json). Reschedule to hourly if J+1 / J+2
+ * delivery latency becomes an issue — current driver dedupes via boolean
+ * flags so multiple runs per day are safe.
  *   Authorization: Bearer <CRON_SECRET>
  */
 export async function GET(req: NextRequest) {

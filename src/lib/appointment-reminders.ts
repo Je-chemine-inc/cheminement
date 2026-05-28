@@ -5,6 +5,10 @@ import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 import {
+  resolveBillingUrl,
+  resolveAppointmentManageUrl,
+} from "@/lib/client-portal-urls";
+import {
   sendAppointment72hReminder,
   sendAppointment48hReminder,
 } from "@/lib/notifications";
@@ -107,8 +111,27 @@ export async function runAppointmentReminders(): Promise<{
       : client.phone;
     const locale = recipient.language;
     const dateLabel = formatAppointmentDateLabel(apt, locale);
-    const cancelUrl = `${baseUrl}/client/dashboard/appointments?id=${apt._id}&action=cancel`;
-    const rescheduleUrl = `${baseUrl}/appointment?for=self`;
+    // Resolve URLs based on whether the account holder has claimed their
+    // account. Unclaimed accounts (no password yet) cannot reach auth-gated
+    // dashboard routes; for them the helpers fall back to /pay?token=… and
+    // /signup/member?email=… respectively. The full User doc is also reused
+    // below to compute `noPaymentMethod` for the H-48 reminder.
+    const accountHolder = await User.findById(client._id);
+    const userStatus = accountHolder?.status;
+    const cancelUrl = resolveAppointmentManageUrl({
+      userStatus,
+      recipientEmail: recipient.email,
+      appointmentId: String(apt._id),
+      action: "cancel",
+      base: baseUrl,
+    });
+    const rescheduleUrl = resolveAppointmentManageUrl({
+      userStatus,
+      recipientEmail: recipient.email,
+      appointmentId: String(apt._id),
+      action: "reschedule",
+      base: baseUrl,
+    });
     const updates: Record<string, boolean> = {};
 
     // H-72 window: 48h < hoursUntil <= 72h
@@ -144,10 +167,26 @@ export async function runAppointmentReminders(): Promise<{
       // account holder) still has no card / direct debit / Interac choice.
       // The lookup hits the requester's User doc because payment lives there,
       // even when the email goes to the loved one.
-      const accountHolder = await User.findById(client._id);
       const noPaymentMethod =
         accountHolder != null &&
         clientLacksPaymentGuaranteeForAppointment(apt, accountHolder);
+
+      // Resolve URLs based on whether the account is claimed (active).
+      // Re-using the helper from H-72 above keeps the auth-gating consistent.
+      const confirmUrl = resolveAppointmentManageUrl({
+        userStatus: userStatus,
+        recipientEmail: recipient.email,
+        appointmentId: String(apt._id),
+        action: "confirm",
+        base: baseUrl,
+      });
+      const billingUrl = noPaymentMethod
+        ? await resolveBillingUrl({
+            userStatus: userStatus,
+            appointment: apt,
+            base: baseUrl,
+          })
+        : undefined;
 
       const ok = await sendAppointment48hReminder({
         clientName: recipient.name,
@@ -157,6 +196,8 @@ export async function runAppointmentReminders(): Promise<{
         appointmentDateLabel: dateLabel,
         noPaymentMethod,
         locale,
+        confirmUrl,
+        billingUrl,
       });
       if (ok) {
         updates.reminder48hSent = true;

@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
-import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import { sendJumelageSuccessEmail } from "@/lib/notifications";
+import {
+  sendJumelageSuccessEmail,
+  sendProfessionalNotification,
+} from "@/lib/notifications";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 function getBaseUrl(): string {
   return (
@@ -147,22 +150,16 @@ export async function POST(
         ? `${base}/client/dashboard/profile`
         : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
 
-      // Resolve the "Choose payment method" CTA target. For unclaimed clients
-      // we mint a tokenized /pay link so the user can pay without first being
-      // forced through a login they cannot complete (no password yet).
-      let billingUrl: string;
-      if (!isActiveClient) {
-        const paymentToken = crypto.randomBytes(32).toString("hex");
-        const paymentTokenExpiry = new Date();
-        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7);
-        await Appointment.findByIdAndUpdate(appointment._id, {
-          "payment.paymentToken": paymentToken,
-          "payment.paymentTokenExpiry": paymentTokenExpiry,
-        });
-        billingUrl = `${base}/pay?token=${paymentToken}`;
-      } else {
-        billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
-      }
+      // Resolve the "Choose payment method" CTA target. Goes through the
+      // shared helper so the token TTL (14 days) and refresh-window logic
+      // stay aligned with the cron reminders that reuse the same token.
+      const billingUrl = await resolveBillingUrl({
+        userStatus: isActiveClient ? "active" : "inactive",
+        appointment: appointment as Parameters<
+          typeof resolveBillingUrl
+        >[0]["appointment"],
+        base,
+      });
 
       const jumelageArgs = {
         clientName: recipient.name,
@@ -177,6 +174,31 @@ export async function POST(
       after(() =>
         sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
           console.error("[admin manual jumelage] email error:", err),
+        ),
+      );
+    }
+
+    // Notify the assigned professional. Without this they have no signal
+    // that a request landed on their plate — they'd only discover it by
+    // opening the dashboard. The route still has no date/time (the actual
+    // booking happens later), so the email shows the assignment context
+    // without scheduling details.
+    if (professional.email) {
+      const clientNameForPro =
+        `${client?.firstName ?? ""} ${client?.lastName ?? ""}`.trim() ||
+        "Client";
+      after(() =>
+        sendProfessionalNotification({
+          clientName: clientNameForPro,
+          clientEmail: client?.email ?? "",
+          professionalName: `${professional.firstName ?? ""} ${
+            professional.lastName ?? ""
+          }`.trim(),
+          professionalEmail: professional.email,
+          duration: appointment.duration || 60,
+          type: appointment.type as "video" | "in-person" | "phone" | "both",
+        }).catch((err) =>
+          console.error("[admin manual jumelage] pro notify error:", err),
         ),
       );
     }

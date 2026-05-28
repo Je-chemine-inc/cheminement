@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
-import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
@@ -13,6 +12,7 @@ import {
 import User from "@/models/User";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 function getBaseUrl(): string {
   return (
@@ -169,19 +169,15 @@ export async function POST(
       // jumelage email and the payment-invitation email point to the same
       // working URL. For unclaimed clients we mint a tokenized /pay link
       // (no login required); active clients get the dashboard deep-link.
-      let billingUrl: string;
-      if (!isActiveClient) {
-        const paymentToken = crypto.randomBytes(32).toString("hex");
-        const paymentTokenExpiry = new Date();
-        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7);
-        await Appointment.findByIdAndUpdate(id, {
-          "payment.paymentToken": paymentToken,
-          "payment.paymentTokenExpiry": paymentTokenExpiry,
-        });
-        billingUrl = `${base}/pay?token=${paymentToken}`;
-      } else {
-        billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
-      }
+      // Goes through the shared helper so the token TTL / refresh-window
+      // logic stays aligned with the cron reminders that reuse the token.
+      const billingUrl = await resolveBillingUrl({
+        userStatus: isActiveClient ? "active" : "inactive",
+        appointment: updatedAppointment as Parameters<
+          typeof resolveBillingUrl
+        >[0]["appointment"],
+        base,
+      });
 
       // Send jumelage confirmation email (with the two distinct CTAs).
       // after() keeps the serverless function alive on Vercel until the
@@ -236,6 +232,7 @@ export async function POST(
           type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
           price: updatedAppointment.payment?.price ?? 0,
           paymentUrl: billingUrl,
+          locale,
         };
         after(() =>
           sendPaymentInvitation(payInviteArgs).catch((err) =>

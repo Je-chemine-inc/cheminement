@@ -5,6 +5,7 @@ import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { sendInteracTransferInstructionsEmail } from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 export async function POST(
   req: NextRequest,
@@ -20,7 +21,7 @@ export async function POST(
 
     const { id } = await params;
     const apt = await Appointment.findById(id)
-      .populate("clientId", "firstName lastName email")
+      .populate("clientId", "firstName lastName email language")
       .populate("professionalId", "firstName lastName");
 
     if (!apt) {
@@ -38,6 +39,7 @@ export async function POST(
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
     const pro = apt.professionalId as unknown as {
       firstName?: string;
@@ -47,6 +49,16 @@ export async function POST(
     if (!client?.email) {
       return NextResponse.json({ error: "Client email not found" }, { status: 400 });
     }
+
+    // LSSSS art. 14: route to the beneficiary inbox for adult loved-one bookings.
+    // The legal name on the bank-instruction line still uses the payer.
+    const recipient = resolveAppointmentRecipient(
+      {
+        bookingFor: apt.bookingFor,
+        lovedOneInfo: apt.lovedOneInfo,
+      },
+      client,
+    );
 
     const depositEmail = await getInteracDepositEmail();
 
@@ -61,8 +73,8 @@ export async function POST(
       : "—";
 
     const ok = await sendInteracTransferInstructionsEmail({
-      clientName: `${client.firstName} ${client.lastName}`,
-      clientEmail: client.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       clientLegalName: `${client.firstName} ${client.lastName}`,
       depositEmail,
       amountCad: apt.payment.price,
@@ -71,6 +83,7 @@ export async function POST(
         ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
         : "—",
       appointmentDateLabel: dateLabel,
+      locale: recipient.language,
     });
 
     if (!ok) {

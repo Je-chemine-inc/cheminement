@@ -10,6 +10,7 @@ import {
   sendPaymentFailedNotification,
   sendRefundConfirmation,
 } from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 // Disable body parsing, need raw body for webhook signature verification
 export const runtime = "nodejs";
@@ -128,7 +129,7 @@ async function handlePaymentIntentSucceeded(
   ) {
     try {
       const populatedAppointment = await Appointment.findById(appointmentId)
-        .populate("clientId", "firstName lastName email")
+        .populate("clientId", "firstName lastName email language")
         .populate("professionalId", "firstName lastName");
 
       if (populatedAppointment) {
@@ -137,6 +138,7 @@ async function handlePaymentIntentSucceeded(
           firstName: string;
           lastName: string;
           email: string;
+          language?: string;
         };
         const professional = populatedAppointment.professionalId as unknown as {
           firstName: string;
@@ -146,9 +148,17 @@ async function handlePaymentIntentSucceeded(
         // Check if client is a guest
         const clientUser = await User.findById(client._id);
         if (clientUser && clientUser.role === "guest") {
+          // LSSSS art. 14: route to the beneficiary for adult loved-one bookings.
+          const recipient = resolveAppointmentRecipient(
+            {
+              bookingFor: populatedAppointment.bookingFor,
+              lovedOneInfo: populatedAppointment.lovedOneInfo,
+            },
+            client,
+          );
           sendGuestPaymentComplete({
-            guestName: `${client.firstName} ${client.lastName}`,
-            guestEmail: client.email,
+            guestName: recipient.name,
+            guestEmail: recipient.email,
             professionalName: `${professional.firstName} ${professional.lastName}`,
             date: populatedAppointment.date?.toISOString() || "",
             time: populatedAppointment.time,
@@ -157,6 +167,7 @@ async function handlePaymentIntentSucceeded(
             therapyType: populatedAppointment.therapyType || "solo",
             price: populatedAppointment.payment.price,
             meetingLink: populatedAppointment.meetingLink,
+            locale: recipient.language,
           }).catch((err) =>
             console.error(
               "Error sending guest payment confirmation email:",
@@ -182,7 +193,7 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   }
 
   const appointment = await Appointment.findById(appointmentId)
-    .populate("clientId", "firstName lastName email")
+    .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName");
 
   if (!appointment) {
@@ -201,20 +212,31 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
     const professional = appointment.professionalId as unknown as {
       firstName: string;
       lastName: string;
     };
 
+    // LSSSS art. 14: route to the beneficiary for adult loved-one bookings.
+    const recipient = resolveAppointmentRecipient(
+      {
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
+      },
+      client,
+    );
+
     sendPaymentFailedNotification({
-      name: `${client.firstName} ${client.lastName}`,
-      email: client.email,
+      name: recipient.name,
+      email: recipient.email,
       amount: appointment.payment.price || 0,
       appointmentDate: appointment.date?.toISOString(),
       professionalName: professional
         ? `${professional.firstName} ${professional.lastName}`
         : undefined,
+      locale: recipient.language,
     }).catch((err) =>
       console.error("Error sending payment failed notification:", err),
     );
@@ -272,10 +294,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   console.log(`Appointment ${appointment._id} refunded`);
 
-  // Send refund confirmation to client
+  // Send refund confirmation to client — LSSSS art. 14 routing.
   try {
     const populatedAppointment = await Appointment.findById(appointment._id)
-      .populate("clientId", "firstName lastName email")
+      .populate("clientId", "firstName lastName email language")
       .populate("professionalId", "firstName lastName");
 
     if (populatedAppointment) {
@@ -283,13 +305,23 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         firstName: string;
         lastName: string;
         email: string;
+        language?: string;
       };
 
+      const recipient = resolveAppointmentRecipient(
+        {
+          bookingFor: populatedAppointment.bookingFor,
+          lovedOneInfo: populatedAppointment.lovedOneInfo,
+        },
+        client,
+      );
+
       sendRefundConfirmation({
-        name: `${client.firstName} ${client.lastName}`,
-        email: client.email,
+        name: recipient.name,
+        email: recipient.email,
         amount: charge.amount_refunded / 100,
         appointmentDate: populatedAppointment.date?.toISOString(),
+        locale: recipient.language,
       }).catch((err) =>
         console.error("Error sending refund confirmation:", err),
       );

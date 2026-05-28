@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
-import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
@@ -12,14 +11,11 @@ import {
   sendCancellationNotification,
   sendRefundConfirmation,
 } from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
-
-// Generate a secure payment token for guest users
-function generatePaymentToken(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -209,7 +205,7 @@ export async function PATCH(
     })
       .populate(
         "clientId",
-        "firstName lastName email phone location stripeCustomerId",
+        "firstName lastName email phone location language stripeCustomerId",
       )
       .populate("professionalId", "firstName lastName email phone");
 
@@ -245,12 +241,24 @@ export async function PATCH(
         email: string;
         firstName: string;
         lastName: string;
+        language?: string;
       };
       const professional = appointment.professionalId as unknown as {
         _id: { toString: () => string };
         firstName: string;
         lastName: string;
       };
+
+      // Quebec LSSSS art. 14: route to the beneficiary for adult loved-one
+      // bookings. The payer's identity is still the requester (account holder)
+      // but the email must land in the beneficiary's inbox.
+      const recipient = resolveAppointmentRecipient(
+        {
+          bookingFor: appointment.bookingFor,
+          lovedOneInfo: appointment.lovedOneInfo,
+        },
+        client,
+      );
 
       const clientUserBefore = await User.findById(client._id);
       const wasGuest = clientUserBefore?.role === "guest" || clientUserBefore?.role === "prospect";
@@ -266,24 +274,25 @@ export async function PATCH(
         awaitingPaymentGuarantee: true,
       });
 
-      const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
+      // Resolve via the shared helper so the token TTL (14d + 24h refresh)
+      // stays in lockstep with cron-driven reminders that reuse the same
+      // token. Active clients still get the auth-gated dashboard URL.
+      const billingUrl = await resolveBillingUrl({
+        userStatus: wasGuest ? "inactive" : "active",
+        appointment: appointment as Parameters<
+          typeof resolveBillingUrl
+        >[0]["appointment"],
+        base: getBaseUrl(),
+      });
 
       if (wasGuest) {
-        // Generate payment token for payment link (/pay) — même flux qu’avant promotion compte
-        const paymentToken = generatePaymentToken();
-        const paymentTokenExpiry = new Date();
-        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7); // Token valid for 7 days
-
-        await Appointment.findByIdAndUpdate(id, {
-          "payment.paymentToken": paymentToken,
-          "payment.paymentTokenExpiry": paymentTokenExpiry,
-        });
-
-        const paymentLink = `${getBaseUrl()}/pay?token=${paymentToken}`;
+        // For unclaimed guests, billingUrl is already the /pay?token=… link
+        // freshly minted/refreshed by resolveBillingUrl above.
+        const paymentLink = billingUrl;
 
         const guestPayArgs = {
-          guestName: `${client.firstName} ${client.lastName}`,
-          guestEmail: client.email,
+          guestName: recipient.name,
+          guestEmail: recipient.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
           date: appointment.date
             ? appointment.date.toISOString()
@@ -294,6 +303,7 @@ export async function PATCH(
           therapyType: appointment.therapyType || "solo",
           price: appointment.payment.price,
           paymentLink,
+          locale: recipient.language,
         };
         after(() =>
           sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
@@ -302,8 +312,8 @@ export async function PATCH(
         );
       } else if (clientUserBefore && clientUserBefore.role === "client") {
         const payInviteArgs = {
-          clientName: `${client.firstName} ${client.lastName}`,
-          clientEmail: client.email,
+          clientName: recipient.name,
+          clientEmail: recipient.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
           professionalEmail: "",
           date: appointment.date
@@ -316,6 +326,7 @@ export async function PATCH(
           location: appointment.location,
           price: appointment.payment.price,
           paymentUrl: billingUrl,
+          locale: recipient.language,
         };
         after(() =>
           sendPaymentInvitation(payInviteArgs).catch((err) =>
@@ -337,6 +348,7 @@ export async function PATCH(
         email: string;
         firstName: string;
         lastName: string;
+        language?: string;
       };
       const professional = appointment.professionalId as unknown as {
         firstName: string;
@@ -346,9 +358,18 @@ export async function PATCH(
       // Check if client is a guest user
       const clientUser = await User.findById(client._id);
       if (clientUser && (clientUser.role === "guest" || clientUser.role === "prospect")) {
+        // LSSSS art. 14: the meeting link must reach the person attending —
+        // the loved one when adult, the requester when self / minor.
+        const meetingRecipient = resolveAppointmentRecipient(
+          {
+            bookingFor: appointment.bookingFor,
+            lovedOneInfo: appointment.lovedOneInfo,
+          },
+          client,
+        );
         const meetingArgs = {
-          guestName: `${client.firstName} ${client.lastName}`,
-          guestEmail: client.email,
+          guestName: meetingRecipient.name,
+          guestEmail: meetingRecipient.email,
           professionalName: `${professional.firstName} ${professional.lastName}`,
           date: appointment.date
             ? appointment.date.toISOString()
@@ -357,6 +378,7 @@ export async function PATCH(
           duration: appointment.duration || 60,
           type: appointment.type,
           meetingLink: appointment.meetingLink,
+          locale: meetingRecipient.language,
         };
         after(() =>
           sendMeetingLinkNotification(meetingArgs).catch((err) =>
@@ -384,6 +406,7 @@ export async function PATCH(
         firstName: string;
         lastName: string;
         email: string;
+        language?: string;
       };
       const professional = appointment.professionalId as unknown as {
         firstName: string;
@@ -391,10 +414,20 @@ export async function PATCH(
         email: string;
       };
 
+      // Quebec LSSSS art. 14: cancellation comms must reach the beneficiary
+      // (the loved one, when adult), not the requester.
+      const cancelRecipient = resolveAppointmentRecipient(
+        {
+          bookingFor: appointment.bookingFor,
+          lovedOneInfo: appointment.lovedOneInfo,
+        },
+        client,
+      );
+
       // Send cancellation notification
       const cancelArgs = {
-        clientName: `${client.firstName} ${client.lastName}`,
-        clientEmail: client.email,
+        clientName: cancelRecipient.name,
+        clientEmail: cancelRecipient.email,
         professionalName: professional
           ? `${professional.firstName} ${professional.lastName}`
           : undefined,
@@ -408,6 +441,7 @@ export async function PATCH(
           | "phone"
           | "both",
         cancelledBy: cancelledBy,
+        locale: cancelRecipient.language,
       };
       after(() =>
         sendCancellationNotification(cancelArgs).catch((err) =>
@@ -469,17 +503,13 @@ export async function PATCH(
               `Refund processed successfully: ${refund.id} - Amount: $${refund.amount / 100} (Fee: $${cancellationFee.toFixed(2)})`,
             );
 
-            // Send refund confirmation email
-            const clientForRefund = appointment.clientId as unknown as {
-              firstName: string;
-              lastName: string;
-              email: string;
-            };
+            // Send refund confirmation email (LSSSS art. 14: to beneficiary).
             const refundArgs = {
-              name: `${clientForRefund.firstName} ${clientForRefund.lastName}`,
-              email: clientForRefund.email,
+              name: cancelRecipient.name,
+              email: cancelRecipient.email,
               amount: refund.amount / 100,
               appointmentDate: appointment.date?.toISOString(),
+              locale: cancelRecipient.language,
             };
             after(() =>
               sendRefundConfirmation(refundArgs).catch((err) =>

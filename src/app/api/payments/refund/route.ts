@@ -5,6 +5,7 @@ import { stripe } from "@/lib/stripe";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { sendRefundConfirmation } from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Get appointment details
     const appointment = await Appointment.findById(appointmentId)
-      .populate("clientId", "email firstName lastName")
+      .populate("clientId", "email firstName lastName language")
       .populate("professionalId", "firstName lastName");
 
     if (!appointment) {
@@ -107,17 +108,26 @@ export async function POST(req: NextRequest) {
     appointment.payment.refundedAt = new Date();
     await appointment.save();
 
-    // Send refund confirmation email
+    // Send refund confirmation email — LSSSS art. 14 routing.
     const clientInfo = appointment.clientId as unknown as {
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
+    const refundRecipient = resolveAppointmentRecipient(
+      {
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
+      },
+      clientInfo,
+    );
     sendRefundConfirmation({
-      name: `${clientInfo.firstName} ${clientInfo.lastName}`,
-      email: clientInfo.email,
+      name: refundRecipient.name,
+      email: refundRecipient.email,
       amount: refund.amount / 100,
       appointmentDate: appointment.date?.toISOString(),
+      locale: refundRecipient.language,
     }).catch((err) => console.error("Error sending refund confirmation:", err));
 
     return NextResponse.json({

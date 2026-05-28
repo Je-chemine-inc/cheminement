@@ -179,6 +179,8 @@ export async function POST(req: NextRequest) {
     await appointment.save();
 
     // Fire-and-forget notifications to both parties.
+    const clientLocale: "fr" | "en" =
+      client.language === "en" ? "en" : "fr";
     const emailData = {
       clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),
       clientEmail: client.email,
@@ -193,7 +195,7 @@ export async function POST(req: NextRequest) {
       location: appointment.location,
     };
     Promise.all([
-      sendAppointmentConfirmation(emailData),
+      sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),
       sendProfessionalNotification(emailData),
     ]).catch((err) =>
       console.error("[admin booking] notification error:", err),
