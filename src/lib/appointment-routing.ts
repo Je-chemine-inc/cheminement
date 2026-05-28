@@ -2,10 +2,7 @@ import Profile from "@/models/Profile";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import MedicalProfile from "@/models/MedicalProfile";
-import {
-  sendProfessionalNotification,
-  sendRequestMovedToGeneralListEmail,
-} from "@/lib/notifications";
+import { sendProfessionalNotification } from "@/lib/notifications";
 
 /**
  * Calculate age from date of birth
@@ -619,30 +616,6 @@ export async function routeAppointmentToProfessionals(
         routingStatus: "general",
       });
 
-      // Notify the client their request is now open to the full network
-      void (async () => {
-        try {
-          const apptDoc = await Appointment.findById(appointmentId)
-            .populate("clientId", "firstName lastName email language")
-            .lean();
-          const c = apptDoc?.clientId as {
-            firstName?: string;
-            lastName?: string;
-            email?: string;
-            language?: string;
-          } | null;
-          if (c?.email) {
-            await sendRequestMovedToGeneralListEmail({
-              clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
-              clientEmail: c.email,
-              locale: c.language === "fr" ? "fr" : "en",
-            });
-          }
-        } catch (e) {
-          console.error("[routing] Failed to send general-list notification:", e);
-        }
-      })();
-
       return { success: true, matches: [], routingStatus: "general" };
     }
 
@@ -689,30 +662,6 @@ export async function routeAppointmentToProfessionals(
       await Appointment.findByIdAndUpdate(appointmentId, {
         routingStatus: "general",
       });
-
-      // Notify the client their request is now open to the full network
-      void (async () => {
-        try {
-          const apptDoc = await Appointment.findById(appointmentId)
-            .populate("clientId", "firstName lastName email language")
-            .lean();
-          const c = apptDoc?.clientId as {
-            firstName?: string;
-            lastName?: string;
-            email?: string;
-            language?: string;
-          } | null;
-          if (c?.email) {
-            await sendRequestMovedToGeneralListEmail({
-              clientName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() || "Client",
-              clientEmail: c.email,
-              locale: c.language === "fr" ? "fr" : "en",
-            });
-          }
-        } catch (e) {
-          console.error("[routing] Failed to send general-list notification:", e);
-        }
-      })();
 
       return { success: true, matches: [], routingStatus: "general" };
     }

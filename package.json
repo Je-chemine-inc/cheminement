@@ -12,6 +12,7 @@
     "prune": "knip",
     "seed": "tsx src/lib/seed.ts",
     "seed-motifs": "tsx src/lib/seed-motifs.ts",
+    "seed-routing-test": "tsx src/lib/seed-routing-test.ts",
     "reset-motifs": "tsx src/lib/reset-motifs.ts",
     "create-admin": "tsx src/lib/create-admin.ts"
   },

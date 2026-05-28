@@ -54,7 +54,12 @@ export async function GET(req: NextRequest) {
       .populate("clientId", "firstName lastName email phone location")
       .sort({ createdAt: -1 });
 
-    return NextResponse.json(appointments);
+    // Drop rows whose client User has been deleted — the pro UI assumes
+    // clientId is populated and crashes on null, which used to white-screen
+    // the entire Propositions page when one orphan record was in the queue.
+    const safe = appointments.filter((apt) => apt.clientId != null);
+
+    return NextResponse.json(safe);
   } catch (error) {
     console.error("Get general appointments error:", error);
     return NextResponse.json(

@@ -201,27 +201,33 @@ export default function ProposalsPage() {
     activeTab === "proposed" ? proposedAppointments : generalAppointments;
 
   const filteredAppointments = useMemo(() => {
-    return currentAppointments.filter((appointment) => {
-      const clientName = `${appointment.clientId.firstName} ${appointment.clientId.lastName}`;
-      const matchesSearch =
-        clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        appointment.clientId.email
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        (appointment.issueType
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ??
-          false);
+    return currentAppointments
+      // Drop rows where the populated client doc is missing — guards against
+      // any future regression that lets orphan appointments slip through and
+      // white-screens the page when we touch clientId.firstName below.
+      .filter((appointment) => appointment.clientId != null)
+      .filter((appointment) => {
+        const clientName = `${appointment.clientId.firstName ?? ""} ${appointment.clientId.lastName ?? ""}`;
+        const matchesSearch =
+          clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (appointment.clientId.email ?? "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          (appointment.issueType
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ??
+            false);
 
-      const matchesIssueType =
-        issueTypeFilter === "all" || appointment.issueType === issueTypeFilter;
+        const matchesIssueType =
+          issueTypeFilter === "all" ||
+          appointment.issueType === issueTypeFilter;
 
-      const matchesBookingFor =
-        bookingForFilter === "all" ||
-        appointment.bookingFor === bookingForFilter;
+        const matchesBookingFor =
+          bookingForFilter === "all" ||
+          appointment.bookingFor === bookingForFilter;
 
-      return matchesSearch && matchesIssueType && matchesBookingFor;
-    });
+        return matchesSearch && matchesIssueType && matchesBookingFor;
+      });
   }, [currentAppointments, searchQuery, issueTypeFilter, bookingForFilter]);
 
   const handleAccept = async (appointment: ProposedAppointment) => {

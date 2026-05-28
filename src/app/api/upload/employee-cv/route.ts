@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
+import StoredFile from "@/models/StoredFile";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -56,25 +54,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const fileExtension = file.name.split(".").pop()?.toLowerCase() || "pdf";
-    const uniqueId = crypto.randomBytes(16).toString("hex");
-    const uniqueFilename = `${uniqueId}.${fileExtension}`;
-
-    const uploadsDir = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "employee-cv",
-    );
-    await mkdir(uploadsDir, { recursive: true });
-
-    const filePath = path.join(uploadsDir, uniqueFilename);
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
+    const stored = await StoredFile.create({
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      data: buffer,
+      kind: "employee-cv",
+      uploadedBy: session.user.id,
+    });
 
     return NextResponse.json({
       success: true,
-      url: `/uploads/employee-cv/${uniqueFilename}`,
+      url: `/api/files/${stored._id.toString()}`,
       fileName: file.name,
       size: file.size,
       type: file.type,

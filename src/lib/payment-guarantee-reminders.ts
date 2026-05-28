@@ -3,6 +3,7 @@ import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import {
   sendPaymentGuaranteeDay1Reminder,
   sendPaymentGuaranteeDay2Reminder,
@@ -79,11 +80,15 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     if (!user) continue;
     if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
 
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      clientPop,
+    );
     const ok = await sendPaymentGuaranteeDay1Reminder({
-      clientName: `${clientPop.firstName} ${clientPop.lastName}`,
-      clientEmail: clientPop.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       billingUrl,
-      locale: clientPop.language === "en" ? "en" : "fr",
+      locale: recipient.language,
     });
     if (ok) {
       await Appointment.findByIdAndUpdate(apt._id, {
@@ -113,11 +118,15 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     if (!user) continue;
     if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
 
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      clientPop,
+    );
     const ok = await sendPaymentGuaranteeDay2Reminder({
-      clientName: `${clientPop.firstName} ${clientPop.lastName}`,
-      clientEmail: clientPop.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       billingUrl,
-      locale: clientPop.language === "en" ? "en" : "fr",
+      locale: recipient.language,
     });
     if (ok) {
       await Appointment.findByIdAndUpdate(apt._id, {
@@ -135,7 +144,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       { guarantee48hProfessionalAlertSent: { $ne: true } },
     ],
   })
-    .populate("clientId", "firstName lastName email")
+    .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName email")
     .limit(500);
 
@@ -151,18 +160,23 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       firstName: string;
       lastName: string;
       email: string;
+      language?: string;
     };
     const user = await User.findById(clientPop._id);
     if (!user) continue;
     if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
 
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      clientPop,
+    );
     const dateLabel = formatAppointmentDateLabel(apt);
     const updates: Record<string, boolean> = {};
 
     if (!apt.guarantee48hClientReminderSent) {
       const ok = await sendPaymentGuarantee48hClientReminder({
-        clientName: `${clientPop.firstName} ${clientPop.lastName}`,
-        clientEmail: clientPop.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         billingUrl,
         appointmentDateLabel: dateLabel,
       });
@@ -182,7 +196,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
         const ok = await sendPaymentGuarantee48hProfessionalAlert({
           professionalEmail: pro.email,
           professionalName: `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim(),
-          clientName: `${clientPop.firstName} ${clientPop.lastName}`,
+          clientName: recipient.name,
           appointmentDateLabel: dateLabel,
           appointmentId: String(apt._id),
         });
@@ -220,19 +234,22 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     if (!user) continue;
     if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
 
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      clientPop,
+    );
     const dateLabel = formatAppointmentDateLabel(apt);
-    const locale: "fr" | "en" = clientPop.language === "fr" ? "fr" : "en";
 
     const [clientOk] = await Promise.all([
       sendPostMeetingPaymentReminder({
-        clientName: `${clientPop.firstName} ${clientPop.lastName}`,
-        clientEmail: clientPop.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         appointmentDateLabel: dateLabel,
-        locale,
+        locale: recipient.language,
       }),
       sendAdminNoPaymentBeforeMeetingAlert({
-        clientName: `${clientPop.firstName} ${clientPop.lastName}`,
-        clientEmail: clientPop.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         appointmentDateLabel: dateLabel,
         appointmentId: String(apt._id),
       }),

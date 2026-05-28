@@ -30,9 +30,14 @@ function getBaseUrl(): string {
   );
 }
 
-// Cancellation fee configuration
-const CANCELLATION_FEE_PERCENTAGE = 0.15; // 15% cancellation fee
-const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = 24; // Free cancellation if more than 24 hours before
+// Cancellation policy (strict 48h rule):
+// - >= 48h before the appointment: client may self-cancel free of charge.
+// - <  48h: self-cancel is BLOCKED at the API and hidden in the UI.
+//   Late cancellations are only possible via direct admin/pro contact, which
+//   uses the admin/pro endpoints (not gated here). The fee constant is kept
+//   in case admins want to apply it manually but is no longer auto-charged.
+const CANCELLATION_FEE_PERCENTAGE = 0.15;
+const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = 48;
 
 export async function GET(
   req: NextRequest,
@@ -118,6 +123,33 @@ export async function PATCH(
 
     // Get the appointment before update to check for status changes
     const oldAppointment = await Appointment.findById(id);
+
+    // Strict 48h cancellation rule: a client cannot self-cancel within 48h
+    // of the appointment. Admin/pro keep the ability to mark it cancelled
+    // (handled via their dashboards; this endpoint is used by clients too).
+    if (
+      data.status === "cancelled" &&
+      oldAppointment &&
+      oldAppointment.status !== "cancelled" &&
+      oldAppointment.date &&
+      (session.user.role === "client" ||
+        session.user.role === "guest" ||
+        session.user.role === "prospect")
+    ) {
+      const apptStart = new Date(oldAppointment.date);
+      const hoursUntil =
+        (apptStart.getTime() - Date.now()) / (60 * 60 * 1000);
+      if (hoursUntil < HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION) {
+        return NextResponse.json(
+          {
+            error:
+              "Self-cancellation is no longer possible (within 48h of the appointment). Please contact support.",
+            code: "CANCELLATION_WINDOW_CLOSED",
+          },
+          { status: 403 },
+        );
+      }
+    }
 
     // If a professional is accepting an unassigned pending request,
     // assign themselves as the professional

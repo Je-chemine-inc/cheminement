@@ -145,9 +145,17 @@ export async function POST(req: NextRequest) {
         ? duration
         : profile?.availability?.sessionDurationMinutes || 60;
 
+    // IMPORTANT: do NOT pre-assign `professionalId` here. The accept route
+    // refuses to act on an appointment that already has a professional
+    // attached (it treats that as "already assigned"). Instead we route this
+    // through the standard pro-proposal queue by putting the requested
+    // professional in `proposedTo` and leaving `professionalId` blank — they
+    // then accept or refuse via the same /accept and /refuse routes that
+    // handle the auto-router's proposals.
     const appointment = new Appointment({
       clientId: session.user.id,
-      professionalId: lastApt.professionalId,
+      proposedTo: [lastApt.professionalId],
+      routingStatus: "proposed",
       date: appointmentDate,
       time,
       duration: finalDuration,

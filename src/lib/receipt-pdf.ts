@@ -36,7 +36,7 @@ export type FiscalReceiptPdfInput = {
   therapyTypeLabel: string;
   actNatureKey?: string;
   actNatureOther?: string;
-  /** Determines dynamic description: absence_or_late_cancel → management/cancellation fees. */
+  /** Drives dynamic description: cancelled_late / no_show → management/cancellation fees. */
   sessionOutcome?: string;
   amountCad: number;
   platformFeeCad: number;
@@ -392,7 +392,9 @@ export function buildFiscalReceiptPdfBuffer(
   doc.text("Séance", MARGIN, y);
   y += 6;
 
-  const isAbsenceOrLateCancel = input.sessionOutcome === "absence_or_late_cancel";
+  const isAbsenceOrLateCancel =
+    input.sessionOutcome === "cancelled_late" ||
+    input.sessionOutcome === "no_show";
   const descriptionLine = isAbsenceOrLateCancel
     ? "Frais de gestion de dossier / Annulation tardive"
     : getSessionActNatureLabelFr(input.actNatureKey) +

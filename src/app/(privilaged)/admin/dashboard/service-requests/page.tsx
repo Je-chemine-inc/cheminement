@@ -214,7 +214,7 @@ export default function AdminServiceRequestsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-serif font-light text-foreground">
@@ -286,7 +286,10 @@ export default function AdminServiceRequestsPage() {
                   <TableCell className="max-w-[200px] truncate text-sm">
                     {r.clientEmail}
                   </TableCell>
-                  <TableCell className="max-w-[220px] text-sm">
+                  <TableCell
+                    className="max-w-[220px] truncate text-sm"
+                    title={r.issueType || undefined}
+                  >
                     {r.issueType || "—"}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">
@@ -305,38 +308,45 @@ export default function AdminServiceRequestsPage() {
                       );
                     })()}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex flex-col gap-2">
+                  <TableCell className="text-sm align-top">
+                    <div className="flex flex-col gap-2 min-w-[260px]">
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => approve(r.id, "requester")}
-                          disabled={loading || approvingId === r.id}
-                        >
-                          {t("sendToRequester")}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => approve(r.id, "loved-one")}
-                          disabled={loading || approvingId === r.id}
-                        >
-                          {t("sendToLovedOne")}
-                        </Button>
+                        {r.bookingFor === "loved-one" && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => approve(r.id, "requester")}
+                              disabled={loading || approvingId === r.id}
+                              className="whitespace-nowrap"
+                            >
+                              {t("sendToRequester")}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => approve(r.id, "loved-one")}
+                              disabled={loading || approvingId === r.id}
+                              className="whitespace-nowrap"
+                            >
+                              {t("sendToLovedOne")}
+                            </Button>
+                          </>
+                        )}
                         <Button
                           type="button"
                           size="sm"
                           variant="destructive"
                           onClick={() => setDeleteTarget(r)}
                           disabled={loading || approvingId === r.id}
+                          className="whitespace-nowrap"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           {t("delete")}
                         </Button>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/30">
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/30">
                         <Select
                           value={assignDraft[r.id] || undefined}
                           onValueChange={(v) =>
@@ -370,7 +380,7 @@ export default function AdminServiceRequestsPage() {
                             assigningId === r.id ||
                             loading
                           }
-                          className="h-8 text-xs gap-1"
+                          className="h-8 text-xs gap-1 whitespace-nowrap"
                         >
                           {assigningId === r.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />

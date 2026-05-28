@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
+import crypto from "crypto";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
@@ -8,6 +9,16 @@ import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { sendJumelageSuccessEmail } from "@/lib/notifications";
+import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+
+function getBaseUrl(): string {
+  return (
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000"
+  );
+}
 
 /**
  * Manually jumelage a pending service-request: admin picks a professional
@@ -57,7 +68,7 @@ export async function POST(
     const [appointment, professional] = await Promise.all([
       Appointment.findById(id).populate(
         "clientId",
-        "firstName lastName email language",
+        "firstName lastName email language role status",
       ),
       User.findOne({
         _id: professionalId,
@@ -94,25 +105,79 @@ export async function POST(
     await appointment.save();
 
     const client = appointment.clientId as unknown as {
+      _id: { toString: () => string };
       firstName?: string;
       lastName?: string;
       email?: string;
       language?: string;
+      role?: string;
+      status?: string;
     } | null;
 
     if (client?.email) {
-      const lang: "fr" | "en" = client.language === "fr" ? "fr" : "en";
-      void sendJumelageSuccessEmail({
-        clientName:
-          `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim() ||
-          "Client",
-        clientEmail: client.email,
+      // Provision unclaimed accounts so the "Compléter mon compte" CTA
+      // has a valid claim target — mirrors the pro-accept flow.
+      const wasProspectOrGuest =
+        client.role === "guest" || client.role === "prospect";
+      if (wasProspectOrGuest) {
+        await provisionGuestAsClient(client._id.toString(), {
+          issueType: appointment.issueType,
+          activate: false,
+        });
+      }
+
+      const freshClientUser = await User.findById(client._id)
+        .select("role status")
+        .lean();
+      const isActiveClient =
+        (freshClientUser as { role?: string } | null)?.role === "client" &&
+        (freshClientUser as { status?: string } | null)?.status === "active";
+
+      // Quebec LSSSS art. 14: route to the beneficiary for adult loved-one bookings.
+      const recipient = resolveAppointmentRecipient(
+        {
+          bookingFor: appointment.bookingFor,
+          lovedOneInfo: appointment.lovedOneInfo,
+        },
+        client,
+      );
+
+      const base = getBaseUrl();
+      const completeAccountUrl = isActiveClient
+        ? `${base}/client/dashboard/profile`
+        : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
+
+      // Resolve the "Choose payment method" CTA target. For unclaimed clients
+      // we mint a tokenized /pay link so the user can pay without first being
+      // forced through a login they cannot complete (no password yet).
+      let billingUrl: string;
+      if (!isActiveClient) {
+        const paymentToken = crypto.randomBytes(32).toString("hex");
+        const paymentTokenExpiry = new Date();
+        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7);
+        await Appointment.findByIdAndUpdate(appointment._id, {
+          "payment.paymentToken": paymentToken,
+          "payment.paymentTokenExpiry": paymentTokenExpiry,
+        });
+        billingUrl = `${base}/pay?token=${paymentToken}`;
+      } else {
+        billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
+      }
+
+      const jumelageArgs = {
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         professionalName: `${professional.firstName ?? ""} ${
           professional.lastName ?? ""
         }`.trim(),
-        locale: lang,
-      }).catch((err) =>
-        console.error("[admin manual jumelage] email error:", err),
+        locale: recipient.language,
+        completeAccountUrl,
+        billingUrl,
+      };
+      after(() =>
+        sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
+          console.error("[admin manual jumelage] email error:", err),
+        ),
       );
     }
 

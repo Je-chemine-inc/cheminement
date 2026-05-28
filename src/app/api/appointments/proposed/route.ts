@@ -44,7 +44,11 @@ export async function GET(req: NextRequest) {
       .populate("clientId", "firstName lastName email phone location")
       .sort({ createdAt: -1 });
 
-    return NextResponse.json(appointments);
+    // Drop rows whose client User has been deleted — see /api/appointments/general
+    // for the same defense against orphan records.
+    const safe = appointments.filter((apt) => apt.clientId != null);
+
+    return NextResponse.json(safe);
   } catch (error) {
     console.error("Get proposed appointments error:", error);
     return NextResponse.json(

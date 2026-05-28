@@ -8,6 +8,7 @@ import {
   SESSION_OUTCOME_VALUES,
   getAppointmentStatusForOutcome,
   getBillingFraction,
+  isLateOrNoShow,
   roundMoney,
   type SessionActNature,
   type SessionOutcome,
@@ -68,11 +69,12 @@ export async function POST(
 
     const outcome = sessionOutcome as SessionOutcome;
 
-    // sessionActNature is required EXCEPT for no-show / late cancellation,
-    // where the invoice is automatically labelled "Frais de gestion de dossier"
-    // and no clinical act was performed.
-    const isNoShowClosure = outcome === "absence_or_late_cancel";
-    if (!isNoShowClosure) {
+    // sessionActNature is required ONLY for completed sessions (drives the
+    // receipt line). For >48h cancellations no receipt is issued. For late
+    // cancellations / no-shows the invoice is auto-labelled "Frais de gestion
+    // de dossier" because no clinical act was performed.
+    const skipActRequirement = outcome !== "completed";
+    if (!skipActRequirement) {
       if (
         !sessionActNature ||
         !SESSION_ACT_NATURE_VALUES.includes(
@@ -93,6 +95,7 @@ export async function POST(
         { status: 400 },
       );
     }
+    const autoLabelManagementFees = isLateOrNoShow(outcome);
     const nextAt = parseNextAppointmentAt(
       nextAppointmentDate,
       nextAppointmentTime,
@@ -160,10 +163,11 @@ export async function POST(
       }
     }
 
+    // Trigger payment / Interac reference for every outcome that bills
+    // (completed = 100%, cancelled_late = 100%, no_show = 100%). The
+    // free 48h-plus cancellation has fraction = 0 and is skipped.
     const billableForPayment =
-      !paymentLocked &&
-      price > 0 &&
-      (newStatus === "completed" || newStatus === "no-show");
+      !paymentLocked && price > 0 && getBillingFraction(outcome) > 0;
 
     let stripeChargePaymentIntentId: string | undefined;
     let interacRefToSet: string | undefined;
@@ -226,13 +230,13 @@ export async function POST(
 
     if (sessionActNature) {
       $set.sessionActNature = sessionActNature;
-    } else if (isNoShowClosure) {
+    } else if (autoLabelManagementFees) {
       $set.sessionActNature = "";
     }
 
     if (sessionActNatureOther?.trim()) {
       $set.sessionActNatureOther = sessionActNatureOther.trim();
-    } else if (isNoShowClosure) {
+    } else if (autoLabelManagementFees) {
       $set.sessionActNatureOther = "Frais de gestion de dossier";
     }
 
@@ -258,7 +262,9 @@ export async function POST(
 
     if (newStatus === "cancelled") {
       $set.cancelReason =
-        outcome === "rescheduled" ? "rescheduled" : "cancelled_48h_advance";
+        outcome === "cancelled_late"
+          ? "cancelled_late"
+          : "cancelled_48h_advance";
       $set.cancelledBy = "professional";
       $set.cancelledAt = now;
     }
@@ -267,7 +273,7 @@ export async function POST(
       !paymentLocked &&
       price > 0 &&
       apt.payment.method === "transfer" &&
-      (newStatus === "completed" || newStatus === "no-show");
+      getBillingFraction(outcome) > 0;
 
     if (shouldSetTransferDue) {
       $set["payment.transferDueAt"] = due;

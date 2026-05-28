@@ -14,6 +14,7 @@ import {
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import mongoose from "mongoose";
 import { cycleKeyFromDateOrNow } from "@/lib/ledger-cycle";
 
@@ -33,9 +34,17 @@ export async function runSessionClosureSideEffects(
   if (!appointment) return;
 
   const price = appointment.payment?.price ?? 0;
+  // The receipt + ledger entry fire for every billing-eligible outcome:
+  //  - completed   (session held, 100% billed)
+  //  - cancelled_late (<48h cancel, 100% billed as management fees)
+  //  - no_show     (client absence, 100% billed as management fees)
+  // 48h-plus cancellation has fraction 0 → no receipt, no ledger entry.
+  const outcome = appointment.sessionOutcome as string | undefined;
   const billable =
-    (appointment.status === "completed" || appointment.status === "no-show") &&
-    price > 0;
+    price > 0 &&
+    (outcome === "completed" ||
+      outcome === "cancelled_late" ||
+      outcome === "no_show");
 
   const client = appointment.clientId as unknown as {
     _id: { toString: () => string };
@@ -44,7 +53,15 @@ export async function runSessionClosureSideEffects(
     email: string;
     language?: string;
   };
-  const clientLocale: "fr" | "en" = client.language === "en" ? "en" : "fr";
+  // Quebec LSSSS art. 14: for adult loved-one bookings, route follow-up
+  // emails (incl. receipt + payment instructions) to the beneficiary.
+  // Note: the PDF receipt's "client name" still reflects the legal payer
+  // built from the appointment data — only the email envelope changes.
+  const recipient = resolveAppointmentRecipient(
+    { bookingFor: appointment.bookingFor, lovedOneInfo: appointment.lovedOneInfo },
+    client,
+  );
+  const clientLocale = recipient.language;
   const professional = appointment.professionalId as unknown as {
     _id: { toString: () => string };
     firstName?: string;
@@ -131,8 +148,8 @@ export async function runSessionClosureSideEffects(
     const depositEmail = await getInteracDepositEmail();
     const code = appointment.payment.interacReferenceCode || "";
     await sendInteracTransferInstructionsEmail({
-      clientName: `${client.firstName} ${client.lastName}`,
-      clientEmail: client.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       clientLegalName: `${client.firstName} ${client.lastName}`,
       depositEmail,
       amountCad: price,
@@ -145,7 +162,7 @@ export async function runSessionClosureSideEffects(
   }
 
   await sendFiscalReceiptEmail({
-    clientEmail: client.email,
+    clientEmail: recipient.email,
     clientName: pdfInput.clientName,
     amountCad: price,
     pdfBuffer,

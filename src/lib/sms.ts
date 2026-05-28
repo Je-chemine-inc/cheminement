@@ -97,7 +97,7 @@ export async function sendAppointment72hSms(
   return sendSms(toPhone, body);
 }
 
-/** Rappel H-48 : RDV dans 48h, plus d'annulation gratuite (15 % de frais). */
+/** Rappel H-48 : RDV dans 48h, annulation libre-service indisponible. */
 export async function sendAppointment48hSms(
   toPhone: string,
   appointmentDateLabel: string,
@@ -105,7 +105,7 @@ export async function sendAppointment48hSms(
 ): Promise<void> {
   const body =
     lang === "en"
-      ? `Je chemine: appointment in 48h (${appointmentDateLabel}). Free-cancellation window closed (15% fee applies).`
-      : `Je chemine : rendez-vous dans 48 h (${appointmentDateLabel}). Délai gratuit dépassé (15 % de frais en cas d'annulation).`;
+      ? `Je chemine: appointment in 48h (${appointmentDateLabel}). Self-service cancellation is no longer possible — contact us for any change.`
+      : `Je chemine : rendez-vous dans 48 h (${appointmentDateLabel}). L'annulation en libre-service n'est plus possible — contactez-nous pour toute modification.`;
   return sendSms(toPhone, body);
 }

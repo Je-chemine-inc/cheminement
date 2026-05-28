@@ -1,6 +1,9 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
+import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 import {
   sendAppointment72hReminder,
   sendAppointment48hReminder,
@@ -93,18 +96,26 @@ export async function runAppointmentReminders(): Promise<{
       ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
       : undefined;
 
-    const locale: "fr" | "en" = client.language === "en" ? "en" : "fr";
+    // Quebec LSSSS art. 14: route appointment reminders to the beneficiary
+    // (the loved one is the one attending), unless they're a minor under 14.
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      client,
+    );
+    const recipientPhone = recipient.isLovedOne
+      ? apt.lovedOneInfo?.phone || client.phone
+      : client.phone;
+    const locale = recipient.language;
     const dateLabel = formatAppointmentDateLabel(apt, locale);
     const cancelUrl = `${baseUrl}/client/dashboard/appointments?id=${apt._id}&action=cancel`;
     const rescheduleUrl = `${baseUrl}/appointment?for=self`;
-    const clientName = `${client.firstName} ${client.lastName}`.trim();
     const updates: Record<string, boolean> = {};
 
     // H-72 window: 48h < hoursUntil <= 72h
     if (!apt.reminder72hSent && hoursUntil > 48 && hoursUntil <= 72) {
       const ok = await sendAppointment72hReminder({
-        clientName,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         professionalName,
         appointmentDateLabel: dateLabel,
         cancelUrl,
@@ -114,9 +125,9 @@ export async function runAppointmentReminders(): Promise<{
       if (ok) {
         updates.reminder72hSent = true;
         reminder72hSent++;
-        if (client.phone) {
+        if (recipientPhone) {
           await sendAppointment72hSms(
-            client.phone,
+            recipientPhone,
             dateLabel,
             cancelUrl,
             locale,
@@ -129,18 +140,29 @@ export async function runAppointmentReminders(): Promise<{
 
     // H-48 window: 0h < hoursUntil <= 48h
     if (!apt.reminder48hSent && hoursUntil > 0 && hoursUntil <= 48) {
+      // Only add the "Choose payment method" CTA if the requester (the
+      // account holder) still has no card / direct debit / Interac choice.
+      // The lookup hits the requester's User doc because payment lives there,
+      // even when the email goes to the loved one.
+      const accountHolder = await User.findById(client._id);
+      const noPaymentMethod =
+        accountHolder != null &&
+        clientLacksPaymentGuaranteeForAppointment(apt, accountHolder);
+
       const ok = await sendAppointment48hReminder({
-        clientName,
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         professionalName,
+        appointmentId: String(apt._id),
         appointmentDateLabel: dateLabel,
+        noPaymentMethod,
         locale,
       });
       if (ok) {
         updates.reminder48hSent = true;
         reminder48hSent++;
-        if (client.phone) {
-          await sendAppointment48hSms(client.phone, dateLabel, locale).catch(
+        if (recipientPhone) {
+          await sendAppointment48hSms(recipientPhone, dateLabel, locale).catch(
             (err) => console.error("sendAppointment48hSms:", err),
           );
         }

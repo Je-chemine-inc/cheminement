@@ -40,6 +40,66 @@ export function isUnder14(user: { dateOfBirth?: Date | string }): boolean {
 }
 
 /**
+ * Resolve the recipient of any transactional email for an appointment.
+ *
+ * Quebec LSSSS art. 14: for a loved-one booking where the beneficiary is 14+,
+ * the loved one is the legal channel — the parent/requester must NOT receive
+ * activation, confirmation, reminder, or follow-up emails. Under 14, the
+ * parent IS the legal channel and receives everything.
+ *
+ * Language: the loved one's preference is not stored, so we fall back to the
+ * requester's language for adult-loved-one cases.
+ */
+export function resolveAppointmentRecipient(
+  appointment: {
+    bookingFor?: "self" | "patient" | "loved-one";
+    lovedOneInfo?: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      dateOfBirth?: Date | string;
+    };
+  },
+  requester: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    language?: string;
+  },
+): {
+  email: string;
+  name: string;
+  language: "fr" | "en";
+  /** True when we routed to the loved one (caller may want to skip parent-only CTAs). */
+  isLovedOne: boolean;
+} {
+  const lang: "fr" | "en" =
+    requester.language === "fr" ? "fr" : requester.language === "en" ? "en" : "fr";
+  const requesterPayload = {
+    email: requester.email ?? "",
+    name:
+      `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() ||
+      "Client",
+    language: lang,
+    isLovedOne: false,
+  };
+
+  if (appointment.bookingFor !== "loved-one") return requesterPayload;
+  const lovedOne = appointment.lovedOneInfo;
+  if (!lovedOne?.email) return requesterPayload;
+  if (isUnder14({ dateOfBirth: lovedOne.dateOfBirth })) return requesterPayload;
+
+  return {
+    email: lovedOne.email,
+    name:
+      `${lovedOne.firstName ?? ""} ${lovedOne.lastName ?? ""}`.trim() ||
+      requesterPayload.name,
+    language: lang,
+    isLovedOne: true,
+  };
+}
+
+/**
  * Get guardian/account manager for a user
  */
 export async function getGuardian(

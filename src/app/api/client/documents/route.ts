@@ -3,9 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import ClientDocument from "@/models/ClientDocument";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import crypto from "crypto";
+import StoredFile from "@/models/StoredFile";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -67,31 +65,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ext = file.name.split(".").pop() || "bin";
-    const uniqueFilename = `${crypto.randomBytes(16).toString("hex")}.${ext}`;
-    const uploadsDir = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "client-documents",
-    );
-    await mkdir(uploadsDir, { recursive: true });
-    await writeFile(
-      path.join(uploadsDir, uniqueFilename),
-      Buffer.from(await file.arrayBuffer()),
-    );
-
-    const fileUrl = `/uploads/client-documents/${uniqueFilename}`;
-
     await connectToDatabase();
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const stored = await StoredFile.create({
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      data: buffer,
+      kind: "client-document",
+      uploadedBy: session.user.id,
+    });
 
     const doc = await ClientDocument.create({
       clientId: session.user.id,
       name: file.name,
-      fileUrl,
+      fileUrl: `/api/files/${stored._id.toString()}`,
       fileType: file.type,
       fileSize: file.size,
       sharedBy: "client",
+      sharedByUserId: session.user.id,
     });
 
     return NextResponse.json(doc, { status: 201 });

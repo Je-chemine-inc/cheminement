@@ -12,6 +12,7 @@ import {
 } from "@/lib/notifications";
 import User from "@/models/User";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 function getBaseUrl(): string {
   return (
@@ -116,7 +117,6 @@ export async function POST(
         : undefined;
 
       const clientUser = await User.findById(client._id).select("language role").lean();
-      const locale: "fr" | "en" = (clientUser as { language?: string } | null)?.language === "fr" ? "fr" : "en";
       const wasProspectOrGuest =
         (clientUser as { role?: string } | null)?.role === "guest" ||
         (clientUser as { role?: string } | null)?.role === "prospect";
@@ -140,6 +140,22 @@ export async function POST(
       const isActiveClient = (freshClientUser as { role?: string; status?: string } | null)?.role === "client" &&
         (freshClientUser as { status?: string } | null)?.status === "active";
 
+      // Quebec LSSSS art. 14: for adult loved-one bookings, all transactional
+      // emails go EXCLUSIVELY to the beneficiary, not the requester.
+      const recipient = resolveAppointmentRecipient(
+        {
+          bookingFor: updatedAppointment.bookingFor,
+          lovedOneInfo: updatedAppointment.lovedOneInfo,
+        },
+        {
+          firstName: client.firstName,
+          lastName: client.lastName,
+          email: client.email,
+          language: (clientUser as { language?: string } | null)?.language,
+        },
+      );
+      const locale = recipient.language;
+
       const base = getBaseUrl();
 
       // "Compléter mon compte" CTA:
@@ -147,17 +163,36 @@ export async function POST(
       //   - active client     → /client/dashboard/profile (finalize profile)
       const completeAccountUrl = isActiveClient
         ? `${base}/client/dashboard/profile`
-        : `${base}/signup/member?email=${encodeURIComponent(client.email)}`;
+        : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
+
+      // Resolve the "Choose payment method" CTA target up-front so BOTH the
+      // jumelage email and the payment-invitation email point to the same
+      // working URL. For unclaimed clients we mint a tokenized /pay link
+      // (no login required); active clients get the dashboard deep-link.
+      let billingUrl: string;
+      if (!isActiveClient) {
+        const paymentToken = crypto.randomBytes(32).toString("hex");
+        const paymentTokenExpiry = new Date();
+        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7);
+        await Appointment.findByIdAndUpdate(id, {
+          "payment.paymentToken": paymentToken,
+          "payment.paymentTokenExpiry": paymentTokenExpiry,
+        });
+        billingUrl = `${base}/pay?token=${paymentToken}`;
+      } else {
+        billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
+      }
 
       // Send jumelage confirmation email (with the two distinct CTAs).
       // after() keeps the serverless function alive on Vercel until the
       // SMTP send completes; without it, void sends are killed mid-flight.
       const jumelageArgs = {
-        clientName: `${client.firstName} ${client.lastName}`.trim(),
-        clientEmail: client.email,
+        clientName: recipient.name,
+        clientEmail: recipient.email,
         professionalName,
         locale,
         completeAccountUrl,
+        billingUrl,
       };
       after(() =>
         sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
@@ -169,18 +204,10 @@ export async function POST(
       // or a dashboard link for already-active clients.
 
       if (!isActiveClient) {
-        // Client hasn't claimed their account — send tokenized /pay link
-        const paymentToken = crypto.randomBytes(32).toString("hex");
-        const paymentTokenExpiry = new Date();
-        paymentTokenExpiry.setDate(paymentTokenExpiry.getDate() + 7);
-        await Appointment.findByIdAndUpdate(id, {
-          "payment.paymentToken": paymentToken,
-          "payment.paymentTokenExpiry": paymentTokenExpiry,
-        });
-        const paymentLink = `${base}/pay?token=${paymentToken}`;
+        // Client hasn't claimed their account — reuse the tokenized /pay link
         const guestPayArgs = {
-          guestName: `${client.firstName} ${client.lastName}`.trim(),
-          guestEmail: client.email,
+          guestName: recipient.name,
+          guestEmail: recipient.email,
           professionalName,
           date: updatedAppointment.date?.toISOString(),
           time: updatedAppointment.time,
@@ -188,7 +215,7 @@ export async function POST(
           type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
           therapyType: (updatedAppointment.therapyType as "solo" | "couple" | "group") || "solo",
           price: updatedAppointment.payment?.price ?? 0,
-          paymentLink,
+          paymentLink: billingUrl,
           locale,
         };
         after(() =>
@@ -199,8 +226,8 @@ export async function POST(
       } else {
         // Active client — send dashboard billing link
         const payInviteArgs = {
-          clientName: `${client.firstName} ${client.lastName}`.trim(),
-          clientEmail: client.email,
+          clientName: recipient.name,
+          clientEmail: recipient.email,
           professionalName: professionalName ?? "",
           professionalEmail: professional?.email ?? "",
           date: updatedAppointment.date?.toISOString(),
@@ -208,7 +235,7 @@ export async function POST(
           duration: updatedAppointment.duration || 60,
           type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
           price: updatedAppointment.payment?.price ?? 0,
-          paymentUrl: `${base}/client/dashboard/billing?action=addPaymentMethod`,
+          paymentUrl: billingUrl,
         };
         after(() =>
           sendPaymentInvitation(payInviteArgs).catch((err) =>

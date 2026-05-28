@@ -1475,11 +1475,12 @@ export async function sendGuestPaymentComplete(
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
   const sessionType = formatSessionType(data.therapyType);
-  const appointmentType = formatAppointmentType(data.type);
+  const appointmentType = formatAppointmentType(data.type, "fr");
 
   const details: Array<{ label: string; value: string; isLink?: boolean }> = [
     { label: "Type de séance", value: sessionType },
@@ -1524,7 +1525,7 @@ export async function sendGuestPaymentComplete(
         : "Votre lien de réunion vous sera envoyé avant l'heure prévue de votre séance.",
     },
     outro:
-      "Nous avons hâte de vous accompagner dans votre parcours de mieux-être. Si vous devez reporter, contactez-nous au moins 24 heures à l'avance.",
+      "Nous avons hâte de vous accompagner dans votre parcours de mieux-être. Si vous devez reporter, contactez-nous au moins 48 heures à l'avance.",
     branding,
   });
 
@@ -1561,10 +1562,11 @@ export async function sendAppointmentConfirmation(
   data: AppointmentEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
-  const appointmentType = formatAppointmentType(data.type);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
+  const appointmentType = formatAppointmentType(data.type, "fr");
 
   const details: Array<{ label: string; value: string; isLink?: boolean }> = [
     { label: "Professionnel", value: professionalName },
@@ -1593,7 +1595,7 @@ export async function sendAppointmentConfirmation(
       ? { text: "Rejoindre la séance", url: data.meetingLink }
       : undefined,
     outro:
-      "Si vous devez reporter ou annuler, veuillez le faire au moins 24 heures à l'avance.",
+      "Si vous devez reporter ou annuler, veuillez le faire au moins 48 heures à l'avance.",
     branding,
   });
 
@@ -1626,10 +1628,11 @@ export async function sendPaymentInvitation(
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
-  const appointmentType = formatAppointmentType(data.type);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
+  const appointmentType = formatAppointmentType(data.type, "fr");
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/client/dashboard/appointments`;
 
   const details: Array<{ label: string; value: string; isLink?: boolean }> = [
@@ -1708,10 +1711,11 @@ export async function sendProfessionalNotification(
   data: AppointmentEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
-  const appointmentType = formatAppointmentType(data.type);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
+  const appointmentType = formatAppointmentType(data.type, "fr");
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/requests`;
 
   const html = buildEmailHtml({
@@ -1761,9 +1765,10 @@ export async function sendAppointmentReminder(
   data: AppointmentEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
 
   const details: Array<{ label: string; value: string; isLink?: boolean }> = [
     { label: "Professionnel", value: professionalName },
@@ -1921,20 +1926,34 @@ export async function sendAppointment72hReminder(data: {
 }
 
 /**
- * Email 7b — H-48 reminder. Past the free-cancellation window: no cancel /
- * reschedule buttons. The email simply confirms the session and explains the
- * cancellation policy at this point.
+ * Email 7b — H-48 reminder. Past the strict 48h cancellation window:
+ *  - Primary CTA: "Confirmer ma présence" → marks clientConfirmedAt server-side.
+ *  - Secondary CTA (conditional): "Choisir mon mode de paiement" when the
+ *    client still has no payment method on file at H-48.
+ *  - No cancel/reschedule button: the policy now strictly blocks self-cancel
+ *    at <48h; the only path is direct admin/pro contact.
  */
 export async function sendAppointment48hReminder(data: {
   clientName: string;
   clientEmail: string;
   professionalName?: string;
+  appointmentId: string;
   appointmentDateLabel: string;
+  /** True when the client has no card / direct debit / Interac choice yet. */
+  noPaymentMethod?: boolean;
   locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const professionalName = formatProfessionalName(data.professionalName, lang);
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const confirmUrl = `${base}/client/dashboard/appointments?id=${encodeURIComponent(
+    data.appointmentId,
+  )}&action=confirm`;
+  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
 
   const html = buildEmailHtml({
     title:
@@ -1943,8 +1962,8 @@ export async function sendAppointment48hReminder(data: {
         : "Your appointment is in 48 hours",
     subtitle:
       lang === "fr"
-        ? "Délai d'annulation gratuite dépassé"
-        : "Free-cancellation window closed",
+        ? "Confirmez votre présence"
+        : "Please confirm your attendance",
     theme: "warning",
     badge: {
       text: lang === "fr" ? "⏰ Rappel — 48 h" : "⏰ Reminder — 48h",
@@ -1954,8 +1973,26 @@ export async function sendAppointment48hReminder(data: {
       lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
     intro:
       lang === "fr"
-        ? `Votre rendez-vous avec ${professionalName} aura lieu dans 48 heures (${data.appointmentDateLabel}). Merci de bien noter cette date — la séance est désormais confirmée.`
-        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}). Please make note of this date — the session is now confirmed.`,
+        ? `Votre rendez-vous avec ${professionalName} aura lieu dans 48 heures (${data.appointmentDateLabel}). Merci de confirmer votre présence en un clic.`
+        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}). Please confirm your attendance in one click.`,
+    button: {
+      text:
+        lang === "fr" ? "Confirmer ma présence" : "Confirm my attendance",
+      url: confirmUrl,
+    },
+    secondaryButton: data.noPaymentMethod
+      ? {
+          preamble:
+            lang === "fr"
+              ? "Vous n'avez pas encore choisi votre mode de paiement. C'est obligatoire pour valider la séance."
+              : "You haven't chosen your payment method yet. This is required to validate the session.",
+          text:
+            lang === "fr"
+              ? "Choisir mon mode de paiement"
+              : "Choose my payment method",
+          url: billingUrl,
+        }
+      : undefined,
     infoBox: {
       title:
         lang === "fr"
@@ -1963,8 +2000,8 @@ export async function sendAppointment48hReminder(data: {
           : "Cancellation policy",
       content:
         lang === "fr"
-          ? "Le délai d'annulation gratuite est dépassé. Toute annulation moins de 48 h avant la séance entraîne des frais équivalents à 15 % du tarif. En cas d'absence non signalée, des frais de gestion de dossier peuvent s'appliquer."
-          : "The free-cancellation window has closed. Any cancellation within 48h of the session will incur a fee equivalent to 15% of the rate. In case of an unannounced no-show, file-management fees may apply.",
+          ? "Le délai d'annulation gratuite est dépassé. Toute annulation à moins de 48 h doit passer par notre équipe ou votre professionnel — l'option d'annulation en libre-service n'est plus disponible."
+          : "The free-cancellation window has closed. Any cancellation within 48h must go through our team or your professional — the self-service cancellation option is no longer available.",
     },
     outro:
       lang === "fr"
@@ -1980,13 +2017,21 @@ export async function sendAppointment48hReminder(data: {
           "Rappel — votre rendez-vous est dans 48 heures",
           `Bonjour ${data.clientName},`,
           `Rendez-vous avec ${professionalName} le ${data.appointmentDateLabel}.`,
-          "Le délai d'annulation gratuite est dépassé : 15 % de frais s'appliquent en cas d'annulation tardive.",
+          `Confirmer ma présence : ${confirmUrl}`,
+          data.noPaymentMethod
+            ? `Choisir mon mode de paiement : ${billingUrl}`
+            : "",
+          "Annulation libre-service indisponible à moins de 48 h. Contactez notre équipe ou votre professionnel pour toute modification.",
         ]
       : [
           "Reminder — your appointment is in 48 hours",
           `Hello ${data.clientName},`,
           `Appointment with ${professionalName} on ${data.appointmentDateLabel}.`,
-          "The free-cancellation window has closed: a 15% fee applies for late cancellations.",
+          `Confirm my attendance: ${confirmUrl}`,
+          data.noPaymentMethod
+            ? `Choose my payment method: ${billingUrl}`
+            : "",
+          "Self-service cancellation is unavailable within 48h. Contact our team or your professional for any change.",
         ],
     lang,
   );
@@ -2006,10 +2051,11 @@ export async function sendMeetingLinkNotification(
   data: MeetingLinkEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
-  const professionalName = formatProfessionalName(data.professionalName);
-  const appointmentType = formatAppointmentType(data.type);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
+  const professionalName = formatProfessionalName(data.professionalName, "fr");
+  const appointmentType = formatAppointmentType(data.type, "fr");
 
   const html = buildEmailHtml({
     title: "Lien de réunion prêt",
@@ -2061,18 +2107,19 @@ export async function sendCancellationNotification(
   data: AppointmentEmailData & { cancelledBy: "client" | "professional" },
 ): Promise<boolean> {
   const branding = await getBranding();
-  const formattedDate = formatEmailDate(data.date);
-  const formattedTime = formatTime(data.time);
+  // Body is 100% French; lock formatters to fr-CA so dates/labels match.
+  const formattedDate = formatEmailDate(data.date, "fr");
+  const formattedTime = formatTime(data.time, "fr");
   const isClientCancellation = data.cancelledBy === "client";
   const recipientEmail = isClientCancellation
     ? data.professionalEmail
     : data.clientEmail;
   const recipientName = isClientCancellation
-    ? formatProfessionalName(data.professionalName)
+    ? formatProfessionalName(data.professionalName, "fr")
     : data.clientName;
   const cancellerName = isClientCancellation
     ? data.clientName
-    : formatProfessionalName(data.professionalName);
+    : formatProfessionalName(data.professionalName, "fr");
 
   const hasSchedule = data.date && data.time;
   const intro = hasSchedule
@@ -2139,11 +2186,11 @@ export async function sendPaymentFailedNotification(
           { label: "Montant", value: `${data.amount.toFixed(2)} $ ${currency}` },
           {
             label: "Date du rendez-vous",
-            value: formatEmailDate(data.appointmentDate),
+            value: formatEmailDate(data.appointmentDate, "fr"),
           },
           {
             label: "Professionnel",
-            value: formatProfessionalName(data.professionalName),
+            value: formatProfessionalName(data.professionalName, "fr"),
           },
         ]
       : [{ label: "Montant", value: `${data.amount.toFixed(2)} $ ${currency}` }],
@@ -2192,7 +2239,7 @@ export async function sendRefundConfirmation(
         ? [
             {
               label: "Rendez-vous initial",
-              value: formatEmailDate(data.appointmentDate),
+              value: formatEmailDate(data.appointmentDate, "fr"),
             },
           ]
         : []),
@@ -2892,6 +2939,13 @@ export async function sendJumelageSuccessEmail(data: {
   locale?: "fr" | "en";
   /** Link inviting the client to finish setting up their account (claim or complete profile). */
   completeAccountUrl?: string;
+  /**
+   * Override the "Choose payment method" CTA target. For unclaimed accounts pass
+   * the tokenized `/pay?token=…` URL so the user can pay without first having to
+   * log in (which would be impossible — they have no password yet).
+   * Falls back to the authenticated dashboard URL for already-active clients.
+   */
+  billingUrl?: string;
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
@@ -2899,7 +2953,9 @@ export async function sendJumelageSuccessEmail(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const billingUrl = `${base}/client/dashboard/billing?action=addPaymentMethod`;
+  const billingUrl =
+    data.billingUrl ??
+    `${base}/client/dashboard/billing?action=addPaymentMethod`;
   const companyName = branding?.companyName || "Je chemine";
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
 
@@ -3402,70 +3458,3 @@ export async function sendAppointmentTakenNotification(data: {
   );
 }
 
-/**
- * Sent to the client when their request could not be matched and moved to the general list.
- */
-export async function sendRequestMovedToGeneralListEmail(data: {
-  clientName: string;
-  clientEmail: string;
-  locale?: "fr" | "en";
-}): Promise<boolean> {
-  const branding = await getBranding();
-  const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
-
-  const title =
-    lang === "fr"
-      ? "Votre demande est toujours active"
-      : "Your request is still active";
-  const intro =
-    lang === "fr"
-      ? "Nous n'avons pas encore trouvé un professionnel parfaitement correspondant à votre demande. Votre dossier a été ouvert à l'ensemble de notre réseau de professionnels disponibles."
-      : "We haven't yet found a perfectly matched professional for your request. Your file has been opened to our full network of available professionals.";
-  const infoContent =
-    lang === "fr"
-      ? "Dès qu'un professionnel accepte votre demande, vous recevrez un courriel de confirmation avec les prochaines étapes."
-      : "As soon as a professional accepts your request, you will receive a confirmation email with next steps.";
-
-  const html = buildEmailHtml({
-    title,
-    theme: "info",
-    badge: {
-      text: lang === "fr" ? "⏳ Recherche en cours" : "⏳ Search in progress",
-      theme: "warning",
-    },
-    greeting:
-      lang === "fr"
-        ? `Bonjour ${data.clientName},`
-        : `Dear ${data.clientName},`,
-    intro,
-    infoBox: {
-      title:
-        lang === "fr" ? "Que se passe-t-il ensuite ?" : "What happens next?",
-      content: infoContent,
-    },
-    outro:
-      lang === "fr"
-        ? "Merci de votre patience. Si vous avez des questions, contactez notre équipe."
-        : "Thank you for your patience. If you have questions, please contact our team.",
-    branding,
-  });
-
-  const text = buildEmailText([
-    title,
-    lang === "fr"
-      ? `Bonjour ${data.clientName},`
-      : `Dear ${data.clientName},`,
-    intro,
-    infoContent,
-  ]);
-
-  const subject =
-    lang === "fr"
-      ? "Votre demande est transmise à notre réseau — JeChemine"
-      : "Your request has been shared with our network — JeChemine";
-
-  return sendEmail(
-    { to: data.clientEmail, subject, html, text },
-    "service_request_onboarding",
-  );
-}

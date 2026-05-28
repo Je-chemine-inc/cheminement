@@ -2184,6 +2184,9 @@
       "weekSessions": "This Week's Sessions",
       "monthSessions": "This Month's Sessions",
       "pendingBookings": "Pending Bookings",
+      "pendingProposalsAlertOne": "You have a new appointment request to review.",
+      "pendingProposalsAlertMany": "You have {count} new appointment requests to review.",
+      "pendingProposalsAlertSub": "Click to view and respond.",
       "profileStatus": "Profile Status",
       "pendingReview": "Pending Review",
       "quickActions": "Quick Actions",
@@ -2474,9 +2477,9 @@
         "outcomePlaceholder": "Choose an outcome",
         "outcomes": {
           "completed": "Completed (100% fees)",
-          "cancelled_48h_plus": "Cancelled more than 48h in advance (no fees)",
-          "absence_or_late_cancel": "Absence / Cancellation less than 48h (100% fees)",
-          "rescheduled": "Rescheduled with professional's agreement (no fees)"
+          "cancelled_48h_plus": "Cancelled by client (more than 48h in advance, no fees)",
+          "cancelled_late": "Late cancellation (less than 48h in advance, 100% fees)",
+          "no_show": "Client absence (no-show, 100% fees)"
         },
         "actNatureLabel": "Reason for consultation",
         "actPlaceholder": "Choose an option",
@@ -2496,6 +2499,7 @@
         "actNatureOtherLabel": "Additional note (will appear on the receipt)",
         "actNatureOtherPlaceholder": "Optional — e.g. topic, context…",
         "noShowFeeNotice": "An invoice labelled \"Frais de gestion de dossier\" will be issued automatically. The reason-for-consultation field is not required for a no-show or late cancellation.",
+        "freeCancelNotice": "Free cancellation (more than 48h in advance) — no fees billed, no receipt issued. The reason for consultation is not required.",
         "chargeSkippedWarning": "Session closed. The client has no payment method on file, so the invoice has been left as pending — collect manually or ask the client to register a card.",
         "nextAppointmentLabel": "Next appointment",
         "nextAppointmentHint": "Optional — enter date and time to schedule the next session.",
@@ -4150,6 +4154,10 @@
       "cancelled": "Cancelled",
       "noUpcoming": "No upcoming appointments",
       "noPast": "No past appointments",
+      "confirmAttendance": {
+        "success": "Attendance confirmed. Your professional has been notified.",
+        "error": "Unable to confirm attendance right now. Please retry or contact us."
+      },
       "requestNew": "Request a new appointment",
       "requestNewWithCurrentPro": "Request a new appointment with {pro}",
       "requestWithOtherPro": "Request an appointment with another professional",

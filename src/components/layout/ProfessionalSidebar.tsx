@@ -44,6 +44,7 @@ export function ProfessionalSidebar() {
   const { state } = useSidebar();
   const t = useTranslations("Dashboard.sidebar");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
 
   useEffect(() => {
     const loadUnread = async () => {
@@ -60,8 +61,22 @@ export function ProfessionalSidebar() {
         // silent
       }
     };
+    const loadProposals = async () => {
+      try {
+        const res = await fetch("/api/appointments/proposed");
+        if (!res.ok) return;
+        const data = (await res.json()) as unknown[];
+        setPendingProposalsCount(Array.isArray(data) ? data.length : 0);
+      } catch {
+        // silent
+      }
+    };
     loadUnread();
-    const id = setInterval(loadUnread, 60000);
+    loadProposals();
+    const id = setInterval(() => {
+      loadUnread();
+      loadProposals();
+    }, 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -98,6 +113,7 @@ export function ProfessionalSidebar() {
           title: t("proposals"),
           url: "/professional/dashboard/proposals",
           icon: Star,
+          badge: pendingProposalsCount,
         },
         {
           title: t("myClients"),

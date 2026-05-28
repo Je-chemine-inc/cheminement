@@ -110,7 +110,9 @@
       "Bash(git -C c:/Users/merie/cheminement add src/lib/notifications.ts)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); console.log\\('json OK'\\)\")",
       "Bash(git -C c:/Users/merie/cheminement ls-files --others --exclude-standard)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/login)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/login)",
+      "Read(//c/Us[email protected]/cheminement/src/lib/**)",
+      "Bash(echo \"---exit: $?\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

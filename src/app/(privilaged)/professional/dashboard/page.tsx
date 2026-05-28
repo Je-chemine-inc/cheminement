@@ -49,6 +49,29 @@ export default function DashboardPage() {
   const [totalClients, setTotalClients] = useState<number | null>(null);
   const [weekSessions, setWeekSessions] = useState<number | null>(null);
   const [monthSessions, setMonthSessions] = useState<number | null>(null);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/appointments/proposed");
+        if (!res.ok) return;
+        const data = (await res.json()) as unknown[];
+        if (!cancelled) {
+          setPendingProposalsCount(Array.isArray(data) ? data.length : 0);
+        }
+      } catch {
+        // silent
+      }
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +139,31 @@ export default function DashboardPage() {
         </h1>
         <p className="text-muted-foreground font-light mt-2">{t("subtitle")}</p>
       </div>
+
+      {pendingProposalsCount > 0 && (
+        <a
+          href="/professional/dashboard/proposals"
+          className="block rounded-xl border-l-4 border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/30 px-5 py-4 transition-colors hover:bg-amber-100/70 dark:hover:bg-amber-950/50"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                {pendingProposalsCount === 1
+                  ? t("pendingProposalsAlertOne")
+                  : t("pendingProposalsAlertMany", {
+                      count: pendingProposalsCount,
+                    })}
+              </p>
+              <p className="text-xs font-light text-amber-800/80 dark:text-amber-200/80 mt-0.5">
+                {t("pendingProposalsAlertSub")}
+              </p>
+            </div>
+            <span className="inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-sm font-bold min-w-7 h-7 px-2">
+              {pendingProposalsCount > 9 ? "9+" : pendingProposalsCount}
+            </span>
+          </div>
+        </a>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-card p-6">

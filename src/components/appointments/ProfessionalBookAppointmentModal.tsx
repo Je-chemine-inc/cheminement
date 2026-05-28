@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { appointmentsAPI } from "@/lib/api-client";
 import type { AppointmentResponse } from "@/types/api";
 import { useMotifs, pickMotifLabel } from "@/hooks/useMotifs";
 
@@ -164,22 +163,26 @@ export function ProfessionalBookAppointmentModal({
         setSaving(false);
         return;
       }
-      const payload: Record<string, unknown> = {
-        clientId,
-        professionalId: sessionProId,
-        date,
-        time,
-        duration,
-        type,
-        therapyType: "solo",
-        bookingFor: "self",
-        needs: [motifLabel],
-        issueType: motifLabel,
-        status: "scheduled",
-      };
-      if (location.trim()) payload.location = location.trim();
-      if (notes.trim()) payload.notes = notes.trim();
-      const apt = await appointmentsAPI.create(payload);
+      const res = await fetch("/api/professional/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          date,
+          time,
+          duration,
+          type,
+          motif: motifLabel,
+          notes: notes.trim() || undefined,
+          location:
+            type === "in-person" ? location.trim() || undefined : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || t("genericError"));
+      }
+      const apt = (await res.json()) as AppointmentResponse;
       onCreated?.(apt);
       onOpenChange(false);
     } catch (e) {

@@ -143,6 +143,12 @@ export interface IAppointment extends Document {
   reminder48hSent?: boolean;
   guarantee48hProfessionalAlertSent?: boolean;
 
+  /**
+   * Confirmation explicite du client depuis le rappel H-48. Sert au pro à voir
+   * dans son tableau de bord que le client a affirmé sa présence.
+   */
+  clientConfirmedAt?: Date;
+
   /** Nature de l'acte (clôture professionnelle). */
   sessionActNature?: string;
   /** Précision libre sur la raison de consultation (apparaît sur le reçu). */
@@ -394,6 +400,8 @@ const AppointmentSchema = new Schema<IAppointment>(
     reminder72hSent: { type: Boolean, default: false },
     reminder48hSent: { type: Boolean, default: false },
     guarantee48hProfessionalAlertSent: { type: Boolean, default: false },
+
+    clientConfirmedAt: { type: Date, required: false },
 
     postMeetingPaymentReminderSent: { type: Boolean, default: false },
 

@@ -58,11 +58,14 @@ export function EndSessionDialog({
     }
   }, [open, appointmentId]);
 
-  const isNoShow = outcome === "absence_or_late_cancel";
+  const isLateOrNoShow =
+    outcome === "cancelled_late" || outcome === "no_show";
+  const isFreeCancel = outcome === "cancelled_48h_plus";
+  const requiresAct = outcome === "completed";
 
   const handleSubmit = async () => {
     if (!outcome) return;
-    if (!isNoShow && !act) return;
+    if (requiresAct && !act) return;
 
     try {
       setSaving(true);
@@ -100,7 +103,8 @@ export function EndSessionDialog({
     }
   };
 
-  const canSubmit = Boolean(outcome) && (isNoShow || Boolean(act)) && !saving;
+  const canSubmit =
+    Boolean(outcome) && (!requiresAct || Boolean(act)) && !saving;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,11 +130,15 @@ export function EndSessionDialog({
             </Select>
           </div>
 
-          {isNoShow ? (
+          {isLateOrNoShow ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               {t("noShowFeeNotice")}
             </div>
-          ) : (
+          ) : isFreeCancel ? (
+            <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+              {t("freeCancelNotice")}
+            </div>
+          ) : requiresAct ? (
             <>
               <div className="space-y-2">
                 <Label>{t("actNatureLabel")}</Label>
@@ -160,7 +168,7 @@ export function EndSessionDialog({
                 />
               </div>
             </>
-          )}
+          ) : null}
 
           <div className="space-y-2">
             <Label>{t("nextAppointmentLabel")}</Label>

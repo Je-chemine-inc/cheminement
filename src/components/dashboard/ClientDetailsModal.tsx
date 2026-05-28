@@ -55,7 +55,7 @@ export default function ClientDetailsModal({
   const [sessions, setSessions] = useState<AppointmentResponse[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [uploadedDocuments, setUploadedDocuments] = useState<
-    { url: string; fileName: string; uploadedAt: string }[]
+    { _id: string; fileUrl: string; name: string; createdAt: string }[]
   >([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -77,7 +77,27 @@ export default function ClientDetailsModal({
           setSessionsLoading(false);
         }
       };
+      const fetchDocuments = async () => {
+        try {
+          const res = await fetch(`/api/clients/${client.id}/documents`);
+          if (!res.ok) {
+            setUploadedDocuments([]);
+            return;
+          }
+          const docs = (await res.json()) as Array<{
+            _id: string;
+            fileUrl: string;
+            name: string;
+            createdAt: string;
+          }>;
+          setUploadedDocuments(docs);
+        } catch (e) {
+          console.error("Failed to fetch patient documents:", e);
+          setUploadedDocuments([]);
+        }
+      };
       fetchSessions();
+      fetchDocuments();
     }
   }, [client]);
 
@@ -153,13 +173,14 @@ export default function ClientDetailsModal({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !client) return;
 
     setIsUploading(true);
     setUploadError(null);
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("clientId", client.id);
 
     try {
       const response = await fetch("/api/upload/patient-document", {
@@ -168,38 +189,43 @@ export default function ClientDetailsModal({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to upload file");
       }
 
-      const data = await response.json();
-      setUploadedDocuments((prev) => [
-        ...prev,
-        {
-          url: data.url,
-          fileName: data.fileName,
-          uploadedAt: new Date().toISOString(),
-        },
-      ]);
-      // TODO: Associate this document with the client in the backend
-      // await apiClient.post(`/clients/${client.id}/documents`, {
-      //   url: data.url,
-      //   fileName: data.fileName,
-      // });
+      const doc = (await response.json()) as {
+        _id: string;
+        fileUrl: string;
+        name: string;
+        createdAt: string;
+      };
+      setUploadedDocuments((prev) => [doc, ...prev]);
     } catch (error: unknown) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""; // Clear the input
+        fileInputRef.current.value = "";
       }
     }
   };
 
   const handleRemoveDocument = async (index: number) => {
-    // TODO: Implement actual API call to delete file from storage and backend
-    // await apiClient.delete(`/clients/${client.id}/documents/${uploadedDocuments[index].id}`);
+    if (!client) return;
+    const target = uploadedDocuments[index];
+    if (!target?._id) return;
+    const previous = uploadedDocuments;
     setUploadedDocuments((prev) => prev.filter((_, i) => i !== index));
+    try {
+      const res = await fetch(
+        `/api/clients/${client.id}/documents/${target._id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) throw new Error("Delete failed");
+    } catch (e) {
+      console.error("Failed to delete patient document:", e);
+      setUploadedDocuments(previous);
+    }
   };
 
   return (
@@ -397,23 +423,23 @@ export default function ClientDetailsModal({
                   </p>
                   {uploadedDocuments.map((doc, index) => (
                     <div
-                      key={index}
+                      key={doc._id}
                       className="flex items-center justify-between bg-muted/30 rounded-lg p-3"
                     >
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-primary" />
                         <div>
                           <p className="text-sm font-medium text-foreground">
-                            {doc.fileName}
+                            {doc.name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatShortDate(doc.uploadedAt)}
+                            {formatShortDate(doc.createdAt)}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={doc.url}
+                          href={doc.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 rounded-full hover:bg-muted transition-colors text-primary"

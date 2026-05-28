@@ -2185,6 +2185,9 @@
       "weekSessions": "Séances de cette semaine",
       "monthSessions": "Séances de ce mois",
       "pendingBookings": "Réservations en attente",
+      "pendingProposalsAlertOne": "Vous avez une nouvelle demande de rendez-vous à traiter.",
+      "pendingProposalsAlertMany": "Vous avez {count} nouvelles demandes de rendez-vous à traiter.",
+      "pendingProposalsAlertSub": "Cliquez pour les consulter et y répondre.",
       "profileStatus": "Statut du profil",
       "pendingReview": "En attente d'examen",
       "quickActions": "Actions rapides",
@@ -2473,10 +2476,10 @@
         "outcomeLabel": "Issue de la rencontre",
         "outcomePlaceholder": "Choisir une issue",
         "outcomes": {
-          "completed": "Complété (100 % des frais)",
-          "cancelled_48h_plus": "Annulé plus de 48h à l'avance (0 frais)",
-          "absence_or_late_cancel": "Absence / Annulation moins de 48h (100 % des frais)",
-          "rescheduled": "Reporté avec l'accord du professionnel (0 frais)"
+          "completed": "Complétée (100 % des frais)",
+          "cancelled_48h_plus": "Annulée par le client (plus de 48 h à l'avance, 0 frais)",
+          "cancelled_late": "Annulée tardivement (moins de 48 h à l'avance, 100 % des frais)",
+          "no_show": "Absence du client (no-show, 100 % des frais)"
         },
         "actNatureLabel": "Raison de la consultation",
         "actPlaceholder": "Choisir une option",
@@ -2496,6 +2499,7 @@
         "actNatureOtherLabel": "Autre précision (apparaîtra sur le reçu)",
         "actNatureOtherPlaceholder": "Facultatif — ex. : sujet, contexte…",
         "noShowFeeNotice": "Une facture libellée « Frais de gestion de dossier » sera émise automatiquement. La raison de consultation n'est pas requise pour une absence ou une annulation tardive.",
+        "freeCancelNotice": "Annulation gratuite (plus de 48 h à l'avance) — aucun frais facturé, aucun reçu émis. La raison de consultation n'est pas requise.",
         "chargeSkippedWarning": "Séance clôturée. Le client n'a aucun moyen de paiement enregistré : la facture reste en attente — encaissez manuellement ou demandez au client d'enregistrer une carte.",
         "nextAppointmentLabel": "Prochain rendez-vous",
         "nextAppointmentHint": "Facultatif — saisissez la date et l'heure pour planifier la prochaine séance.",
@@ -4149,6 +4153,10 @@
       "cancelled": "Annulés",
       "noUpcoming": "Aucun rendez-vous à venir",
       "noPast": "Aucun rendez-vous passé",
+      "confirmAttendance": {
+        "success": "Présence confirmée. Votre professionnel a été averti.",
+        "error": "Impossible de confirmer la présence pour le moment. Réessayez ou contactez-nous."
+      },
       "requestNew": "Demander un nouveau rendez-vous",
       "requestNewWithCurrentPro": "Demander un nouveau rendez-vous avec {pro}",
       "requestWithOtherPro": "Demander un rendez-vous avec un autre professionnel",

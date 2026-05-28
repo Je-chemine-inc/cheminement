@@ -55,6 +55,11 @@ export default function ClientAppointmentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
+  const actionParam = searchParams.get("action");
+  const actionAppointmentId = searchParams.get("id");
+  const [confirmBanner, setConfirmBanner] = useState<"success" | "error" | null>(
+    null,
+  );
 
   useEffect(() => {
     fetchAppointments();
@@ -62,6 +67,34 @@ export default function ClientAppointmentsPage() {
       fetchManagedAccountInfo();
     }
   }, [accountId]);
+
+  // Handle `?action=confirm&id=…` deep link from the H-48 reminder email.
+  useEffect(() => {
+    if (actionParam !== "confirm" || !actionAppointmentId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await apiClient.post(`/appointments/${actionAppointmentId}/confirm`, {});
+        if (!cancelled) {
+          setConfirmBanner("success");
+          fetchAppointments();
+        }
+      } catch (err) {
+        console.error("Confirm appointment error:", err);
+        if (!cancelled) setConfirmBanner("error");
+      } finally {
+        // Clear the action params from the URL so a refresh doesn't re-fire.
+        const next = new URLSearchParams(searchParams.toString());
+        next.delete("action");
+        next.delete("id");
+        const qs = next.toString();
+        router.replace(qs ? `?${qs}` : "?");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [actionParam, actionAppointmentId]);
 
   const fetchManagedAccountInfo = async () => {
     try {
@@ -283,6 +316,22 @@ export default function ClientAppointmentsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Confirm-attendance banner (from H-48 email deep link) */}
+      {confirmBanner === "success" && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-800/40 dark:bg-green-950/20">
+          <p className="text-sm font-medium text-green-800 dark:text-green-200">
+            {t("confirmAttendance.success")}
+          </p>
+        </div>
+      )}
+      {confirmBanner === "error" && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-800/40 dark:bg-red-950/20">
+          <p className="text-sm font-medium text-red-800 dark:text-red-200">
+            {t("confirmAttendance.error")}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

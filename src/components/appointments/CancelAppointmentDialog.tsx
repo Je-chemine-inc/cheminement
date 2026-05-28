@@ -34,8 +34,10 @@ interface CancelAppointmentDialogProps {
   onSuccess?: () => void;
 }
 
-const CANCELLATION_FEE_PERCENTAGE = 15; // 15%
-const HOURS_FOR_FREE_CANCELLATION = 24;
+// Strict 48h rule: self-service cancellation is free when allowed.
+// Below 48h, the API refuses and the parent component hides the button —
+// so this dialog only renders when the cancellation is free.
+const HOURS_FOR_FREE_CANCELLATION = 48;
 
 export default function CancelAppointmentDialog({
   open,
@@ -54,22 +56,15 @@ export default function CancelAppointmentDialog({
   const [success, setSuccess] = useState(false);
   const [refundDetails, setRefundDetails] = useState<{
     originalAmount: number;
-    cancellationFee: number;
     refundAmount: number;
   } | null>(null);
 
-  // Calculate hours until appointment
+  // Calculate hours until appointment (still needed for the "time until" badge).
   const appointmentDateTime = (() => {
-    // Parse the date (might be ISO string or date string)
     if (!appointmentDate || !appointmentTime) return null;
     const dateObj = new Date(appointmentDate);
-
-    // Parse time string (format: "HH:MM")
     const [hours, minutes] = appointmentTime.split(":").map(Number);
-
-    // Set the time on the date
     dateObj.setHours(hours, minutes, 0, 0);
-
     return dateObj;
   })();
 
@@ -78,11 +73,8 @@ export default function CancelAppointmentDialog({
     ? (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60)
     : 0;
 
-  const isFreeCancel = hoursUntilAppointment >= HOURS_FOR_FREE_CANCELLATION;
-  const cancellationFee = isFreeCancel
-    ? 0
-    : amount * (CANCELLATION_FEE_PERCENTAGE / 100);
-  const refundAmount = isFreeCancel ? amount : amount - cancellationFee;
+  // With the strict 48h rule, any self-cancel that reaches this dialog is free.
+  const refundAmount = amount;
 
   const handleCancel = async () => {
     try {
@@ -94,17 +86,14 @@ export default function CancelAppointmentDialog({
         cancelReason: reason || t("noReasonProvided"),
       });
 
-      // Show success state with calculated refund details
       setSuccess(true);
       if (isPaid) {
         setRefundDetails({
           originalAmount: amount,
-          cancellationFee: cancellationFee,
           refundAmount: refundAmount,
         });
       }
 
-      // Close after 3 seconds
       setTimeout(() => {
         onSuccess?.();
         onOpenChange(false);
@@ -162,29 +151,7 @@ export default function CancelAppointmentDialog({
                   </div>
 
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("originalAmount")}:
-                      </span>
-                      <span className="font-medium text-foreground">
-                        ${refundDetails.originalAmount.toFixed(2)}{" "}
-                        {t("currencySuffix")}
-                      </span>
-                    </div>
-
-                    {refundDetails.cancellationFee > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          {t("cancellationFee")}:
-                        </span>
-                        <span className="font-medium text-red-600 dark:text-red-400">
-                          -${refundDetails.cancellationFee.toFixed(2)}{" "}
-                          {t("currencySuffix")}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between pt-2">
                       <span className="font-medium text-foreground">
                         {t("refundAmount")}:
                       </span>
@@ -206,7 +173,7 @@ export default function CancelAppointmentDialog({
             </div>
           ) : (
             <div className="space-y-4 py-4">
-              {/* Warning Message */}
+              {/* Free-cancellation policy notice */}
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 p-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
@@ -215,14 +182,7 @@ export default function CancelAppointmentDialog({
                       {t("policyTitle")}
                     </p>
                     <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      {isFreeCancel
-                        ? t("policyFree", {
-                            hours: HOURS_FOR_FREE_CANCELLATION,
-                          })
-                        : t("policyFee", {
-                            hours: HOURS_FOR_FREE_CANCELLATION,
-                            percent: CANCELLATION_FEE_PERCENTAGE,
-                          })}
+                      {t("policyFree", { hours: HOURS_FOR_FREE_CANCELLATION })}
                     </p>
                   </div>
                 </div>
@@ -260,29 +220,7 @@ export default function CancelAppointmentDialog({
                   </div>
 
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">
-                        {t("originalAmount")}:
-                      </span>
-                      <span className="font-medium text-foreground">
-                        ${amount.toFixed(2)} {t("currencySuffix")}
-                      </span>
-                    </div>
-
-                    {!isFreeCancel && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          {t("cancellationFeePercent", {
-                            percent: CANCELLATION_FEE_PERCENTAGE,
-                          })}
-                        </span>
-                        <span className="font-medium text-red-600 dark:text-red-400">
-                          -${cancellationFee.toFixed(2)} {t("currencySuffix")}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between pt-2">
                       <span className="font-medium text-foreground">
                         {t("refundAmount")}:
                       </span>
