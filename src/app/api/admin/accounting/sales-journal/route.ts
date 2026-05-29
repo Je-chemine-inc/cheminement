@@ -38,9 +38,25 @@ export async function GET(req: NextRequest) {
       $or: [{ entryKind: "credit" }, { entryKind: { $exists: false } }],
     })
       .populate("professionalId", "firstName lastName email")
-      .populate("appointmentId", "date time status sessionActNature")
+      .populate(
+        "appointmentId",
+        "date time status sessionActNature payment.status",
+      )
       .sort({ createdAt: 1 })
       .lean();
+
+    // M17: don't recognize uncleared Interac as revenue. Stripe credits
+    // (paymentChannel "stripe" = card/direct_debit) clear at closure, but a
+    // "transfer" (Interac) credit is only real revenue once an admin confirms
+    // the e-transfer (appointment payment.status === "paid"). Exclude
+    // transfer-channel credits that are not yet paid from the sales journal.
+    const cleared = rows.filter((r) => {
+      if (r.paymentChannel !== "transfer") return true;
+      const apt = r.appointmentId as unknown as {
+        payment?: { status?: string };
+      } | null;
+      return apt?.payment?.status === "paid";
+    });
 
     const header = [
       "date_ligne",
@@ -56,7 +72,7 @@ export async function GET(req: NextRequest) {
       "canal_paiement",
     ].join(",");
 
-    const lines = rows.map((r) => {
+    const lines = cleared.map((r) => {
       const pro = r.professionalId as unknown as {
         firstName?: string;
         lastName?: string;

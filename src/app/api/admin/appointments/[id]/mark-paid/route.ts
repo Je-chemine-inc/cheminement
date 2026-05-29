@@ -4,15 +4,16 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
-import Appointment from "@/models/Appointment";
+import { settleInteracPayment } from "@/lib/payment-settlement";
 
 /**
  * Manual "marquer comme payé" — used by admins to acknowledge an Interac
  * e-transfer (or any out-of-band payment) for a specific appointment.
  *
- * Sets `payment.status = "paid"` and `payment.paidAt = now`. If the payment
- * method was not yet set, marks it as "transfer" since that's the typical
- * trigger for this action.
+ * Delegates to settleInteracPayment, which sets `payment.status = "paid"` +
+ * `payment.paidAt` (and method "transfer" if unset) AND flips the linked
+ * client receipt from `pending_transfer` to `paid` so the client can finally
+ * see it. Idempotent.
  */
 export async function POST(
   _req: NextRequest,
@@ -40,36 +41,12 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const appointment = await Appointment.findById(id);
-    if (!appointment) {
+    const { found, alreadyPaid, payment } = await settleInteracPayment(id);
+    if (!found) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (appointment.payment.status === "paid") {
-      return NextResponse.json({
-        id: appointment._id.toString(),
-        payment: {
-          status: appointment.payment.status,
-          paidAt: appointment.payment.paidAt,
-        },
-      });
-    }
-
-    appointment.payment.status = "paid";
-    appointment.payment.paidAt = new Date();
-    if (!appointment.payment.method) {
-      appointment.payment.method = "transfer";
-    }
-    await appointment.save();
-
-    return NextResponse.json({
-      id: appointment._id.toString(),
-      payment: {
-        status: appointment.payment.status,
-        paidAt: appointment.payment.paidAt,
-        method: appointment.payment.method,
-      },
-    });
+    return NextResponse.json({ id, payment, alreadyPaid });
   } catch (error) {
     console.error("Admin mark-paid error:", error);
     return NextResponse.json(

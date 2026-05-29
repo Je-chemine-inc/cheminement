@@ -133,15 +133,25 @@ export async function POST(req: NextRequest) {
       console.warn("[appointment-setup/complete] type lookup failed:", e);
     }
 
-    await markClientPaymentGuaranteeGreen(
-      session.user.id,
-      user.stripeCustomerId,
-      paymentMethodId,
-      true,
-      pmType,
-    );
+    // M2: only mark the guarantee green when the SetupIntent has actually
+    // SUCCEEDED. An ACSS/PAD mandate confirms as "processing" (micro-deposit /
+    // verification pending) — greening then would be fictitious if verification
+    // later fails. The payment method reference is already saved above; the
+    // setup_intent.succeeded webhook greens the guarantee once verified.
+    if (setupIntent.status === "succeeded") {
+      await markClientPaymentGuaranteeGreen(
+        session.user.id,
+        user.stripeCustomerId,
+        paymentMethodId,
+        true,
+        pmType,
+      );
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      pending: setupIntent.status === "processing",
+    });
   } catch (error: unknown) {
     console.error("Appointment setup complete error:", error);
     return NextResponse.json(

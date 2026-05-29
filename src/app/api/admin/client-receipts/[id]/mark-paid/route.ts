@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import ClientReceipt from "@/models/ClientReceipt";
-import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
 import Admin from "@/models/Admin";
+import { settleInteracPayment } from "@/lib/payment-settlement";
 
 export async function POST(
   _req: NextRequest,
@@ -26,8 +26,10 @@ export async function POST(
     })
       .select("permissions")
       .lean();
+    // M4: fail CLOSED — a role==="admin" session with no active Admin record
+    // (perms undefined) must NOT slip through. Require an explicit permission.
     const perms = adminRecord?.permissions;
-    if (perms && !perms.manageBilling && !perms.managePatients) {
+    if (!perms || (!perms.manageBilling && !perms.managePatients)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -40,13 +42,9 @@ export async function POST(
       return NextResponse.json({ success: true, alreadyPaid: true });
     }
 
-    receipt.status = "paid";
-    await receipt.save();
-
-    await Appointment.findByIdAndUpdate(receipt.appointmentId, {
-      "payment.status": "paid",
-      "payment.paidAt": new Date(),
-    });
+    // Flip BOTH the appointment payment and this receipt to paid (shared with
+    // the appointment-level mark-paid button so the two never drift apart).
+    await settleInteracPayment(receipt.appointmentId.toString());
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

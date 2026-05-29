@@ -6,6 +6,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { sendRefundConfirmation } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { voidReceiptForRefund } from "@/lib/payment-settlement";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +14,19 @@ export async function POST(req: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Refunds are admin-only. This route previously also authorized the
+    // appointment's professional OR the client themselves, which let a client
+    // POST their own appointmentId and claw back a full, policy-free Stripe
+    // refund — even after attending a paid session. The legitimate,
+    // policy-gated refund-on-cancel path lives in PATCH /api/appointments/[id]
+    // (48h free-cancellation window + cancellation fee).
+    if (session.user.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an administrator can issue a refund" },
+        { status: 403 },
+      );
     }
 
     const { appointmentId, reason } = await req.json();
@@ -35,35 +49,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Appointment not found" },
         { status: 404 },
-      );
-    }
-
-    // Check if user is authorized (admin, professional, or the client)
-    const professionalDoc = appointment.professionalId;
-    const professionalId =
-      typeof professionalDoc === "object" &&
-      professionalDoc !== null &&
-      "_id" in professionalDoc
-        ? (
-            professionalDoc as { _id: { toString: () => string } }
-          )._id.toString()
-        : String(professionalDoc);
-
-    const clientDoc = appointment.clientId;
-    const clientId =
-      typeof clientDoc === "object" && clientDoc !== null && "_id" in clientDoc
-        ? (clientDoc as { _id: { toString: () => string } })._id.toString()
-        : String(clientDoc);
-
-    const isAuthorized =
-      session.user.role === "admin" ||
-      professionalId === session.user.id ||
-      clientId === session.user.id;
-
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: "You are not authorized to refund this appointment" },
-        { status: 403 },
       );
     }
 
@@ -107,6 +92,10 @@ export async function POST(req: NextRequest) {
     appointment.payment.status = "refunded";
     appointment.payment.refundedAt = new Date();
     await appointment.save();
+
+    // Void the client's fiscal receipt so a refunded payment no longer shows a
+    // valid paid receipt (and the on-demand PDF, gated on status "paid", 403s).
+    await voidReceiptForRefund(appointmentId);
 
     // Send refund confirmation email — LSSSS art. 14 routing.
     const clientInfo = appointment.clientId as unknown as {

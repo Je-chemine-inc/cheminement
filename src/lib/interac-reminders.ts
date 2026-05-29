@@ -46,6 +46,15 @@ export async function runInteracReminders(): Promise<{
     "payment.method": "transfer",
     "payment.status": { $nin: ["paid", "refunded", "cancelled"] },
     "payment.transferDueAt": { $exists: true, $lt: new Date(now - 24 * HOUR_MS) },
+    // M5: a billed appointment later cancelled at the appointment level (admin
+    // status override / free cancel) no longer owes the transfer, yet keeps its
+    // transferDueAt. Keep genuine debts only: appointments NOT cancelled, plus
+    // late cancellations (cancelled_late is still billed 100% as a fee, and its
+    // appointment status is "cancelled").
+    $or: [
+      { status: { $ne: "cancelled" } },
+      { sessionOutcome: "cancelled_late" },
+    ],
   })
     .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName email")
@@ -92,8 +101,15 @@ export async function runInteracReminders(): Promise<{
       void pro; // alert already covers admin
     }
 
-    // 48h+ → second reminder (only if first was already sent)
-    if (hoursOverdue >= 48 && !apt.interacReminder48hSent) {
+    // 48h+ → second reminder, but ONLY once the first has actually gone out
+    // (M12). Without the interacReminder24hSent guard, an appointment first
+    // seen >=48h overdue would fire #2 here AND #1 below in the same run,
+    // out of order. The first run now sends #1; a later run sends #2.
+    if (
+      hoursOverdue >= 48 &&
+      apt.interacReminder24hSent &&
+      !apt.interacReminder48hSent
+    ) {
       const ok = await sendInteracPaymentReminder({
         clientName: recipient.name,
         clientEmail: recipient.email,

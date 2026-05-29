@@ -13,6 +13,7 @@ import {
 } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
+import { voidReceiptForRefund } from "@/lib/payment-settlement";
 
 import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
@@ -283,6 +284,7 @@ export async function PATCH(
           typeof resolveBillingUrl
         >[0]["appointment"],
         base: getBaseUrl(),
+        recipientLocale: recipient.language,
       });
 
       if (wasGuest) {
@@ -526,6 +528,13 @@ export async function PATCH(
           appointment.payment.status = "refunded";
           appointment.payment.refundedAt = new Date();
           await appointment.save();
+
+          // Void the client's fiscal receipt so a refunded payment no longer
+          // shows a valid paid receipt (same invariant as the manual refund
+          // route + webhook). Don't fail the cancellation if voiding errors.
+          await voidReceiptForRefund(id).catch((e) =>
+            console.error("voidReceiptForRefund (cancel path):", e),
+          );
         } catch (refundError: unknown) {
           console.error("Error processing automatic refund:", refundError);
           // Don't fail the cancellation if refund fails - log it for manual processing

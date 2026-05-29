@@ -22,8 +22,10 @@ export async function GET() {
     })
       .select("permissions")
       .lean();
+    // M4: fail CLOSED — a role==="admin" session with no active Admin record
+    // (perms undefined) must NOT be able to list client PII. Require permission.
     const perms = adminRecord?.permissions;
-    if (perms && !perms.manageBilling && !perms.managePatients) {
+    if (!perms || (!perms.manageBilling && !perms.managePatients)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

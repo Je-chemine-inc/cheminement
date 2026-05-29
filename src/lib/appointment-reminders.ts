@@ -185,6 +185,7 @@ export async function runAppointmentReminders(): Promise<{
             userStatus: userStatus,
             appointment: apt,
             base: baseUrl,
+            recipientLocale: locale,
           })
         : undefined;
 

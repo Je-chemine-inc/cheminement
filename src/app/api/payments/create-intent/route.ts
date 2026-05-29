@@ -200,8 +200,47 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const paymentIntent =
-      await stripe.paymentIntents.create(paymentIntentConfig);
+    // M3: reuse an in-flight PaymentIntent for this appointment instead of
+    // creating a second live one. Creating a new PI would overwrite the stored
+    // stripePaymentIntentId, orphaning the first PI and leaving the refund path
+    // keyed on a stale id. If a usable PI already exists for the same amount +
+    // method, return it; if the client switched method/amount, cancel the stale
+    // one first.
+    const existingPiId = appointment.payment.stripePaymentIntentId;
+    if (existingPiId && appointment.payment.status === "processing") {
+      try {
+        const existing = await stripe.paymentIntents.retrieve(existingPiId);
+        const settledOrDead =
+          existing.status === "succeeded" || existing.status === "canceled";
+        const sameCharge =
+          existing.amount === toCents(amount) &&
+          existing.payment_method_types?.[0] === paymentMethodTypes[0];
+        if (!settledOrDead && sameCharge) {
+          return NextResponse.json({
+            clientSecret: existing.client_secret,
+            paymentIntentId: existing.id,
+            amount,
+            currency: "CAD",
+            reused: true,
+          });
+        }
+        if (!settledOrDead) {
+          // Method/amount changed → cancel the stale PI so it isn't orphaned.
+          await stripe.paymentIntents.cancel(existingPiId).catch(() => {});
+        }
+      } catch (e) {
+        console.warn("[create-intent] existing PI retrieve failed:", e);
+      }
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      paymentIntentConfig,
+      {
+        idempotencyKey: `intent_${String(appointment._id)}_${toCents(
+          amount,
+        )}_${paymentMethod}`,
+      },
+    );
 
     // Update appointment payment information
     appointment.payment.stripePaymentIntentId = paymentIntent.id;

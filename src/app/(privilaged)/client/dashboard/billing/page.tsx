@@ -31,6 +31,7 @@ import {
   type ClientReceiptRecord,
 } from "@/lib/api-client";
 import { AppointmentResponse } from "@/types/api";
+import { useLocaleFromQuery } from "@/lib/use-locale-from-query";
 
 interface PaymentMethod {
   id: string;
@@ -83,6 +84,11 @@ export default function ClientBillingPage() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
   const action = searchParams.get("action");
+
+  // Apply ?lang= from email deep-links to the cookie-based locale (may reload
+  // once to re-render server-side in that language). Preserves ?action so the
+  // add-payment-method modal still opens after the reload.
+  useLocaleFromQuery();
 
   // Fetch real appointments from API
   useEffect(() => {

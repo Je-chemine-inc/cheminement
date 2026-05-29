@@ -185,6 +185,7 @@ export async function POST(
           typeof resolveBillingUrl
         >[0]["appointment"],
         base,
+        recipientLocale: locale,
       });
 
       if (!isActiveClient) {

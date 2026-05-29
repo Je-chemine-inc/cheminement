@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
+import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -61,6 +62,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // M16: push search into the Mongo query so it matches across ALL pages and
+    // the pagination total is correct. The previous code filtered only the
+    // current page in memory and faked `total` as (page matches × 2), breaking
+    // navigation and hiding matches on other pages. Client/professional names
+    // live on the populated User docs, so resolve matching users first, then
+    // filter appointments by their ids. NOTE: the SES-xxxxxx session-id search
+    // is derived from _id and not server-queryable, so it is no longer
+    // supported — search by client/professional name or email instead.
+    if (search.trim()) {
+      const rx = new RegExp(
+        search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i",
+      );
+      const matchedUsers = await User.find({
+        $or: [{ firstName: rx }, { lastName: rx }, { email: rx }],
+      })
+        .select("_id")
+        .lean();
+      const userIds = matchedUsers.map((u) => u._id);
+      query.$or = [
+        { clientId: { $in: userIds } },
+        { professionalId: { $in: userIds } },
+      ];
+    }
+
     const skip = (page - 1) * limit;
     const appointments = await Appointment.find(query)
       .populate("clientId", "firstName lastName email")
@@ -70,36 +96,9 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .lean();
 
-    let filteredAppointments = appointments;
-    if (search.trim()) {
-      const term = search.toLowerCase();
-      filteredAppointments = appointments.filter((appointment) => {
-        const client = appointment.clientId as {
-          firstName?: string;
-          lastName?: string;
-          email?: string;
-        };
-        const professional = appointment.professionalId as {
-          firstName?: string;
-          lastName?: string;
-        };
-        const sessionId = `SES-${appointment._id.toString().slice(-6).toUpperCase()}`;
-        return (
-          client?.firstName?.toLowerCase().includes(term) ||
-          client?.lastName?.toLowerCase().includes(term) ||
-          client?.email?.toLowerCase().includes(term) ||
-          professional?.firstName?.toLowerCase().includes(term) ||
-          professional?.lastName?.toLowerCase().includes(term) ||
-          sessionId.toLowerCase().includes(term)
-        );
-      });
-    }
+    const total = await Appointment.countDocuments(query);
 
-    const total = search.trim()
-      ? filteredAppointments.length * 2
-      : await Appointment.countDocuments(query);
-
-    const payments = filteredAppointments.map((appointment) => {
+    const payments = appointments.map((appointment) => {
       const client = appointment.clientId as {
         firstName?: string;
         lastName?: string;

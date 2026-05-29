@@ -3,8 +3,12 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Admin from "@/models/Admin";
+import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
 import { sendPaymentGuaranteeDay1Reminder } from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
+import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 
 function getBaseUrl(): string {
   return (
@@ -54,13 +58,76 @@ export async function POST(
       );
     }
 
-    const billingUrl = `${getBaseUrl()}/client/dashboard/billing?action=addPaymentMethod`;
+    // H11 (LSSSS art. 14): the nudge must reach the booking's recipient — for
+    // an adult loved-one booking that's the loved one, NOT the account holder
+    // (parent). Mirror the cron path: find the user's guarantee-pending
+    // scheduled appointment and resolve the recipient + billing URL from it
+    // (which also gives the link the right &lang, fixing H10 for this path).
+    const apt = await Appointment.findOne({
+      clientId: user._id,
+      status: "scheduled",
+    }).sort({ awaitingPaymentGuarantee: -1, firstScheduledAt: -1 });
+
+    if (!apt) {
+      return NextResponse.json(
+        { error: "No scheduled appointment found for this user" },
+        { status: 400 },
+      );
+    }
+
+    // Don't nudge a client who already secured payment for that appointment.
+    if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) {
+      return NextResponse.json(
+        { error: "This appointment already has a payment guarantee" },
+        { status: 400 },
+      );
+    }
+
+    // M14: anti-spam — don't fire another manual nudge within the cooldown
+    // window (protects against double-clicks and over-eager re-sends). The
+    // timestamp is only stamped after a successful send below, so a failed
+    // send can be retried immediately.
+    const RESEND_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+    if (
+      apt.lastGuaranteeReminderSentAt &&
+      Date.now() - new Date(apt.lastGuaranteeReminderSentAt).getTime() <
+        RESEND_COOLDOWN_MS
+    ) {
+      return NextResponse.json(
+        { error: "A reminder was already sent recently; please try later" },
+        { status: 429 },
+      );
+    }
+
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
+      {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        language: user.language,
+      },
+    );
+
+    const billingUrl = await resolveBillingUrl({
+      userStatus: user.status,
+      appointment: apt as Parameters<
+        typeof resolveBillingUrl
+      >[0]["appointment"],
+      base: getBaseUrl(),
+      recipientLocale: recipient.language,
+    });
 
     await sendPaymentGuaranteeDay1Reminder({
-      clientName: `${user.firstName} ${user.lastName}`,
-      clientEmail: user.email,
+      clientName: recipient.name,
+      clientEmail: recipient.email,
       billingUrl,
-      locale: user.language === "en" ? "en" : "fr",
+      locale: recipient.language === "en" ? "en" : "fr",
+    });
+
+    // M14: stamp the cooldown only after a successful send.
+    await Appointment.findByIdAndUpdate(apt._id, {
+      $set: { lastGuaranteeReminderSentAt: new Date() },
     });
 
     return NextResponse.json({ success: true });

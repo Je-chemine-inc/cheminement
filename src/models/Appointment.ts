@@ -13,6 +13,7 @@ export interface IPayment {
     | "paid"
     | "failed"
     | "refunded"
+    | "partially_refunded"
     | "cancelled"
     | "overdue";
   method?: "card" | "transfer" | "direct_debit";
@@ -21,6 +22,10 @@ export interface IPayment {
   stripePaymentMethodId?: string;
   paidAt?: Date;
   refundedAt?: Date;
+  /** Amount actually refunded (CAD). Set for partial refunds; full refund == price. */
+  refundedAmount?: number;
+  /** A Stripe dispute/chargeback is open on this payment (blocks the receipt). */
+  disputed?: boolean;
   payoutTransferId?: string;
   payoutDate?: Date;
   paymentToken?: string;
@@ -151,6 +156,8 @@ export interface IAppointment extends Document {
   guaranteeDay1ReminderSent?: boolean;
   guaranteeDay2ReminderSent?: boolean;
   guarantee48hClientReminderSent?: boolean;
+  /** Last time an admin manually re-sent the guarantee nudge (cooldown / anti-spam). */
+  lastGuaranteeReminderSentAt?: Date;
 
   /** Rappels client/SMS H-72 et H-48 avant le rendez-vous (politique d'annulation). */
   reminder72hSent?: boolean;
@@ -216,6 +223,7 @@ const PaymentSchema = new Schema<IPayment>(
         "paid",
         "failed",
         "refunded",
+        "partially_refunded",
         "cancelled",
         "overdue",
       ],
@@ -230,6 +238,8 @@ const PaymentSchema = new Schema<IPayment>(
     stripePaymentMethodId: String,
     paidAt: Date,
     refundedAt: Date,
+    refundedAmount: Number,
+    disputed: { type: Boolean, default: false },
     payoutTransferId: String,
     payoutDate: Date,
     paymentToken: {
@@ -413,6 +423,7 @@ const AppointmentSchema = new Schema<IAppointment>(
     guaranteeDay1ReminderSent: { type: Boolean, default: false },
     guaranteeDay2ReminderSent: { type: Boolean, default: false },
     guarantee48hClientReminderSent: { type: Boolean, default: false },
+    lastGuaranteeReminderSentAt: { type: Date, required: false },
 
     reminder72hSent: { type: Boolean, default: false },
     reminder48hSent: { type: Boolean, default: false },

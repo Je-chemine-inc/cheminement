@@ -2,7 +2,10 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
-import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
+import {
+  clientLacksPaymentGuaranteeForAppointment,
+  clientOwesUncollectedFee,
+} from "@/lib/client-payment-guarantee";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import {
@@ -16,6 +19,15 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Post-meeting reminders only consider sessions whose date is within this
+ * window. Without a lower bound, the first cron run after deploy would
+ * mass-mail every historical unpaid completed/no-show client (the dedup flag
+ * defaults false). Pair with the one-time backfill in
+ * scripts/backfill-post-meeting-reminder-flag.ts at deploy.
+ */
+const POST_MEETING_LOOKBACK_DAYS = 14;
 
 function getBaseUrl(): string {
   return (
@@ -45,7 +57,9 @@ function formatAppointmentDateLabel(apt: {
  * Relances automatiques : J+1 sans carte/PAD ; H-48 avant le RDV (client + pro).
  * À appeler depuis un cron (ex. toutes les heures) via `/api/cron/payment-guarantee-reminders`.
  */
-export async function runPaymentGuaranteeReminders(): Promise<{
+export async function runPaymentGuaranteeReminders(
+  nowMs: number = Date.now(),
+): Promise<{
   day1Sent: number;
   day2Sent: number;
   h48ClientSent: number;
@@ -53,7 +67,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
   postMeetingSent: number;
 }> {
   await connectToDatabase();
-  const now = Date.now();
+  const now = nowMs;
   const base = getBaseUrl();
 
   let day1Sent = 0;
@@ -61,11 +75,15 @@ export async function runPaymentGuaranteeReminders(): Promise<{
   let h48ClientSent = 0;
   let h48ProSent = 0;
 
-  // J+24h reminder: 24h after first scheduling, still no payment guarantee.
+  // J+24h reminder: scheduled between 24h and 48h ago, still no payment
+  // guarantee. M13: bounding the window to (<=24h ago AND >48h ago) means an
+  // appointment older than 48h is handled by the day2 (final) reminder below
+  // instead of firing BOTH day1 and day2 in the same run.
   const day1Cutoff = new Date(now - DAY_MS);
+  const day2Cutoff = new Date(now - 2 * DAY_MS);
   const day1Candidates = await Appointment.find({
     status: "scheduled",
-    firstScheduledAt: { $lte: day1Cutoff, $exists: true },
+    firstScheduledAt: { $lte: day1Cutoff, $gt: day2Cutoff },
     guaranteeDay1ReminderSent: { $ne: true },
   }).populate("clientId", "firstName lastName email language");
 
@@ -89,6 +107,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       userStatus: user.status,
       appointment: apt,
       base,
+      recipientLocale: recipient.language,
     });
     const ok = await sendPaymentGuaranteeDay1Reminder({
       clientName: recipient.name,
@@ -105,7 +124,6 @@ export async function runPaymentGuaranteeReminders(): Promise<{
   }
 
   // J+48h reminder (final): 48h after first scheduling, still no payment guarantee.
-  const day2Cutoff = new Date(now - 2 * DAY_MS);
   const day2Candidates = await Appointment.find({
     status: "scheduled",
     firstScheduledAt: { $lte: day2Cutoff, $exists: true },
@@ -132,6 +150,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       userStatus: user.status,
       appointment: apt,
       base,
+      recipientLocale: recipient.language,
     });
     const ok = await sendPaymentGuaranteeDay2Reminder({
       clientName: recipient.name,
@@ -189,6 +208,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
         userStatus: user.status,
         appointment: apt,
         base,
+        recipientLocale: recipient.language,
       });
       const ok = await sendPaymentGuarantee48hClientReminder({
         clientName: recipient.name,
@@ -232,12 +252,18 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     }
   }
 
-  // Post-meeting: clients who had no payment method at the time of their session
+  // Post-meeting: clients who had no payment method at the time of their session.
+  // H4: only recently-finished sessions (date floor) so a first run can't
+  // mass-mail historical clients. H5: skip already-settled payments (the shared
+  // guard also covers this, but filtering here avoids loading + admin-alerting
+  // paid Interac rows).
   let postMeetingSent = 0;
+  const postMeetingFloor = new Date(now - POST_MEETING_LOOKBACK_DAYS * DAY_MS);
   const postMeetingCandidates = await Appointment.find({
     status: { $in: ["completed", "no-show"] },
     postMeetingPaymentReminderSent: { $ne: true },
-    date: { $exists: true },
+    "payment.status": { $nin: ["paid", "refunded", "cancelled"] },
+    date: { $gte: postMeetingFloor },
   })
     .populate("clientId", "firstName lastName email language")
     .limit(200);
@@ -252,7 +278,10 @@ export async function runPaymentGuaranteeReminders(): Promise<{
     };
     const user = await User.findById(clientPop._id);
     if (!user) continue;
-    if (!clientLacksPaymentGuaranteeForAppointment(apt, user)) continue;
+    // M15: collection gate (NOT the upfront-guarantee gate). A real unpaid fee
+    // with no card to auto-charge gets a reminder — including interac_trust
+    // clients, who waive only the upfront prepayment nudges.
+    if (!clientOwesUncollectedFee(apt)) continue;
 
     const recipient = resolveAppointmentRecipient(
       { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
@@ -263,6 +292,7 @@ export async function runPaymentGuaranteeReminders(): Promise<{
       userStatus: user.status,
       appointment: apt,
       base,
+      recipientLocale: recipient.language,
     });
 
     const [clientOk] = await Promise.all([

@@ -28,6 +28,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { GuestPaySetupFlow } from "@/components/payments";
+import { useLocaleFromQuery } from "@/lib/use-locale-from-query";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
@@ -231,6 +232,9 @@ function CheckoutForm({
 }
 
 function GuestPaymentContent() {
+  // Apply the email deep-link's &lang= to the cookie-based locale (may reload
+  // once so the page renders in the recipient's language).
+  useLocaleFromQuery();
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");

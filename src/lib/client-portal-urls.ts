@@ -37,11 +37,19 @@ export async function resolveBillingUrl(opts: {
   userStatus: string | undefined;
   appointment: AppointmentWithPaymentToken;
   base: string;
+  /**
+   * Recipient's locale, appended as `&lang=` so the landing page renders in
+   * the language the email was written in. Locale is otherwise cookie-only
+   * (no [locale] routing), so a recipient on a fresh device / in-app browser
+   * would get the default (English) without this hint. Normalized to fr/en.
+   */
+  recipientLocale: string | undefined;
 }): Promise<string> {
-  const { userStatus, appointment, base } = opts;
+  const { userStatus, appointment, base, recipientLocale } = opts;
+  const lang = `&lang=${recipientLocale === "en" ? "en" : "fr"}`;
 
   if (userStatus === "active") {
-    return `${base}/client/dashboard/billing?action=addPaymentMethod`;
+    return `${base}/client/dashboard/billing?action=addPaymentMethod${lang}`;
   }
 
   const existing = appointment.payment?.paymentToken;
@@ -52,7 +60,7 @@ export async function resolveBillingUrl(opts: {
     expiry.getTime() > Date.now() + PAYMENT_TOKEN_REFRESH_BUFFER_MS;
 
   if (stillFresh) {
-    return `${base}/pay?token=${existing}`;
+    return `${base}/pay?token=${existing}${lang}`;
   }
 
   const newToken = crypto.randomBytes(32).toString("hex");
@@ -63,7 +71,7 @@ export async function resolveBillingUrl(opts: {
     "payment.paymentToken": newToken,
     "payment.paymentTokenExpiry": newExpiry,
   });
-  return `${base}/pay?token=${newToken}`;
+  return `${base}/pay?token=${newToken}${lang}`;
 }
 
 /**

@@ -120,15 +120,24 @@ export async function POST(req: NextRequest) {
       console.warn("[guest-appointment-setup/complete] type lookup failed:", e);
     }
 
-    await markClientPaymentGuaranteeGreen(
-      client._id.toString(),
-      client.stripeCustomerId,
-      paymentMethodId,
-      true,
-      pmType,
-    );
+    // M2: only mark green on a SUCCEEDED SetupIntent. An ACSS/PAD mandate
+    // confirms as "processing"; greening then would be fictitious if
+    // verification later fails. The setup_intent.succeeded webhook greens it
+    // once verified (the payment method reference is already saved above).
+    if (setupIntent.status === "succeeded") {
+      await markClientPaymentGuaranteeGreen(
+        client._id.toString(),
+        client.stripeCustomerId,
+        paymentMethodId,
+        true,
+        pmType,
+      );
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      pending: setupIntent.status === "processing",
+    });
   } catch (error: unknown) {
     console.error("Guest appointment setup complete error:", error);
     return NextResponse.json(

@@ -39,6 +39,11 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Track the atomic closure claim so the catch can release it if we fail
+  // before finalizing — lets the professional retry safely. Declared outside
+  // the try so they're in scope of the catch block.
+  let claimedAppointmentId: string | null = null;
+  let closureFinalized = false;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "professional") {
@@ -137,6 +142,27 @@ export async function POST(
       );
     }
 
+    // Atomically claim the closure BEFORE charging. The guard above is a
+    // non-atomic read (findById here; sessionCompletedAt is only persisted by
+    // the findByIdAndUpdate near the end of this handler), so two concurrent
+    // requests — pro double-click, network retry, second tab — could both pass
+    // it and then both charge the saved card / re-run the closure side effects
+    // (duplicate receipt emails). Claiming via findOneAndUpdate on
+    // sessionCompletedAt:null (Mongo equality-to-null also matches a missing
+    // field) lets exactly one request win; the loser short-circuits here.
+    const now = new Date();
+    const claimed = await Appointment.findOneAndUpdate(
+      { _id: id, sessionCompletedAt: null },
+      { $set: { sessionCompletedAt: now } },
+    );
+    if (!claimed) {
+      return NextResponse.json(
+        { error: "Session has already been closed" },
+        { status: 400 },
+      );
+    }
+    claimedAppointmentId = id;
+
     const newStatus = getAppointmentStatusForOutcome(outcome);
     const fraction = getBillingFraction(outcome);
 
@@ -189,7 +215,7 @@ export async function POST(
           chargeSkippedReason = "MISSING_PAYMENT_METHOD";
         } else {
           try {
-            const { paymentIntentId } =
+            const { paymentIntentId, settled } =
               await chargeSavedPaymentMethodAfterSession({
                 appointmentId: id,
                 customerId: clientUser.stripeCustomerId,
@@ -198,7 +224,9 @@ export async function POST(
                 method: payMethod,
               });
             stripeChargePaymentIntentId = paymentIntentId;
-            paymentStatus = "paid";
+            // M1: ACSS/PAD confirms async as "processing" — record it as such
+            // and let the payment_intent.succeeded webhook flip it to "paid".
+            paymentStatus = settled ? "paid" : "processing";
           } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
             // Auto-charge failure no longer blocks closure — leave invoice
@@ -217,7 +245,6 @@ export async function POST(
       }
     }
 
-    const now = new Date();
     const due = new Date();
     due.setHours(due.getHours() + 24);
 
@@ -249,7 +276,11 @@ export async function POST(
 
     if (stripeChargePaymentIntentId) {
       $set["payment.stripePaymentIntentId"] = stripeChargePaymentIntentId;
-      $set["payment.paidAt"] = now;
+      // M1: only stamp paidAt when the charge actually settled. An ACSS/PAD
+      // charge still "processing" gets paidAt from the succeeded webhook later.
+      if (paymentStatus === "paid") {
+        $set["payment.paidAt"] = now;
+      }
     }
 
     if (interacRefToSet) {
@@ -293,6 +324,9 @@ export async function POST(
         { status: 404 },
       );
     }
+    // Closure is persisted — from here on the claim must never be rolled back,
+    // even if a later step (side effects, re-fetch) throws.
+    closureFinalized = true;
 
     try {
       await runSessionClosureSideEffects(id);
@@ -318,6 +352,15 @@ export async function POST(
     }
     return NextResponse.json(responseDoc);
   } catch (error: unknown) {
+    // If we claimed the closure but never finalized it, release the claim so
+    // the professional can retry. The Stripe charge is idempotency-keyed, so a
+    // retry won't double-charge; and if the charge already succeeded, the
+    // payment_intent.succeeded webhook still reconciles the payment status.
+    if (claimedAppointmentId && !closureFinalized) {
+      await Appointment.findByIdAndUpdate(claimedAppointmentId, {
+        $unset: { sessionCompletedAt: "" },
+      }).catch(() => {});
+    }
     console.error("complete-session error:", error);
     return NextResponse.json(
       {

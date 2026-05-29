@@ -10,7 +10,7 @@ export async function chargeSavedPaymentMethodAfterSession(params: {
   encryptedPaymentMethodId: string | undefined;
   amountCad: number;
   method: "card" | "direct_debit";
-}): Promise<{ paymentIntentId: string }> {
+}): Promise<{ paymentIntentId: string; settled: boolean }> {
   const pm = decryptPaymentMethodReference(params.encryptedPaymentMethodId);
   if (!pm) {
     throw new Error("MISSING_PAYMENT_METHOD");
@@ -52,21 +52,33 @@ export async function chargeSavedPaymentMethodAfterSession(params: {
     };
   }
 
-  const pi = await stripe.paymentIntents.create(intentParams);
+  // Idempotency key keyed on appointment + amount + method: if the same
+  // closure charge is retried (double-click, network retry, concurrent
+  // request), Stripe returns the SAME PaymentIntent instead of charging the
+  // saved card twice. A genuinely different charge (different amount) gets a
+  // distinct key. Keys live ~24h in Stripe, which comfortably covers a retry.
+  const pi = await stripe.paymentIntents.create(intentParams, {
+    idempotencyKey: `apt-charge-${params.appointmentId}-${toCents(
+      params.amountCad,
+    )}-${params.method}`,
+  });
 
   if (
     pi.status === "requires_action" ||
     pi.status === "requires_confirmation"
   ) {
-    throw new Error(
-      "PAYMENT_REQUIRES_ACTION",
-    );
+    throw new Error("PAYMENT_REQUIRES_ACTION");
   }
 
-  if (pi.status !== "succeeded") {
+  // M1: ACSS / PAD pre-authorized debits settle ASYNCHRONOUSLY — a healthy
+  // confirmed PaymentIntent returns "processing", not "succeeded". Treat that
+  // as a valid pending-settlement outcome (the payment_intent.succeeded webhook
+  // flips the appointment to "paid" later, keyed on metadata.appointmentId).
+  // Only genuine failures throw.
+  if (pi.status !== "succeeded" && pi.status !== "processing") {
     const msg = pi.last_payment_error?.message || `Statut: ${pi.status}`;
     throw new Error(msg);
   }
 
-  return { paymentIntentId: pi.id };
+  return { paymentIntentId: pi.id, settled: pi.status === "succeeded" };
 }

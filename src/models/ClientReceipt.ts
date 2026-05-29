@@ -5,8 +5,12 @@ export interface IClientReceipt extends Document {
   appointmentId: mongoose.Types.ObjectId;
   issuedAt: Date;
   amountCad: number;
-  /** paid = Stripe captured; pending_transfer = Interac instructions sent */
-  status: "paid" | "pending_transfer";
+  /**
+   * paid = Stripe captured / Interac confirmed by admin;
+   * pending_transfer = Interac instructions sent, awaiting admin confirmation;
+   * refunded = payment was reversed, receipt voided (no longer client-visible)
+   */
+  status: "paid" | "pending_transfer" | "refunded";
 }
 
 const ClientReceiptSchema = new Schema<IClientReceipt>(
@@ -27,7 +31,7 @@ const ClientReceiptSchema = new Schema<IClientReceipt>(
     amountCad: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["paid", "pending_transfer"],
+      enum: ["paid", "pending_transfer", "refunded"],
       required: true,
     },
   },

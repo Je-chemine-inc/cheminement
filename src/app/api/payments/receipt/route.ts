@@ -71,12 +71,19 @@ export async function GET(req: NextRequest) {
 
     // Admins may produce a manual receipt for any appointment regardless of
     // payment/closure state (operational override for support cases). Clients
-    // and professionals remain gated to paid or already-issued receipts.
+    // and professionals may only download once payment is actually settled.
+    // We intentionally do NOT fall back to `fiscalReceiptIssuedAt`: that flag is
+    // stamped at closure for EVERY billable session regardless of whether money
+    // was collected — Interac still awaiting transfer, a card/PAD charge that
+    // was skipped/failed, or an ACSS debit still in flight all leave it set
+    // while payment.status is "pending"/"failed". Honoring it would serve the
+    // official fiscal PDF before payment is confirmed (hidden-until-paid rule),
+    // for every method. `payment.status === "paid"` is the single source of
+    // truth; a refund flips it away from "paid", so refunds are covered too.
     const isAdmin = session.user.role === "admin";
     const canDownload =
       isAdmin ||
-      appointment.payment.status === "paid" ||
-      Boolean(appointment.fiscalReceiptIssuedAt);
+      (appointment.payment.status === "paid" && !appointment.payment.disputed);
 
     if (!canDownload) {
       return NextResponse.json(
