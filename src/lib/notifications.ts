@@ -3772,6 +3772,76 @@ export async function sendJumelageSuccessEmail(data: {
 }
 
 /**
+ * Sent to the client when their match changes BEFORE a first appointment is
+ * scheduled: the assigned professional released the request (désistement) or an
+ * admin reassigned it. Reassures the client that we're (re)connecting them with
+ * a professional — no action required. Locale-aware; the caller resolves the
+ * correct recipient (LSSSS art. 14) via resolveAppointmentRecipient, so this
+ * works for self, loved-one and patient bookings alike.
+ */
+export async function sendMatchUpdatedEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
+
+  const html = buildEmailHtml({
+    title:
+      lang === "fr" ? "Mise à jour de votre jumelage" : "Update on your match",
+    subtitle:
+      lang === "fr"
+        ? "Nous vous mettons en relation avec un professionnel"
+        : "We're connecting you with a professional",
+    theme: "info",
+    badge: {
+      text: lang === "fr" ? "🔄 Jumelage en cours" : "🔄 Re-matching",
+      theme: "info",
+    },
+    greeting:
+      lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? "Il y a eu un changement concernant votre jumelage. Pas d'inquiétude : notre équipe vous met en relation avec un professionnel adapté à vos besoins. Celui-ci communiquera avec vous pour convenir de la date de votre premier rendez-vous."
+        : "There's been a change to your match. Don't worry — our team is connecting you with a professional suited to your needs. They will contact you to arrange the date of your first appointment.",
+    outro:
+      lang === "fr"
+        ? "Aucune action n'est requise de votre part pour le moment. Merci de votre patience."
+        : "Nothing is required from you for now. Thank you for your patience.",
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Mise à jour de votre jumelage",
+          `Bonjour ${data.clientName},`,
+          "Il y a eu un changement concernant votre jumelage. Notre équipe vous met en relation avec un professionnel adapté à vos besoins, qui communiquera avec vous pour fixer votre premier rendez-vous.",
+          "Aucune action n'est requise de votre part pour le moment.",
+        ]
+      : [
+          "Update on your match",
+          `Hello ${data.clientName},`,
+          "There's been a change to your match. Our team is connecting you with a professional suited to your needs, who will contact you to set your first appointment.",
+          "Nothing is required from you for now.",
+        ],
+    lang,
+  );
+
+  const subject =
+    lang === "fr"
+      ? "Mise à jour de votre jumelage — Je chemine"
+      : "Update on your match — Je chemine";
+
+  return sendEmail(
+    { to: data.clientEmail, subject, html, text },
+    "service_request_onboarding",
+  );
+}
+
+/**
  * Rappel post-séance envoyé au client si aucun mode de paiement n'a été choisi avant la rencontre.
  * Un alerte admin est également envoyée via sendAdminInteracTrustRequestAlert ou email direct.
  */

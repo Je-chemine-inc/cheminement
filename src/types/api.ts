@@ -58,6 +58,18 @@ export interface AppointmentResponse {
   status: AppointmentStatus;
   /** Professional assignment workflow state (pending/proposed/accepted/refused/general). */
   routingStatus?: string;
+  /** Who the appointment is for. */
+  bookingFor?: "self" | "patient" | "loved-one";
+  lovedOneInfo?: {
+    firstName?: string;
+    lastName?: string;
+    relationship?: string;
+  } | null;
+  referralInfo?: {
+    patientFirstName?: string;
+    patientLastName?: string;
+    referrerName?: string;
+  } | null;
   issueType?: string;
   notes?: string;
   cancelReason?: string;

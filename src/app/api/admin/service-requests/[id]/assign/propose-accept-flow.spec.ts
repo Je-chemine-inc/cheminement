@@ -26,6 +26,7 @@ const h = vi.hoisted(() => {
     sendPaymentInvitation: vi.fn().mockResolvedValue(true),
     sendAppointmentTakenNotification: vi.fn().mockResolvedValue(true),
     sendAdminAppointmentMovedToGeneralAlert: vi.fn().mockResolvedValue(true),
+    sendMatchUpdatedEmail: vi.fn().mockResolvedValue(true),
   };
   const getServerSession = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
@@ -194,6 +195,8 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(h.notif.sendJumelageSuccessEmail).not.toHaveBeenCalled();
     // the proposed pro IS notified to review/accept
     expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
+    // first assignment is NOT a re-match → client gets no "match updated" email
+    expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
   });
 
   it("proposed professional accepts → MATCH only (pending, jumelage, no payment email)", async () => {
@@ -286,6 +289,8 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(
       h.notif.sendAdminAppointmentMovedToGeneralAlert,
     ).toHaveBeenCalledTimes(1);
+    // and the client is reassured we're re-matching them
+    expect(h.notif.sendMatchUpdatedEmail).toHaveBeenCalledTimes(1);
   });
 
   it("admin reassigns a stuck matched request to a different pro", async () => {
@@ -326,5 +331,7 @@ describe("guest booking: admin propose → professional accept", () => {
     // previous pro excluded from re-matching; new pro notified
     expect((appt.refusedBy as unknown[]).map(String)).toContain(PRO_ID);
     expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
+    // client is reassured we matched them with another professional
+    expect(h.notif.sendMatchUpdatedEmail).toHaveBeenCalledTimes(1);
   });
 });

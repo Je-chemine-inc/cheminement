@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/card";
 import { AppointmentResponse } from "@/types/api";
 import { appointmentsAPI } from "@/lib/api-client";
+import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
 import { useTranslations } from "next-intl";
 import { EndSessionDialog } from "@/components/appointments/EndSessionDialog";
 
@@ -445,6 +446,17 @@ export default function SessionDetailsPage() {
                     {appointment.clientId.firstName}{" "}
                     {appointment.clientId.lastName}
                   </h3>
+                  {(() => {
+                    const beneficiary = getAppointmentBeneficiary(appointment);
+                    return beneficiary ? (
+                      <p className="mt-0.5 text-sm font-medium text-primary">
+                        {t("forLabel")}: {beneficiary.name}
+                        {beneficiary.relationship
+                          ? ` (${beneficiary.relationship})`
+                          : ""}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                     <p>{appointment.clientId.email}</p>
                     {appointment.clientId.phone && (

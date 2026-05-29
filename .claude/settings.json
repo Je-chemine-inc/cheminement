@@ -147,7 +147,8 @@
       "Bash(echo \"TSC_EXIT:$?\")",
       "Bash(cp c:/tmp/audit-routing.ts ./_audit_routing.mts)",
       "Bash(sed -i 's#c:/Users/merie/cheminement/.env#.env#' ./_audit_routing.mts)",
-      "Bash(grep -iE \"appointments/\\\\[id\\\\]/\\(cancel|route\\)\\\\.ts$\")"
+      "Bash(grep -iE \"appointments/\\\\[id\\\\]/\\(cancel|route\\)\\\\.ts$\")",
+      "Bash(xargs ls -la)"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\cheminement\\src\\app\\api\\admin\\appointments\\[id]",

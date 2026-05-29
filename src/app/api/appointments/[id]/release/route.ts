@@ -4,7 +4,11 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import { sendAdminAppointmentMovedToGeneralAlert } from "@/lib/notifications";
+import {
+  sendAdminAppointmentMovedToGeneralAlert,
+  sendMatchUpdatedEmail,
+} from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 /**
  * POST /api/appointments/[id]/release
@@ -33,7 +37,7 @@ export async function POST(
 
     const appointment = await Appointment.findById(id).populate(
       "clientId",
-      "firstName lastName email",
+      "firstName lastName email language",
     );
     if (!appointment) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -71,6 +75,7 @@ export async function POST(
       firstName?: string;
       lastName?: string;
       email?: string;
+      language?: string;
     } | null;
     const clientName =
       `${clientPop?.firstName ?? ""} ${clientPop?.lastName ?? ""}`.trim() ||
@@ -86,6 +91,33 @@ export async function POST(
         console.error("[release] moved-to-general alert error:", err),
       ),
     );
+
+    // Reassure the client (beneficiary, per LSSSS art. 14) that we're
+    // re-matching them — they were told "matched" and shouldn't be left
+    // wondering when the pro steps back.
+    const recipient = resolveAppointmentRecipient(
+      {
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
+      },
+      {
+        firstName: clientPop?.firstName,
+        lastName: clientPop?.lastName,
+        email: clientPop?.email,
+        language: clientPop?.language,
+      },
+    );
+    if (recipient.email) {
+      after(() =>
+        sendMatchUpdatedEmail({
+          clientName: recipient.name,
+          clientEmail: recipient.email,
+          locale: recipient.language,
+        }).catch((err) =>
+          console.error("[release] client re-match email error:", err),
+        ),
+      );
+    }
 
     return NextResponse.json({ id: String(appointment._id), released: true });
   } catch (error) {

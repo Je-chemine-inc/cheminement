@@ -983,6 +983,20 @@ export default function ProposalsPage() {
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           {getBookingForBadge(appointment.bookingFor)}
+                          {appointment.bookingFor === "loved-one" &&
+                            appointment.lovedOneInfo && (
+                              <span className="text-xs text-muted-foreground">
+                                {appointment.lovedOneInfo.firstName} (
+                                {appointment.lovedOneInfo.relationship})
+                              </span>
+                            )}
+                          {appointment.bookingFor === "patient" &&
+                            appointment.referralInfo && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {appointment.referralInfo.referrerName}
+                              </span>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell>

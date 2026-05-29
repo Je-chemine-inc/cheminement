@@ -43,6 +43,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { appointmentsAPI } from "@/lib/api-client";
+import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
 
 interface ApiAppointment {
   _id: string;
@@ -73,6 +74,16 @@ interface ApiAppointment {
   issueType?: string;
   notes?: string;
   meetingLink?: string;
+  bookingFor?: "self" | "patient" | "loved-one";
+  lovedOneInfo?: {
+    firstName?: string;
+    lastName?: string;
+    relationship?: string;
+  } | null;
+  referralInfo?: {
+    patientFirstName?: string;
+    patientLastName?: string;
+  } | null;
 }
 
 interface Session {
@@ -95,6 +106,8 @@ interface Session {
   issueType?: string;
   notes?: string;
   meetingLink?: string;
+  /** Who the session is for, when different from the account holder (clientId). */
+  beneficiary?: { name: string; relationship?: string } | null;
 }
 
 export default function SessionsPage() {
@@ -156,6 +169,7 @@ export default function SessionsPage() {
               issueType: appointment.issueType,
               notes: appointment.notes,
               meetingLink: appointment.meetingLink,
+              beneficiary: getAppointmentBeneficiary(appointment),
             };
           },
         );
@@ -519,6 +533,14 @@ export default function SessionsPage() {
                   <p className="text-2xl font-serif font-light text-foreground mb-2">
                     {nextSession.clientName}
                   </p>
+                  {nextSession.beneficiary && (
+                    <p className="text-sm font-medium text-primary mb-2">
+                      {t("forLabel")}: {nextSession.beneficiary.name}
+                      {nextSession.beneficiary.relationship
+                        ? ` (${nextSession.beneficiary.relationship})`
+                        : ""}
+                    </p>
+                  )}
                   <div className="flex items-center gap-4 text-sm text-muted-foreground font-light">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
@@ -904,6 +926,14 @@ export default function SessionsPage() {
                       <p className="font-medium text-foreground">
                         {session.clientName}
                       </p>
+                      {session.beneficiary && (
+                        <p className="text-xs font-medium text-primary">
+                          {t("forLabel")}: {session.beneficiary.name}
+                          {session.beneficiary.relationship
+                            ? ` (${session.beneficiary.relationship})`
+                            : ""}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {session.issueType}
                       </p>

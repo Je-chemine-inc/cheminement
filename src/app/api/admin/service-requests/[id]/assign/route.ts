@@ -7,7 +7,11 @@ import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import { sendProfessionalNotification } from "@/lib/notifications";
+import {
+  sendProfessionalNotification,
+  sendMatchUpdatedEmail,
+} from "@/lib/notifications";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 /**
  * Manually route a pending service-request to a specific professional.
@@ -132,7 +136,38 @@ export async function POST(
       firstName?: string;
       lastName?: string;
       email?: string;
+      language?: string;
     } | null;
+
+    // On REASSIGNMENT, reassure the client (beneficiary, per LSSSS art. 14):
+    // they were matched with another pro and shouldn't be left wondering. Not
+    // sent on a first assignment — the booking acknowledgement already covered
+    // "we're looking for a match".
+    if (isReassignment && client?.email) {
+      const recipient = resolveAppointmentRecipient(
+        {
+          bookingFor: appointment.bookingFor,
+          lovedOneInfo: appointment.lovedOneInfo,
+        },
+        {
+          firstName: client.firstName,
+          lastName: client.lastName,
+          email: client.email,
+          language: client.language,
+        },
+      );
+      if (recipient.email) {
+        after(() =>
+          sendMatchUpdatedEmail({
+            clientName: recipient.name,
+            clientEmail: recipient.email,
+            locale: recipient.language,
+          }).catch((err) =>
+            console.error("[admin reassign] client re-match email error:", err),
+          ),
+        );
+      }
+    }
 
     // Notify the chosen professional that a request was routed to them so they
     // can review and accept it. The request has no date/time yet (booking

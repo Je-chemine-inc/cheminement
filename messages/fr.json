@@ -2434,6 +2434,7 @@
       "detailsTitle": "Détails de la séance",
       "detailsSubtitle": "Gérez les informations et les notes de la séance",
       "clientInfo": "Informations du client",
+      "forLabel": "Pour",
       "sessionNotes": "Notes de la séance",
       "sessionNotesDesc": "Suivez les progrès, les observations et les suivis de la séance",
       "noNotesYet": "Aucune note ajoutée pour le moment. Cliquez sur Modifier pour ajouter des notes.",
