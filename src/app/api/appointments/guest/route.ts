@@ -194,8 +194,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let isNewGuest = false;
-
     // Look up by email across ALL roles — email is unique, so a user with the
     // same address (client / professional / admin) must be reused rather than
     // re-inserted. Only refresh contact info on prospect/guest matches; never
@@ -245,7 +243,6 @@ export async function POST(req: NextRequest) {
         preferredPaymentMethod: requestedPreferred ?? "interac",
       });
       await guestUser.save();
-      isNewGuest = true;
     }
 
     // Only validate professional if one is specified
@@ -476,7 +473,8 @@ export async function POST(req: NextRequest) {
     //                              protection of the minor, LSSSS art. 14)
     //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
     //   - patient referral      → the referrer (kept as-is)
-    // We always send on first submission so a fresh requester gets the welcome.
+    // Sent on EVERY new request (not just first-ever), so a returning requester
+    // still gets an acknowledgement and isn't left with only the admin alert.
     {
       const emailLocale: "fr" | "en" =
         notificationLocale === "en" ? "en" : "fr";
@@ -495,25 +493,20 @@ export async function POST(req: NextRequest) {
         onboardingToEmail = lovedOneInfo.email;
       }
 
-      // Send when the requester is new, or when the acknowledgment is going to a
-      // different mailbox than the requester (e.g. loved-one with their own email)
-      // so the loved one actually receives a confirmation.
-      const shouldSendOnboarding =
-        isNewGuest ||
-        (bookingFor === "loved-one" && onboardingToEmail !== email);
-
-      if (shouldSendOnboarding) {
-        const onboardingArgs = {
-          toName: onboardingToName,
-          toEmail: onboardingToEmail,
-          locale: emailLocale,
-        };
-        after(() =>
-          sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
-            console.error("Error sending onboarding email:", err),
-          ),
-        );
-      }
+      // Acknowledge EVERY new service request. This was previously gated on
+      // isNewGuest, which silently skipped the acknowledgement whenever the
+      // email already existed (returning prospect / re-used test address) — the
+      // client then saw only the admin alert. One acknowledgement per request.
+      const onboardingArgs = {
+        toName: onboardingToName,
+        toEmail: onboardingToEmail,
+        locale: emailLocale,
+      };
+      after(() =>
+        sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
+          console.error("Error sending onboarding email:", err),
+        ),
+      );
     }
 
     return NextResponse.json(

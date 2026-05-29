@@ -76,6 +76,10 @@ export default function CancelAppointmentDialog({
   // With the strict 48h rule, any self-cancel that reaches this dialog is free.
   const refundAmount = amount;
 
+  // No date yet → this is a "withdraw a matched request" flow, not a scheduled
+  // cancellation: skip the 48h policy / time-until / refund blocks.
+  const isWithdraw = !appointmentDate || !appointmentTime;
+
   const handleCancel = async () => {
     try {
       setLoading(true);
@@ -116,13 +120,19 @@ export default function CancelAppointmentDialog({
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl font-serif font-light">
-            {success ? t("titleSuccess") : t("title")}
+            {success
+              ? t("titleSuccess")
+              : isWithdraw
+                ? t("titleWithdraw")
+                : t("title")}
           </DialogTitle>
           <DialogDescription>
-            {t("descriptionAt", {
-              date: appointmentDate ?? "",
-              time: appointmentTime ?? "",
-            })}
+            {isWithdraw
+              ? t("descriptionWithdraw")
+              : t("descriptionAt", {
+                  date: appointmentDate ?? "",
+                  time: appointmentTime ?? "",
+                })}
           </DialogDescription>
         </DialogHeader>
 
@@ -173,41 +183,57 @@ export default function CancelAppointmentDialog({
             </div>
           ) : (
             <div className="space-y-4 py-4">
-              {/* Free-cancellation policy notice */}
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-                      {t("policyTitle")}
-                    </p>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                      {t("policyFree", { hours: HOURS_FOR_FREE_CANCELLATION })}
+              {/* Withdraw note (matched request, no date yet) */}
+              {isWithdraw && (
+                <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      {t("withdrawNote")}
                     </p>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* Free-cancellation policy notice */}
+              {!isWithdraw && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                        {t("policyTitle")}
+                      </p>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        {t("policyFree", { hours: HOURS_FOR_FREE_CANCELLATION })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Time Until Appointment */}
-              <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">
-                    {t("timeUntilTitle")}
-                  </span>
+              {!isWithdraw && (
+                <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Clock className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">
+                      {t("timeUntilTitle")}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-semibold text-foreground">
+                    {hoursUntilAppointment >= 24
+                      ? t("timeDaysHours", {
+                          days: Math.floor(hoursUntilAppointment / 24),
+                          hours: Math.floor(hoursUntilAppointment % 24),
+                        })
+                      : t("timeHoursMinutes", {
+                          hours: Math.floor(hoursUntilAppointment),
+                          minutes: Math.floor((hoursUntilAppointment % 1) * 60),
+                        })}
+                  </p>
                 </div>
-                <p className="text-2xl font-semibold text-foreground">
-                  {hoursUntilAppointment >= 24
-                    ? t("timeDaysHours", {
-                        days: Math.floor(hoursUntilAppointment / 24),
-                        hours: Math.floor(hoursUntilAppointment % 24),
-                      })
-                    : t("timeHoursMinutes", {
-                        hours: Math.floor(hoursUntilAppointment),
-                        minutes: Math.floor((hoursUntilAppointment % 1) * 60),
-                      })}
-                </p>
-              </div>
+              )}
 
               {/* Refund Details - Only show if paid */}
               {isPaid && (

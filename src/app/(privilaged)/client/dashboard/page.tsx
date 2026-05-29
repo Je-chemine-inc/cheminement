@@ -56,10 +56,18 @@ export default function ClientDashboardPage() {
       today.setHours(0, 0, 0, 0);
       const upcoming = data.filter((apt) => {
         const aptDate = apt.date ? new Date(apt.date) : null;
+        // Matched but not yet scheduled: a pro accepted (routingStatus
+        // "accepted") but no first-RDV date exists yet. Surface it so the client
+        // knows they're matched and awaiting a date.
+        const isMatchedAwaitingDate =
+          !apt.date &&
+          apt.status === "pending" &&
+          apt.routingStatus === "accepted";
         return (
-          aptDate &&
-          aptDate >= today &&
-          ["scheduled", "pending", "ongoing"].includes(apt.status)
+          isMatchedAwaitingDate ||
+          (aptDate &&
+            aptDate >= today &&
+            ["scheduled", "pending", "ongoing"].includes(apt.status))
         );
       });
       setUpcomingAppointments(upcoming.slice(0, 3)); // Limit to next 3 upcoming
@@ -188,10 +196,18 @@ export default function ClientDashboardPage() {
       today.setHours(0, 0, 0, 0);
       const upcoming = data.filter((apt) => {
         const aptDate = apt.date ? new Date(apt.date) : null;
+        // Matched but not yet scheduled: a pro accepted (routingStatus
+        // "accepted") but no first-RDV date exists yet. Surface it so the client
+        // knows they're matched and awaiting a date.
+        const isMatchedAwaitingDate =
+          !apt.date &&
+          apt.status === "pending" &&
+          apt.routingStatus === "accepted";
         return (
-          aptDate &&
-          aptDate >= today &&
-          ["scheduled", "pending", "ongoing"].includes(apt.status)
+          isMatchedAwaitingDate ||
+          (aptDate &&
+            aptDate >= today &&
+            ["scheduled", "pending", "ongoing"].includes(apt.status))
         );
       });
       setUpcomingAppointments(upcoming.slice(0, 3));
@@ -460,6 +476,13 @@ export default function ClientDashboardPage() {
                                   {tApptStatus("ongoing")}
                                 </span>
                               )}
+                              {!appointment.date &&
+                                appointment.status === "pending" &&
+                                appointment.routingStatus === "accepted" && (
+                                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                    {tApptStatus("matchedAwaitingDate")}
+                                  </span>
+                                )}
                               {isAwaitingPayment(appointment) && (
                                 <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                                   {tAwaitingPayment("badge")}
@@ -497,6 +520,19 @@ export default function ClientDashboardPage() {
                               >
                                 <Video className="h-4 w-4" />
                                 {t("upcomingAppointments.joinSession")}
+                              </Button>
+                            )}
+                          {/* Matched but no date yet → withdraw the request */}
+                          {!appointment.date &&
+                            appointment.status === "pending" &&
+                            appointment.routingStatus === "accepted" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openCancelDialog(appointment)}
+                                className="gap-2 rounded-full text-red-600 hover:text-red-700"
+                              >
+                                {t("upcomingAppointments.withdrawRequest")}
                               </Button>
                             )}
                           {appointment.status === "scheduled" &&

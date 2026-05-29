@@ -809,6 +809,8 @@
     "returningClientHint": "Ce client a déjà des rendez-vous antérieurs — il demande un nouveau professionnel. Faites le jumelage sans créer de doublon de compte.",
     "assignPlaceholder": "Assigner un professionnel…",
     "assignAction": "Jumeler",
+    "reassignAction": "Réassigner",
+    "assignedToLabel": "Jumelé à",
     "assignNoProfessionals": "Aucun professionnel actif"
   },
   "ClinicalAvailabilityGrid": {
@@ -3715,6 +3717,7 @@
         "requestAppointment": "Demander un rendez-vous",
         "cancel": "Annuler",
         "reschedule": "Reporter",
+        "withdrawRequest": "Annuler la demande",
         "joinSession": "Rejoindre la séance",
         "lateChange": {
           "title": "Délai de modification dépassé",
@@ -4191,7 +4194,8 @@
         "cancelled": "Annulé",
         "noShow": "Absence",
         "pending": "En attente de confirmation",
-        "ongoing": "En cours"
+        "ongoing": "En cours",
+        "matchedAwaitingDate": "Jumelé — date à venir"
       },
       "details": {
         "professional": "Professionnel",
@@ -4252,6 +4256,9 @@
       },
       "cancelDialog": {
         "title": "Annuler le rendez-vous",
+        "titleWithdraw": "Annuler la demande",
+        "descriptionWithdraw": "Vous êtes jumelé, mais aucune date n'a encore été fixée.",
+        "withdrawNote": "Annuler retire cette demande. Aucun montant ne sera facturé, et vous pourrez soumettre une nouvelle demande à tout moment.",
         "titleSuccess": "Rendez-vous annulé",
         "descriptionAt": "{date} à {time}",
         "successHeading": "Rendez-vous annulé avec succès",
@@ -4682,6 +4689,12 @@
       "errorPrefix": "Erreur",
       "tabProposed": "Proposées pour vous",
       "tabGeneral": "Liste générale",
+      "tabAwaiting": "À planifier",
+      "emptyAwaitingTitle": "Aucun rendez-vous à planifier",
+      "emptyAwaitingDescription": "Les clients que vous avez acceptés apparaîtront ici pour que vous confirmiez la date de leur premier rendez-vous",
+      "confirmFirstRdv": "Confirmer le 1er RDV",
+      "confirmFirstRdvModalTitle": "Confirmer le premier rendez-vous",
+      "release": "Se désister",
       "filters": "Filtres",
       "clearAll": "Tout effacer",
       "search": "Recherche",

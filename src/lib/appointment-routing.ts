@@ -2,7 +2,11 @@ import Profile from "@/models/Profile";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import MedicalProfile from "@/models/MedicalProfile";
-import { sendProfessionalNotification } from "@/lib/notifications";
+import { migrateLegacyAvailabilitySlots } from "@/config/clinical-availability-grid";
+import {
+  sendProfessionalNotification,
+  sendGeneralRequestAvailableNotification,
+} from "@/lib/notifications";
 
 /**
  * Calculate age from date of birth
@@ -205,6 +209,114 @@ export function findBestMatch(
   return { score: 0 };
 }
 
+/** Time-of-day windows (24h) behind the booking grid tokens (week_/weekend_ +
+ *  morning|afternoon|evening). Mirrors src/config/clinical-availability-grid. */
+const TIME_OF_DAY_RANGES: Record<string, [number, number]> = {
+  morning: [9, 12],
+  afternoon: [12, 17],
+  evening: [17, 21],
+};
+
+const WEEKDAY_NAMES = new Set([
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+]);
+
+type AvailabilityDay = {
+  day: string;
+  isWorkDay: boolean;
+  startTime?: string;
+  endTime?: string;
+};
+
+/** "HH:MM" → decimal hours ("13:30" → 13.5); null if unparseable. */
+function parseHourMinutes(value?: string): number | null {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (Number.isNaN(h) || Number.isNaN(min)) return null;
+  return h + min / 60;
+}
+
+/**
+ * Does the professional actually work a given preferred slot (e.g.
+ * "week_morning")? True when at least one work day in the right day-bucket
+ * (weekday vs weekend) has working hours that overlap the slot's time window.
+ */
+export function professionalCoversAvailabilitySlot(
+  slotId: string,
+  days: AvailabilityDay[] | undefined,
+): boolean {
+  if (!days || days.length === 0) return false;
+  const m = /^(week|weekend)_(morning|afternoon|evening)$/.exec(
+    slotId.toLowerCase(),
+  );
+  if (!m) return false;
+  const wantWeekday = m[1] === "week";
+  const [periodStart, periodEnd] = TIME_OF_DAY_RANGES[m[2]];
+
+  return days.some((d) => {
+    if (!d.isWorkDay) return false;
+    const isWeekday = WEEKDAY_NAMES.has(d.day);
+    if (wantWeekday !== isWeekday) return false;
+    const start = parseHourMinutes(d.startTime);
+    const end = parseHourMinutes(d.endTime);
+    if (start === null || end === null) return false;
+    // Overlap between the pro's working window and the slot's time window.
+    return start < periodEnd && end > periodStart;
+  });
+}
+
+/**
+ * How many of the client's preferred availability slots the professional can
+ * actually serve. Legacy tokens are normalized; specific-date tokens
+ * ("YYYY-MM-DD-morning") map to their weekday/weekend bucket. Returns counts so
+ * the caller scores proportionally. Unrecognized tokens are ignored.
+ */
+export function scoreAvailabilityMatch(
+  preferred: string[] | undefined,
+  days: AvailabilityDay[] | undefined,
+): { matched: number; total: number } {
+  if (!preferred || preferred.length === 0) return { matched: 0, total: 0 };
+  const CANONICAL = /^(week|weekend)_(morning|afternoon|evening)$/;
+  let matched = 0;
+  let total = 0;
+  const handleCanonical = (slot: string) => {
+    total++;
+    if (professionalCoversAvailabilitySlot(slot, days)) matched++;
+  };
+  for (const raw of preferred) {
+    const slot = raw.toLowerCase();
+    if (CANONICAL.test(slot)) {
+      handleCanonical(slot);
+      continue;
+    }
+    const dm = /^(\d{4}-\d{2}-\d{2})-(morning|afternoon|evening)$/.exec(slot);
+    if (dm) {
+      total++;
+      const dt = new Date(`${dm[1]}T12:00:00`);
+      if (!Number.isNaN(dt.getTime())) {
+        const dow = dt.getDay(); // 0 Sun … 6 Sat
+        const bucket = dow === 0 || dow === 6 ? "weekend" : "week";
+        if (professionalCoversAvailabilitySlot(`${bucket}_${dm[2]}`, days)) {
+          matched++;
+        }
+      }
+      continue;
+    }
+    // Legacy text token (e.g. "Weekday Mornings") → normalize to canonical.
+    for (const mtok of migrateLegacyAvailabilitySlots([raw])) {
+      if (CANONICAL.test(mtok.toLowerCase())) handleCanonical(mtok.toLowerCase());
+    }
+  }
+  return { matched, total };
+}
+
 /**
  * Calculate a relevancy score for a professional based on appointment requirements
  * and client medical profile preferences
@@ -219,7 +331,12 @@ export function calculateRelevancyScore(
     sessionTypes?: string[];
     languages?: string[];
     availability?: {
-      days: { day: string; isWorkDay: boolean }[];
+      days: {
+        day: string;
+        isWorkDay: boolean;
+        startTime?: string;
+        endTime?: string;
+      }[];
     };
   },
   appointment: {
@@ -470,43 +587,24 @@ export function calculateRelevancyScore(
     }
   }
 
-  // 8. Match by availability
+  // 8. Match by availability — cross the client's preferred day+time slots
+  // (week_/weekend_ × morning/afternoon/evening) with the professional's ACTUAL
+  // working windows (right day bucket AND overlapping hours). Proportional: a
+  // pro who fits every preferred slot scores highest; one who fits none scores
+  // 0 here. Soft signal (ranking), not a hard filter, so the pool never empties.
   if (appointment.preferredAvailability && profile.availability?.days) {
-    const availableDays = profile.availability.days
-      .filter((d) => d.isWorkDay)
-      .map((d) => d.day);
-
-    const weekdaySet = new Set([
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-    ]);
-    const weekendSet = new Set(["Saturday", "Sunday"]);
-
-    const availabilityMatches = appointment.preferredAvailability.some(
-      (pref) => {
-        const p = pref.toLowerCase();
-        if (p.startsWith("week_")) {
-          return availableDays.some((d) => weekdaySet.has(d));
-        }
-        if (p.startsWith("weekend_")) {
-          return availableDays.some((d) => weekendSet.has(d));
-        }
-        if (p.includes("weekday")) {
-          return availableDays.some((d) => weekdaySet.has(d));
-        }
-        if (p.includes("weekend")) {
-          return availableDays.some((d) => weekendSet.has(d));
-        }
-        return true;
-      },
+    const { matched, total } = scoreAvailabilityMatch(
+      appointment.preferredAvailability,
+      profile.availability.days,
     );
-
-    if (availabilityMatches) {
-      score += 10;
-      reasons.push("Disponibilité correspondante");
+    if (total > 0) {
+      const points = Math.round((matched / total) * 15);
+      if (points > 0) {
+        score += points;
+        reasons.push(
+          `Disponibilités correspondantes (${matched}/${total} créneaux préférés)`,
+        );
+      }
     }
   }
 
@@ -557,9 +655,32 @@ export async function routeAppointmentToProfessionals(
     const professionals = await User.find({
       role: "professional",
       status: "active",
-    }).select("_id firstName lastName email");
+    }).select("_id firstName lastName email language");
 
     const professionalIds = professionals.map((p) => p._id);
+
+    // Broadcast helper: when a request lands in the GENERAL pool (no specific
+    // match), ping every active professional so it doesn't sit unseen in the
+    // "Propositions → Général" tab. Awaited (not fire-and-forget) so the sends
+    // complete before this function — itself wrapped in after() by the caller —
+    // resolves; otherwise Vercel may kill the container mid-send.
+    const notifyGeneralPool = async () => {
+      const sends = professionals
+        .filter((p) => p.email)
+        .map((p) =>
+          sendGeneralRequestAvailableNotification({
+            professionalName: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
+            professionalEmail: p.email as string,
+            locale: (p as { language?: string }).language === "en" ? "en" : "fr",
+          }).catch((err) =>
+            console.error(
+              `[routing] general-pool notify failed for ${p._id}:`,
+              err,
+            ),
+          ),
+        );
+      await Promise.allSettled(sends);
+    };
 
     // Get profiles for all professionals
     const profiles = await Profile.find({
@@ -615,6 +736,7 @@ export async function routeAppointmentToProfessionals(
       await Appointment.findByIdAndUpdate(appointmentId, {
         routingStatus: "general",
       });
+      await notifyGeneralPool();
 
       return { success: true, matches: [], routingStatus: "general" };
     }
@@ -662,6 +784,7 @@ export async function routeAppointmentToProfessionals(
       await Appointment.findByIdAndUpdate(appointmentId, {
         routingStatus: "general",
       });
+      await notifyGeneralPool();
 
       return { success: true, matches: [], routingStatus: "general" };
     }
@@ -700,28 +823,36 @@ export async function routeAppointmentToProfessionals(
         | "phone"
         | "both";
 
+      // Await the sends (collected, run together) so they complete before this
+      // function resolves. The caller wraps the whole call in after(), which
+      // keeps the Vercel container alive until this promise settles — a prior
+      // fire-and-forget (`void`) here could be killed before SMTP finished.
+      const notificationPromises: Promise<unknown>[] = [];
       for (const match of topMatches) {
         const pro = await User.findById(match.professionalId)
           .select("firstName lastName email")
           .lean();
         if (!pro?.email) continue;
 
-        void sendProfessionalNotification({
-          clientName,
-          clientEmail,
-          professionalName: `${pro.firstName} ${pro.lastName}`,
-          professionalEmail: pro.email,
-          date: dateIso,
-          time: populatedAppt?.time,
-          duration: populatedAppt?.duration ?? 60,
-          type: apptType,
-        }).catch((err) =>
-          console.error(
-            `[routing] Failed to notify professional ${match.professionalId}:`,
-            err,
+        notificationPromises.push(
+          sendProfessionalNotification({
+            clientName,
+            clientEmail,
+            professionalName: `${pro.firstName} ${pro.lastName}`,
+            professionalEmail: pro.email,
+            date: dateIso,
+            time: populatedAppt?.time,
+            duration: populatedAppt?.duration ?? 60,
+            type: apptType,
+          }).catch((err) =>
+            console.error(
+              `[routing] Failed to notify professional ${match.professionalId}:`,
+              err,
+            ),
           ),
         );
       }
+      await Promise.allSettled(notificationPromises);
     } else {
       console.warn(
         `[routing] Skipped professional notifications for appointment ${appointmentId}: missing client email`,

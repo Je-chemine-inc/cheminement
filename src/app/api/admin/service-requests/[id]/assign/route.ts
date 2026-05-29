@@ -7,30 +7,19 @@ import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import {
-  sendJumelageSuccessEmail,
-  sendProfessionalNotification,
-} from "@/lib/notifications";
-import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
-import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
-import { resolveBillingUrl } from "@/lib/client-portal-urls";
-
-function getBaseUrl(): string {
-  return (
-    process.env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000"
-  );
-}
+import { sendProfessionalNotification } from "@/lib/notifications";
 
 /**
- * Manually jumelage a pending service-request: admin picks a professional
- * for an unassigned request and notifies the client (jumelage success email).
+ * Manually route a pending service-request to a specific professional.
  *
- * The request stays at `status: "pending"` (no date/time yet — that's set
- * later by booking) but `routingStatus` jumps to "accepted" and the chosen
- * professional is locked in. If pricing depends on the pro, refresh it here
- * so the pricing reflects the assigned pro's rate.
+ * This does NOT lock the professional in or confirm the match. It *proposes*
+ * the request to the chosen professional (routingStatus → "proposed",
+ * proposedTo → [professionalId]) and notifies them. The professional must
+ * still accept via POST /api/appointments/[id]/accept — that's what flips the
+ * appointment to "scheduled" and sends the client the jumelage / payment
+ * email. Sending that email here would dead-end the payment CTA, which is
+ * gated on status === "scheduled". Pricing is refreshed to the chosen pro's
+ * rate so it's already correct the moment they accept.
  */
 export async function POST(
   req: NextRequest,
@@ -88,11 +77,24 @@ export async function POST(
         { status: 404 },
       );
     }
-    if (appointment.professionalId) {
-      return NextResponse.json(
-        { error: "Request already assigned to a professional" },
-        { status: 409 },
-      );
+    // A request can be (re)assigned while still "pending" (no real date). If a
+    // pro already accepted it (matched) but never scheduled, the admin may
+    // reassign to a different pro. Once scheduled, reassignment goes through
+    // cancel/rebook instead — refuse here.
+    const isReassignment = Boolean(appointment.professionalId);
+    if (isReassignment) {
+      if (appointment.status !== "pending") {
+        return NextResponse.json(
+          { error: "A scheduled appointment cannot be reassigned here" },
+          { status: 409 },
+        );
+      }
+      if (appointment.professionalId?.toString() === professionalId) {
+        return NextResponse.json(
+          { error: "Request is already assigned to this professional" },
+          { status: 409 },
+        );
+      }
     }
 
     const pricing = await calculateAppointmentPricing(
@@ -100,89 +102,41 @@ export async function POST(
       appointment.therapyType,
     );
 
-    appointment.professionalId = new mongoose.Types.ObjectId(professionalId);
-    appointment.routingStatus = "accepted";
-    appointment.payment.price = pricing.sessionPrice;
-    appointment.payment.platformFee = pricing.platformFee;
-    appointment.payment.professionalPayout = pricing.professionalPayout;
-    await appointment.save();
+    // Propose to the chosen professional (no lock-in). Overwrite proposedTo so
+    // this is a targeted proposal even if the request had been auto-routed to
+    // several pros earlier. The match/payment email is intentionally NOT sent
+    // here — it fires only once this pro accepts (status → "scheduled").
+    const update: Record<string, unknown> = {
+      $set: {
+        routingStatus: "proposed",
+        proposedTo: [new mongoose.Types.ObjectId(professionalId)],
+        "payment.price": pricing.sessionPrice,
+        "payment.platformFee": pricing.platformFee,
+        "payment.professionalPayout": pricing.professionalPayout,
+      },
+    };
+    if (isReassignment) {
+      const previousProId = appointment.professionalId;
+      // Hand off to a different pro: drop the current one, reset the matched
+      // timestamp + reminder/escalation flags (fresh window for the new pro),
+      // and exclude the previous pro from re-matching this request.
+      const set = update.$set as Record<string, unknown>;
+      set.firstRdvReminderSent = false;
+      set.firstRdvAdminEscalatedSent = false;
+      update.$unset = { professionalId: "", matchedAt: "" };
+      if (previousProId) update.$addToSet = { refusedBy: previousProId };
+    }
+    await Appointment.findByIdAndUpdate(id, update);
 
     const client = appointment.clientId as unknown as {
-      _id: { toString: () => string };
       firstName?: string;
       lastName?: string;
       email?: string;
-      language?: string;
-      role?: string;
-      status?: string;
     } | null;
 
-    if (client?.email) {
-      // Provision unclaimed accounts so the "Compléter mon compte" CTA
-      // has a valid claim target — mirrors the pro-accept flow.
-      const wasProspectOrGuest =
-        client.role === "guest" || client.role === "prospect";
-      if (wasProspectOrGuest) {
-        await provisionGuestAsClient(client._id.toString(), {
-          issueType: appointment.issueType,
-          activate: false,
-        });
-      }
-
-      const freshClientUser = await User.findById(client._id)
-        .select("role status")
-        .lean();
-      const isActiveClient =
-        (freshClientUser as { role?: string } | null)?.role === "client" &&
-        (freshClientUser as { status?: string } | null)?.status === "active";
-
-      // Quebec LSSSS art. 14: route to the beneficiary for adult loved-one bookings.
-      const recipient = resolveAppointmentRecipient(
-        {
-          bookingFor: appointment.bookingFor,
-          lovedOneInfo: appointment.lovedOneInfo,
-        },
-        client,
-      );
-
-      const base = getBaseUrl();
-      const completeAccountUrl = isActiveClient
-        ? `${base}/client/dashboard/profile`
-        : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
-
-      // Resolve the "Choose payment method" CTA target. Goes through the
-      // shared helper so the token TTL (14 days) and refresh-window logic
-      // stay aligned with the cron reminders that reuse the same token.
-      const billingUrl = await resolveBillingUrl({
-        userStatus: isActiveClient ? "active" : "inactive",
-        appointment: appointment as Parameters<
-          typeof resolveBillingUrl
-        >[0]["appointment"],
-        base,
-      });
-
-      const jumelageArgs = {
-        clientName: recipient.name,
-        clientEmail: recipient.email,
-        professionalName: `${professional.firstName ?? ""} ${
-          professional.lastName ?? ""
-        }`.trim(),
-        locale: recipient.language,
-        completeAccountUrl,
-        billingUrl,
-      };
-      after(() =>
-        sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
-          console.error("[admin manual jumelage] email error:", err),
-        ),
-      );
-    }
-
-    // Notify the assigned professional. Without this they have no signal
-    // that a request landed on their plate — they'd only discover it by
-    // opening the dashboard. The route still has no date/time (the actual
-    // booking happens later), so the email shows the assignment context
-    // without scheduling details.
+    // Notify the chosen professional that a request was routed to them so they
+    // can review and accept it. The request has no date/time yet (booking
+    // happens after acceptance), so the email carries assignment context only.
     if (professional.email) {
       const clientNameForPro =
         `${client?.firstName ?? ""} ${client?.lastName ?? ""}`.trim() ||
@@ -205,8 +159,9 @@ export async function POST(
 
     return NextResponse.json({
       id: appointment._id.toString(),
-      professionalId,
-      routingStatus: appointment.routingStatus,
+      proposedTo: professionalId,
+      routingStatus: "proposed",
+      reassigned: isReassignment,
     });
   } catch (error) {
     console.error("Admin manual jumelage error:", error);

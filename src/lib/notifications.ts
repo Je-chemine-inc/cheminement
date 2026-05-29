@@ -1285,8 +1285,8 @@ export async function sendServiceRequestOnboardingEmail(data: {
         : "We've received your request!",
     subtitle:
       lang === "fr"
-        ? "Prochaines étapes avec Je chemine"
-        : "Next steps with Je chemine",
+        ? "Nous recherchons le bon professionnel pour vous"
+        : "We're finding the right professional for you",
     theme: "info",
     badge: {
       text: lang === "fr" ? "✅ Demande reçue" : "✅ Request received",
@@ -1296,8 +1296,8 @@ export async function sendServiceRequestOnboardingEmail(data: {
       lang === "fr" ? `Bonjour ${data.toName},` : `Hello ${data.toName},`,
     intro:
       lang === "fr"
-        ? "Nous avons bien reçu votre demande et nous vous remercions de nous avoir choisis pour vous accompagner dans votre parcours. Toute l'équipe de Je chemine est déjà à l'œuvre pour vous offrir un service de qualité."
-        : "We have received your request and thank you for choosing us to support you on your journey. The entire Je chemine team is already at work to provide you with quality service.",
+        ? "Nous avons bien reçu votre demande de rendez-vous — merci de nous avoir choisis pour vous accompagner. Notre équipe recherche dès maintenant le professionnel qui correspond le mieux à votre situation. Vous recevrez un courriel dès qu'un professionnel aura accepté votre demande."
+        : "We've received your appointment request — thank you for choosing us to support you. Our team is now looking for the professional who best fits your situation. You'll receive an email as soon as a professional has accepted your request.",
     infoBox: {
       title:
         lang === "fr"
@@ -1305,8 +1305,8 @@ export async function sendServiceRequestOnboardingEmail(data: {
           : "🔍 Your request is in good hands",
       content:
         lang === "fr"
-          ? "Actuellement, nos professionnels examinent les détails de votre dossier. Notre objectif est simple : vous orienter vers la ressource la plus adaptée à votre situation pour que votre démarche soit une réussite dès le premier contact.<br><br><strong>Optimisez votre jumelage</strong><br>Pour nous aider à bien vous comprendre et à vous diriger efficacement, nous vous invitons à finaliser la création de votre profil de membre via le lien ci-dessous."
-          : "Our professionals are currently reviewing the details of your file. Our goal is simple: to guide you to the resource best suited to your situation so that your journey is a success from the very first contact.<br><br><strong>Optimize your matching</strong><br>To help us understand you better and direct you effectively, we invite you to finalize the creation of your member profile via the link below.",
+          ? "Nous vous jumelons dès maintenant avec un professionnel adapté à vos besoins. Dès qu'un professionnel aura accepté votre demande, nous vous écrirons pour la prochaine étape : confirmer et garantir votre rendez-vous.<br><br><strong>Aidez-nous à vous jumeler plus vite</strong><br>En complétant votre profil de membre, vous nous donnez les détails nécessaires pour vous mettre en relation avec le bon professionnel. Cela ne prend que quelques minutes."
+          : "We're now matching you with a professional suited to your needs. As soon as a professional accepts your request, we'll email you the next step: confirming and securing your appointment.<br><br><strong>Help us match you faster</strong><br>Completing your member profile gives us the details we need to connect you with the right professional. It only takes a few minutes.",
     },
     button: {
       text:
@@ -1317,8 +1317,8 @@ export async function sendServiceRequestOnboardingEmail(data: {
     },
     outro:
       lang === "fr"
-        ? "<strong>Pourquoi prendre ces quelques minutes ?</strong> Ce questionnaire est conçu pour être fluide et rapide à remplir. En apprenant à mieux vous connaître, nous nous assurons que le professionnel que nous vous suggérerons possèdera l'expertise précise dont vous avez besoin.<br><br>Dès que votre profil sera complété et notre analyse terminée, nous communiquerons avec vous pour la suite des choses.<br><br>Merci de faire équipe avec nous pour votre bien-être.<br><br>Chaleureusement,<br>L'équipe de Je chemine"
-        : "<strong>Why take a few minutes?</strong> This questionnaire is designed to be smooth and quick to fill out. By getting to know you better, we ensure that the professional we suggest will have the precise expertise you need.<br><br>As soon as your profile is completed and our analysis is finished, we will contact you with next steps.<br><br>Thank you for teaming up with us for your well-being.<br><br>Warmly,<br>The Je chemine team",
+        ? "<strong>Pourquoi prendre ces quelques minutes ?</strong> Mieux nous vous connaissons, mieux nous pouvons vous jumeler avec un professionnel possédant l'expertise précise dont vous avez besoin.<br><br>Nous vous recontacterons dès qu'un professionnel aura accepté votre demande.<br><br>Merci de faire équipe avec nous pour votre bien-être.<br><br>Chaleureusement,<br>L'équipe de Je chemine"
+        : "<strong>Why take a few minutes?</strong> The more we know about you, the better we can match you with a professional who has the exact expertise you need.<br><br>We'll be in touch as soon as a professional accepts your request.<br><br>Thank you for teaming up with us for your well-being.<br><br>Warmly,<br>The Je chemine team",
     branding,
     lang,
   });
@@ -1328,14 +1328,14 @@ export async function sendServiceRequestOnboardingEmail(data: {
       ? [
           "Votre demande est bien reçue !",
           `Bonjour ${data.toName},`,
-          "Nous avons bien reçu votre demande et nous vous remercions de nous avoir choisis pour vous accompagner dans votre parcours. Toute l'équipe de Je chemine est déjà à l'œuvre pour vous offrir un service de qualité.",
+          "Nous avons bien reçu votre demande de rendez-vous — merci de nous avoir choisis pour vous accompagner. Notre équipe recherche dès maintenant le professionnel qui correspond le mieux à votre situation. Vous recevrez un courriel dès qu'un professionnel aura accepté votre demande.",
           "🔍 Votre demande est entre de bonnes mains",
-          "Actuellement, nos professionnels examinent les détails de votre dossier. Notre objectif est simple : vous orienter vers la ressource la plus adaptée à votre situation pour que votre démarche soit une réussite dès le premier contact.",
-          "Optimisez votre jumelage",
-          "Pour nous aider à bien vous comprendre et à vous diriger efficacement, nous vous invitons à finaliser la création de votre profil de membre via le lien ci-dessous :",
+          "Nous vous jumelons dès maintenant avec un professionnel adapté à vos besoins. Dès qu'un professionnel aura accepté votre demande, nous vous écrirons pour la prochaine étape : confirmer et garantir votre rendez-vous.",
+          "Aidez-nous à vous jumeler plus vite",
+          "En complétant votre profil de membre, vous nous donnez les détails nécessaires pour vous mettre en relation avec le bon professionnel. Cela ne prend que quelques minutes :",
           memberSignupUrl,
-          "Pourquoi prendre ces quelques minutes ? Ce questionnaire est conçu pour être fluide et rapide à remplir. En apprenant à mieux vous connaître, nous nous assurons que le professionnel que nous vous suggérerons possèdera l'expertise précise dont vous avez besoin.",
-          "Dès que votre profil sera complété et notre analyse terminée, nous communiquerons avec vous pour la suite des choses.",
+          "Pourquoi prendre ces quelques minutes ? Mieux nous vous connaissons, mieux nous pouvons vous jumeler avec un professionnel possédant l'expertise précise dont vous avez besoin.",
+          "Nous vous recontacterons dès qu'un professionnel aura accepté votre demande.",
           "Merci de faire équipe avec nous pour votre bien-être.",
           "Chaleureusement,",
           "L'équipe de Je chemine",
@@ -1343,14 +1343,14 @@ export async function sendServiceRequestOnboardingEmail(data: {
       : [
           "We've received your request!",
           `Hello ${data.toName},`,
-          "We have received your request and thank you for choosing us to support you on your journey. The entire Je chemine team is already at work to provide you with quality service.",
+          "We've received your appointment request — thank you for choosing us to support you. Our team is now looking for the professional who best fits your situation. You'll receive an email as soon as a professional has accepted your request.",
           "🔍 Your request is in good hands",
-          "Our professionals are currently reviewing the details of your file. Our goal is simple: to guide you to the resource best suited to your situation so that your journey is a success from the very first contact.",
-          "Optimize your matching",
-          "To help us understand you better and direct you effectively, we invite you to finalize the creation of your member profile via the link below:",
+          "We're now matching you with a professional suited to your needs. As soon as a professional accepts your request, we'll email you the next step: confirming and securing your appointment.",
+          "Help us match you faster",
+          "Completing your member profile gives us the details we need to connect you with the right professional. It only takes a few minutes:",
           memberSignupUrl,
-          "Why take a few minutes? This questionnaire is designed to be smooth and quick to fill out. By getting to know you better, we ensure that the professional we suggest will have the precise expertise you need.",
-          "As soon as your profile is completed and our analysis is finished, we will contact you with next steps.",
+          "Why take a few minutes? The more we know about you, the better we can match you with a professional who has the exact expertise you need.",
+          "We'll be in touch as soon as a professional accepts your request.",
           "Thank you for teaming up with us for your well-being.",
           "Warmly,",
           "The Je chemine team",
@@ -1954,6 +1954,167 @@ export async function sendProfessionalNotification(
   const subject = await getSubject(
     "appointment_professional_notification",
     "Nouvelle demande de rendez-vous — JeChemine",
+  );
+
+  return sendEmail(
+    { to: data.professionalEmail, subject, html, text },
+    "appointment_professional_notification",
+  );
+}
+
+/**
+ * Broadcast notification: a new service request landed in the GENERAL pool
+ * (auto-routing found no specific match, or no age-appropriate completed
+ * profile). Sent to active professionals so the request doesn't sit unseen in
+ * the "Propositions → Général" tab. Locale-aware (defaults to FR). No client
+ * PII in the body — the details live behind auth in the dashboard.
+ */
+export async function sendGeneralRequestAvailableNotification(data: {
+  professionalName: string;
+  professionalEmail: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
+  const name =
+    data.professionalName?.trim() ||
+    (lang === "fr" ? "cher professionnel" : "there");
+
+  const html = buildEmailHtml({
+    title: lang === "fr" ? "Nouvelle demande disponible" : "New request available",
+    subtitle:
+      lang === "fr"
+        ? "File générale — à prendre en charge"
+        : "General pool — open to claim",
+    theme: "info",
+    badge: {
+      text: lang === "fr" ? "📋 File générale" : "📋 General pool",
+      theme: "info",
+    },
+    greeting: lang === "fr" ? `Bonjour ${name},` : `Hello ${name},`,
+    intro:
+      lang === "fr"
+        ? "Une nouvelle demande de service est disponible dans la file générale et peut être prise en charge par tout professionnel disponible. Consultez-la dans votre tableau de bord pour l'accepter."
+        : "A new service request is available in the general pool and can be claimed by any available professional. Open your dashboard to review and accept it.",
+    button: {
+      text: lang === "fr" ? "Voir les demandes" : "View requests",
+      url: dashboardUrl,
+    },
+    outro:
+      lang === "fr"
+        ? "Les demandes de la file générale sont attribuées au premier professionnel qui les accepte."
+        : "General-pool requests go to the first professional who accepts them.",
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Nouvelle demande disponible",
+          `Bonjour ${name},`,
+          "Une nouvelle demande de service est disponible dans la file générale et peut être prise en charge par tout professionnel disponible.",
+          `Voir les demandes : ${dashboardUrl}`,
+          "Les demandes de la file générale sont attribuées au premier professionnel qui les accepte.",
+        ]
+      : [
+          "New request available",
+          `Hello ${name},`,
+          "A new service request is available in the general pool and can be claimed by any available professional.",
+          `View requests: ${dashboardUrl}`,
+          "General-pool requests go to the first professional who accepts them.",
+        ],
+    lang,
+  );
+
+  const subject = await getSubject(
+    "appointment_professional_notification",
+    lang === "fr"
+      ? "Nouvelle demande disponible (file générale) — Je chemine"
+      : "New request available (general pool) — Je chemine",
+  );
+
+  return sendEmail(
+    { to: data.professionalEmail, subject, html, text },
+    "appointment_professional_notification",
+  );
+}
+
+/**
+ * Relance envoyée au professionnel qui a accepté un client (jumelé) mais n'a
+ * pas encore confirmé la date du 1er rendez-vous après quelques jours. Le
+ * client attend : on rappelle au pro de planifier depuis l'onglet "À planifier".
+ */
+export async function sendUnscheduledMatchReminder(data: {
+  professionalName: string;
+  professionalEmail: string;
+  clientName: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
+  const name =
+    data.professionalName?.trim() ||
+    (lang === "fr" ? "cher professionnel" : "there");
+  const clientName = data.clientName?.trim() || (lang === "fr" ? "un client" : "a client");
+
+  const html = buildEmailHtml({
+    title:
+      lang === "fr"
+        ? "Un client attend la date de son 1er rendez-vous"
+        : "A client is waiting for their 1st appointment date",
+    subtitle:
+      lang === "fr"
+        ? "Confirmez le premier rendez-vous"
+        : "Confirm the first appointment",
+    theme: "info",
+    badge: {
+      text: lang === "fr" ? "⏳ À planifier" : "⏳ To schedule",
+      theme: "info",
+    },
+    greeting: lang === "fr" ? `Bonjour ${name},` : `Hello ${name},`,
+    intro:
+      lang === "fr"
+        ? `Vous avez accepté la demande de ${clientName}, mais la date du premier rendez-vous n'est pas encore fixée. ${clientName} attend de vos nouvelles — confirmez la date depuis l'onglet « À planifier » de votre tableau de bord.`
+        : `You accepted ${clientName}'s request, but the first appointment date isn't set yet. ${clientName} is waiting to hear from you — confirm the date from the "To Schedule" tab of your dashboard.`,
+    button: {
+      text: lang === "fr" ? "Confirmer le 1er RDV" : "Confirm the 1st appointment",
+      url: dashboardUrl,
+    },
+    outro:
+      lang === "fr"
+        ? "Vous pouvez communiquer avec le client avant de fixer une date officielle."
+        : "You may contact the client before setting an official date.",
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Un client attend la date de son 1er rendez-vous",
+          `Bonjour ${name},`,
+          `Vous avez accepté la demande de ${clientName}, mais la date du premier rendez-vous n'est pas encore fixée.`,
+          `Confirmer le 1er RDV : ${dashboardUrl}`,
+          "Vous pouvez communiquer avec le client avant de fixer une date officielle.",
+        ]
+      : [
+          "A client is waiting for their 1st appointment date",
+          `Hello ${name},`,
+          `You accepted ${clientName}'s request, but the first appointment date isn't set yet.`,
+          `Confirm the 1st appointment: ${dashboardUrl}`,
+          "You may contact the client before setting an official date.",
+        ],
+    lang,
+  );
+
+  const subject = await getSubject(
+    "appointment_professional_notification",
+    lang === "fr"
+      ? "Rappel — confirmez la date du 1er rendez-vous"
+      : "Reminder — confirm the 1st appointment date",
   );
 
   return sendEmail(
@@ -3519,7 +3680,10 @@ export async function sendPaymentGuarantee48hProfessionalAlert(data: {
 
 /**
  * Envoyé au client dès qu'un professionnel accepte sa demande (jumelage réussi).
- * Invite le client à choisir son mode de paiement : carte Stripe ou virement Interac.
+ * N'invite PAS au paiement : la date du 1er RDV n'est pas encore fixée. Le
+ * professionnel contactera le client pour convenir d'une date, après quoi le
+ * courriel de confirmation du 1er RDV (avec l'invitation au paiement) part
+ * depuis l'étape de planification (POST /api/appointments/[id]/schedule-first).
  */
 export async function sendJumelageSuccessEmail(data: {
   clientName: string;
@@ -3528,101 +3692,27 @@ export async function sendJumelageSuccessEmail(data: {
   locale?: "fr" | "en";
   /** Link inviting the client to finish setting up their account (claim or complete profile). */
   completeAccountUrl?: string;
-  /**
-   * Override the "Choose payment method" CTA target. For unclaimed accounts pass
-   * the tokenized `/pay?token=…` URL so the user can pay without first having to
-   * log in (which would be impossible — they have no password yet).
-   * Falls back to the authenticated dashboard URL for already-active clients.
-   */
-  billingUrl?: string;
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
-  const base =
-    process.env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000";
-  const billingUrl =
-    data.billingUrl ??
-    `${base}/client/dashboard/billing?action=addPaymentMethod`;
-  const companyName = branding?.companyName || "Je chemine";
-  const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
 
-  const editable = await loadEditableTemplate("jumelageSuccess", lang, {
-    firstName: data.clientName,
-    professionalName: data.professionalName ?? "",
-    billingUrl,
-    completeAccountUrl: data.completeAccountUrl ?? "",
-    companyName,
-    supportEmail,
-  });
-  if (editable) {
-    const html = buildEmailHtml({
-      title: editable.title,
-      subtitle: editable.subtitle,
-      theme: "success",
-      badge: {
-        text: lang === "fr" ? "✅ Jumelage confirmé" : "✅ Match confirmed",
-        theme: "success",
-      },
-      greeting: "",
-      intro: editable.bodyHtml,
-      button: editable.ctaText
-        ? { text: editable.ctaText, url: billingUrl }
-        : undefined,
-      secondaryButton: data.completeAccountUrl
-        ? {
-            preamble:
-              lang === "fr"
-                ? "Vous pouvez aussi finaliser la configuration de votre compte pour accéder à votre tableau de bord et à toutes les fonctionnalités."
-                : "You can also finish setting up your account to access your dashboard and all features.",
-            text:
-              lang === "fr" ? "Compléter mon compte" : "Complete my account",
-            url: data.completeAccountUrl,
-          }
-        : undefined,
-      branding,
-      lang,
-    });
-    const text = buildEmailText(
-      [
-        editable.title,
-        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
-        editable.ctaText ? `${editable.ctaText} : ${billingUrl}` : "",
-        data.completeAccountUrl
-          ? lang === "fr"
-            ? `Compléter mon compte : ${data.completeAccountUrl}`
-            : `Complete my account: ${data.completeAccountUrl}`
-          : "",
-      ],
-      lang,
-    );
-    return sendEmail(
-      { to: data.clientEmail, subject: editable.subject, html, text },
-      "payment_invitation",
-    );
-  }
-
-  const title =
-    lang === "fr"
-      ? "Jumelage réussi — Configurez votre paiement"
-      : "Match successful — Set up your payment";
+  const title = lang === "fr" ? "Jumelage réussi !" : "You've been matched!";
   const subtitle =
     lang === "fr"
       ? data.professionalName
         ? `Professionnel assigné : ${data.professionalName}`
         : "Un professionnel a accepté votre demande"
       : data.professionalName
-      ? `Professional assigned: ${data.professionalName}`
-      : "A professional has accepted your request";
+        ? `Professional assigned: ${data.professionalName}`
+        : "A professional has accepted your request";
   const intro =
     lang === "fr"
-      ? "Votre demande a été acceptée par un professionnel. Pour confirmer votre rendez-vous, veuillez choisir votre mode de paiement : carte de crédit (Stripe) ou virement Interac."
-      : "Your request has been accepted by a professional. To confirm your appointment, please choose your payment method: credit card (Stripe) or Interac e-Transfer.";
+      ? "Bonne nouvelle : un professionnel a accepté votre demande. Il communiquera bientôt avec vous pour convenir ensemble de la date de votre premier rendez-vous."
+      : "Good news: a professional has accepted your request. They will reach out to you shortly to agree together on the date of your first appointment.";
   const infoContent =
     lang === "fr"
-      ? "Carte de crédit : vos données sont sécurisées par Stripe. Votre carte sera validée et aucun montant n'est prélevé avant la séance.<br><br>Virement Interac : choisissez cette option si vous préférez payer par courriel Interac. L'administration validera votre dossier."
-      : "Credit card: your data is secured by Stripe. Your card is validated and nothing is charged before the session.<br><br>Interac e-Transfer: choose this option if you prefer to pay by Interac email transfer. Admin will validate your file.";
+      ? "Dès que la date de votre premier rendez-vous sera fixée avec votre professionnel, vous recevrez un courriel de confirmation. C'est à ce moment que vous pourrez configurer votre mode de paiement — rien n'est requis pour l'instant."
+      : "As soon as the date of your first appointment is set with your professional, you'll receive a confirmation email. That's when you'll set up your payment method — nothing is required for now.";
 
   const html = buildEmailHtml({
     title,
@@ -3632,29 +3722,16 @@ export async function sendJumelageSuccessEmail(data: {
       text: lang === "fr" ? "✅ Jumelage confirmé" : "✅ Match confirmed",
       theme: "success",
     },
-    greeting: lang === "fr" ? `Bonjour ${data.clientName},` : `Dear ${data.clientName},`,
+    greeting:
+      lang === "fr" ? `Bonjour ${data.clientName},` : `Dear ${data.clientName},`,
     intro,
     infoBox: {
-      title: lang === "fr" ? "Modes de paiement disponibles" : "Available payment methods",
+      title: lang === "fr" ? "Prochaines étapes" : "What happens next",
       content: infoContent,
     },
-    button: {
-      text:
-        lang === "fr"
-          ? "Choisir mon mode de paiement"
-          : "Choose my payment method",
-      url: billingUrl,
-    },
-    secondaryButton: data.completeAccountUrl
+    button: data.completeAccountUrl
       ? {
-          preamble:
-            lang === "fr"
-              ? "Vous pouvez aussi finaliser la configuration de votre compte pour accéder à votre tableau de bord et à toutes les fonctionnalités."
-              : "You can also finish setting up your account to access your dashboard and all features.",
-          text:
-            lang === "fr"
-              ? "Compléter mon compte"
-              : "Complete my account",
+          text: lang === "fr" ? "Compléter mon compte" : "Complete my account",
           url: data.completeAccountUrl,
         }
       : undefined,
@@ -3672,9 +3749,8 @@ export async function sendJumelageSuccessEmail(data: {
       lang === "fr" ? `Bonjour ${data.clientName},` : `Dear ${data.clientName},`,
       intro,
       lang === "fr"
-        ? "Choisir mon mode de paiement :"
-        : "Choose my payment method:",
-      billingUrl,
+        ? "Prochaines étapes : votre professionnel vous contactera pour fixer la date du premier rendez-vous. Vous recevrez ensuite un courriel de confirmation avec l'invitation au paiement."
+        : "Next steps: your professional will contact you to set the date of your first appointment. You'll then receive a confirmation email with the payment invitation.",
       data.completeAccountUrl
         ? lang === "fr"
           ? `Compléter mon compte : ${data.completeAccountUrl}`
@@ -3686,8 +3762,8 @@ export async function sendJumelageSuccessEmail(data: {
 
   const subject =
     lang === "fr"
-      ? "Jumelage réussi — configurez votre mode de paiement"
-      : "Match successful — set up your payment method";
+      ? "Jumelage réussi — un professionnel a accepté votre demande"
+      : "You've been matched — a professional accepted your request";
 
   return sendEmail(
     { to: data.clientEmail, subject, html, text },
@@ -4013,6 +4089,79 @@ export async function sendAdminAppointmentMovedToGeneralAlert(data: {
       "service_request_onboarding",
     ).catch((e) =>
       console.error("sendAdminAppointmentMovedToGeneralAlert:", e),
+    );
+  }
+}
+
+/**
+ * Escalade admin : un professionnel a accepté un client (jumelé) mais n'a
+ * toujours pas confirmé la date du 1er rendez-vous après le délai de relance.
+ * L'admin peut relancer le pro ou réassigner la demande.
+ */
+export async function sendAdminUnscheduledMatchEscalation(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  motif?: string;
+  appointmentId: string;
+  daysWaiting: number;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
+    .select("email")
+    .lean();
+  let adminEmails = adminUsers
+    .map((a) => a.email)
+    .filter((e): e is string => Boolean(e));
+  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
+    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
+  }
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  const html = buildEmailHtml({
+    title: "Jumelage sans 1er rendez-vous",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `Le professionnel ${data.professionalName} a accepté la demande de ${data.clientName} il y a ${data.daysWaiting} jour(s), mais n'a toujours pas confirmé la date du premier rendez-vous. Le client attend — une relance du pro ou une réassignation peut être nécessaire.`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Motif", value: data.motif || "—" },
+      { label: "Jours d'attente", value: String(data.daysWaiting) },
+      { label: "ID Rendez-vous", value: data.appointmentId },
+    ],
+    button: { text: "Voir la demande", url: adminUrl },
+    outro:
+      "Vous pouvez relancer le professionnel, ou réassigner la demande à un autre professionnel depuis le tableau des demandes.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Jumelage sans 1er rendez-vous",
+    `Professionnel : ${data.professionalName}`,
+    `Client : ${data.clientName} — ${data.clientEmail}`,
+    `Motif : ${data.motif || "—"}`,
+    `Jours d'attente : ${data.daysWaiting}`,
+    `ID : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+
+  const subject = `Jumelage en attente de planification — ${data.clientName} (${data.daysWaiting} j)`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) =>
+      console.error("sendAdminUnscheduledMatchEscalation:", e),
     );
   }
 }

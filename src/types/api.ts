@@ -56,6 +56,8 @@ export interface AppointmentResponse {
   type: AppointmentType;
   therapyType: TherapyType;
   status: AppointmentStatus;
+  /** Professional assignment workflow state (pending/proposed/accepted/refused/general). */
+  routingStatus?: string;
   issueType?: string;
   notes?: string;
   cancelReason?: string;

@@ -132,6 +132,20 @@ export interface IAppointment extends Document {
    */
   awaitingPaymentGuarantee?: boolean;
 
+  /** Horodatage du passage à l'état "jumelé" (acceptation par le pro). Sert à
+   * mesurer les délais de relance/escalade depuis l'acceptation (pas la création). */
+  matchedAt?: Date;
+
+  /**
+   * Relance envoyée au pro qui a accepté un client (jumelé) mais n'a pas encore
+   * confirmé le 1er RDV après N jours (statut "pending" + routingStatus "accepted").
+   */
+  firstRdvReminderSent?: boolean;
+
+  /** Escalade admin envoyée quand un jumelage reste non planifié au-delà du
+   * délai de relance pro (le pro a accepté mais n'a jamais fixé le 1er RDV). */
+  firstRdvAdminEscalatedSent?: boolean;
+
   /** Premier passage en « scheduled » (pour relance J+1 garantie). */
   firstScheduledAt?: Date;
   guaranteeDay1ReminderSent?: boolean;
@@ -392,6 +406,9 @@ const AppointmentSchema = new Schema<IAppointment>(
       default: false,
     },
 
+    matchedAt: Date,
+    firstRdvReminderSent: { type: Boolean, default: false },
+    firstRdvAdminEscalatedSent: { type: Boolean, default: false },
     firstScheduledAt: Date,
     guaranteeDay1ReminderSent: { type: Boolean, default: false },
     guaranteeDay2ReminderSent: { type: Boolean, default: false },

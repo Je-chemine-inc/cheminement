@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
+import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
 
 interface ProfessionalOption {
   id: string;
@@ -47,6 +48,9 @@ interface ServiceRequestRow {
   preferredAvailability?: string[];
   clientName: string;
   clientEmail: string;
+  professionalId?: string | null;
+  professionalName?: string | null;
+  matchedAt?: string | null;
 }
 
 export default function AdminServiceRequestsPage() {
@@ -287,10 +291,18 @@ export default function AdminServiceRequestsPage() {
                     {r.clientEmail}
                   </TableCell>
                   <TableCell
-                    className="max-w-[220px] truncate text-sm"
+                    className="max-w-[240px] text-sm align-top"
                     title={r.issueType || undefined}
                   >
-                    {r.issueType || "—"}
+                    <div className="truncate">{r.issueType || "—"}</div>
+                    {r.preferredAvailability?.length ? (
+                      <div className="mt-1">
+                        <AvailabilitySlots
+                          slots={r.preferredAvailability}
+                          max={3}
+                        />
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">
                     {modalityLabel(r.type)}
@@ -307,6 +319,11 @@ export default function AdminServiceRequestsPage() {
                         </span>
                       );
                     })()}
+                    {r.professionalName && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {t("assignedToLabel")}: {r.professionalName}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm align-top">
                     <div className="flex flex-col gap-2 min-w-[260px]">
@@ -387,7 +404,9 @@ export default function AdminServiceRequestsPage() {
                           ) : (
                             <UserCheck className="h-3 w-3" />
                           )}
-                          {t("assignAction")}
+                          {r.professionalName
+                            ? t("reassignAction")
+                            : t("assignAction")}
                         </Button>
                       </div>
                     </div>

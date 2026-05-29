@@ -6,13 +6,10 @@ import { authOptions } from "@/lib/auth";
 import {
   sendJumelageSuccessEmail,
   sendAppointmentTakenNotification,
-  sendGuestPaymentConfirmation,
-  sendPaymentInvitation,
 } from "@/lib/notifications";
 import User from "@/models/User";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
-import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 function getBaseUrl(): string {
   return (
@@ -87,13 +84,18 @@ export async function POST(
       );
     }
 
-    // Accept the appointment and set it as scheduled
+    // Accept = MATCH only. We deliberately keep status "pending" (no real date
+    // yet) and just lock in the professional via routingStatus "accepted". The
+    // first appointment date is set later by the pro via the dedicated
+    // "Confirmer le 1er RDV" action (POST /api/appointments/[id]/schedule-first),
+    // which is what flips status to "scheduled" and sends the confirmation +
+    // payment-invitation email. Acceptance sends ONLY the jumelage email.
     const updatedAppointment = await Appointment.findByIdAndUpdate(
       id,
       {
         professionalId: session.user.id,
         routingStatus: "accepted",
-        status: "scheduled",
+        matchedAt: new Date(),
       },
       { new: true },
     )
@@ -116,14 +118,16 @@ export async function POST(
         ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
         : undefined;
 
-      const clientUser = await User.findById(client._id).select("language role").lean();
+      const clientUser = await User.findById(client._id)
+        .select("language role")
+        .lean();
       const wasProspectOrGuest =
         (clientUser as { role?: string } | null)?.role === "guest" ||
         (clientUser as { role?: string } | null)?.role === "prospect";
 
-      // Provision an account for prospects/guests who never completed signup.
-      // Account is created as inactive so it exists in the system but the client
-      // isn't considered "active" until they claim it via the invitation link.
+      // Provision an account for prospects/guests who never completed signup so
+      // the "Compléter mon compte" CTA in the jumelage email has a claim target.
+      // Stays inactive until the client claims it via the invitation link.
       if (wasProspectOrGuest) {
         await provisionGuestAsClient(client._id.toString(), {
           issueType: updatedAppointment.issueType,
@@ -131,13 +135,11 @@ export async function POST(
         });
       }
 
-      // Mark appointment as awaiting payment guarantee
-      await Appointment.findByIdAndUpdate(id, { awaitingPaymentGuarantee: true, firstScheduledAt: new Date() });
-
-      // Resolve fresh user state — drives both the jumelage email's
-      // "complete account" CTA and the payment-invitation link below.
-      const freshClientUser = await User.findById(client._id).select("role status stripeCustomerId").lean();
-      const isActiveClient = (freshClientUser as { role?: string; status?: string } | null)?.role === "client" &&
+      const freshClientUser = await User.findById(client._id)
+        .select("role status")
+        .lean();
+      const isActiveClient =
+        (freshClientUser as { role?: string } | null)?.role === "client" &&
         (freshClientUser as { status?: string } | null)?.status === "active";
 
       // Quebec LSSSS art. 14: for adult loved-one bookings, all transactional
@@ -154,10 +156,8 @@ export async function POST(
           language: (clientUser as { language?: string } | null)?.language,
         },
       );
-      const locale = recipient.language;
 
       const base = getBaseUrl();
-
       // "Compléter mon compte" CTA:
       //   - unclaimed account → /signup/member?email=... (the claim flow)
       //   - active client     → /client/dashboard/profile (finalize profile)
@@ -165,81 +165,21 @@ export async function POST(
         ? `${base}/client/dashboard/profile`
         : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
 
-      // Resolve the "Choose payment method" CTA target up-front so BOTH the
-      // jumelage email and the payment-invitation email point to the same
-      // working URL. For unclaimed clients we mint a tokenized /pay link
-      // (no login required); active clients get the dashboard deep-link.
-      // Goes through the shared helper so the token TTL / refresh-window
-      // logic stays aligned with the cron reminders that reuse the token.
-      const billingUrl = await resolveBillingUrl({
-        userStatus: isActiveClient ? "active" : "inactive",
-        appointment: updatedAppointment as Parameters<
-          typeof resolveBillingUrl
-        >[0]["appointment"],
-        base,
-      });
-
-      // Send jumelage confirmation email (with the two distinct CTAs).
-      // after() keeps the serverless function alive on Vercel until the
-      // SMTP send completes; without it, void sends are killed mid-flight.
+      // Acceptance sends ONLY the jumelage (match) email — NO payment CTA, since
+      // no first-appointment date exists yet. The payment invitation rides along
+      // with the 1st-RDV confirmation email sent from schedule-first.
       const jumelageArgs = {
         clientName: recipient.name,
         clientEmail: recipient.email,
         professionalName,
-        locale,
+        locale: recipient.language,
         completeAccountUrl,
-        billingUrl,
       };
       after(() =>
         sendJumelageSuccessEmail(jumelageArgs).catch((err) =>
           console.error("Error sending jumelage success email:", err),
         ),
       );
-
-      // Send payment invitation — with a tokenized link for unclaimed accounts,
-      // or a dashboard link for already-active clients.
-
-      if (!isActiveClient) {
-        // Client hasn't claimed their account — reuse the tokenized /pay link
-        const guestPayArgs = {
-          guestName: recipient.name,
-          guestEmail: recipient.email,
-          professionalName,
-          date: updatedAppointment.date?.toISOString(),
-          time: updatedAppointment.time,
-          duration: updatedAppointment.duration || 60,
-          type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
-          therapyType: (updatedAppointment.therapyType as "solo" | "couple" | "group") || "solo",
-          price: updatedAppointment.payment?.price ?? 0,
-          paymentLink: billingUrl,
-          locale,
-        };
-        after(() =>
-          sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
-            console.error("Error sending payment invitation (unclaimed):", err),
-          ),
-        );
-      } else {
-        // Active client — send dashboard billing link
-        const payInviteArgs = {
-          clientName: recipient.name,
-          clientEmail: recipient.email,
-          professionalName: professionalName ?? "",
-          professionalEmail: professional?.email ?? "",
-          date: updatedAppointment.date?.toISOString(),
-          time: updatedAppointment.time,
-          duration: updatedAppointment.duration || 60,
-          type: updatedAppointment.type as "video" | "in-person" | "phone" | "both",
-          price: updatedAppointment.payment?.price ?? 0,
-          paymentUrl: billingUrl,
-          locale,
-        };
-        after(() =>
-          sendPaymentInvitation(payInviteArgs).catch((err) =>
-            console.error("Error sending payment invitation (active):", err),
-          ),
-        );
-      }
     }
 
     // Notify other proposed professionals that this request is no longer available

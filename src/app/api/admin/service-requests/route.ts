@@ -31,11 +31,13 @@ export async function GET() {
 
     await connectToDatabase();
 
-    const requests = await Appointment.find({
-      status: "pending",
-      $or: [{ professionalId: null }, { professionalId: { $exists: false } }],
-    })
+    // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
+    // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the
+    // matched ones lets admins reassign a request a pro accepted but never
+    // scheduled (the escalation email points here).
+    const requests = await Appointment.find({ status: "pending" })
       .populate("clientId", "firstName lastName email phone")
+      .populate("professionalId", "firstName lastName")
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
@@ -45,6 +47,11 @@ export async function GET() {
         firstName?: string;
         lastName?: string;
         email?: string;
+      } | null;
+      const pro = a.professionalId as unknown as {
+        _id?: { toString: () => string };
+        firstName?: string;
+        lastName?: string;
       } | null;
       return {
         id: a._id.toString(),
@@ -61,6 +68,11 @@ export async function GET() {
           ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
           : "—",
         clientEmail: client?.email ?? "—",
+        professionalId: pro?._id ? pro._id.toString() : null,
+        professionalName: pro
+          ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
+          : null,
+        matchedAt: a.matchedAt ?? null,
       };
     });
 

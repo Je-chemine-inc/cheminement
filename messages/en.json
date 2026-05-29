@@ -809,6 +809,8 @@
     "returningClientHint": "This client already has prior appointments — they are requesting a new professional. Match without creating a duplicate account.",
     "assignPlaceholder": "Assign a professional…",
     "assignAction": "Match",
+    "reassignAction": "Reassign",
+    "assignedToLabel": "Matched with",
     "assignNoProfessionals": "No active professional"
   },
   "ClinicalAvailabilityGrid": {
@@ -3716,6 +3718,7 @@
         "requestAppointment": "Request Appointment",
         "cancel": "Cancel",
         "reschedule": "Reschedule",
+        "withdrawRequest": "Withdraw request",
         "joinSession": "Join Session",
         "lateChange": {
           "title": "Modification window closed",
@@ -4197,7 +4200,8 @@
         "cancelled": "Cancelled",
         "noShow": "No Show",
         "pending": "Pending Confirmation",
-        "ongoing": "In progress"
+        "ongoing": "In progress",
+        "matchedAwaitingDate": "Matched — date to come"
       },
       "details": {
         "professional": "Professional",
@@ -4253,6 +4257,9 @@
       },
       "cancelDialog": {
         "title": "Cancel Appointment",
+        "titleWithdraw": "Withdraw request",
+        "descriptionWithdraw": "You are matched, but no date has been set yet.",
+        "withdrawNote": "Withdrawing cancels this request. You won't be charged, and you can submit a new request anytime.",
         "titleSuccess": "Appointment cancelled",
         "descriptionAt": "{date} at {time}",
         "successHeading": "Appointment cancelled successfully",
@@ -4683,6 +4690,12 @@
       "errorPrefix": "Error",
       "tabProposed": "Proposed to You",
       "tabGeneral": "General List",
+      "tabAwaiting": "To Schedule",
+      "emptyAwaitingTitle": "No appointments to schedule",
+      "emptyAwaitingDescription": "Clients you've accepted will appear here so you can confirm their first appointment date",
+      "confirmFirstRdv": "Confirm 1st appointment",
+      "confirmFirstRdvModalTitle": "Confirm the first appointment",
+      "release": "Decline",
       "filters": "Filters",
       "clearAll": "Clear all",
       "search": "Search",

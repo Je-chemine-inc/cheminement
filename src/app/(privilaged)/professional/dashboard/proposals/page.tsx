@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppointmentDetailsModal from "@/components/dashboard/PatientProfileModal";
+import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
 import { apiClient } from "@/lib/api-client";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -109,13 +110,16 @@ interface AvailabilityData {
 export default function ProposalsPage() {
   const t = useTranslations("Professional.proposals");
   const locale = useLocale();
-  const [activeTab, setActiveTab] = useState<"proposed" | "general">(
-    "proposed",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "proposed" | "general" | "awaiting"
+  >("proposed");
   const [proposedAppointments, setProposedAppointments] = useState<
     ProposedAppointment[]
   >([]);
   const [generalAppointments, setGeneralAppointments] = useState<
+    ProposedAppointment[]
+  >([]);
+  const [awaitingAppointments, setAwaitingAppointments] = useState<
     ProposedAppointment[]
   >([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +136,7 @@ export default function ProposalsPage() {
   // Action states
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [refusingId, setRefusingId] = useState<string | null>(null);
+  const [releasingId, setReleasingId] = useState<string | null>(null);
 
   // Scheduling modal state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -166,12 +171,24 @@ export default function ProposalsPage() {
     }
   }, []);
 
+  const fetchAwaitingAppointments = useCallback(async () => {
+    try {
+      const data = await apiClient.get<ProposedAppointment[]>(
+        "/appointments/awaiting-schedule",
+      );
+      setAwaitingAppointments(data);
+    } catch (err) {
+      console.error("Error fetching awaiting-schedule appointments:", err);
+    }
+  }, []);
+
   const fetchAllAppointments = useCallback(async () => {
     try {
       setLoading(true);
       await Promise.all([
         fetchProposedAppointments(),
         fetchGeneralAppointments(),
+        fetchAwaitingAppointments(),
       ]);
     } catch (err) {
       setError(
@@ -180,7 +197,12 @@ export default function ProposalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchProposedAppointments, fetchGeneralAppointments, t]);
+  }, [
+    fetchProposedAppointments,
+    fetchGeneralAppointments,
+    fetchAwaitingAppointments,
+    t,
+  ]);
 
   useEffect(() => {
     fetchAllAppointments();
@@ -188,17 +210,25 @@ export default function ProposalsPage() {
 
   // Get unique issue types for filter
   const issueTypes = useMemo(() => {
-    const allAppointments = [...proposedAppointments, ...generalAppointments];
+    const allAppointments = [
+      ...proposedAppointments,
+      ...generalAppointments,
+      ...awaitingAppointments,
+    ];
     const types = new Set<string>();
     allAppointments.forEach((apt) => {
       if (apt.issueType) types.add(apt.issueType);
     });
     return Array.from(types);
-  }, [proposedAppointments, generalAppointments]);
+  }, [proposedAppointments, generalAppointments, awaitingAppointments]);
 
   // Filter appointments based on current tab
   const currentAppointments =
-    activeTab === "proposed" ? proposedAppointments : generalAppointments;
+    activeTab === "proposed"
+      ? proposedAppointments
+      : activeTab === "general"
+        ? generalAppointments
+        : awaitingAppointments;
 
   const filteredAppointments = useMemo(() => {
     return currentAppointments
@@ -243,6 +273,21 @@ export default function ProposalsPage() {
       );
     } finally {
       setAcceptingId(null);
+    }
+  };
+
+  // Escape hatch: a pro who accepted (matched) but can't take it releases the
+  // request back to the general pool before any date is confirmed.
+  const handleRelease = async (appointment: ProposedAppointment) => {
+    try {
+      setReleasingId(appointment._id);
+      await apiClient.post(`/appointments/${appointment._id}/release`, {});
+      await fetchAllAppointments();
+    } catch (err) {
+      console.error("Error releasing appointment:", err);
+      setError(err instanceof Error ? err.message : t("errors.refuseFailed"));
+    } finally {
+      setReleasingId(null);
     }
   };
 
@@ -410,26 +455,23 @@ export default function ProposalsPage() {
     }
   };
 
-  const handleAcceptAndSchedule = async () => {
+  // Step 2 of the flow: the pro confirms the FIRST appointment date for a
+  // request they already accepted (matched). Hits schedule-first, which flips
+  // the request to "scheduled" and sends the 1st-RDV confirmation + payment
+  // email. Distinct from acceptance (which only matches + sends jumelage).
+  const handleConfirmFirstRdv = async () => {
     if (!schedulingAppointment || !selectedDate || !selectedTime) return;
 
     try {
       setScheduling(true);
-      // First accept the appointment
       await apiClient.post(
-        `/appointments/${schedulingAppointment._id}/accept`,
-        {},
+        `/appointments/${schedulingAppointment._id}/schedule-first`,
+        { date: selectedDate, time: selectedTime },
       );
-      // Then update with schedule
-      await apiClient.patch(`/appointments/${schedulingAppointment._id}`, {
-        status: "scheduled",
-        date: selectedDate,
-        time: selectedTime,
-      });
       handleCloseScheduleModal();
       await fetchAllAppointments();
     } catch (err) {
-      console.error("Error scheduling appointment:", err);
+      console.error("Error confirming first appointment:", err);
       setError(
         err instanceof Error ? err.message : t("errors.scheduleFailed"),
       );
@@ -468,9 +510,11 @@ export default function ProposalsPage() {
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "proposed" | "general")}
+        onValueChange={(v) =>
+          setActiveTab(v as "proposed" | "general" | "awaiting")
+        }
       >
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="proposed" className="gap-2">
             <Star className="h-4 w-4" />
             {t("tabProposed")}
@@ -486,6 +530,15 @@ export default function ProposalsPage() {
             {generalAppointments.length > 0 && (
               <Badge variant="outline" className="ml-1">
                 {generalAppointments.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="awaiting" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            {t("tabAwaiting")}
+            {awaitingAppointments.length > 0 && (
+              <Badge variant="default" className="ml-1">
+                {awaitingAppointments.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -669,30 +722,11 @@ export default function ProposalsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {appointment.preferredAvailability?.length ? (
-                          <div className="flex flex-wrap gap-1">
-                            {appointment.preferredAvailability
-                              .slice(0, 2)
-                              .map((slot, i) => (
-                                <Badge
-                                  key={i}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {slot}
-                                </Badge>
-                              ))}
-                            {appointment.preferredAvailability.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{appointment.preferredAvailability.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {t("flexible")}
-                          </span>
-                        )}
+                        <AvailabilitySlots
+                          slots={appointment.preferredAvailability}
+                          max={2}
+                          emptyLabel={t("flexible")}
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
@@ -718,7 +752,7 @@ export default function ProposalsPage() {
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleOpenScheduleModal(appointment)}
+                            onClick={() => handleAccept(appointment)}
                             disabled={acceptingId === appointment._id}
                             className="gap-1"
                           >
@@ -835,30 +869,11 @@ export default function ProposalsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {appointment.preferredAvailability?.length ? (
-                          <div className="flex flex-wrap gap-1">
-                            {appointment.preferredAvailability
-                              .slice(0, 2)
-                              .map((slot, i) => (
-                                <Badge
-                                  key={i}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {slot}
-                                </Badge>
-                              ))}
-                            {appointment.preferredAvailability.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{appointment.preferredAvailability.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {t("flexible")}
-                          </span>
-                        )}
+                        <AvailabilitySlots
+                          slots={appointment.preferredAvailability}
+                          max={2}
+                          emptyLabel={t("flexible")}
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
@@ -871,7 +886,7 @@ export default function ProposalsPage() {
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleOpenScheduleModal(appointment)}
+                            onClick={() => handleAccept(appointment)}
                             disabled={acceptingId === appointment._id}
                             className="gap-1"
                           >
@@ -893,6 +908,123 @@ export default function ProposalsPage() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="awaiting" className="mt-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredAppointments.length === 0 ? (
+            <div className="rounded-xl bg-card p-12 text-center">
+              <Calendar className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground">
+                {t("emptyAwaitingTitle")}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("emptyAwaitingDescription")}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border/40 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="font-light">
+                      {t("table.client")}
+                    </TableHead>
+                    <TableHead className="font-light">
+                      {t("table.type")}
+                    </TableHead>
+                    <TableHead className="font-light">
+                      {t("table.issue")}
+                    </TableHead>
+                    <TableHead className="font-light">
+                      {t("table.bookingFor")}
+                    </TableHead>
+                    <TableHead className="font-light text-right">
+                      {t("table.actions")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAppointments.map((appointment) => (
+                    <TableRow key={appointment._id} className="group">
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">
+                            {appointment.clientId.firstName}{" "}
+                            {appointment.clientId.lastName}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {appointment.clientId.email}
+                            </span>
+                            {appointment.clientId.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {appointment.clientId.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getTypeBadge(appointment.type)}
+                          {getTherapyTypeBadge(appointment.therapyType)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">
+                          {appointment.issueType || t("notAvailable")}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          {getBookingForBadge(appointment.bookingFor)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewAppointment(appointment)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRelease(appointment)}
+                            disabled={releasingId === appointment._id}
+                            className="gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            {releasingId === appointment._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                            {t("release")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenScheduleModal(appointment)}
+                            className="gap-1"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            {t("confirmFirstRdv")}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Schedule Modal */}
@@ -904,7 +1036,9 @@ export default function ProposalsPage() {
           />
           <div className="relative bg-card rounded-xl border border-border/40 p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-medium">{t("scheduleModalTitle")}</h3>
+              <h3 className="text-lg font-medium">
+                {t("confirmFirstRdvModalTitle")}
+              </h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -936,6 +1070,16 @@ export default function ProposalsPage() {
                       ? t("therapyType.couple")
                       : t("therapyType.group")}
                 </p>
+                {schedulingAppointment.preferredAvailability?.length ? (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {t("table.availability")}
+                    </p>
+                    <AvailabilitySlots
+                      slots={schedulingAppointment.preferredAvailability}
+                    />
+                  </div>
+                ) : null}
               </div>
 
               {/* Manual Entry Toggle */}
@@ -1062,7 +1206,7 @@ export default function ProposalsPage() {
                   {t("cancel")}
                 </Button>
                 <Button
-                  onClick={handleAcceptAndSchedule}
+                  onClick={handleConfirmFirstRdv}
                   disabled={!selectedDate || !selectedTime || scheduling}
                   className="flex-1"
                 >

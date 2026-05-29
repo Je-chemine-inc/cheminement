@@ -124,8 +124,20 @@ export default function SessionsPage() {
           throw new Error("Failed to fetch sessions");
         }
         const data = await response.json();
-        const transformedSessions: Session[] = data.map(
-          (appointment: ApiAppointment) => {
+        const list: ApiAppointment[] = Array.isArray(data) ? data : [];
+        const transformedSessions: Session[] = list
+          // The sessions view is date-driven (toISOString() in the memos below).
+          // Skip rows that would break it: matched-but-unscheduled requests have
+          // no date yet (they live in the proposals "À planifier" tab), and an
+          // orphan appointment can have a null client. Either one previously
+          // crashed the whole page to a white screen.
+          .filter(
+            (appointment) =>
+              appointment?.clientId &&
+              appointment.date &&
+              !Number.isNaN(new Date(appointment.date).getTime()),
+          )
+          .map((appointment: ApiAppointment) => {
             // Pros see only Paid vs Pending; anything non-paid collapses to pending.
             const paymentStatus: "paid" | "pending" =
               appointment.payment?.status === "paid" ? "paid" : "pending";
@@ -138,7 +150,7 @@ export default function SessionsPage() {
               time: appointment.time,
               duration: appointment.duration,
               type: appointment.type,
-              status: appointment.status,
+              status: appointment.status as Session["status"],
               paymentStatus,
               amount: appointment.payment?.professionalPayout || 0,
               issueType: appointment.issueType,
