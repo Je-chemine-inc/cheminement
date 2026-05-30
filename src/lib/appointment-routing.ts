@@ -98,6 +98,50 @@ export function normalizeString(str: string): string {
 }
 
 /**
+ * Does the professional's gender satisfy the client's stated preference?
+ * Soft signal only — used to rank, never to exclude. "noPreference"/empty → false
+ * (no bonus). Matches on exact normalized tokens (so "female" never satisfies a
+ * "male" preference) and handles FR + EN spellings.
+ */
+export function professionalMatchesGenderPreference(
+  professionalGender: string | undefined,
+  preferredGender: string | undefined,
+): boolean {
+  if (!preferredGender || preferredGender === "noPreference") return false;
+  if (!professionalGender) return false;
+  const tokens = normalizeString(professionalGender).split(/\s+/);
+  const SYNONYMS: Record<string, string[]> = {
+    male: ["male", "homme", "masculin", "man"],
+    female: ["female", "femme", "feminin", "woman"],
+    other: ["other", "autre", "nonbinaire", "nonbinary", "x"],
+  };
+  const syns = SYNONYMS[preferredGender];
+  if (!syns) return false;
+  return syns.some((s) => tokens.includes(s));
+}
+
+/**
+ * HARD gender filter: when the client stated a gender preference, keep ONLY
+ * professionals whose gender matches it. No preference (or "noPreference") lets
+ * everyone through. Pure + exported so the requirement can be unit-tested.
+ */
+export function filterProfessionalsByGenderPreference<
+  T extends { userId: { toString(): string } },
+>(
+  profiles: T[],
+  genderById: Map<string, string | undefined>,
+  preferredGender: string | undefined | null,
+): T[] {
+  if (!preferredGender || preferredGender === "noPreference") return profiles;
+  return profiles.filter((p) =>
+    professionalMatchesGenderPreference(
+      genderById.get(String(p.userId)),
+      preferredGender,
+    ),
+  );
+}
+
+/**
  * Calculate string similarity using multiple methods
  * Returns a score between 0 and 1
  */
@@ -352,7 +396,9 @@ export function calculateRelevancyScore(
     secondaryIssues?: string[];
     therapyApproach?: string[];
     languagePreference?: string;
+    preferredGender?: string;
   } | null,
+  professionalGender?: string,
 ): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -608,6 +654,20 @@ export function calculateRelevancyScore(
     }
   }
 
+  // 9. Match gender preference (soft signal — bonus when the professional's
+  // gender matches the client's stated preference; never a hard filter, so the
+  // pool can't empty when few pros of a given gender are available).
+  if (
+    medicalProfile?.preferredGender &&
+    professionalMatchesGenderPreference(
+      professionalGender,
+      medicalProfile.preferredGender,
+    )
+  ) {
+    score += 12;
+    reasons.push("Genre du professionnel correspondant à votre préférence");
+  }
+
   // ===== BONUS POINTS =====
 
   // Profile completeness bonus
@@ -655,9 +715,17 @@ export async function routeAppointmentToProfessionals(
     const professionals = await User.find({
       role: "professional",
       status: "active",
-    }).select("_id firstName lastName email language");
+    }).select("_id firstName lastName email language gender");
 
     const professionalIds = professionals.map((p) => p._id);
+    // Professional gender, keyed by id — fed into the relevancy score so a
+    // client's gender preference ranks matching pros higher.
+    const genderById = new Map<string, string | undefined>(
+      professionals.map((p) => [
+        String(p._id),
+        (p as { gender?: string }).gender,
+      ]),
+    );
 
     // Broadcast helper: when a request lands in the GENERAL pool (no specific
     // match), ping every active professional so it doesn't sit unseen in the
@@ -741,10 +809,33 @@ export async function routeAppointmentToProfessionals(
       return { success: true, matches: [], routingStatus: "general" };
     }
 
-    // Calculate relevancy scores only for age-filtered professionals
+    // HARD filter by gender preference (when the client stated one). A stated
+    // gender preference is a requirement, not just a ranking signal — mirrors
+    // the age filter above. If it empties the candidate pool, fall back to the
+    // general queue so the client is never left unmatched.
+    const preferredGender = medicalProfile?.preferredGender;
+    const genderFilteredProfiles = filterProfessionalsByGenderPreference(
+      ageFilteredProfiles,
+      genderById,
+      preferredGender,
+    );
+
+    if (genderFilteredProfiles.length === 0) {
+      console.log(
+        `No professional matching the "${preferredGender}" gender preference — routing to general pool`,
+      );
+      await Appointment.findByIdAndUpdate(appointmentId, {
+        routingStatus: "general",
+      });
+      await notifyGeneralPool();
+
+      return { success: true, matches: [], routingStatus: "general" };
+    }
+
+    // Calculate relevancy scores only for age- + gender-filtered professionals
     const matches: ProfessionalMatch[] = [];
 
-    for (const profile of ageFilteredProfiles) {
+    for (const profile of genderFilteredProfiles) {
       const { score, reasons } = calculateRelevancyScore(
         profile,
         {
@@ -760,8 +851,10 @@ export async function routeAppointmentToProfessionals(
               secondaryIssues: medicalProfile.secondaryIssues,
               therapyApproach: medicalProfile.therapyApproach,
               languagePreference: medicalProfile.languagePreference,
+              preferredGender: medicalProfile.preferredGender,
             }
           : null,
+        genderById.get(String(profile.userId)),
       );
 
       // Only include professionals with a minimum relevancy score

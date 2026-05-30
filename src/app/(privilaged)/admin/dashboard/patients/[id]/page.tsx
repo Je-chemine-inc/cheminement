@@ -53,6 +53,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import MedicalProfile from "@/components/dashboard/MedicalProfile";
 import { IMedicalProfile } from "@/models/MedicalProfile";
+import { MergeDuplicatesCard } from "@/components/admin/MergeDuplicatesCard";
 
 export default function PatientDetailPage({
   params,
@@ -690,6 +691,14 @@ export default function PatientDetailPage({
               {sendingPwdLink ? tPwd("sending") : tPwd("sendButton")}
             </Button>
           </div>
+
+          {["client", "guest", "prospect"].includes(user.role) && (
+            <MergeDuplicatesCard
+              userId={id}
+              userName={`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()}
+              onMerged={fetchData}
+            />
+          )}
 
           <div className="bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-900 rounded-xl p-6">
             <h2 className="text-lg font-serif font-light mb-2 text-red-600 dark:text-red-400 flex items-center gap-2">

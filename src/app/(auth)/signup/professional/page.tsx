@@ -432,7 +432,11 @@ export default function ProfessionalSignupPage() {
             sessionDurationMinutes: formData.sessionDuration
               ? Number(formData.sessionDuration)
               : 60,
-            days: formData.schedule.filter((d) => d.isWorkDay),
+            // Persist all 7 days with their isWorkDay flags. Filtering to only
+            // working days used to drop Saturday/Sunday (and any unchecked
+            // weekday) entirely, leaving them uneditable in the profile editor
+            // and unavailable for weekend-preference matching.
+            days: formData.schedule,
             firstDayOfWeek: "Monday",
           },
           clinicalAvailability: formData.clinicalAvailability,

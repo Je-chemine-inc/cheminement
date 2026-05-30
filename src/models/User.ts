@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { attachContactStringEncryption } from "@/lib/mongoose-contact-encryption";
+import { phoneLookupHash, normalizeFullName } from "@/lib/contact-keys";
 
 export interface IUser extends Document {
   email: string;
@@ -84,6 +85,12 @@ export interface IUser extends Document {
   guardianId?: mongoose.Types.ObjectId; // Reference to parent/guardian User (for minors)
   accountManagerId?: mongoose.Types.ObjectId; // Alias for guardianId (same field, different name for clarity)
   managedAccounts?: mongoose.Types.ObjectId[]; // Array of User IDs that this user manages (for parents)
+  /** HMAC of the normalized phone — queryable de-dup key (phone itself is encrypted at rest). */
+  phoneLookupHash?: string;
+  /** Lowercased/accent-stripped full name — weak de-dup key for admin review. */
+  fullNameLookup?: string;
+  /** Other accounts that may be the same person (admin review; never auto-merged). */
+  possibleDuplicateOf?: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -232,6 +239,9 @@ const UserSchema = new Schema<IUser>(
         ref: "User",
       },
     ], // Array of User IDs that this user manages (for parents)
+    phoneLookupHash: { type: String },
+    fullNameLookup: { type: String },
+    possibleDuplicateOf: [{ type: Schema.Types.ObjectId, ref: "User" }],
   },
   {
     timestamps: true,
@@ -245,6 +255,23 @@ UserSchema.index({ adminId: 1 });
 UserSchema.index({ guardianId: 1 });
 UserSchema.index({ accountManagerId: 1 });
 UserSchema.index({ managedAccounts: 1 });
+UserSchema.index({ phoneLookupHash: 1 }, { sparse: true });
+UserSchema.index({ fullNameLookup: 1 });
+
+// Maintain queryable de-dup keys. Registered BEFORE the contact-string
+// encryption plugin so `phone` is still plaintext here (the encryption hook
+// runs afterward and replaces it with a "v1." envelope).
+UserSchema.pre("save", function (this: IUser, next) {
+  const phone = this.phone;
+  if (typeof phone === "string" && phone && !phone.startsWith("v1.")) {
+    this.phoneLookupHash = phoneLookupHash(phone) ?? undefined;
+  } else if (!phone) {
+    this.phoneLookupHash = undefined;
+  }
+  this.fullNameLookup =
+    normalizeFullName(this.firstName, this.lastName) ?? undefined;
+  next();
+});
 
 attachContactStringEncryption(UserSchema, ["phone", "location"]);
 

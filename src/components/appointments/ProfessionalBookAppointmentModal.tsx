@@ -52,6 +52,9 @@ type Props = {
    */
   professionals?: BookableProfessional[];
   defaultProfessionalId?: string;
+  /** Optional slot prefill (e.g. when opened from a calendar cell click). */
+  defaultDate?: string;
+  defaultTime?: string;
 };
 
 const DURATION_OPTIONS = [30, 50, 60, 90];
@@ -65,6 +68,8 @@ export function ProfessionalBookAppointmentModal({
   onCreated,
   professionals,
   defaultProfessionalId,
+  defaultDate,
+  defaultTime,
 }: Props) {
   const t = useTranslations("Dashboard.bookAppointmentModal");
   const locale = useLocale();
@@ -91,8 +96,8 @@ export function ProfessionalBookAppointmentModal({
     setClientId(defaultClientId ?? "");
     setClientSearch("");
     setProfessionalId(defaultProfessionalId ?? "");
-    setDate("");
-    setTime("");
+    setDate(defaultDate ?? "");
+    setTime(defaultTime ?? "");
     setDuration(50);
     setType("video");
     setMotifLabel("");
@@ -100,7 +105,7 @@ export function ProfessionalBookAppointmentModal({
     setNotes("");
     setSaving(false);
     setErrorMsg(null);
-  }, [open, defaultClientId, defaultProfessionalId]);
+  }, [open, defaultClientId, defaultProfessionalId, defaultDate, defaultTime]);
 
   const filteredClients = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();

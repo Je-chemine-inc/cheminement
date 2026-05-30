@@ -53,6 +53,7 @@ interface Patient {
   paymentGuaranteeStatus?: "none" | "pending_admin" | "green";
   paymentGuaranteeSource?: "stripe" | "interac_trust";
   statusTier?: ClientStatusTier;
+  possibleDuplicate?: boolean;
 }
 
 interface PatientsData {
@@ -447,6 +448,15 @@ export default function PatientsPage() {
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700">
                           <User className="h-3 w-3" />
                           Guest
+                        </span>
+                      )}
+                      {patient.possibleDuplicate && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800"
+                          title={t("possibleDuplicateHint")}
+                        >
+                          <AlertCircle className="h-3 w-3" />
+                          {t("possibleDuplicate")}
                         </span>
                       )}
                     </div>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 
 function getBaseUrl(): string {
   return (
@@ -91,10 +92,11 @@ export async function POST(
     const resolvedType =
       type && allowedTypes.includes(type) ? type : appointment.type;
 
-    const appointmentDate = new Date(date);
+    // UTC-noon anchor so the booked calendar day survives timezone display.
+    const appointmentDate = parseAppointmentDate(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (Number.isNaN(appointmentDate.getTime()) || appointmentDate < today) {
+    if (!appointmentDate || appointmentDate < today) {
       return NextResponse.json(
         { error: "Cannot schedule an appointment in the past" },
         { status: 400 },

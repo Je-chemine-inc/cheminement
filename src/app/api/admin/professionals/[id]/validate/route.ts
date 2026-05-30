@@ -131,8 +131,10 @@ export async function POST(
           email: user.email,
           verifyUrl,
           locale: user.language === "en" ? "en" : "fr",
-          // Admin-approved pros: one-click activation, no SMS step.
-          singleFactor: true,
+          // Full 2FA: the pro confirms the email link AND an SMS code before the
+          // account activates (verify-email chains the SMS step for the
+          // admin-approved pro; verify-phone makes the final transition).
+          singleFactor: false,
         });
         verificationEmailSent = true;
       } catch (err) {

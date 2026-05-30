@@ -273,6 +273,7 @@ export const appointmentsAPI = {
     startDate?: string;
     endDate?: string;
     clientId?: string;
+    professionalId?: string; // Admin only: scope to one professional's agenda
     accountId?: string; // For guardian viewing managed account
   }) => {
     const query = new URLSearchParams(params as any).toString();

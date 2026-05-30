@@ -187,17 +187,26 @@ export default function AdminServiceRequestsPage() {
   }, []);
 
   const assignProfessional = async (requestId: string) => {
-    const professionalId = assignDraft[requestId];
-    if (!professionalId) return;
+    const value = assignDraft[requestId];
+    if (!value) return;
     try {
       setAssigningId(requestId);
       setError(null);
+      // Special options re-route instead of proposing to one pro:
+      //   __auto__    → re-run automatic matching
+      //   __general__ → drop into the public general pool (self-assign)
+      const body =
+        value === "__auto__"
+          ? { mode: "auto" }
+          : value === "__general__"
+            ? { mode: "general" }
+            : { professionalId: value };
       const res = await fetch(
         `/api/admin/service-requests/${requestId}/assign`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ professionalId }),
+          body: JSON.stringify(body),
         },
       );
       if (!res.ok) {
@@ -374,6 +383,12 @@ export default function AdminServiceRequestsPage() {
                             <SelectValue placeholder={t("assignPlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="__auto__">
+                              {t("assignAutoMatch")}
+                            </SelectItem>
+                            <SelectItem value="__general__">
+                              {t("assignGeneralPool")}
+                            </SelectItem>
                             {professionals.length === 0 ? (
                               <div className="px-3 py-2 text-xs text-muted-foreground">
                                 {t("assignNoProfessionals")}

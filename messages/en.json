@@ -1,4 +1,54 @@
 {
+  "AppointmentEditDialog": {
+    "editTitle": "Edit appointment",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "durationLabel": "Duration",
+    "typeLabel": "Type",
+    "locationLabel": "Location",
+    "locationPlaceholder": "Address or room",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Internal notes (optional)",
+    "meetingLinkLabel": "Meeting link",
+    "meetingLinkPlaceholder": "https://…",
+    "viewSession": "Open full session",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "close": "Close",
+    "cancelAppointment": "Cancel appointment",
+    "cancelConfirmBody": "Cancel this appointment? The client will be notified by email.",
+    "cancelConfirmYes": "Yes, cancel it",
+    "cancelConfirmNo": "Keep it",
+    "cancelling": "Cancelling…",
+    "minutes": "{count} min",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "conflictError": "This time slot is already booked.",
+    "pastError": "You can't move an appointment into the past.",
+    "types": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "statuses": {
+      "scheduled": "Scheduled",
+      "pending": "Pending",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no-show": "No-show",
+      "ongoing": "In progress"
+    },
+    "paymentStatus": {
+      "pending": "Payment pending",
+      "processing": "Payment processing",
+      "paid": "Paid",
+      "failed": "Payment failed",
+      "refunded": "Refunded",
+      "partially_refunded": "Partially refunded",
+      "cancelled": "Payment cancelled",
+      "overdue": "Payment overdue"
+    }
+  },
   "AdminDashboard": {
     "nav": {
       "dashboard": "Dashboard",
@@ -75,6 +125,8 @@
       "colSessions": "Sessions",
       "colJoined": "Joined",
       "colActions": "Actions",
+      "possibleDuplicate": "Possible duplicate",
+      "possibleDuplicateHint": "Shares a name or phone with another account — review for a possible merge.",
       "colStatusTier": "Case status",
       "filterTier": "Case status",
       "allTiers": "All statuses",
@@ -173,6 +225,8 @@
       "colSessions": "Sessions",
       "colJoined": "Joined",
       "colActions": "Actions",
+      "openCalendar": "Open calendar",
+      "viewProfile": "View profile",
       "table": {
         "professional": "Professional",
         "email": "Email",
@@ -604,6 +658,21 @@
       "statusPending": "Pending / Under Review",
       "statusInactive": "Inactive",
       "saveChanges": "Save Changes",
+      "merge": {
+        "title": "Duplicate accounts",
+        "desc": "Find other accounts that may be the same person and merge them into this one.",
+        "findButton": "Find duplicate accounts",
+        "dialogTitle": "Merge a duplicate account",
+        "dialogIntro": "Keep {name} and merge a duplicate account into it.",
+        "selectPrompt": "Select the account to merge into this patient:",
+        "noneFound": "No likely duplicate accounts found.",
+        "candidateSessions": "{count} completed session(s)",
+        "absorbWarning": "The selected account will be permanently deleted and all of its appointments, receipts, documents and history will be moved to {name}.",
+        "confirm": "Merge & delete duplicate",
+        "merging": "Merging…",
+        "cancel": "Cancel",
+        "error": "Something went wrong. Please try again."
+      },
       "dangerZone": "Danger Zone",
       "deleteWarning": "Deleting this patient is permanent. The profile, medical record, appointments and all associated history will be removed.",
       "deleteConfirm": "Delete Patient",
@@ -643,6 +712,17 @@
       "no-show": "Absent (no-show)",
       "pending": "Pending",
       "ongoing": "In progress"
+    },
+    "professionalSchedule": {
+      "back": "Back to profile",
+      "heading": "Schedule",
+      "subtitle": "View and manage {name}'s appointments",
+      "bookAppointment": "Book appointment",
+      "today": "Today",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "weekOf": "Week of"
     },
     "professionalDetail": {
       "loadError": "Failed to load professional record.",
@@ -811,7 +891,9 @@
     "assignAction": "Match",
     "reassignAction": "Reassign",
     "assignedToLabel": "Matched with",
-    "assignNoProfessionals": "No active professional"
+    "assignNoProfessionals": "No active professional",
+    "assignAutoMatch": "🔀 Automatic matching",
+    "assignGeneralPool": "👥 General pool (self-assign)"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Availability grid by period (morning, afternoon, evening) and week type",
@@ -2764,6 +2846,8 @@
     "scheduleCalendar": {
       "title": "Schedule",
       "subtitle": "Manage your sessions and appointments",
+      "addAppointment": "Book appointment",
+      "slotHint": "Click an empty slot to book",
       "showSessions": "Show Sessions",
       "showRequests": "Show Requests",
       "today": "Today",

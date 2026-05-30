@@ -10,8 +10,10 @@ import { calculateAppointmentPricing } from "@/lib/pricing";
 import {
   sendProfessionalNotification,
   sendMatchUpdatedEmail,
+  sendGeneralRequestAvailableNotification,
 } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 /**
  * Manually route a pending service-request to a specific professional.
@@ -51,9 +53,82 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const { professionalId } = (await req.json()) as {
+    const { professionalId, mode } = (await req.json()) as {
       professionalId?: string;
+      mode?: "auto" | "general";
     };
+
+    // Instead of proposing to one specific pro, the admin can re-run automatic
+    // matching ("auto") or drop the request into the public general pool
+    // ("general") where any available pro can self-assign it.
+    if (mode === "auto" || mode === "general") {
+      const appt = await Appointment.findById(id);
+      if (!appt) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (appt.status !== "pending") {
+        return NextResponse.json(
+          { error: "Only a pending request can be re-routed" },
+          { status: 409 },
+        );
+      }
+
+      if (mode === "general") {
+        await Appointment.findByIdAndUpdate(id, {
+          $set: { routingStatus: "general" },
+          $unset: { professionalId: "", matchedAt: "", proposedTo: "" },
+        });
+        // Broadcast so available pros see it in their general pool and can
+        // self-assign. Awaited inside after() so Vercel keeps the container
+        // alive until the SMTP sends finish.
+        after(async () => {
+          try {
+            const pros = await User.find({
+              role: "professional",
+              status: "active",
+            }).select("firstName lastName email language");
+            await Promise.allSettled(
+              pros
+                .filter((p) => p.email)
+                .map((p) =>
+                  sendGeneralRequestAvailableNotification({
+                    professionalName: `${p.firstName ?? ""} ${
+                      p.lastName ?? ""
+                    }`.trim(),
+                    professionalEmail: p.email as string,
+                    locale:
+                      (p as { language?: string }).language === "en"
+                        ? "en"
+                        : "fr",
+                  }),
+                ),
+            );
+          } catch (e) {
+            console.error("[admin send-to-general] broadcast error:", e);
+          }
+        });
+        return NextResponse.json({
+          id,
+          mode: "general",
+          routingStatus: "general",
+        });
+      }
+
+      // mode === "auto": reset to a clean pending state, then run the matcher
+      // (it only routes when routingStatus === "pending" && no professionalId).
+      await Appointment.findByIdAndUpdate(id, {
+        $set: { routingStatus: "pending" },
+        $unset: { professionalId: "", matchedAt: "", proposedTo: "" },
+      });
+      const result = await routeAppointmentToProfessionals(id);
+      return NextResponse.json({
+        id,
+        mode: "auto",
+        routingStatus: result.routingStatus,
+        matchCount: result.matches.length,
+      });
+    }
+
     if (!professionalId || !mongoose.Types.ObjectId.isValid(professionalId)) {
       return NextResponse.json(
         { error: "professionalId is required" },

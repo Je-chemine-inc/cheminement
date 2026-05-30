@@ -10,6 +10,7 @@ import {
   sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 import { isMinor, isUnder14 } from "@/lib/guardian-utils";
 
 export async function POST(req: NextRequest) {
@@ -276,22 +277,25 @@ export async function POST(req: NextRequest) {
 
       // Validate date/time only if provided with a professional
       if (appointmentData.date && appointmentData.time) {
-        // Validate date is not in the past
-        const appointmentDate = new Date(appointmentData.date);
+        // UTC-noon anchor so the booked day never shifts on display, then
+        // persist the normalized date.
+        const appointmentDate = parseAppointmentDate(appointmentData.date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (appointmentDate < today) {
+        if (!appointmentDate || appointmentDate < today) {
           return NextResponse.json(
             { error: "Cannot book appointments in the past" },
             { status: 400 },
           );
         }
+        appointmentData.date = appointmentDate;
 
         // Check if professional is available on the requested day
         if (profile.availability?.days) {
           const dayOfWeek = appointmentDate.toLocaleDateString("en-US", {
             weekday: "long",
+            timeZone: "UTC",
           });
           const dayAvailability = profile.availability.days.find(
             (d) => d.day === dayOfWeek,

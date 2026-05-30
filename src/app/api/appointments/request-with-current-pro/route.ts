@@ -7,6 +7,7 @@ import User from "@/models/User";
 import Profile from "@/models/Profile";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { sendProfessionalNotification } from "@/lib/notifications";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 
 /**
  * Lets a returning client request a follow-up appointment with the professional
@@ -104,11 +105,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate date is not in the past
-    const appointmentDate = new Date(date);
+    // Validate date is not in the past (UTC-noon anchor avoids the 24h shift).
+    const appointmentDate = parseAppointmentDate(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (appointmentDate < today) {
+    if (!appointmentDate || appointmentDate < today) {
       return NextResponse.json(
         { error: "Cannot book appointments in the past" },
         { status: 400 },

@@ -92,4 +92,5 @@ export const AuthRateLimits = {
   sendSms: { limit: 3, windowMs: 10 * 60 * 1000 },
   resendEmail: { limit: 3, windowMs: 10 * 60 * 1000 },
   login: { limit: 10, windowMs: 15 * 60 * 1000 },
+  passwordReset: { limit: 5, windowMs: 15 * 60 * 1000 },
 } as const;

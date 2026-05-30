@@ -11,9 +11,10 @@ import {
   Video,
   MapPin,
   Phone,
+  CalendarPlus,
   Link as LinkIcon,
 } from "lucide-react";
-import { appointmentsAPI } from "@/lib/api-client";
+import { appointmentsAPI, clientsAPI } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,12 +26,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRouter } from "next/navigation";
+import {
+  ProfessionalBookAppointmentModal,
+  type BookableClient,
+} from "@/components/appointments/ProfessionalBookAppointmentModal";
+import { AppointmentEditDialog } from "@/components/appointments/AppointmentEditDialog";
 import { AppointmentResponse } from "@/types/api";
 
 export default function SchedulePage() {
   const t = useTranslations("Dashboard.scheduleCalendar");
-  const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("week");
   const [showRequests, setShowRequests] = useState(false);
@@ -41,6 +45,16 @@ export default function SchedulePage() {
   const [meetingLinkDialogOpen, setMeetingLinkDialogOpen] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Direct-click scheduling + in-agenda edit (client feedback 1.2).
+  const [clients, setClients] = useState<BookableClient[]>([]);
+  const [bookOpen, setBookOpen] = useState(false);
+  const [bookDefaults, setBookDefaults] = useState<{
+    date?: string;
+    time?: string;
+  }>({});
+  const [editApt, setEditApt] = useState<AppointmentResponse | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -86,6 +100,19 @@ export default function SchedulePage() {
   useEffect(() => {
     fetchData();
   }, [currentDate, fetchData]);
+
+  useEffect(() => {
+    clientsAPI
+      .list()
+      .then((data) =>
+        setClients(
+          (data as Array<{ id: string; name: string; email?: string }>).map(
+            (c) => ({ id: c.id, name: c.name, email: c.email }),
+          ),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   const monthNames = [
     "January",
@@ -243,7 +270,37 @@ export default function SchedulePage() {
   };
 
   const handleAppointmentClick = (appointment: AppointmentResponse) => {
-    router.push(`/professional/dashboard/sessions/${appointment._id}`);
+    setEditApt(appointment);
+  };
+
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+
+  const openBookForSlot = (date: Date, hour?: number) => {
+    setBookDefaults({
+      date: `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`,
+      time: typeof hour === "number" ? `${pad2(hour)}:00` : undefined,
+    });
+    setBookOpen(true);
+  };
+
+  // Drag-and-drop reschedule (week view): drop a dragged appointment onto an
+  // empty hour cell to move it there. Notifies the client via the PATCH route.
+  const handleDropToSlot = async (date: Date, hour: number) => {
+    const id = draggingId;
+    setDraggingId(null);
+    if (!id) return;
+    const newDate = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    const newTime = `${pad2(hour)}:00`;
+    try {
+      const res = await fetch(`/api/professional/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: newDate, time: newTime }),
+      });
+      if (res.ok) fetchData();
+    } catch (err) {
+      console.error("Error moving appointment:", err);
+    }
   };
 
   const handleSaveMeetingLink = async () => {
@@ -343,6 +400,16 @@ export default function SchedulePage() {
               <Filter className="h-4 w-4" />
               {showRequests ? t("showSessions") : t("showRequests")}
             </button>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                setBookDefaults({});
+                setBookOpen(true);
+              }}
+            >
+              <CalendarPlus className="h-4 w-4" />
+              {t("addAppointment")}
+            </Button>
           </div>
         </div>
 
@@ -456,17 +523,34 @@ export default function SchedulePage() {
                         return (
                           <div
                             key={`day-${day}-${hour}-${idx}`}
-                            className="bg-card p-2 min-h-[60px] relative"
+                            className="bg-card p-2 min-h-[60px] relative group"
+                            onDragOver={(e) => {
+                              if (draggingId) e.preventDefault();
+                            }}
+                            onDrop={() => handleDropToSlot(day, hour)}
                           >
+                            {/* Empty-slot booking target, behind the chips. */}
+                            <button
+                              type="button"
+                              aria-label={t("addAppointment")}
+                              title={t("slotHint")}
+                              onClick={() => openBookForSlot(day, hour)}
+                              className="absolute inset-0 z-0 w-full h-full hover:bg-primary/5 transition-colors"
+                            />
                             {!showRequests &&
                               dayAppointments.map((appointment) => (
                                 <button
                                   type="button"
                                   key={appointment._id}
+                                  draggable
+                                  onDragStart={() =>
+                                    setDraggingId(appointment._id)
+                                  }
+                                  onDragEnd={() => setDraggingId(null)}
                                   onClick={() =>
                                     handleAppointmentClick(appointment)
                                   }
-                                  className={`w-full text-left border rounded p-2 mb-1 hover:brightness-95 transition-colors cursor-pointer ${getTimeSlotColor(appointment.time)}`}
+                                  className={`relative z-10 w-full text-left border rounded p-2 mb-1 hover:brightness-95 transition-colors cursor-pointer ${getTimeSlotColor(appointment.time)}`}
                                 >
                                   <div className="flex items-center gap-1 text-xs font-light">
                                     {getTypeIcon(appointment.type)}
@@ -503,16 +587,24 @@ export default function SchedulePage() {
               {getMonthDays().map((day, idx) => (
                 <div
                   key={idx}
-                  className={`bg-card p-3 min-h-[100px] ${
+                  className={`bg-card p-3 min-h-[100px] relative group ${
                     !isSameMonth(day) ? "opacity-40" : ""
                   } ${isToday(day) ? "bg-primary/5 ring-1 ring-primary/20" : ""}`}
                 >
+                  {/* Empty-day booking target, behind the chips. */}
+                  <button
+                    type="button"
+                    aria-label={t("addAppointment")}
+                    title={t("slotHint")}
+                    onClick={() => openBookForSlot(day)}
+                    className="absolute inset-0 z-0 w-full h-full hover:bg-primary/5 transition-colors"
+                  />
                   <div
                     className={`text-sm font-light mb-2 ${isToday(day) ? "text-primary font-medium" : "text-foreground"}`}
                   >
                     {day.getDate()}
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 relative z-10">
                     {!showRequests &&
                       appointments
                         .filter((apt) => {
@@ -608,9 +700,10 @@ export default function SchedulePage() {
                                   {appointment.meetingLink ? (
                                     <div className="flex items-center gap-2">
                                       <button
-                                        onClick={() =>
-                                          handleStartSession(appointment)
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartSession(appointment);
+                                        }}
                                         className="px-4 py-2 bg-primary text-primary-foreground rounded-full font-light text-sm hover:scale-105 transition-transform"
                                       >
                                         {appointment.status === "ongoing"
@@ -618,9 +711,10 @@ export default function SchedulePage() {
                                           : t("startSession")}
                                       </button>
                                       <button
-                                        onClick={() =>
-                                          handleAddMeetingLink(appointment)
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAddMeetingLink(appointment);
+                                        }}
                                         className="p-2 rounded-full hover:bg-muted transition-colors"
                                         title="Update Meeting Link"
                                       >
@@ -629,9 +723,10 @@ export default function SchedulePage() {
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() =>
-                                        handleAddMeetingLink(appointment)
-                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddMeetingLink(appointment);
+                                      }}
                                       className="px-4 py-2 bg-muted text-foreground rounded-full font-light text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
                                     >
                                       <LinkIcon className="h-4 w-4" />
@@ -751,6 +846,34 @@ export default function SchedulePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Direct-click scheduling: book a client into the selected slot. */}
+      <ProfessionalBookAppointmentModal
+        open={bookOpen}
+        onOpenChange={setBookOpen}
+        clients={clients}
+        defaultDate={bookDefaults.date}
+        defaultTime={bookDefaults.time}
+        onCreated={() => {
+          setBookOpen(false);
+          fetchData();
+        }}
+      />
+
+      {/* In-agenda edit / reschedule / cancel. */}
+      {editApt && (
+        <AppointmentEditDialog
+          key={editApt._id}
+          appointment={editApt}
+          apiBase="/api/professional/appointments"
+          sessionHref={`/professional/dashboard/sessions/${editApt._id}`}
+          onClose={() => setEditApt(null)}
+          onSaved={() => {
+            setEditApt(null);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

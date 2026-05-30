@@ -19,6 +19,7 @@ import {
   sendAdminNewProfessionalSignupAlert,
 } from "@/lib/notifications";
 import { LEGAL_VERSIONS } from "@/lib/legal";
+import { provisionClientServiceRequest } from "@/lib/service-request";
 
 // Allow enough time for cold-start Mongo connect + SMTP send before Vercel kills the function
 export const maxDuration = 30;
@@ -151,61 +152,58 @@ export async function POST(req: NextRequest) {
     let existingUser = await User.findOne({ email: email.toLowerCase() });
 
     if (existingUser) {
-      // "Claimable" = the existing record is a zombie that can't actually log in
-      // (admin-provisioned, never-verified, or a lead-capture prospect/guest).
-      // We allow a new signup to take over the email in those cases:
-      //   - client → client: in-place claim (preserves MedicalProfile data)
-      //   - any other zombie (prospect, guest, unverified pro): wipe the
-      //     orphan record + its Profile/MedicalProfile and fall through to
-      //     the normal create path below.
-      const isClientReclaim =
-        existingUser.role === "client" &&
-        role === "client" &&
-        (existingUser.status === "inactive" || !existingUser.emailVerified);
+      // Can this record actually log in? (A real account vs. a not-yet-usable
+      // shell created by lead capture / the booking funnel.)
+      const canLogin =
+        Boolean(existingUser.password) &&
+        existingUser.role !== "guest" &&
+        existingUser.role !== "prospect";
+      const isRealActiveAccount =
+        canLogin &&
+        (Boolean(existingUser.emailVerified) ||
+          existingUser.status === "active");
 
-      // A passwordless record literally cannot log in — guest-booking
-      // prospects are created with status="active" but no credentials, so
-      // the status check below misses them. Admins/employees are excluded
-      // because admin-provisioned accounts may also be passwordless before
-      // the admin sets a password and shouldn't be wiped by a self-signup.
-      const isPasswordlessShell =
-        !existingUser.password &&
-        existingUser.role !== "admin" &&
-        existingUser.role !== "employee";
+      // Anti-doublon: for a CLIENT signup, CLAIM any not-yet-usable record in
+      // place (a guest/prospect lead-capture shell, or an unverified/inactive
+      // client) — upgrading it to a client below and PRESERVING its appointments
+      // (the Path-A service request). We no longer WIPE shells, which used to
+      // orphan their service request and "block" a user who combined both entry
+      // paths. A real, usable account is never overwritten (→ "already exists").
+      const isClaimableForClient = role === "client" && !isRealActiveAccount;
 
-      // Generalized "zombie" detection: a record that has never been
-      // activated and so can't actually log in. Covers prospects/guests
-      // (no credentials), unverified clients (never confirmed email),
-      // and unverified-unapproved pros. The client→client case is handled
-      // by isClientReclaim above (preserves MedicalProfile data) and takes
-      // precedence.
-      const isUnusableZombie =
-        isPasswordlessShell ||
-        (!existingUser.emailVerified &&
-          existingUser.adminApproved !== true &&
-          existingUser.status !== "active");
-
-      const isWipeableZombie = !isClientReclaim && isUnusableZombie;
-
-      if (isWipeableZombie) {
-        // Cascade-delete the orphan and its dependent docs, then let the
-        // regular create path run (existingUser=null → falls through).
-        await Profile.deleteMany({ userId: existingUser._id });
-        await MedicalProfile.deleteMany({ userId: existingUser._id });
-        await User.deleteOne({ _id: existingUser._id });
-        existingUser = null;
-      } else if (!isClientReclaim) {
-        return NextResponse.json(
-          { error: "User already exists with this email" },
-          { status: 400 },
-        );
+      if (!isClaimableForClient) {
+        // Non-client signups keep the legacy zombie-wipe behavior.
+        const isPasswordlessShell =
+          !existingUser.password &&
+          existingUser.role !== "admin" &&
+          existingUser.role !== "employee";
+        const isUnusableZombie =
+          isPasswordlessShell ||
+          (!existingUser.emailVerified &&
+            existingUser.adminApproved !== true &&
+            existingUser.status !== "active");
+        if (!isRealActiveAccount && isUnusableZombie) {
+          await Profile.deleteMany({ userId: existingUser._id });
+          await MedicalProfile.deleteMany({ userId: existingUser._id });
+          await User.deleteOne({ _id: existingUser._id });
+          existingUser = null;
+        } else {
+          return NextResponse.json(
+            { error: "User already exists with this email" },
+            { status: 400 },
+          );
+        }
       }
     }
 
     if (existingUser) {
 
-      // Activate the pre-provisioned account with the client's chosen password
+      // Activate the pre-provisioned account with the client's chosen password.
+      // We only reach here for a client signup claiming a not-yet-usable record,
+      // so upgrade a guest/prospect shell to a full client (preserving its _id
+      // and therefore its existing appointments / service request).
       const hashedPassword = await bcrypt.hash(password, 12);
+      existingUser.role = "client";
       existingUser.password = hashedPassword;
       existingUser.firstName = firstName;
       existingUser.lastName = lastName;
@@ -311,6 +309,13 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error("Claim account verify email:", err);
       }
+
+      // Anti-doublon + Path B: consolidate any phone-matching shells, flag
+      // possible duplicates, and ensure a single routed service request exists.
+      // Runs in after() so the response returns fast; it's idempotent and never
+      // throws to the caller.
+      const claimedClientId = String(existingUser._id);
+      after(() => provisionClientServiceRequest(claimedClientId));
 
       return NextResponse.json(
         {
@@ -575,6 +580,15 @@ export async function POST(req: NextRequest) {
           ),
         ),
       );
+    }
+
+    // Path B fix: a direct client signup must also produce a single, routed
+    // service request so it appears in the admin "Demandes de service" queue and
+    // is matchable — parity with the booking funnel (Path A). Idempotent +
+    // never throws; runs in after() so the 201 returns fast.
+    if (user.role === "client") {
+      const newClientId = String(user._id);
+      after(() => provisionClientServiceRequest(newClientId));
     }
 
     return NextResponse.json(

@@ -2,7 +2,9 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export type AdminAccessLogAction =
   | "view_client_user"
-  | "view_client_medical_profile";
+  | "view_client_medical_profile"
+  | "view_client_duplicates"
+  | "merge_client_accounts";
 
 export interface IAdminAccessLog extends Document {
   actorUserId: mongoose.Types.ObjectId;
@@ -29,7 +31,12 @@ const AdminAccessLogSchema = new Schema<IAdminAccessLog>(
     },
     action: {
       type: String,
-      enum: ["view_client_user", "view_client_medical_profile"],
+      enum: [
+        "view_client_user",
+        "view_client_medical_profile",
+        "view_client_duplicates",
+        "merge_client_accounts",
+      ],
       required: true,
     },
     ip: { type: String },

@@ -77,20 +77,17 @@ export async function POST(req: NextRequest) {
       user.verificationEmailExpires = undefined;
     }
 
-    // Activation logic:
-    //   - Admin-approved pros: dossier review = identity check; the email link
-    //     proves the pro owns the address, so no SMS step is required. Activate
-    //     directly.
-    //   - Phone already verified (re-click or pre-stamped): activate directly.
-    //   - Otherwise (typical client signup): chain into the SMS step so the
-    //     verify-account page can finish two-factor activation.
+    // Activation logic (two-factor: email link + SMS code):
+    //   - Phone on file but not yet verified → chain into the SMS step. This now
+    //     INCLUDES admin-approved professionals: admin approval no longer skips
+    //     SMS, so a validated pro confirms email AND phone before activation
+    //     (the final transition happens in verify-phone, which still gates pros
+    //     on adminApproved).
+    //   - Phone already verified (re-click / pre-stamped) or no phone on file →
+    //     activate directly (professionals only when adminApproved).
     let phoneStepToken: string | undefined;
     let phoneMasked: string | undefined;
-    if (user.role === "professional" && user.adminApproved) {
-      user.status = "active";
-    } else if (user.phoneVerifiedAt) {
-      user.status = "active";
-    } else if (user.phone) {
+    if (!user.phoneVerifiedAt && user.phone) {
       phoneStepToken = generatePhoneStepToken();
       user.phoneStepTokenHash = hashVerificationSecret(phoneStepToken);
       user.phoneStepTokenExpires = new Date(Date.now() + PHONE_STEP_TTL_MS);
@@ -100,6 +97,10 @@ export async function POST(req: NextRequest) {
         phone.length >= 4
           ? `${phone.slice(0, Math.min(3, phone.length - 2))}…${phone.slice(-2)}`
           : "•••";
+    } else if (user.role === "professional") {
+      if (user.adminApproved) user.status = "active";
+    } else {
+      user.status = "active";
     }
 
     await user.save();

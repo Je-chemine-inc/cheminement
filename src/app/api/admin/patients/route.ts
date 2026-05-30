@@ -146,6 +146,7 @@ export async function GET(req: NextRequest) {
           totalSessions,
           issueType: "General",
           statusTier,
+          possibleDuplicate: Boolean(patient.possibleDuplicateOf?.length),
         };
 
       }),

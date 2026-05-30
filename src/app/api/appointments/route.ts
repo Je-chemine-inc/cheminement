@@ -14,6 +14,7 @@ import {
   sendCancellationNotification,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 import {
   linkGuardian,
   isMinor,
@@ -80,6 +81,14 @@ export async function GET(req: NextRequest) {
 
     if (clientId && !accountId) {
       query.clientId = clientId;
+    }
+
+    // Admin calendar: scope to a single professional's agenda. Only admins may
+    // request another user's appointments by id; clients/pros are already
+    // constrained by the role filter above, so this param is ignored for them.
+    const professionalIdParam = searchParams.get("professionalId");
+    if (professionalIdParam && session.user.role === "admin") {
+      query.professionalId = professionalIdParam;
     }
 
     if (startDate || endDate) {
@@ -327,22 +336,25 @@ export async function POST(req: NextRequest) {
 
       // Validate date/time only if provided with a professional
       if (data.date && data.time) {
-        // Validate date is not in the past
-        const appointmentDate = new Date(data.date);
+        // UTC-noon anchor so the booked day never shifts on display, then
+        // persist the normalized date.
+        const appointmentDate = parseAppointmentDate(data.date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (appointmentDate < today) {
+        if (!appointmentDate || appointmentDate < today) {
           return NextResponse.json(
             { error: "Cannot book appointments in the past" },
             { status: 400 },
           );
         }
+        data.date = appointmentDate;
 
         // Check if professional is available on the requested day
         if (profile.availability?.days) {
           const dayOfWeek = appointmentDate.toLocaleDateString("en-US", {
             weekday: "long",
+            timeZone: "UTC",
           });
           const dayAvailability = profile.availability.days.find(
             (d) => d.day === dayOfWeek,

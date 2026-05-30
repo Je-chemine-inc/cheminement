@@ -1179,22 +1179,36 @@ export async function sendPasswordSetupLinkEmail(data: {
   email: string;
   setupLink: string;
   locale?: "fr" | "en";
+  /** "setup" = admin created the account; "reset" = user requested a reset. */
+  variant?: "setup" | "reset";
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const isReset = data.variant === "reset";
 
-  const title =
-    lang === "fr"
+  const title = isReset
+    ? lang === "fr"
+      ? "Réinitialisez votre mot de passe"
+      : "Reset your password"
+    : lang === "fr"
       ? "Définissez votre mot de passe"
       : "Set your password";
 
-  const intro =
-    lang === "fr"
+  const intro = isReset
+    ? lang === "fr"
+      ? "Vous avez demandé la réinitialisation de votre mot de passe Je chemine. Cliquez sur le bouton ci-dessous pour en choisir un nouveau."
+      : "You requested a password reset for your Je chemine account. Click the button below to choose a new one."
+    : lang === "fr"
       ? "Un administrateur de Je chemine a créé un compte pour vous. Cliquez sur le bouton ci-dessous pour définir votre propre mot de passe et accéder à votre espace en toute sécurité."
       : "A Je chemine administrator created an account for you. Click the button below to set your own password and securely access your dashboard.";
 
-  const buttonText =
-    lang === "fr" ? "Définir mon mot de passe" : "Set my password";
+  const buttonText = isReset
+    ? lang === "fr"
+      ? "Réinitialiser mon mot de passe"
+      : "Reset my password"
+    : lang === "fr"
+      ? "Définir mon mot de passe"
+      : "Set my password";
 
   const infoBox =
     lang === "fr"
@@ -1232,17 +1246,21 @@ export async function sendPasswordSetupLinkEmail(data: {
   const text = buildEmailText(
     lang === "fr"
       ? [
-          "Définissez votre mot de passe",
+          title,
           `Bonjour ${data.name},`,
-          "Un administrateur de Je chemine a créé un compte pour vous. Définissez votre propre mot de passe à l'aide du lien ci-dessous (valide 1 heure) :",
+          isReset
+            ? "Vous avez demandé la réinitialisation de votre mot de passe Je chemine. Choisissez un nouveau mot de passe à l'aide du lien ci-dessous (valide 1 heure) :"
+            : "Un administrateur de Je chemine a créé un compte pour vous. Définissez votre propre mot de passe à l'aide du lien ci-dessous (valide 1 heure) :",
           data.setupLink,
           "Une fois votre mot de passe défini, connectez-vous avec votre adresse courriel et ce nouveau mot de passe.",
           "Si vous n'attendiez pas ce courriel, ignorez-le.",
         ]
       : [
-          "Set your password",
+          title,
           `Hello ${data.name},`,
-          "A Je chemine administrator created an account for you. Set your own password using the link below (valid for 1 hour):",
+          isReset
+            ? "You requested a password reset for your Je chemine account. Choose a new password using the link below (valid for 1 hour):"
+            : "A Je chemine administrator created an account for you. Set your own password using the link below (valid for 1 hour):",
           data.setupLink,
           "Once your password is set, sign in with your email and your new password.",
           "If you weren't expecting this email, you can safely ignore it.",
@@ -1250,8 +1268,11 @@ export async function sendPasswordSetupLinkEmail(data: {
     lang,
   );
 
-  const fallbackSubject =
-    lang === "fr"
+  const fallbackSubject = isReset
+    ? lang === "fr"
+      ? "Réinitialisation de votre mot de passe — Je chemine"
+      : "Reset your password — Je chemine"
+    : lang === "fr"
       ? "Définissez votre mot de passe — Je chemine"
       : "Set your password — Je chemine";
   const subject = await getSubject("password_reset", fallbackSubject);
@@ -2612,6 +2633,225 @@ export async function sendCancellationNotification(
     { to: recipientEmail, subject, html, text },
     "appointment_cancellation",
   );
+}
+
+/**
+ * Appointment change notice for substitution edits. When an admin or a
+ * professional reschedules / cancels an appointment, the affected parties are
+ * emailed (each in their own locale).
+ *   - actor "admin"        → both the client AND the professional are notified;
+ *                            attribution reads "by the Je Chemine team".
+ *   - actor "professional" → only the client is notified (the pro performed the
+ *                            change themselves, so they already know).
+ * Reuses the existing confirmation/cancellation email types for global
+ * enable-gating + branding. Returns per-recipient success flags.
+ */
+export async function sendAppointmentChangeNotification(data: {
+  action: "rescheduled" | "cancelled";
+  actor: "admin" | "professional";
+  clientName: string;
+  clientEmail: string;
+  clientLocale?: "fr" | "en";
+  professionalName: string;
+  professionalEmail?: string;
+  professionalLocale?: "fr" | "en";
+  date?: string;
+  time?: string;
+  type?: "video" | "in-person" | "phone" | "both";
+  location?: string;
+  previousDate?: string;
+  previousTime?: string;
+}): Promise<{ clientOk: boolean; proOk: boolean }> {
+  const branding = await getBranding();
+
+  const sendToRecipient = async (
+    recipient: "client" | "professional",
+  ): Promise<boolean> => {
+    // The professional is only notified when an admin made the change.
+    if (recipient === "professional" && data.actor !== "admin") return false;
+
+    const toEmail =
+      recipient === "client" ? data.clientEmail : data.professionalEmail;
+    if (!toEmail) return false;
+    const lang: "fr" | "en" =
+      (recipient === "client" ? data.clientLocale : data.professionalLocale) ===
+      "en"
+        ? "en"
+        : "fr";
+
+    const teamName =
+      lang === "fr" ? "l'équipe Je Chemine" : "the Je Chemine team";
+    const recipientName =
+      recipient === "client"
+        ? data.clientName
+        : formatProfessionalName(data.professionalName, lang);
+    const otherParty =
+      recipient === "client"
+        ? formatProfessionalName(data.professionalName, lang)
+        : data.clientName;
+    const greeting =
+      lang === "fr" ? `Bonjour ${recipientName},` : `Hello ${recipientName},`;
+    // Attribution only appears in the professional's email (admin case). The
+    // client's email simply states the change with the professional's name, so
+    // it reads cleanly whether an admin or the professional made it.
+    const byTeam =
+      recipient === "professional"
+        ? lang === "fr"
+          ? ` par ${teamName}`
+          : ` by ${teamName}`
+        : "";
+
+    const newDate = formatEmailDate(data.date, lang);
+    const newTime = formatTime(data.time, lang);
+    const prevDate = data.previousDate
+      ? formatEmailDate(data.previousDate, lang)
+      : null;
+    const prevTime = data.previousTime
+      ? formatTime(data.previousTime, lang)
+      : null;
+    const typeLabel = data.type ? formatAppointmentType(data.type, lang) : null;
+
+    if (data.action === "rescheduled") {
+      const intro =
+        lang === "fr"
+          ? `Votre rendez-vous avec ${otherParty} a été reporté${byTeam}.`
+          : `Your appointment with ${otherParty} has been rescheduled${byTeam}.`;
+      const details =
+        lang === "fr"
+          ? [
+              ...(prevDate
+                ? [
+                    {
+                      label: "Ancien rendez-vous",
+                      value: prevTime ? `${prevDate} à ${prevTime}` : prevDate,
+                    },
+                  ]
+                : []),
+              { label: "Nouvelle date", value: newDate },
+              { label: "Nouvelle heure", value: newTime },
+              ...(typeLabel ? [{ label: "Type", value: typeLabel }] : []),
+              ...(data.location ? [{ label: "Lieu", value: data.location }] : []),
+            ]
+          : [
+              ...(prevDate
+                ? [
+                    {
+                      label: "Previous appointment",
+                      value: prevTime ? `${prevDate} at ${prevTime}` : prevDate,
+                    },
+                  ]
+                : []),
+              { label: "New date", value: newDate },
+              { label: "New time", value: newTime },
+              ...(typeLabel ? [{ label: "Type", value: typeLabel }] : []),
+              ...(data.location
+                ? [{ label: "Location", value: data.location }]
+                : []),
+            ];
+      const outro =
+        lang === "fr"
+          ? "Si cette nouvelle plage ne vous convient pas, veuillez nous contacter."
+          : "If this new time does not suit you, please contact us.";
+      const html = buildEmailHtml({
+        title:
+          lang === "fr" ? "Rendez-vous reporté" : "Appointment rescheduled",
+        theme: "info",
+        greeting,
+        intro,
+        details,
+        outro,
+        branding,
+        lang,
+      });
+      const text = buildEmailText(
+        [
+          lang === "fr" ? "Rendez-vous reporté" : "Appointment rescheduled",
+          greeting,
+          intro,
+          ...details.map((d) => `${d.label} : ${d.value}`),
+          outro,
+        ],
+        lang,
+      );
+      const subject = await getSubject(
+        "appointment_confirmation",
+        lang === "fr"
+          ? "Votre rendez-vous a été reporté — JeChemine"
+          : "Your appointment was rescheduled — JeChemine",
+      );
+      return sendEmail(
+        { to: toEmail, subject, html, text },
+        "appointment_confirmation",
+      );
+    }
+
+    // cancelled
+    const whenStr = prevDate
+      ? prevTime
+        ? lang === "fr"
+          ? ` du ${prevDate} à ${prevTime}`
+          : ` on ${prevDate} at ${prevTime}`
+        : lang === "fr"
+          ? ` du ${prevDate}`
+          : ` on ${prevDate}`
+      : "";
+    const intro =
+      lang === "fr"
+        ? `Votre rendez-vous${whenStr} avec ${otherParty} a été annulé${byTeam}.`
+        : `Your appointment${whenStr} with ${otherParty} has been cancelled${byTeam}.`;
+    const details = prevDate
+      ? lang === "fr"
+        ? [
+            { label: "Date initiale", value: prevDate },
+            ...(prevTime ? [{ label: "Heure initiale", value: prevTime }] : []),
+          ]
+        : [
+            { label: "Original date", value: prevDate },
+            ...(prevTime ? [{ label: "Original time", value: prevTime }] : []),
+          ]
+      : undefined;
+    const outro =
+      lang === "fr"
+        ? "Si vous avez des questions ou souhaitez reprendre rendez-vous, veuillez nous contacter."
+        : "If you have any questions or would like to rebook, please contact us.";
+    const html = buildEmailHtml({
+      title: lang === "fr" ? "Rendez-vous annulé" : "Appointment cancelled",
+      theme: "danger",
+      greeting,
+      intro,
+      details,
+      detailsBorderColor: "#ef4444",
+      outro,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        lang === "fr" ? "Rendez-vous annulé" : "Appointment cancelled",
+        greeting,
+        intro,
+        ...(details ? details.map((d) => `${d.label} : ${d.value}`) : []),
+        outro,
+      ],
+      lang,
+    );
+    const subject = await getSubject(
+      "appointment_cancellation",
+      lang === "fr"
+        ? "Rendez-vous annulé — JeChemine"
+        : "Appointment cancelled — JeChemine",
+    );
+    return sendEmail(
+      { to: toEmail, subject, html, text },
+      "appointment_cancellation",
+    );
+  };
+
+  const [clientOk, proOk] = await Promise.all([
+    sendToRecipient("client"),
+    sendToRecipient("professional"),
+  ]);
+  return { clientOk, proOk };
 }
 
 // =============================================================================

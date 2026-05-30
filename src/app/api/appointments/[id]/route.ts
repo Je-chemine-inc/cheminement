@@ -11,7 +11,10 @@ import {
   sendCancellationNotification,
   sendRefundConfirmation,
 } from "@/lib/notifications";
-import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import {
+  resolveAppointmentRecipient,
+  canAccessAccount,
+} from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import { voidReceiptForRefund } from "@/lib/payment-settlement";
 
@@ -120,6 +123,44 @@ export async function PATCH(
 
     // Get the appointment before update to check for status changes
     const oldAppointment = await Appointment.findById(id);
+
+    if (!oldAppointment) {
+      return NextResponse.json(
+        { error: "Appointment not found" },
+        { status: 404 },
+      );
+    }
+
+    // Authorization: this route was previously reachable by ANY authenticated
+    // user with a valid appointment id (it only checked that a session existed),
+    // letting anyone patch / cancel / reschedule someone else's appointment.
+    // Restrict to: an admin; the assigned professional; a professional claiming
+    // an unassigned pending request (the existing self-assign flow below); the
+    // appointment's own client; or a guardian of that client account.
+    const role = session.user.role;
+    const ownerClientId = oldAppointment.clientId?.toString();
+    const ownerProId = oldAppointment.professionalId?.toString();
+    const isProClaimingUnassigned =
+      role === "professional" &&
+      oldAppointment.status === "pending" &&
+      !oldAppointment.professionalId;
+    let authorized =
+      role === "admin" ||
+      ownerProId === session.user.id ||
+      isProClaimingUnassigned;
+    if (
+      !authorized &&
+      (role === "client" || role === "guest" || role === "prospect")
+    ) {
+      authorized =
+        ownerClientId === session.user.id ||
+        (ownerClientId
+          ? await canAccessAccount(session.user.id, ownerClientId)
+          : false);
+    }
+    if (!authorized) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Strict 48h cancellation rule: a client cannot self-cancel within 48h
     // of the appointment. Admin/pro keep the ability to mark it cancelled

@@ -18,7 +18,6 @@ import {
   MapPin,
   Filter,
   Calendar,
-  Clock,
   X,
   Check,
   Loader2,
@@ -1194,16 +1193,16 @@ export default function ProposalsPage() {
                     </>
                   )}
 
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      placeholder="HH:MM"
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      className="mt-1.5"
-                    />
-                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  </div>
+                  {/* Native time picker (clock opens it) — same as the date
+                      field above. Was a type="text" input with a dead,
+                      pointer-events-none clock icon, so the picker never opened. */}
+                  <Input
+                    type="time"
+                    placeholder="HH:MM"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="mt-1.5"
+                  />
                   <p className="text-[10px] text-muted-foreground mt-1">
                     {t("manualTimeHint")}
                   </p>

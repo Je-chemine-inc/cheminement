@@ -36,6 +36,16 @@ interface AvailabilityScheduleProps {
   onSaveOverride?: (data: Partial<IProfile>) => Promise<IProfile | null>;
 }
 
+const WEEK_ORDER = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
 const DEFAULT_DAYS: DayAvailability[] = [
   { day: "Monday", isWorkDay: true, startTime: "09:00", endTime: "17:00" },
   { day: "Tuesday", isWorkDay: true, startTime: "09:00", endTime: "17:00" },
@@ -45,6 +55,28 @@ const DEFAULT_DAYS: DayAvailability[] = [
   { day: "Saturday", isWorkDay: false, startTime: "09:00", endTime: "17:00" },
   { day: "Sunday", isWorkDay: false, startTime: "09:00", endTime: "17:00" },
 ];
+
+/**
+ * Always return all 7 days in canonical order. Legacy saves persisted ONLY
+ * working days (non-working days were filtered out before saving), which made
+ * Saturday/Sunday — and any unchecked weekday — disappear from the editor with
+ * no checkbox to re-enable them. A day absent from a non-empty saved set was
+ * deliberately unchecked, so it comes back as a day off (isWorkDay:false);
+ * a completely empty set falls back to the Mon–Fri default. Editing then saves
+ * the full 7-day array, healing the stored data.
+ */
+function normalizeWeek(persisted?: DayAvailability[]): DayAvailability[] {
+  if (!persisted || persisted.length === 0) return DEFAULT_DAYS;
+  return WEEK_ORDER.map(
+    (dayName) =>
+      persisted.find((d) => d.day === dayName) ?? {
+        day: dayName,
+        isWorkDay: false,
+        startTime: "09:00",
+        endTime: "17:00",
+      },
+  );
+}
 
 const AvailabilitySchedule = ({
   profile,
@@ -71,26 +103,16 @@ const AvailabilitySchedule = ({
     }
   }, [profile]);
 
-  const currentSchedule =
-    profile?.availability?.days && profile.availability.days.length > 0
-      ? profile.availability.days
-      : DEFAULT_DAYS;
+  // Always work with all 7 days so weekends (and any previously-unchecked day)
+  // are editable — the legacy filter-on-save dropped non-working days.
+  const currentSchedule = normalizeWeek(profile?.availability?.days);
 
-  const DAYS_ORDER = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
-  const firstDayIndex = DAYS_ORDER.indexOf(
+  const firstDayIndex = WEEK_ORDER.indexOf(
     profile?.availability?.firstDayOfWeek || "Monday",
   );
   const orderedDays = [
-    ...DAYS_ORDER.slice(firstDayIndex),
-    ...DAYS_ORDER.slice(0, firstDayIndex),
+    ...WEEK_ORDER.slice(firstDayIndex),
+    ...WEEK_ORDER.slice(0, firstDayIndex),
   ];
 
   const toggleDay = (dayIndex: number) => {

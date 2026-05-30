@@ -6,6 +6,7 @@ import {
   Search,
   Filter,
   Eye,
+  CalendarDays,
   CheckCircle2,
   XCircle,
   Clock,
@@ -412,13 +413,32 @@ export default function ProfessionalsPage() {
                     {new Date(professional.joinedDate).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-sm font-light text-muted-foreground">
-                    <Link
-                      href={`/admin/dashboard/professionals/${professional.id}`}
-                    >
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4 text-primary" />
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/admin/dashboard/professionals/${professional.id}/schedule`}
+                        title={t("openCalendar")}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("openCalendar")}
+                        >
+                          <CalendarDays className="h-4 w-4 text-primary" />
+                        </Button>
+                      </Link>
+                      <Link
+                        href={`/admin/dashboard/professionals/${professional.id}`}
+                        title={t("viewProfile")}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("viewProfile")}
+                        >
+                          <Eye className="h-4 w-4 text-primary" />
+                        </Button>
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

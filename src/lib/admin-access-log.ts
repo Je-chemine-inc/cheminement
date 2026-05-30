@@ -4,7 +4,9 @@ import type { NextRequest } from "next/server";
 
 export type AdminAccessAction =
   | "view_client_user"
-  | "view_client_medical_profile";
+  | "view_client_medical_profile"
+  | "view_client_duplicates"
+  | "merge_client_accounts";
 
 export async function logAdminClientAccess(params: {
   actorUserId: string;

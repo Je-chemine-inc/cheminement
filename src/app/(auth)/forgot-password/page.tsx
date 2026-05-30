@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { KeyRound, Mail, ArrowRight, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,31 @@ export default function ForgotPasswordPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState(searchParams.get("email"));
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Ref guard (not just the `submitting` state) so two synchronous clicks in the
+  // same tick can't both fire — a second request would mint a new token and
+  // invalidate the first email's link.
+  const inFlight = useRef(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Password reset request for:", email);
+    if (!email || inFlight.current) return;
+    inFlight.current = true;
+    setSubmitting(true);
+    try {
+      // Fire the reset request. We always advance to the confirmation screen
+      // regardless of the outcome so the UI never reveals whether the email is
+      // registered (the endpoint is intentionally non-revealing too).
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      // Network error — still show the same confirmation; the user can resend.
+    }
+    // The form unmounts on the confirmation screen, so we intentionally leave
+    // `inFlight` latched to block any further submits.
     setIsSubmitted(true);
   };
 
@@ -57,7 +78,11 @@ export default function ForgotPasswordPage() {
               <span>{t("backToLogin")}</span>
             </Link>
             <button
-              onClick={() => setIsSubmitted(false)}
+              onClick={() => {
+                inFlight.current = false;
+                setSubmitting(false);
+                setIsSubmitted(false);
+              }}
               className="w-full px-6 py-3 text-primary hover:text-primary/80 rounded-full text-base font-light tracking-wide transition-colors"
             >
               {t("resendEmail")}
@@ -116,7 +141,8 @@ export default function ForgotPasswordPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="group w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full text-base font-light tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            disabled={submitting}
+            className="group w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full text-base font-light tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             <span>{t("sendResetLink")}</span>
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

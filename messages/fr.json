@@ -1,4 +1,54 @@
 {
+  "AppointmentEditDialog": {
+    "editTitle": "Modifier le rendez-vous",
+    "dateLabel": "Date",
+    "timeLabel": "Heure",
+    "durationLabel": "Durée",
+    "typeLabel": "Type",
+    "locationLabel": "Lieu",
+    "locationPlaceholder": "Adresse ou local",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Notes internes (facultatif)",
+    "meetingLinkLabel": "Lien de la rencontre",
+    "meetingLinkPlaceholder": "https://…",
+    "viewSession": "Ouvrir la séance complète",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "close": "Fermer",
+    "cancelAppointment": "Annuler le rendez-vous",
+    "cancelConfirmBody": "Annuler ce rendez-vous ? Le client sera avisé par courriel.",
+    "cancelConfirmYes": "Oui, annuler",
+    "cancelConfirmNo": "Conserver",
+    "cancelling": "Annulation…",
+    "minutes": "{count} min",
+    "errorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+    "conflictError": "Cette plage horaire est déjà réservée.",
+    "pastError": "Impossible de déplacer un rendez-vous dans le passé.",
+    "types": {
+      "video": "Visioconférence",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Visio ou en personne"
+    },
+    "statuses": {
+      "scheduled": "Planifié",
+      "pending": "En attente",
+      "completed": "Terminé",
+      "cancelled": "Annulé",
+      "no-show": "Absent",
+      "ongoing": "En cours"
+    },
+    "paymentStatus": {
+      "pending": "Paiement en attente",
+      "processing": "Paiement en traitement",
+      "paid": "Payé",
+      "failed": "Paiement échoué",
+      "refunded": "Remboursé",
+      "partially_refunded": "Partiellement remboursé",
+      "cancelled": "Paiement annulé",
+      "overdue": "Paiement en retard"
+    }
+  },
   "AdminDashboard": {
     "nav": {
       "dashboard": "Tableau de Bord",
@@ -75,6 +125,8 @@
       "colSessions": "Séances",
       "colJoined": "Inscrit le",
       "colActions": "Actions",
+      "possibleDuplicate": "Doublon possible",
+      "possibleDuplicateHint": "Partage un nom ou un téléphone avec un autre compte — à vérifier pour une fusion possible.",
       "colStatusTier": "Statut dossier",
       "filterTier": "Statut dossier",
       "allTiers": "Tous les statuts",
@@ -173,6 +225,8 @@
       "colSessions": "Séances",
       "colJoined": "Inscrit le",
       "colActions": "Actions",
+      "openCalendar": "Ouvrir l'agenda",
+      "viewProfile": "Voir le profil",
       "table": {
         "professional": "Professionnel",
         "email": "Courriel",
@@ -604,6 +658,21 @@
       "statusPending": "En attente / En révision",
       "statusInactive": "Inactif",
       "saveChanges": "Sauvegarder les modifications",
+      "merge": {
+        "title": "Comptes en double",
+        "desc": "Trouvez d'autres comptes qui pourraient appartenir à la même personne et fusionnez-les dans celui-ci.",
+        "findButton": "Rechercher les doublons",
+        "dialogTitle": "Fusionner un compte en double",
+        "dialogIntro": "Conserver {name} et y fusionner un compte en double.",
+        "selectPrompt": "Sélectionnez le compte à fusionner dans ce patient :",
+        "noneFound": "Aucun doublon probable trouvé.",
+        "candidateSessions": "{count} séance(s) complétée(s)",
+        "absorbWarning": "Le compte sélectionné sera supprimé définitivement et tous ses rendez-vous, reçus, documents et historiques seront transférés vers {name}.",
+        "confirm": "Fusionner et supprimer le doublon",
+        "merging": "Fusion en cours…",
+        "cancel": "Annuler",
+        "error": "Une erreur est survenue. Veuillez réessayer."
+      },
       "dangerZone": "Danger Zone",
       "deleteWarning": "La suppression de ce patient est définitive. Le profil, le dossier médical, les rendez-vous et tout l'historique associé seront supprimés.",
       "deleteConfirm": "Supprimer Patient",
@@ -643,6 +712,17 @@
       "no-show": "Absent",
       "pending": "En attente",
       "ongoing": "En cours"
+    },
+    "professionalSchedule": {
+      "back": "Retour au profil",
+      "heading": "Agenda",
+      "subtitle": "Consultez et gérez les rendez-vous de {name}",
+      "bookAppointment": "Prendre un rendez-vous",
+      "today": "Aujourd'hui",
+      "day": "Jour",
+      "week": "Semaine",
+      "month": "Mois",
+      "weekOf": "Semaine du"
     },
     "professionalDetail": {
       "loadError": "Impossible de charger le dossier professionnel.",
@@ -811,7 +891,9 @@
     "assignAction": "Jumeler",
     "reassignAction": "Réassigner",
     "assignedToLabel": "Jumelé à",
-    "assignNoProfessionals": "Aucun professionnel actif"
+    "assignNoProfessionals": "Aucun professionnel actif",
+    "assignAutoMatch": "🔀 Jumelage automatique",
+    "assignGeneralPool": "👥 Liste générale (auto-assignation)"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Grille de disponibilités par période (matin, après-midi, soir) et type de semaine",
@@ -2764,6 +2846,8 @@
     "scheduleCalendar": {
       "title": "Horaire",
       "subtitle": "Gérer vos séances et rendez-vous",
+      "addAppointment": "Prendre un rendez-vous",
+      "slotHint": "Cliquez sur une case libre pour planifier",
       "showSessions": "Afficher les séances",
       "showRequests": "Afficher les demandes",
       "today": "Aujourd'hui",

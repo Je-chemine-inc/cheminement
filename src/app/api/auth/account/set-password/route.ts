@@ -10,8 +10,9 @@ import {
 export const maxDuration = 30;
 
 /**
- * Public endpoint reached from the email link sent by
- * /api/admin/users/[id]/send-password-setup-link.
+ * Public endpoint reached from the email link sent by either
+ * /api/admin/users/[id]/send-password-setup-link (admin-created accounts) or
+ * /api/auth/forgot-password (user-initiated reset, variant="reset").
  *
  * Body: { uid, token, password }
  *

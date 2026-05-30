@@ -8,6 +8,7 @@ import Profile from "@/models/Profile";
 import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { getValidMotifLabels } from "@/lib/motifs";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 import {
   sendAppointmentConfirmation,
 } from "@/lib/notifications";
@@ -96,10 +97,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const appointmentDate = new Date(date);
+    // Anchor at UTC noon so the booked day never shifts on display (the "24h
+    // earlier" bug when booked from "Mes clients").
+    const appointmentDate = parseAppointmentDate(date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (Number.isNaN(appointmentDate.getTime()) || appointmentDate < today) {
+    if (!appointmentDate || appointmentDate < today) {
       return NextResponse.json(
         { error: "Cannot book appointments in the past" },
         { status: 400 },
