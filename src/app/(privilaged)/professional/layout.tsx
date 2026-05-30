@@ -18,12 +18,20 @@ export default async function ProfessionalLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || session.user?.role !== "professional") {
-    redirect("/login");
-  }
-
   const headerList = await headers();
   const pathname = headerList.get("x-pathname") || "";
+
+  if (!session || session.user?.role !== "professional") {
+    // Preserve the intended destination so email deep-links (e.g. the "Voir la
+    // demande" CTA) land on /login and then resume to the requested page after
+    // sign-in instead of dropping the pro on a blank/404 screen.
+    const callback =
+      pathname && pathname.startsWith("/professional")
+        ? `?callbackUrl=${encodeURIComponent(pathname)}`
+        : "";
+    redirect(`/login${callback}`);
+  }
+
   await connectToDatabase();
   const dbUser = await User.findById(session.user.id).select(
     "status adminApproved professionalTermsVersion privacyPolicyVersion",

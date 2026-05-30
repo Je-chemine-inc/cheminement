@@ -223,8 +223,9 @@ export function buildFiscalReceiptPdfBuffer(
   // ── HEADER ───────────────────────────────────────────────────────────────────
   let headerBottomY = 30;
   let logoEmbedded = false;
-  const LOGO_W = 32;
-  const LOGO_H = 19;
+  // Target render height (mm); the width is derived from the PNG's true aspect
+  // ratio so the "Je chemine" wordmark keeps its proportions.
+  const LOGO_H = 12;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -233,16 +234,24 @@ export function buildFiscalReceiptPdfBuffer(
     const path = require("path") as typeof import("path");
     const logoPath = path.join(process.cwd(), "public", "Logo.png");
     const logoData = fs.readFileSync(logoPath);
+    // Read the intrinsic width/height from the PNG header (IHDR: width @16,
+    // height @20) and scale to LOGO_H without distortion. The logo was
+    // previously crushed into a fixed 32×19 box — a ~5:1 wordmark squeezed to
+    // ~1.7:1. Falls back to a sane width if the header can't be parsed.
+    const intrinsicW = logoData.readUInt32BE(16);
+    const intrinsicH = logoData.readUInt32BE(20);
+    const logoW =
+      intrinsicH > 0 ? Math.round((LOGO_H * intrinsicW) / intrinsicH) : 60;
     doc.addImage(
       `data:image/png;base64,${logoData.toString("base64")}`,
       "PNG",
       MARGIN,
-      6,
-      LOGO_W,
+      9,
+      logoW,
       LOGO_H,
     );
     logoEmbedded = true;
-    headerBottomY = 6 + LOGO_H + 4; // logo bottom + padding
+    headerBottomY = 30; // fixed header band so the divider clears the address block
   } catch {
     // Fallback: text banner when logo file is unavailable
     doc.setFillColor(...primaryColor);
@@ -250,7 +259,7 @@ export function buildFiscalReceiptPdfBuffer(
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("Je Chemine", MARGIN, 19);
+    doc.text("Je chemine", MARGIN, 19);
     headerBottomY = 30;
   }
 
@@ -395,10 +404,13 @@ export function buildFiscalReceiptPdfBuffer(
   const isAbsenceOrLateCancel =
     input.sessionOutcome === "cancelled_late" ||
     input.sessionOutcome === "no_show";
-  const descriptionLine = isAbsenceOrLateCancel
+  const serviceDescription = isAbsenceOrLateCancel
     ? "Frais de gestion de dossier / Annulation tardive"
     : getSessionActNatureLabelFr(input.actNatureKey) +
       (input.actNatureOther ? ` — ${input.actNatureOther}` : "");
+  // Label the rendered service line "Raison / Service" so the receipt names the
+  // nature of the act explicitly (insurance / fiscal requirement).
+  const descriptionLine = `Raison / Service : ${serviceDescription}`;
 
   // Wrap long description
   const maxDescWidth = 155;
@@ -507,7 +519,7 @@ export function buildFiscalReceiptPdfBuffer(
   doc.line(MARGIN, footerY, PAGE_RIGHT, footerY);
   doc.setFontSize(8);
   doc.setTextColor(...grayColor);
-  doc.text("Merci d'avoir choisi Je Chemine.", 105, footerY + 8, {
+  doc.text("Merci d'avoir choisi Je chemine !", 105, footerY + 8, {
     align: "center",
   });
   doc.text(

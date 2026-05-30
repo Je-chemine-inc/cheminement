@@ -58,12 +58,12 @@ export function resolveFromAddress(
   if (explicit) return explicit;
   if (process.env.MAIL_FROM) {
     if (process.env.MAIL_FROM.includes("<")) return process.env.MAIL_FROM;
-    const name = process.env.MAIL_FROM_NAME || companyName || "JeChemine";
+    const name = process.env.MAIL_FROM_NAME || companyName || "Je chemine";
     return `"${name}" <${process.env.MAIL_FROM}>`;
   }
   const fallbackEmail =
     process.env.SUPPORT_EMAIL || process.env.SMTP_USER || "support@jechemine.ca";
-  const name = process.env.MAIL_FROM_NAME || companyName || "JeChemine";
+  const name = process.env.MAIL_FROM_NAME || companyName || "Je chemine";
   return `"${name}" <${fallbackEmail}>`;
 }
 

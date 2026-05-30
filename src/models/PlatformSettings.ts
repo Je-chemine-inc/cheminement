@@ -106,27 +106,27 @@ const defaultEmailTemplates: Record<
 > = {
   welcome: {
     enabled: true,
-    subject: "Welcome to JeChemine!",
+    subject: "Welcome to Je chemine!",
   },
   email_verification: {
     enabled: true,
-    subject: "Verify Your Email - JeChemine",
+    subject: "Verify Your Email - Je chemine",
   },
   password_reset: {
     enabled: true,
-    subject: "Reset Your Password - JeChemine",
+    subject: "Reset Your Password - Je chemine",
   },
   appointment_confirmation: {
     enabled: true,
-    subject: "Appointment Confirmed - JeChemine",
+    subject: "Appointment Confirmed - Je chemine",
   },
   appointment_professional_notification: {
     enabled: true,
-    subject: "New Appointment Request - JeChemine",
+    subject: "New Appointment Request - Je chemine",
   },
   appointment_reminder: {
     enabled: true,
-    subject: "Appointment Reminder - JeChemine",
+    subject: "Appointment Reminder - Je chemine",
   },
   appointment_reminder_72h: {
     enabled: true,
@@ -138,15 +138,15 @@ const defaultEmailTemplates: Record<
   },
   appointment_cancellation: {
     enabled: true,
-    subject: "Appointment Cancelled - JeChemine",
+    subject: "Appointment Cancelled - Je chemine",
   },
   guest_booking_confirmation: {
     enabled: true,
-    subject: "Booking Request Received - JeChemine",
+    subject: "Booking Request Received - Je chemine",
   },
   service_request_onboarding: {
     enabled: true,
-    subject: "JeChemine — complete your profile",
+    subject: "Je chemine — complete your profile",
   },
   guest_payment_confirmation: {
     enabled: true,
@@ -166,11 +166,11 @@ const defaultEmailTemplates: Record<
   },
   payment_refund: {
     enabled: true,
-    subject: "Refund Processed - JeChemine",
+    subject: "Refund Processed - Je chemine",
   },
   meeting_link: {
     enabled: true,
-    subject: "Your Meeting Link is Ready - JeChemine",
+    subject: "Your Meeting Link is Ready - Je chemine",
   },
   professional_approval: {
     enabled: true,
@@ -178,7 +178,7 @@ const defaultEmailTemplates: Record<
   },
   professional_rejection: {
     enabled: true,
-    subject: "Application Update - JeChemine",
+    subject: "Application Update - Je chemine",
   },
   admin_interac_trust_request: {
     enabled: true,
@@ -186,19 +186,19 @@ const defaultEmailTemplates: Record<
   },
   interac_transfer_instructions: {
     enabled: true,
-    subject: "Instructions virement Interac — JeChemine",
+    subject: "Instructions virement Interac — Je chemine",
   },
   payment_guarantee_day1_reminder: {
     enabled: true,
-    subject: "Rappel : ajoutez un moyen de paiement — JeChemine",
+    subject: "Rappel : ajoutez un moyen de paiement — Je chemine",
   },
   payment_guarantee_day2_reminder: {
     enabled: true,
-    subject: "Dernier rappel : moyen de paiement requis — JeChemine",
+    subject: "Dernier rappel : moyen de paiement requis — Je chemine",
   },
   payment_guarantee_48h_client: {
     enabled: true,
-    subject: "URGENT : votre rendez-vous approche — moyen de paiement — JeChemine",
+    subject: "URGENT : votre rendez-vous approche — moyen de paiement — Je chemine",
   },
   payment_guarantee_48h_professional: {
     enabled: true,
@@ -206,18 +206,18 @@ const defaultEmailTemplates: Record<
   },
   fiscal_receipt: {
     enabled: true,
-    subject: "Votre reçu fiscal — JeChemine",
+    subject: "Votre reçu fiscal — Je chemine",
   },
   interac_payment_reminder: {
     enabled: true,
-    subject: "Rappel paiement Interac — JeChemine",
+    subject: "Rappel paiement Interac — Je chemine",
   },
 };
 
 const defaultEmailBranding: IEmailBranding = {
   primaryColor: "#8B7355",
   secondaryColor: "#6B5344",
-  companyName: "JeChemine",
+  companyName: "Je chemine",
   footerText: "Your journey to wellness starts here.",
 };
 
@@ -234,7 +234,7 @@ const EmailBrandingSchema = new Schema<IEmailBranding>(
     primaryColor: { type: String, default: "#8B7355" },
     secondaryColor: { type: String, default: "#6B5344" },
     logoUrl: { type: String },
-    companyName: { type: String, default: "JeChemine" },
+    companyName: { type: String, default: "Je chemine" },
     footerText: {
       type: String,
       default: "Your journey to wellness starts here.",

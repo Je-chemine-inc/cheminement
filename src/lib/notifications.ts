@@ -445,7 +445,7 @@ const createButton = (
 const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): string => {
   const year = new Date().getFullYear();
   const url = process.env.NEXTAUTH_URL || "";
-  const companyName = branding?.companyName || "JeChemine";
+  const companyName = branding?.companyName || "Je chemine";
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
   const footerText =
     branding?.footerText ||
@@ -573,8 +573,8 @@ const buildEmailText = (sections: string[], lang: "fr" | "en" = "fr"): string =>
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
   const copyright =
     lang === "fr"
-      ? `© ${new Date().getFullYear()} JeChemine. Tous droits réservés.\nSoutien : ${supportEmail}`
-      : `© ${new Date().getFullYear()} JeChemine. All rights reserved.\nSupport: ${supportEmail}`;
+      ? `© ${new Date().getFullYear()} Je chemine. Tous droits réservés.\nSoutien : ${supportEmail}`
+      : `© ${new Date().getFullYear()} Je chemine. All rights reserved.\nSupport: ${supportEmail}`;
   return sections.filter(Boolean).join("\n\n") + `\n\n${copyright}`;
 };
 
@@ -939,7 +939,7 @@ export async function sendWelcomeEmail(
   const branding = await getBranding();
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/${data.role}/dashboard`;
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
-  const companyName = branding?.companyName || "JeChemine";
+  const companyName = branding?.companyName || "Je chemine";
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
 
   // Only the "client" welcome flow is admin-editable in DB. Other roles
@@ -1010,7 +1010,7 @@ export async function sendWelcomeEmail(
     data.role !== "guest" && data.role !== "prospect" ? `Accédez à votre tableau de bord : ${dashboardUrl}` : "",
   ]);
 
-  const subject = await getSubject("welcome", "Bienvenue sur JeChemine !");
+  const subject = await getSubject("welcome", "Bienvenue sur Je chemine !");
 
   return sendEmail({ to: data.email, subject, html, text }, "welcome");
 }
@@ -1162,8 +1162,8 @@ export async function sendPasswordResetEmail(
   const subject = await getSubject(
     "password_reset",
     lang === "fr"
-      ? "Réinitialisation de votre mot de passe — JeChemine"
-      : "Your password reset — JeChemine",
+      ? "Réinitialisation de votre mot de passe — Je chemine"
+      : "Your password reset — Je chemine",
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "password_reset");
@@ -1654,8 +1654,8 @@ export async function sendGuestPaymentComplete(
   const subject = await getSubject(
     "guest_payment_complete",
     lang === "fr"
-      ? "Paiement confirmé — JeChemine"
-      : "Payment confirmed — JeChemine",
+      ? "Paiement confirmé — Je chemine"
+      : "Payment confirmed — Je chemine",
   );
 
   return sendEmail(
@@ -1766,8 +1766,8 @@ export async function sendAppointmentConfirmation(
   const subject = await getSubject(
     "appointment_confirmation",
     lang === "fr"
-      ? "Rendez-vous confirmé — JeChemine"
-      : "Appointment confirmed — JeChemine",
+      ? "Rendez-vous confirmé — Je chemine"
+      : "Appointment confirmed — Je chemine",
   );
 
   return sendEmail(
@@ -1938,7 +1938,11 @@ export async function sendProfessionalNotification(
   const formattedTime = formatTime(data.time, "fr");
   const professionalName = formatProfessionalName(data.professionalName, "fr");
   const appointmentType = formatAppointmentType(data.type, "fr");
-  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/requests`;
+  // "/requests" never existed → the email CTA landed on a blank 404. Point it at
+  // the real "Propositions" page. The professional layout bounces a logged-out
+  // pro to /login?callbackUrl=… (preserving this destination), so the link
+  // resolves to the login page and then deep-links to the request after sign-in.
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
 
   const html = buildEmailHtml({
     title: "Nouvelle demande de rendez-vous",
@@ -1974,7 +1978,7 @@ export async function sendProfessionalNotification(
 
   const subject = await getSubject(
     "appointment_professional_notification",
-    "Nouvelle demande de rendez-vous — JeChemine",
+    "Nouvelle demande de rendez-vous — Je chemine",
   );
 
   return sendEmail(
@@ -2198,7 +2202,7 @@ export async function sendAppointmentReminder(
 
   const subject = await getSubject(
     "appointment_reminder",
-    "Rappel de rendez-vous — JeChemine",
+    "Rappel de rendez-vous — Je chemine",
   );
 
   return sendEmail(
@@ -2535,8 +2539,8 @@ export async function sendMeetingLinkNotification(
   const subject = await getSubject(
     "meeting_link",
     lang === "fr"
-      ? "Votre lien de réunion est prêt — JeChemine"
-      : "Your meeting link is ready — JeChemine",
+      ? "Votre lien de réunion est prêt — Je chemine"
+      : "Your meeting link is ready — Je chemine",
   );
 
   return sendEmail(
@@ -2625,8 +2629,8 @@ export async function sendCancellationNotification(
   const subject = await getSubject(
     "appointment_cancellation",
     lang === "fr"
-      ? `Rendez-vous annulé${isClientCancellation ? " par le client" : ""} — JeChemine`
-      : `Appointment cancelled${isClientCancellation ? " by client" : ""} — JeChemine`,
+      ? `Rendez-vous annulé${isClientCancellation ? " par le client" : ""} — Je chemine`
+      : `Appointment cancelled${isClientCancellation ? " by client" : ""} — Je chemine`,
   );
 
   return sendEmail(
@@ -2640,7 +2644,7 @@ export async function sendCancellationNotification(
  * professional reschedules / cancels an appointment, the affected parties are
  * emailed (each in their own locale).
  *   - actor "admin"        → both the client AND the professional are notified;
- *                            attribution reads "by the Je Chemine team".
+ *                            attribution reads "by the Je chemine team".
  *   - actor "professional" → only the client is notified (the pro performed the
  *                            change themselves, so they already know).
  * Reuses the existing confirmation/cancellation email types for global
@@ -2680,7 +2684,7 @@ export async function sendAppointmentChangeNotification(data: {
         : "fr";
 
     const teamName =
-      lang === "fr" ? "l'équipe Je Chemine" : "the Je Chemine team";
+      lang === "fr" ? "l'équipe Je chemine" : "the Je chemine team";
     const recipientName =
       recipient === "client"
         ? data.clientName
@@ -2776,8 +2780,8 @@ export async function sendAppointmentChangeNotification(data: {
       const subject = await getSubject(
         "appointment_confirmation",
         lang === "fr"
-          ? "Votre rendez-vous a été reporté — JeChemine"
-          : "Your appointment was rescheduled — JeChemine",
+          ? "Votre rendez-vous a été reporté — Je chemine"
+          : "Your appointment was rescheduled — Je chemine",
       );
       return sendEmail(
         { to: toEmail, subject, html, text },
@@ -2838,8 +2842,8 @@ export async function sendAppointmentChangeNotification(data: {
     const subject = await getSubject(
       "appointment_cancellation",
       lang === "fr"
-        ? "Rendez-vous annulé — JeChemine"
-        : "Appointment cancelled — JeChemine",
+        ? "Rendez-vous annulé — Je chemine"
+        : "Appointment cancelled — Je chemine",
     );
     return sendEmail(
       { to: toEmail, subject, html, text },
@@ -3036,8 +3040,8 @@ export async function sendRefundConfirmation(
   const subject = await getSubject(
     "payment_refund",
     lang === "fr"
-      ? "Remboursement traité — JeChemine"
-      : "Refund processed — JeChemine",
+      ? "Remboursement traité — Je chemine"
+      : "Refund processed — Je chemine",
   );
 
   return sendEmail({ to: data.email, subject, html, text }, "payment_refund");
@@ -3122,7 +3126,7 @@ export async function sendProfessionalRejectionEmail(
 
   const subject = await getSubject(
     "professional_rejection",
-    "Mise à jour de votre candidature — JeChemine",
+    "Mise à jour de votre candidature — Je chemine",
   );
 
   return sendEmail(
@@ -3207,7 +3211,7 @@ export async function sendInteracTransferInstructionsEmail(data: {
   locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
-  const company = branding?.companyName || "JeChemine";
+  const company = branding?.companyName || "Je chemine";
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
   const smsBlock = (
@@ -3336,8 +3340,8 @@ export async function sendInteracTransferInstructionsEmail(data: {
   const subject = await getSubject(
     "interac_transfer_instructions",
     lang === "fr"
-      ? "Instructions virement Interac — JeChemine"
-      : "Interac e-Transfer instructions — JeChemine",
+      ? "Instructions virement Interac — Je chemine"
+      : "Interac e-Transfer instructions — Je chemine",
   );
 
   return sendEmail(
@@ -3358,7 +3362,7 @@ export async function sendInteracPaymentReminder(data: {
   locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
-  const company = branding?.companyName || "JeChemine";
+  const company = branding?.companyName || "Je chemine";
   const isUrgent = data.reminderNumber === 2;
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
@@ -3836,8 +3840,8 @@ export async function sendPaymentGuarantee48hClientReminder(data: {
   const subject = await getSubject(
     "payment_guarantee_48h_client",
     lang === "fr"
-      ? "URGENT : moyen de paiement — JeChemine"
-      : "URGENT: payment method — JeChemine",
+      ? "URGENT : moyen de paiement — Je chemine"
+      : "URGENT: payment method — Je chemine",
   );
   return sendEmail(
     { to: data.clientEmail, subject, html, text },
@@ -4226,8 +4230,8 @@ export async function sendResendInvitationEmail(data: {
     en: `Hello ${data.name},`,
   };
   const intros = {
-    fr: `Vous avez été invité à rejoindre ${branding?.companyName || "JeChemine"}. Veuillez vous connecter pour compléter votre profil et accéder à votre tableau de bord.`,
-    en: `You have been invited to join ${branding?.companyName || "JeChemine"}. Please log in to complete your profile and access your dashboard.`,
+    fr: `Vous avez été invité à rejoindre ${branding?.companyName || "Je chemine"}. Veuillez vous connecter pour compléter votre profil et accéder à votre tableau de bord.`,
+    en: `You have been invited to join ${branding?.companyName || "Je chemine"}. Please log in to complete your profile and access your dashboard.`,
   };
   const buttons = {
     fr: "Se connecter au site",
@@ -4240,7 +4244,7 @@ export async function sendResendInvitationEmail(data: {
 
   const html = buildEmailHtml({
     title: titles[lang],
-    subtitle: branding?.companyName || "JeChemine",
+    subtitle: branding?.companyName || "Je chemine",
     theme: "info",
     greeting: greetings[lang],
     intro: intros[lang],
@@ -4251,7 +4255,7 @@ export async function sendResendInvitationEmail(data: {
 
   const text = buildEmailText([
     titles[lang],
-    branding?.companyName || "JeChemine",
+    branding?.companyName || "Je chemine",
     greetings[lang],
     intros[lang],
     `${buttons[lang]}: ${loginUrl}`,
@@ -4260,8 +4264,8 @@ export async function sendResendInvitationEmail(data: {
 
   const subject =
     lang === "fr"
-      ? `Invitation à rejoindre ${branding?.companyName || "JeChemine"}`
-      : `Invitation to join ${branding?.companyName || "JeChemine"}`;
+      ? `Invitation à rejoindre ${branding?.companyName || "Je chemine"}`
+      : `Invitation to join ${branding?.companyName || "Je chemine"}`;
 
   return sendEmail({ to: data.email, subject, html, text }, "welcome");
 }
@@ -4579,7 +4583,7 @@ export async function sendAppointmentTakenNotification(data: {
     `Voir les nouvelles demandes : ${dashboardUrl}`,
   ]);
 
-  const subject = "Demande attribuée à un autre professionnel — JeChemine";
+  const subject = "Demande attribuée à un autre professionnel — Je chemine";
 
   return sendEmail(
     { to: data.professionalEmail, subject, html, text },

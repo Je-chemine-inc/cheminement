@@ -30,6 +30,17 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const wasInactive = searchParams.get("reason") === "inactivity";
+  // Honor a post-login destination (e.g. from the "Voir la demande" email
+  // deep-link). Restrict to internal, same-origin paths to avoid open-redirect;
+  // the target page's own layout still enforces role access.
+  const rawCallback = searchParams.get("callbackUrl");
+  const safeCallbackUrl =
+    rawCallback &&
+    rawCallback.startsWith("/") &&
+    !rawCallback.startsWith("//") &&
+    !rawCallback.startsWith("/\\")
+      ? rawCallback
+      : null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -127,9 +138,9 @@ export default function LoginPage() {
             admin: "/admin/dashboard",
           };
           const dashboardUrl = dashboardMap[role] || "/client/dashboard";
-          router.push(dashboardUrl);
+          router.push(safeCallbackUrl ?? dashboardUrl);
         } else {
-          router.push("/client/dashboard");
+          router.push(safeCallbackUrl ?? "/client/dashboard");
         }
       }
     } catch {

@@ -56,7 +56,7 @@ export default function AnalyticsComingSoonPage() {
             asChild
             className="gap-2 rounded-full px-5 py-5 text-base font-medium"
           >
-            <Link href="mailto:contact@monimpression.com">
+            <Link href="mailto:support@jechemine.ca">
               <Mail className="h-4 w-4" />
               {t("contactTeam")}
             </Link>

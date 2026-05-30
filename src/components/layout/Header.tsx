@@ -67,7 +67,7 @@ export function Header() {
                 width={256}
                 height={256}
                 src="/Logo.png"
-                alt="Je Chemine"
+                alt="Je chemine"
                 className="h-8 w-auto"
               />
             </Link>

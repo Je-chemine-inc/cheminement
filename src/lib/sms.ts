@@ -69,8 +69,8 @@ export async function sendSms(toPhone: string, body: string): Promise<void> {
 export async function sendSmsOtp(toPhone: string, code: string, lang: "fr" | "en" = "fr"): Promise<void> {
   const body = 
     lang === "en"
-      ? `Your JeChemine code: ${code} (valid for 10 min). Do not share it.`
-      : `Votre code JeChemine : ${code} (valide 10 min). Ne le partagez pas.`;
+      ? `Your Je chemine code: ${code} (valid for 10 min). Do not share it.`
+      : `Votre code Je chemine : ${code} (valide 10 min). Ne le partagez pas.`;
   return sendSms(toPhone, body);
 }
 
@@ -78,8 +78,8 @@ export async function sendSmsOtp(toPhone: string, code: string, lang: "fr" | "en
 export async function sendWelcomeSms(toPhone: string, name: string, lang: "fr" | "en" = "fr"): Promise<void> {
   const body =
     lang === "en"
-      ? `Welcome to JeChemine, ${name}! We're thrilled to accompany you on your wellness journey.`
-      : `Bienvenue chez JeChemine, ${name} ! Nous sommes ravis de vous accompagner dans votre cheminement vers le bien-être.`;
+      ? `Welcome to Je chemine, ${name}! We're thrilled to accompany you on your wellness journey.`
+      : `Bienvenue chez Je chemine, ${name} ! Nous sommes ravis de vous accompagner dans votre cheminement vers le bien-être.`;
   return sendSms(toPhone, body);
 }
 

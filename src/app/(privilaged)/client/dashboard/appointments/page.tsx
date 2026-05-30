@@ -621,7 +621,7 @@ export default function ClientAppointmentsPage() {
                               {t("lateChange.message")}
                             </p>
                             <a
-                              href="mailto:contact@monimpression.com"
+                              href="mailto:support@jechemine.ca"
                               className="inline-flex items-center gap-1 text-sm font-medium text-orange-700 underline hover:text-orange-900 dark:text-orange-300"
                             >
                               <Mail className="h-3.5 w-3.5" />
@@ -643,7 +643,7 @@ export default function ClientAppointmentsPage() {
                             {t("rescheduleInfo.message")}
                           </p>
                           <a
-                            href="mailto:contact@monimpression.com"
+                            href="mailto:support@jechemine.ca"
                             className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 underline hover:text-blue-900 dark:text-blue-300"
                           >
                             <Mail className="h-3.5 w-3.5" />

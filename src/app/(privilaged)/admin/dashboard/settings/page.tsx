@@ -1046,7 +1046,7 @@ export default function SettingsPage() {
                     updateEmailBranding("companyName", e.target.value)
                   }
                   className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="JeChemine"
+                  placeholder="Je chemine"
                 />
               </div>
 

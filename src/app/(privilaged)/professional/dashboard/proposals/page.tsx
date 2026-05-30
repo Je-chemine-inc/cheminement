@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppointmentDetailsModal from "@/components/dashboard/PatientProfileModal";
 import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
 import { apiClient } from "@/lib/api-client";
+import { useMotifs, buildMotifLabelResolver } from "@/hooks/useMotifs";
 import { useLocale, useTranslations } from "next-intl";
 
 interface ClientInfo {
@@ -109,6 +110,13 @@ interface AvailabilityData {
 export default function ProposalsPage() {
   const t = useTranslations("Professional.proposals");
   const locale = useLocale();
+  const { motifs } = useMotifs();
+  // Stored issueType values are persisted in whatever locale the client booked
+  // in, so normalize every displayed/filtered label back to the active locale.
+  const resolveMotifLabel = useMemo(
+    () => buildMotifLabelResolver(motifs, locale),
+    [motifs, locale],
+  );
   const [activeTab, setActiveTab] = useState<
     "proposed" | "general" | "awaiting"
   >("proposed");
@@ -216,10 +224,16 @@ export default function ProposalsPage() {
     ];
     const types = new Set<string>();
     allAppointments.forEach((apt) => {
-      if (apt.issueType) types.add(apt.issueType);
+      if (apt.issueType) types.add(resolveMotifLabel(apt.issueType));
     });
-    return Array.from(types);
-  }, [proposedAppointments, generalAppointments, awaitingAppointments]);
+    return Array.from(types).sort((a, b) => a.localeCompare(b, locale));
+  }, [
+    proposedAppointments,
+    generalAppointments,
+    awaitingAppointments,
+    resolveMotifLabel,
+    locale,
+  ]);
 
   // Filter appointments based on current tab
   const currentAppointments =
@@ -237,19 +251,17 @@ export default function ProposalsPage() {
       .filter((appointment) => appointment.clientId != null)
       .filter((appointment) => {
         const clientName = `${appointment.clientId.firstName ?? ""} ${appointment.clientId.lastName ?? ""}`;
+        const resolvedIssue = appointment.issueType
+          ? resolveMotifLabel(appointment.issueType)
+          : "";
+        const query = searchQuery.toLowerCase();
         const matchesSearch =
-          clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (appointment.clientId.email ?? "")
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          (appointment.issueType
-            ?.toLowerCase()
-            .includes(searchQuery.toLowerCase()) ??
-            false);
+          clientName.toLowerCase().includes(query) ||
+          (appointment.clientId.email ?? "").toLowerCase().includes(query) ||
+          resolvedIssue.toLowerCase().includes(query);
 
         const matchesIssueType =
-          issueTypeFilter === "all" ||
-          appointment.issueType === issueTypeFilter;
+          issueTypeFilter === "all" || resolvedIssue === issueTypeFilter;
 
         const matchesBookingFor =
           bookingForFilter === "all" ||
@@ -257,7 +269,13 @@ export default function ProposalsPage() {
 
         return matchesSearch && matchesIssueType && matchesBookingFor;
       });
-  }, [currentAppointments, searchQuery, issueTypeFilter, bookingForFilter]);
+  }, [
+    currentAppointments,
+    searchQuery,
+    issueTypeFilter,
+    bookingForFilter,
+    resolveMotifLabel,
+  ]);
 
   const handleAccept = async (appointment: ProposedAppointment) => {
     try {
@@ -698,7 +716,9 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType || t("notAvailable")}
+                          {appointment.issueType
+                            ? resolveMotifLabel(appointment.issueType)
+                            : t("notAvailable")}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -845,7 +865,9 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType || t("notAvailable")}
+                          {appointment.issueType
+                            ? resolveMotifLabel(appointment.issueType)
+                            : t("notAvailable")}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -976,7 +998,9 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType || t("notAvailable")}
+                          {appointment.issueType
+                            ? resolveMotifLabel(appointment.issueType)
+                            : t("notAvailable")}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -1070,7 +1094,10 @@ export default function ProposalsPage() {
                   {schedulingAppointment.clientId.lastName}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {schedulingAppointment.issueType ?? t("notAvailable")} •{" "}
+                  {schedulingAppointment.issueType
+                    ? resolveMotifLabel(schedulingAppointment.issueType)
+                    : t("notAvailable")}{" "}
+                  •{" "}
                   {schedulingAppointment.type === "video"
                     ? t("sessionType.video")
                     : schedulingAppointment.type === "in-person"

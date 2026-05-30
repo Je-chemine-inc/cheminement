@@ -595,7 +595,7 @@ export default function ClientDashboardPage() {
                                   {t("upcomingAppointments.lateChange.message")}
                                 </p>
                                 <a
-                                  href="mailto:contact@monimpression.com"
+                                  href={`mailto:${t("support.supportEmail")}`}
                                   className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 underline hover:text-orange-900 dark:text-orange-300"
                                 >
                                   <Mail className="h-3 w-3" />
@@ -617,7 +617,7 @@ export default function ClientDashboardPage() {
                                 )}
                               </p>
                               <a
-                                href="mailto:contact@monimpression.com"
+                                href={`mailto:${t("support.supportEmail")}`}
                                 className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 underline hover:text-blue-900 dark:text-blue-300"
                               >
                                 <Mail className="h-3 w-3" />

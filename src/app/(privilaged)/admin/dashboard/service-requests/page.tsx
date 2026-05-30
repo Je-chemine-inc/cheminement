@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Loader2, RefreshCw, Trash2, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,8 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
+import { useMotifs, buildMotifLabelResolver } from "@/hooks/useMotifs";
 
 interface ProfessionalOption {
   id: string;
@@ -55,6 +56,14 @@ interface ServiceRequestRow {
 
 export default function AdminServiceRequestsPage() {
   const t = useTranslations("AdminServiceRequests");
+  const locale = useLocale();
+  const { motifs } = useMotifs();
+  // Problématique labels are stored in the locale the client booked in;
+  // normalize them to the admin's active locale for display.
+  const resolveMotifLabel = useMemo(
+    () => buildMotifLabelResolver(motifs, locale),
+    [motifs, locale],
+  );
   const [requests, setRequests] = useState<ServiceRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -301,9 +310,13 @@ export default function AdminServiceRequestsPage() {
                   </TableCell>
                   <TableCell
                     className="max-w-[240px] text-sm align-top"
-                    title={r.issueType || undefined}
+                    title={
+                      r.issueType ? resolveMotifLabel(r.issueType) : undefined
+                    }
                   >
-                    <div className="truncate">{r.issueType || "—"}</div>
+                    <div className="truncate">
+                      {r.issueType ? resolveMotifLabel(r.issueType) : "—"}
+                    </div>
                     {r.preferredAvailability?.length ? (
                       <div className="mt-1">
                         <AvailabilitySlots
