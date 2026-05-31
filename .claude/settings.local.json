@@ -19,7 +19,15 @@
       "Bash(npx eslint *)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('OK'\\)\")",
       "Bash(findstr -E \"User|Appointment\")",
-      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")"
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/fr.json','utf8'\\)\\); JSON.parse\\(require\\('fs'\\).readFileSync\\('messages/en.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
+      "Bash(node -e \"for \\(const l of ['en','fr']\\) { const j=require\\('./messages/'+l+'.json'\\); console.log\\('===',l,'Header==='\\); console.log\\(JSON.stringify\\(j.Header, null, 2\\)\\); }\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\merie\\\\cheminement\" -Recurse -Filter \"*settings*\" -Directory)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\merie\\\\cheminement\" -Recurse -Filter \"schema.prisma\")",
+      "Bash(dir \"C:\\\\Users\\\\merie\\\\cheminement\\\\prisma\")",
+      "Bash(node -e \"const en=require\\('./messages/en.json'\\); const fr=require\\('./messages/fr.json'\\); console.log\\('en.visibleToPros =', en.Dashboard.settings.visibleToPros\\); console.log\\('fr.visibleToPros =', fr.Dashboard.settings.visibleToPros\\); const ek=Object.keys\\(en.Dashboard.settings\\), fk=Object.keys\\(fr.Dashboard.settings\\); const miss=ek.filter\\(k=>!fk.includes\\(k\\)\\).concat\\(fk.filter\\(k=>!ek.includes\\(k\\)\\)\\); console.log\\('settings key mismatch:', miss.length? miss : 'none — keys in sync'\\); console.log\\('JSON OK'\\);\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
+      "Bash(node -e \"for \\(const l of ['en','fr']\\) { const h=require\\('./messages/'+l+'.json'\\).Dashboard.helpCenter; console.log\\('['+l+']', ['contactTitle','contactDescription','chat','chatComingSoon','chatDesc','email','phone','phoneFallback'].map\\(k=>k+'='+\\(h[k]!==undefined\\)\\).join\\(' '\\)\\); }\")",
+      "Bash(node -e \"for \\(const l of ['en','fr']\\) { const m=require\\('./messages/'+l+'.json'\\).Header.menuSections; console.log\\('['+l+']', JSON.stringify\\(m\\)\\); }\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\.claude\\projects\\c--Users-merie-cheminement\\memory"

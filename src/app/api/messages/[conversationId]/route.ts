@@ -4,8 +4,12 @@ import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
+import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
-import { SUPPORT_RECIPIENT_ID } from "@/lib/messaging-permissions";
+import {
+  SUPPORT_RECIPIENT_ID,
+  getHiddenProfessionalIds,
+} from "@/lib/messaging-permissions";
 
 // GET /api/messages/[conversationId] — fetch thread messages
 export async function GET(
@@ -125,6 +129,40 @@ export async function POST(
 
   if (!conv) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Peer-to-peer visibility gate on replies. If this is a pro↔pro thread and
+  // either side has turned themselves invisible to professionals, the thread is
+  // frozen for further peer replies (matching the "receive messages or not"
+  // rule). Pro↔client and pro↔admin threads are unaffected.
+  if (session.user.role === "professional") {
+    const otherParticipantIds = conv.participants
+      .map((p) => p.toString())
+      .filter((id) => id !== session.user.id);
+
+    const otherUsers = await User.find({ _id: { $in: otherParticipantIds } })
+      .select("_id role")
+      .lean<{ _id: mongoose.Types.ObjectId; role: string }[]>();
+
+    const involvesAnotherPro = otherUsers.some(
+      (u) => u.role === "professional",
+    );
+
+    if (involvesAnotherPro) {
+      const hiddenProIds = await getHiddenProfessionalIds();
+      const senderHidden = hiddenProIds.has(session.user.id);
+      const anyOtherProHidden = otherUsers.some(
+        (u) => u.role === "professional" && hiddenProIds.has(u._id.toString()),
+      );
+      if (senderHidden || anyOtherProHidden) {
+        return NextResponse.json(
+          {
+            error: "This professional is not available for internal messaging.",
+          },
+          { status: 403 },
+        );
+      }
+    }
   }
 
   const newMessage = await Message.create({

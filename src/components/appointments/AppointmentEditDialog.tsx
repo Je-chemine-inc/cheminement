@@ -142,8 +142,8 @@ export function AppointmentEditDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] max-w-lg flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{t("editTitle")}</DialogTitle>
           <DialogDescription>
             {appointment.clientId?.firstName} {appointment.clientId?.lastName}
@@ -154,7 +154,7 @@ export function AppointmentEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 max-h-[65vh] overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2 pr-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>{t("dateLabel")}</Label>
@@ -290,7 +290,7 @@ export function AppointmentEditDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <div>
             {canCancel && !confirmCancel && (
               <Button

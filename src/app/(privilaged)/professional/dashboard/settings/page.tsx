@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Settings,
   Bell,
@@ -21,11 +21,45 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("fr");
   const [profileVisible, setProfileVisible] = useState(true);
   const [showRating, setShowRating] = useState(true);
+  const [visibleToProfessionals, setVisibleToProfessionals] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // Load current privacy preferences from the professional's profile.
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (!p) return;
+        if (typeof p.profileVisible === "boolean")
+          setProfileVisible(p.profileVisible);
+        if (typeof p.showRating === "boolean") setShowRating(p.showRating);
+        // Legacy profiles lack the field → treat anything but explicit false as visible.
+        setVisibleToProfessionals(p.visibleToProfessionals !== false);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileVisible,
+          showRating,
+          visibleToProfessionals,
+        }),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      // keep the form state; the save simply did not persist
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -140,6 +174,12 @@ export default function SettingsPage() {
             checked={showRating}
             onChange={setShowRating}
           />
+          <ToggleRow
+            label={t("visibleToPros")}
+            description={t("visibleToProsDesc")}
+            checked={visibleToProfessionals}
+            onChange={setVisibleToProfessionals}
+          />
         </div>
       </section>
 
@@ -173,7 +213,11 @@ export default function SettingsPage() {
             {t("saved")}
           </span>
         )}
-        <Button onClick={handleSave} className="gap-2 rounded-full px-8 py-5 text-base font-medium">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="gap-2 rounded-full px-8 py-5 text-base font-medium"
+        >
           <Save className="h-4 w-4" />
           {t("save")}
         </Button>

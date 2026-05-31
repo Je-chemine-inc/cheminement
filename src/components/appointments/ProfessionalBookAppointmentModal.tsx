@@ -199,13 +199,13 @@ export function ProfessionalBookAppointmentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] max-w-xl flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto py-2 pr-1">
           {/* Client */}
           <div className="space-y-2">
             <Label>{t("clientLabel")}</Label>
@@ -396,7 +396,7 @@ export function ProfessionalBookAppointmentModal({
           ) : null}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button
             type="button"
             variant="outline"

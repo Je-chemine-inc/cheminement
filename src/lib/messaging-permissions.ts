@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
+import Profile from "@/models/Profile";
 
 /**
  * Synthetic recipient id used in the client compose flow to address the
@@ -44,10 +45,28 @@ export async function getActiveAdminIds(): Promise<string[]> {
 }
 
 /**
+ * Returns the set of professional user IDs that have opted OUT of peer-to-peer
+ * internal messaging (Profile.visibleToProfessionals === false).
+ *
+ * Missing/undefined is treated as VISIBLE (the field defaults to true), so only
+ * an explicit `false` hides a professional. This is why we query `=== false`
+ * rather than filtering the pro list by `visibleToProfessionals: true` — legacy
+ * profiles created before the field existed must remain visible.
+ */
+export async function getHiddenProfessionalIds(): Promise<Set<string>> {
+  const hidden = await Profile.find({ visibleToProfessionals: false })
+    .select("userId")
+    .lean<{ userId: mongoose.Types.ObjectId }[]>();
+  return new Set(hidden.map((p) => p.userId.toString()));
+}
+
+/**
  * Returns the set of user IDs that the given user is allowed to message.
  * Permission rules (client feedback):
  *  - client       → assigned professional only (Support sentinel handled separately)
- *  - professional → their clients + other professionals + admins
+ *  - professional → their clients + other (visible) professionals + admins.
+ *                   A pro who set visibleToProfessionals=false neither sees nor is
+ *                   seen by peers — they keep only their clients + admins.
  *  - admin        → any active user
  */
 export async function getAllowedRecipientIds(
@@ -67,16 +86,24 @@ export async function getAllowedRecipientIds(
       .lean()) as mongoose.Types.ObjectId[];
     clientIds.forEach((id) => allowed.add(id.toString()));
 
-    const otherPros = await User.find({
-      role: "professional",
-      status: "active",
-      _id: { $ne: uid },
-    })
-      .select("_id")
-      .lean();
-    otherPros.forEach((p) =>
-      allowed.add((p._id as mongoose.Types.ObjectId).toString()),
-    );
+    // Peer-to-peer visibility gate: a hidden pro reaches no peers at all, and
+    // any peer who is hidden is excluded from everyone else's allowed set.
+    const hiddenProIds = await getHiddenProfessionalIds();
+    const senderIsHidden = hiddenProIds.has(uid.toString());
+
+    if (!senderIsHidden) {
+      const otherPros = await User.find({
+        role: "professional",
+        status: "active",
+        _id: { $ne: uid },
+      })
+        .select("_id")
+        .lean();
+      otherPros.forEach((p) => {
+        const id = (p._id as mongoose.Types.ObjectId).toString();
+        if (!hiddenProIds.has(id)) allowed.add(id);
+      });
+    }
 
     const admins = await User.find({
       role: "admin",

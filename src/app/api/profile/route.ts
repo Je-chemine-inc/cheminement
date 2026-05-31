@@ -55,6 +55,17 @@ export async function PUT(req: NextRequest) {
     const now = new Date();
 
     const update: Record<string, unknown> = { ...data };
+
+    // Defense-in-depth: privacy toggles must always be stored as strict booleans
+    // (the messaging visibility gate keys off an explicit `false`).
+    for (const key of [
+      "visibleToProfessionals",
+      "profileVisible",
+      "showRating",
+    ] as const) {
+      if (key in update) update[key] = update[key] === true;
+    }
+
     if (acceptProfessionalTerms === true) {
       update.professionalTermsAcceptedAt = now;
       update.professionalTermsVersion = LEGAL_VERSIONS.professionalTerms;

@@ -531,8 +531,8 @@ export default function ProposalsPage() {
           setActiveTab(v as "proposed" | "general" | "awaiting")
         }
       >
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
-          <TabsTrigger value="proposed" className="gap-2">
+        <TabsList className="flex w-full max-w-2xl gap-1 overflow-x-auto sm:grid sm:grid-cols-3">
+          <TabsTrigger value="proposed" className="flex-none gap-2 sm:flex-1">
             <Star className="h-4 w-4" />
             {t("tabProposed")}
             {proposedAppointments.length > 0 && (
@@ -541,7 +541,7 @@ export default function ProposalsPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="general" className="gap-2">
+          <TabsTrigger value="general" className="flex-none gap-2 sm:flex-1">
             <Users className="h-4 w-4" />
             {t("tabGeneral")}
             {generalAppointments.length > 0 && (
@@ -550,7 +550,7 @@ export default function ProposalsPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="awaiting" className="gap-2">
+          <TabsTrigger value="awaiting" className="flex-none gap-2 sm:flex-1">
             <Calendar className="h-4 w-4" />
             {t("tabAwaiting")}
             {awaitingAppointments.length > 0 && (

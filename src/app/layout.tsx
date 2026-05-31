@@ -5,7 +5,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Je chemine- Soins en santé mentale",
+  title: "Je chemine - Soins en santé mentale",
   description:
     "Your journey to better health and wellness with our comprehensive platform featuring mental health support, primary care, and employee assistance programs.",
   icons: {

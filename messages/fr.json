@@ -1142,6 +1142,11 @@
       "professional": "Je suis un professionnel",
       "schoolServices": "Services scolaires"
     },
+    "menuSections": {
+      "navigation": "Navigation",
+      "discover": "Découvrir",
+      "more": "Plus"
+    },
     "login": "Connexion",
     "getStarted": "Commencer",
     "memberLogin": "Connexion membre",
@@ -3008,6 +3013,8 @@
       "profileVisibleDesc": "Permettre aux clients de vous trouver via la plateforme.",
       "showRating": "Afficher ma note",
       "showRatingDesc": "Afficher votre note moyenne sur votre profil public.",
+      "visibleToPros": "Visible aux autres professionnels",
+      "visibleToProsDesc": "Permettre aux autres professionnels de vous trouver et de vous envoyer des messages internes. Si désactivé, seuls le soutien et les administrateurs peuvent vous écrire, et vous ne pouvez écrire qu'à vos clients, au soutien ou à un administrateur.",
       "showHistory": "Afficher l'historique des rendez-vous",
       "showHistoryDesc": "Autoriser les professionnels à voir votre historique de rendez-vous.",
       "danger": "Zone de danger",

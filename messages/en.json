@@ -1142,6 +1142,11 @@
       "contact": "Contact",
       "professional": "I am a Professional"
     },
+    "menuSections": {
+      "navigation": "Navigation",
+      "discover": "Discover",
+      "more": "More"
+    },
     "login": "Login",
     "getStarted": "Get Started",
     "memberLogin": "Member Login",
@@ -3008,6 +3013,8 @@
       "profileVisibleDesc": "Allow clients to find you through the platform.",
       "showRating": "Show my rating",
       "showRatingDesc": "Display your average rating on your public profile.",
+      "visibleToPros": "Visible to other professionals",
+      "visibleToProsDesc": "Allow other professionals to find you and send you internal messages. When turned off, only support and admins can message you, and you can only message your clients, support or an admin.",
       "showHistory": "Show appointment history",
       "showHistoryDesc": "Allow professionals to see your past appointment history.",
       "danger": "Danger zone",

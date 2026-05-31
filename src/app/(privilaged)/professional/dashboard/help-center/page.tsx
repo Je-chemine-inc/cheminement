@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { HelpCircle } from "lucide-react";
 import FaqList from "@/components/faqs/FaqList";
+import ContactSupportSection from "@/components/help/ContactSupportSection";
 
 export default function HelpCenterPage() {
   const t = useTranslations("Dashboard.helpCenter");
@@ -51,6 +52,9 @@ export default function HelpCenterPage() {
           }
         />
       </section>
+
+      {/* Contact Section */}
+      <ContactSupportSection />
     </div>
   );
 }

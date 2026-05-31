@@ -12,6 +12,15 @@ import {
   LogOut,
   Settings,
   User,
+  Home,
+  Users,
+  Heart,
+  LayoutGrid,
+  GraduationCap,
+  Compass,
+  Newspaper,
+  Mail,
+  type LucideIcon,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSession, signOut } from "next-auth/react";
@@ -49,6 +58,59 @@ export function Header() {
       href: "/services#sentiers",
       label: t("nav.schoolServices"),
       highlight: true,
+    },
+  ];
+
+  // Active-state matcher for the mobile menu rows (mirrors the desktop nav logic).
+  const isLinkActive = (href: string) => {
+    if (href.includes("#")) return false;
+    if (href === "/") return pathname === "/";
+    if (href === "/nouveautes")
+      return pathname === "/nouveautes" || pathname.startsWith("/nouveautes/");
+    return pathname === href;
+  };
+
+  // Grouped mobile navigation — styled like the professional dashboard sidebar
+  // (light section labels + icon/label rows). Reuses the existing nav.* copy.
+  const mobileSections: {
+    label: string;
+    items: { href: string; label: string; icon: LucideIcon }[];
+  }[] = [
+    {
+      label: t("menuSections.navigation"),
+      items: [{ href: "/", label: t("nav.home"), icon: Home }],
+    },
+    {
+      label: t("nav.aboutUs"),
+      items: [
+        { href: "/who-we-are", label: t("nav.whoWeAre"), icon: Users },
+        { href: "/why-us", label: t("nav.whyUs"), icon: Heart },
+      ],
+    },
+    {
+      label: t("nav.services"),
+      items: [
+        { href: "/services", label: t("nav.servicesOverview"), icon: LayoutGrid },
+        {
+          href: "/services#sentiers",
+          label: t("nav.schoolServices"),
+          icon: GraduationCap,
+        },
+      ],
+    },
+    {
+      label: t("menuSections.discover"),
+      items: [
+        { href: "/approaches", label: t("nav.approaches"), icon: Compass },
+        { href: "/nouveautes", label: t("nav.nouveautes"), icon: Newspaper },
+      ],
+    },
+    {
+      label: t("menuSections.more"),
+      items: [
+        { href: "/contact", label: t("nav.contact"), icon: Mail },
+        { href: "/professional", label: t("nav.professional"), icon: Briefcase },
+      ],
     },
   ];
 
@@ -322,207 +384,130 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile menu panel */}
+      {/* Mobile menu panel — styled like the professional dashboard sidebar */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border/20 bg-card">
-          <nav className="container mx-auto px-4 py-4 flex flex-col gap-3">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 text-primary ${
-                pathname === "/" ? "underline underline-offset-4" : ""
-              }`}
-            >
-              {t("nav.home")}
-            </Link>
-
-            {/* About Us */}
-            <div className="flex flex-col gap-1">
-              <span
-                className={`text-sm font-semibold text-primary py-2 ${
-                  aboutDropdownItems.some((item) => item.href === pathname)
-                    ? "underline underline-offset-4"
-                    : ""
-                }`}
-              >
-                {t("nav.aboutUs")}
-              </span>
-              {aboutDropdownItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm pl-4 py-1.5 ${
-                    pathname === item.href
-                      ? "text-primary font-medium"
-                      : "text-foreground"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-
-            {/* Services */}
-            <div className="flex flex-col gap-1">
-              <span
-                className={`text-sm font-semibold text-primary py-2 ${
-                  pathname.startsWith("/services")
-                    ? "underline underline-offset-4"
-                    : ""
-                }`}
-              >
-                {t("nav.services")}
-              </span>
-              {servicesDropdownItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm pl-4 py-1.5 ${
-                    pathname === item.href
-                      ? "text-primary font-medium"
-                      : "text-foreground"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-
-            <Link
-              href="/approaches"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 text-primary ${
-                pathname === "/approaches" ? "underline underline-offset-4" : ""
-              }`}
-            >
-              {t("nav.approaches")}
-            </Link>
-
-            <Link
-              href="/nouveautes"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 text-primary ${
-                pathname === "/nouveautes" ||
-                pathname.startsWith("/nouveautes/")
-                  ? "underline underline-offset-4"
-                  : ""
-              }`}
-            >
-              {t("nav.nouveautes")}
-            </Link>
-
-            <Link
-              href="/contact"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 text-primary ${
-                pathname === "/contact" ? "underline underline-offset-4" : ""
-              }`}
-            >
-              {t("nav.contact")}
-            </Link>
-
-            <Link
-              href="/professional"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`text-sm font-semibold py-2 text-primary ${
-                pathname === "/professional" ? "underline underline-offset-4" : ""
-              }`}
-            >
-              {t("nav.professional")}
-            </Link>
-
-            {/* Auth buttons for mobile */}
-            <div className="border-t border-border/20 pt-3 mt-1 flex flex-col gap-2">
-              {status === "loading" ? (
-                <div className="w-full h-9 bg-muted animate-pulse rounded"></div>
-              ) : session?.user ? (
-                <>
-                  <div className="text-sm text-muted-foreground px-1 py-1">
-                    {session.user.name || session.user.email}
-                  </div>
-
-                  {session.user.role === "admin" && (
-                    <Link
-                      href="/admin/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 text-sm py-2 text-foreground"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      {t("userMenu.adminDashboard")}
-                    </Link>
-                  )}
-                  {session.user.role === "professional" && (
-                    <Link
-                      href="/professional/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 text-sm py-2 text-foreground"
-                    >
-                      <Briefcase className="w-3.5 h-3.5" />
-                      {t("userMenu.professionalDashboard")}
-                    </Link>
-                  )}
-                  {session.user.role === "client" && (
-                    <Link
-                      href="/client/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 text-sm py-2 text-foreground"
-                    >
-                      <UserCircle className="w-3.5 h-3.5" />
-                      {t("userMenu.clientDashboard")}
-                    </Link>
-                  )}
-                  {session.user.role === "guest" && (
-                    <>
+          <nav className="container mx-auto max-h-[calc(100dvh-3.5rem)] overflow-y-auto px-3 py-4">
+            <div className="flex flex-col gap-4">
+              {mobileSections.map((section) => (
+                <div key={section.label} className="flex flex-col gap-1">
+                  <p className="px-3 pb-1 text-xs font-light tracking-wider text-muted-foreground/70">
+                    {section.label}
+                  </p>
+                  {section.items.map((item) => {
+                    const active = isLinkActive(item.href);
+                    const Icon = item.icon;
+                    return (
                       <Link
-                        href="/appointment"
+                        key={item.href}
+                        href={item.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2 text-sm py-2 text-foreground"
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                          active
+                            ? "bg-accent font-medium text-primary"
+                            : "text-foreground hover:bg-accent/60"
+                        }`}
                       >
-                        <UserCircle className="w-3.5 h-3.5" />
-                        {t("userMenu.bookAppointment")}
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{item.label}</span>
                       </Link>
-                      <Link
-                        href="/signup"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2 text-sm py-2 text-primary"
-                      >
-                        <UserCircle className="w-3.5 h-3.5" />
-                        {t("userMenu.createFullAccount")}
-                      </Link>
-                    </>
-                  )}
+                    );
+                  })}
+                </div>
+              ))}
 
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
-                    className="flex items-center gap-2 text-sm py-2 text-red-600"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    {t("userMenu.logout")}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent"
-                  >
-                    {t("login")}
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    {t("getStarted")}
-                  </Link>
-                </>
-              )}
+              {/* Auth footer */}
+              <div className="mt-1 flex flex-col gap-2 border-t border-border/20 pt-4">
+                {status === "loading" ? (
+                  <div className="h-9 w-full animate-pulse rounded bg-muted" />
+                ) : session?.user ? (
+                  <>
+                    <div className="px-3 text-sm text-muted-foreground">
+                      {session.user.name || session.user.email}
+                    </div>
+
+                    {session.user.role === "admin" && (
+                      <Link
+                        href="/admin/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/60"
+                      >
+                        <Settings className="h-4 w-4 shrink-0" />
+                        {t("userMenu.adminDashboard")}
+                      </Link>
+                    )}
+                    {session.user.role === "professional" && (
+                      <Link
+                        href="/professional/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/60"
+                      >
+                        <Briefcase className="h-4 w-4 shrink-0" />
+                        {t("userMenu.professionalDashboard")}
+                      </Link>
+                    )}
+                    {session.user.role === "client" && (
+                      <Link
+                        href="/client/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/60"
+                      >
+                        <UserCircle className="h-4 w-4 shrink-0" />
+                        {t("userMenu.clientDashboard")}
+                      </Link>
+                    )}
+                    {session.user.role === "guest" && (
+                      <>
+                        <Link
+                          href="/appointment"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/60"
+                        >
+                          <UserCircle className="h-4 w-4 shrink-0" />
+                          {t("userMenu.bookAppointment")}
+                        </Link>
+                        <Link
+                          href="/signup"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-primary transition-colors hover:bg-accent/60"
+                        >
+                          <UserCircle className="h-4 w-4 shrink-0" />
+                          {t("userMenu.createFullAccount")}
+                        </Link>
+                      </>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4 shrink-0" />
+                      {t("userMenu.logout")}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent"
+                    >
+                      {t("login")}
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      {t("getStarted")}
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </nav>
         </div>

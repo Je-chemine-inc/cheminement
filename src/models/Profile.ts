@@ -44,6 +44,16 @@ export interface IProfile extends Document {
   professionalTermsAcceptedAt?: Date;
   /** Version des CU pros acceptée (ex. "2026-04-13"). */
   professionalTermsVersion?: string;
+  /**
+   * Visibilité aux AUTRES professionnels pour la messagerie interne (peer-to-peer).
+   * Défaut: visible. Si false, le pro n'apparaît plus aux autres pros et ne peut
+   * échanger qu'avec ses clients et le soutien/les administrateurs.
+   */
+  visibleToProfessionals?: boolean;
+  /** Profil visible aux clients (paramètre de confidentialité). */
+  profileVisible?: boolean;
+  /** Afficher la note moyenne sur le profil public. */
+  showRating?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +141,10 @@ const ProfileSchema = new Schema<IProfile>(
     },
     professionalTermsAcceptedAt: Date,
     professionalTermsVersion: String,
+    // Visibilité aux autres professionnels pour la messagerie interne. Défaut: visible.
+    visibleToProfessionals: { type: Boolean, default: true },
+    profileVisible: { type: Boolean, default: true },
+    showRating: { type: Boolean, default: true },
   },
   {
     timestamps: true,
