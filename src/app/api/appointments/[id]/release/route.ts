@@ -62,7 +62,7 @@ export async function POST(
     // the next pro who picks it up gets a fresh reminder window.
     await Appointment.findByIdAndUpdate(id, {
       $set: { routingStatus: "general", firstRdvReminderSent: false },
-      $unset: { professionalId: "" },
+      $unset: { professionalId: "", proposedTo: "", proposedAt: "" },
       $addToSet: { refusedBy: session.user.id },
     });
 

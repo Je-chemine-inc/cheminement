@@ -75,7 +75,12 @@ export async function POST(
       if (mode === "general") {
         await Appointment.findByIdAndUpdate(id, {
           $set: { routingStatus: "general" },
-          $unset: { professionalId: "", matchedAt: "", proposedTo: "" },
+          $unset: {
+            professionalId: "",
+            matchedAt: "",
+            proposedTo: "",
+            proposedAt: "",
+          },
         });
         // Broadcast so available pros see it in their general pool and can
         // self-assign. Awaited inside after() so Vercel keeps the container
@@ -132,7 +137,12 @@ export async function POST(
       // 1 (strict); refusedBy is kept, so pros who already refused stay excluded.
       await Appointment.findByIdAndUpdate(id, {
         $set: { routingStatus: "pending", cascadeAttempts: 0 },
-        $unset: { professionalId: "", matchedAt: "", proposedTo: "" },
+        $unset: {
+          professionalId: "",
+          matchedAt: "",
+          proposedTo: "",
+          proposedAt: "",
+        },
       });
       const result = await routeAppointmentToProfessionals(id);
       return NextResponse.json({
@@ -203,6 +213,8 @@ export async function POST(
       $set: {
         routingStatus: "proposed",
         proposedTo: [new mongoose.Types.ObjectId(professionalId)],
+        // Stamp the proposal time so the 48h no-response timeout can fire.
+        proposedAt: new Date(),
         "payment.price": pricing.sessionPrice,
         "payment.platformFee": pricing.platformFee,
         "payment.professionalPayout": pricing.professionalPayout,

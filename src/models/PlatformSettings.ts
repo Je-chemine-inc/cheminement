@@ -84,6 +84,8 @@ export interface ISocialLinks {
   x: string;
   instagram: string;
   linkedin: string;
+  youtube: string;
+  tiktok: string;
 }
 
 /**
@@ -95,6 +97,10 @@ export const DEFAULT_SOCIAL_LINKS: ISocialLinks = {
   x: "https://x.com/jechemine",
   instagram: "https://instagram.com/jechemine",
   linkedin: "https://linkedin.com/company/jechemine",
+  // No known default handles — empty means the icon stays hidden until an admin
+  // sets a URL (getSocialLinks preserves "" as "hide this icon").
+  youtube: "",
+  tiktok: "",
 };
 
 export interface IPlatformSettings extends Document {
@@ -336,6 +342,8 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       x: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.x },
       instagram: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.instagram },
       linkedin: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.linkedin },
+      youtube: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.youtube },
+      tiktok: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.tiktok },
     },
     platformContact: {
       physicalAddress: {

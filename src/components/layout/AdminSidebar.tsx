@@ -27,6 +27,7 @@ import {
   BookOpenCheck,
   Stethoscope,
   Newspaper,
+  Layers,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -90,6 +91,11 @@ export function AdminSidebar() {
           title: t("serviceRequests"),
           url: "/admin/dashboard/service-requests",
           icon: Inbox,
+        },
+        {
+          title: t("generalPool"),
+          url: "/admin/dashboard/general-pool",
+          icon: Layers,
         },
         {
           title: t("reports"),

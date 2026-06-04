@@ -1,0 +1,84 @@
+import connectToDatabase from "@/lib/mongodb";
+import Appointment from "@/models/Appointment";
+import "@/models/User"; // register the User model so populate() resolves refs
+import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+
+const HOUR_MS = 60 * 60 * 1000;
+/**
+ * A targeted proposal left unanswered (no accept/refuse) past this many hours is
+ * treated EXACTLY like a refusal: the cascade advances by one attempt and the
+ * matcher re-runs (next eligible pro, or the admin "Demande de service" queue
+ * once the 2 attempts are exhausted). Client requirement §3 ("48h dépassées").
+ */
+export const PROPOSAL_TIMEOUT_HOURS = 48;
+
+/**
+ * Find proposals stuck in "proposed" past the 48h window and advance them as if
+ * the proposed professional had refused. Run by a DAILY cron (Vercel Hobby plan
+ * allows daily only), so the 48h cutoff is exact but detection lags up to ~24h
+ * (effective 48–72h). Idempotent and concurrency-safe via the same atomic claim
+ * the refuse route uses (only one actor — this job OR a live refusal — flips a
+ * given proposed dossier out of "proposed").
+ *
+ * `proposedAt` drives the clock; legacy rows that pre-date the field fall back to
+ * `createdAt` (mirrors unscheduled-match-reminders), so stuck legacy proposals
+ * are cleaned up too.
+ */
+export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
+  await connectToDatabase();
+  const cutoff = new Date(Date.now() - PROPOSAL_TIMEOUT_HOURS * HOUR_MS);
+
+  const candidates = await Appointment.find({
+    routingStatus: "proposed",
+    status: "pending",
+    $or: [
+      { proposedAt: { $lte: cutoff } },
+      { proposedAt: { $exists: false }, createdAt: { $lte: cutoff } },
+    ],
+  })
+    .select("_id proposedTo")
+    .limit(500);
+
+  // Surface saturation instead of silently deferring overflow to the next run.
+  if (candidates.length === 500) {
+    console.warn(
+      "[proposal-timeout] hit batch limit of 500 — extra timed-out proposals deferred to the next run",
+    );
+  }
+
+  let timedOut = 0;
+  for (const c of candidates) {
+    const proposedTo = c.proposedTo ?? [];
+
+    // Atomic claim — only the actor that flips THIS dossier out of "proposed"
+    // advances the cascade. A racing live refusal (which uses the same guard)
+    // makes this no-op, and vice-versa, so the attempt is counted exactly once.
+    // The previously-proposed pro(s) join refusedBy so the matcher won't re-pick
+    // a professional who already let the request lapse.
+    const claimed = await Appointment.findOneAndUpdate(
+      { _id: c._id, routingStatus: "proposed", status: "pending" },
+      {
+        $set: { routingStatus: "pending" },
+        $unset: { proposedTo: "", proposedAt: "" },
+        $inc: { cascadeAttempts: 1 },
+        ...(proposedTo.length
+          ? { $addToSet: { refusedBy: { $each: proposedTo } } }
+          : {}),
+      },
+    );
+
+    if (!claimed) continue; // a concurrent refusal/re-route already handled it
+    timedOut++;
+
+    try {
+      // Re-run jumelage. The matcher re-proposes to the next eligible pro, or —
+      // once attempts are exhausted — commits "awaiting_admin" and alerts admins
+      // itself. Awaited so its SMTP fan-out completes before the cron resolves.
+      await routeAppointmentToProfessionals(String(c._id));
+    } catch (err) {
+      console.error("[proposal-timeout] re-route error:", String(c._id), err);
+    }
+  }
+
+  return { timedOut };
+}

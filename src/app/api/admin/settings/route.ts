@@ -265,10 +265,20 @@ export async function PUT(req: NextRequest) {
       // supplied; empty string hides the icon; otherwise must be an http(s) URL.
       if (data.socialLinks) {
         const incoming = data.socialLinks as Partial<
-          Record<"facebook" | "x" | "instagram" | "linkedin", unknown>
+          Record<
+            "facebook" | "x" | "instagram" | "linkedin" | "youtube" | "tiktok",
+            unknown
+          >
         >;
         const urlRe = /^https?:\/\/.+/i;
-        const keys = ["facebook", "x", "instagram", "linkedin"] as const;
+        const keys = [
+          "facebook",
+          "x",
+          "instagram",
+          "linkedin",
+          "youtube",
+          "tiktok",
+        ] as const;
         const current = settings.socialLinks;
         const resolve = (k: (typeof keys)[number]): string =>
           incoming[k] === undefined
@@ -290,6 +300,8 @@ export async function PUT(req: NextRequest) {
           x: resolve("x"),
           instagram: resolve("instagram"),
           linkedin: resolve("linkedin"),
+          youtube: resolve("youtube"),
+          tiktok: resolve("tiktok"),
         };
       }
 

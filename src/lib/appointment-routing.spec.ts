@@ -210,7 +210,7 @@ describe("appointment-routing", () => {
       expect(pick?.professionalId).toBe("A");
     });
 
-    it("attempt 3 (≥ max attempts): returns null so the caller routes to the general pool", () => {
+    it("attempt 3 (≥ max attempts): returns null so the caller returns the dossier to the admin queue (awaiting_admin)", () => {
       expect(selectCascadeCandidate([cand("A", 200, 5, 5)], 2, OPTS)).toBeNull();
     });
 

@@ -191,6 +191,11 @@ export async function POST(req: NextRequest) {
 
     delete data.notificationLocale;
 
+    // Normalize the self-declared emergency flag (sent as `emergency` from the
+    // "rendez-vous d'urgence" funnel) onto the persisted `isEmergency` field.
+    data.isEmergency = data.isEmergency === true || data.emergency === true;
+    delete data.emergency;
+
     // Set default therapy type if not provided
     if (!data.therapyType) {
       data.therapyType = "solo";
@@ -671,6 +676,7 @@ export async function POST(req: NextRequest) {
             bookingFor: data.bookingFor || "self",
             motifs: motifs as string[],
             appointmentId: appointment._id.toString(),
+            isEmergency: Boolean(data.isEmergency),
           });
         }
       } catch (e) {

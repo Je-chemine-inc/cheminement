@@ -72,14 +72,10 @@ export async function POST(req: NextRequest) {
       location?: string;
     };
 
-    if (
-      !clientId ||
-      !professionalId ||
-      !date ||
-      !time ||
-      !type ||
-      !motif?.trim()
-    ) {
+    // §4: the "raison du rendez-vous" (motif) is now STRICTLY OPTIONAL — the
+    // admin can book without it and fill the problématique in later.
+    const trimmedMotif = motif?.trim();
+    if (!clientId || !professionalId || !date || !time || !type) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -96,12 +92,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
 
-    const validLabels = await getValidMotifLabels();
-    if (!validLabels.has(motif)) {
-      return NextResponse.json(
-        { error: `Invalid motif: ${motif}` },
-        { status: 400 },
-      );
+    // Only validate the motif against known labels when one was actually given.
+    if (trimmedMotif) {
+      const validLabels = await getValidMotifLabels();
+      if (!validLabels.has(trimmedMotif)) {
+        return NextResponse.json(
+          { error: `Invalid motif: ${trimmedMotif}` },
+          { status: 400 },
+        );
+      }
     }
 
     const [client, professional] = await Promise.all([
@@ -162,8 +161,8 @@ export async function POST(req: NextRequest) {
       type,
       therapyType: "solo",
       bookingFor: "self",
-      needs: [motif],
-      issueType: motif,
+      needs: trimmedMotif ? [trimmedMotif] : [],
+      issueType: trimmedMotif || undefined,
       notes: notes?.trim() || undefined,
       location: type === "in-person" ? location?.trim() || undefined : undefined,
       status: "scheduled",

@@ -105,5 +105,7 @@ export async function getSocialLinks(): Promise<ISocialLinks> {
     x: pick("x"),
     instagram: pick("instagram"),
     linkedin: pick("linkedin"),
+    youtube: pick("youtube"),
+    tiktok: pick("tiktok"),
   };
 }

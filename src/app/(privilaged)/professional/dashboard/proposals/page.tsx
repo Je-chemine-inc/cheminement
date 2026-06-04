@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -27,6 +27,7 @@ import {
   Users,
   User,
   Star,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -106,6 +107,10 @@ interface AvailabilityData {
     end: string;
   };
 }
+
+// How often the open Propositions page silently re-pulls the lists (general
+// pool, proposed, awaiting) so admin-pushed dossiers surface near-real-time.
+const POLL_INTERVAL_MS = 30_000;
 
 export default function ProposalsPage() {
   const t = useTranslations("Professional.proposals");
@@ -214,6 +219,58 @@ export default function ProposalsPage() {
   useEffect(() => {
     fetchAllAppointments();
   }, [fetchAllAppointments]);
+
+  // Background auto-refresh: keep the lists live so a dossier the admin just
+  // pushed to the general pool (§3.2 "instantanément visible") — or one another
+  // pro just claimed — appears/disappears without a manual reload. Updates the
+  // arrays IN PLACE (no full-page spinner, unlike the Refresh button), guards
+  // against overlapping polls, and pauses while the tab is hidden (refreshing
+  // once on return) so background tabs don't hammer the API.
+  const isPollingRef = useRef(false);
+  const silentRefresh = useCallback(async () => {
+    if (isPollingRef.current) return;
+    isPollingRef.current = true;
+    try {
+      await Promise.all([
+        fetchProposedAppointments(),
+        fetchGeneralAppointments(),
+        fetchAwaitingAppointments(),
+      ]);
+    } finally {
+      isPollingRef.current = false;
+    }
+  }, [
+    fetchProposedAppointments,
+    fetchGeneralAppointments,
+    fetchAwaitingAppointments,
+  ]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (interval === null) interval = setInterval(silentRefresh, POLL_INTERVAL_MS);
+    };
+    const stop = () => {
+      if (interval !== null) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        silentRefresh();
+        start();
+      } else {
+        stop();
+      }
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [silentRefresh]);
 
   // Get unique issue types for filter
   const issueTypes = useMemo(() => {
@@ -509,11 +566,30 @@ export default function ProposalsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-serif font-light text-foreground">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground font-light mt-1">{t("subtitle")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-serif font-light text-foreground">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground font-light mt-1">
+            {t("subtitle")}
+          </p>
+        </div>
+        {/* Pull the latest general pool without a full page reload, so a
+            dossier the admin just pushed shows up on demand. */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fetchAllAppointments()}
+          disabled={loading}
+          className="shrink-0"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
+          {t("refresh")}
+        </Button>
       </div>
 
       {error && (

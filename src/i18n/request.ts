@@ -11,8 +11,12 @@ const messagesByLocale = {
 type AppLocale = keyof typeof messagesByLocale;
 
 function resolveLocale(raw: string | undefined): AppLocale {
-  if (raw === "fr") return "fr";
-  return "en";
+  // French-first platform ("100 % francophone sans compromis"): default to FR.
+  // English is opt-in via the language toggle, which sets NEXT_LOCALE=en. This
+  // ensures a fresh visitor (no cookie) sees French everywhere — including the
+  // server-rendered page-load spinner (app/loading.tsx).
+  if (raw === "en") return "en";
+  return "fr";
 }
 
 export default getRequestConfig(async () => {

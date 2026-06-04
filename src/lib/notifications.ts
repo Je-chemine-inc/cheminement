@@ -4298,6 +4298,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
   bookingFor: string;
   motifs: string[];
   appointmentId: string;
+  isEmergency?: boolean;
 }): Promise<void> {
   await connectToDatabase();
   const adminEmails = await getAdminAlertRecipients();
@@ -4310,12 +4311,23 @@ export async function sendAdminNewServiceRequestAlert(data: {
     "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/service-requests`;
 
+  // Urgent requests get a louder email (warning theme + flagged subject/intro)
+  // so admins triage them ahead of standard demandes.
+  const isEmergency = Boolean(data.isEmergency);
+
   const html = buildEmailHtml({
-    title: "Nouvelle demande de service",
-    theme: "info",
+    title: isEmergency
+      ? "⚠ Nouvelle demande URGENTE"
+      : "Nouvelle demande de service",
+    theme: isEmergency ? "warning" : "info",
     greeting: "Bonjour,",
-    intro: `Une nouvelle demande de service a été soumise par ${data.clientName} (${data.clientEmail}).`,
+    intro: isEmergency
+      ? `⚠ Demande de rendez-vous D'URGENCE soumise par ${data.clientName} (${data.clientEmail}). À traiter en priorité.`
+      : `Une nouvelle demande de service a été soumise par ${data.clientName} (${data.clientEmail}).`,
     details: [
+      ...(isEmergency
+        ? [{ label: "Priorité", value: "⚠ URGENCE" }]
+        : []),
       { label: "Client", value: data.clientName },
       { label: "Courriel", value: data.clientEmail },
       { label: "Pour", value: data.bookingFor },
@@ -4327,7 +4339,10 @@ export async function sendAdminNewServiceRequestAlert(data: {
   });
 
   const text = buildEmailText([
-    "Nouvelle demande de service",
+    isEmergency
+      ? "Nouvelle demande de service — URGENCE"
+      : "Nouvelle demande de service",
+    ...(isEmergency ? ["Priorité : URGENCE — à traiter en priorité"] : []),
     `Client : ${data.clientName} — ${data.clientEmail}`,
     `Pour : ${data.bookingFor}`,
     `Motif(s) : ${data.motifs.join(", ") || "—"}`,
@@ -4335,7 +4350,9 @@ export async function sendAdminNewServiceRequestAlert(data: {
     adminUrl,
   ]);
 
-  const subject = `Nouvelle demande — ${data.clientName}`;
+  const subject = isEmergency
+    ? `⚠ URGENCE — Nouvelle demande — ${data.clientName}`
+    : `Nouvelle demande — ${data.clientName}`;
 
   for (const to of adminEmails) {
     await sendEmail(
@@ -4405,6 +4422,144 @@ export async function sendAdminAppointmentMovedToGeneralAlert(data: {
       "service_request_onboarding",
     ).catch((e) =>
       console.error("sendAdminAppointmentMovedToGeneralAlert:", e),
+    );
+  }
+}
+
+/**
+ * Sent when the auto-match cascade is exhausted (2 failed attempts — by refusal
+ * or 48h no-response) or no eligible professional exists, so the dossier is
+ * RETURNED to the admin "Demande de service" queue for a MANUAL decision (assign
+ * a specific pro, or send it to the general pool). Unlike the moved-to-general
+ * alert, the request is NOT yet visible to professionals — it waits for the admin.
+ */
+export async function sendAdminRequestReturnedToQueueAlert(data: {
+  clientName: string;
+  clientEmail: string;
+  motif?: string;
+  appointmentId: string;
+  attempts: number;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  const html = buildEmailHtml({
+    title: "Demande à jumeler manuellement",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `La demande de ${data.clientName} n'a pas pu être jumelée automatiquement (${data.attempts} tentative(s) échouée(s) — refus ou délai de 48 h dépassé). Elle est de retour dans « Demande de service » et attend une décision manuelle : assigner un professionnel ou l'envoyer à la liste générale.`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Motif", value: data.motif || "—" },
+      { label: "Tentatives", value: String(data.attempts) },
+      { label: "ID Rendez-vous", value: data.appointmentId },
+    ],
+    button: { text: "Traiter la demande", url: adminUrl },
+    outro:
+      "Tant qu'aucune action manuelle n'est prise, cette demande n'est PAS visible des professionnels.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Demande à jumeler manuellement",
+    `Client : ${data.clientName} — ${data.clientEmail}`,
+    `Motif : ${data.motif || "—"}`,
+    `Tentatives échouées : ${data.attempts}`,
+    `ID : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+
+  const subject = `À jumeler manuellement — ${data.clientName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) =>
+      console.error("sendAdminRequestReturnedToQueueAlert:", e),
+    );
+  }
+}
+
+/**
+ * §3.2: notify the admin team by email when a new external message (contact /
+ * school-manager / enterprise form) is submitted, so a submission isn't missed
+ * if nobody is watching the in-app inbox. Routes through getAdminAlertRecipients
+ * so the admin-configurable `adminAlertEmail` governs it like every other alert.
+ */
+export async function sendAdminNewExternalMessageAlert(data: {
+  source: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone?: string;
+  subject?: string;
+  message: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/external-messages`;
+
+  const sourceLabel =
+    data.source === "enterprise"
+      ? "Entreprise"
+      : data.source === "school-manager"
+        ? "Établissement scolaire"
+        : "Contact";
+  const preview =
+    data.message.length > 600 ? `${data.message.slice(0, 600)}…` : data.message;
+
+  const html = buildEmailHtml({
+    title: "Nouveau message de contact",
+    theme: "info",
+    greeting: "Bonjour,",
+    intro: `Un nouveau message (${sourceLabel}) a été reçu de ${data.senderName} (${data.senderEmail}).`,
+    details: [
+      { label: "Source", value: sourceLabel },
+      { label: "Nom", value: data.senderName },
+      { label: "Courriel", value: data.senderEmail },
+      ...(data.senderPhone
+        ? [{ label: "Téléphone", value: data.senderPhone }]
+        : []),
+      ...(data.subject ? [{ label: "Sujet", value: data.subject }] : []),
+      { label: "Message", value: preview },
+    ],
+    button: { text: "Voir les messages", url: adminUrl },
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Nouveau message de contact",
+    `Source : ${sourceLabel}`,
+    `De : ${data.senderName} — ${data.senderEmail}`,
+    ...(data.senderPhone ? [`Téléphone : ${data.senderPhone}`] : []),
+    ...(data.subject ? [`Sujet : ${data.subject}`] : []),
+    "",
+    preview,
+    "",
+    adminUrl,
+  ]);
+
+  const subject = `Nouveau message — ${sourceLabel} — ${data.senderName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail({ to, subject, html, text }, "service_request_onboarding").catch(
+      (e) => console.error("sendAdminNewExternalMessageAlert:", e),
     );
   }
 }

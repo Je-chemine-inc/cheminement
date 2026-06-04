@@ -285,6 +285,11 @@ export default function BookAppointmentPage() {
   // so admins don't create duplicates.
   const changeProfessional = searchParams.get("changeProfessional") === "true";
 
+  // The "Prendre un rendez-vous d'urgence" funnel lands here with ?emergency=true.
+  // The flag rides the booking payload so admins are alerted it's an urgent
+  // request at reception (alert email + "Urgence" badge in the admin queue).
+  const emergency = searchParams.get("emergency") === "true";
+
   // Fetch medical profile for defaults (authenticated users only)
   useEffect(() => {
     const fetchMedicalProfile = async () => {
@@ -735,6 +740,8 @@ export default function BookAppointmentPage() {
         preferredPaymentMethod: paymentMethod,
       };
 
+      if (emergency) appointmentData.emergency = true;
+
       let effectiveGuestInfo: GuestInfo = guestInfo;
 
       // Include loved one info if booking for a loved one
@@ -840,6 +847,8 @@ export default function BookAppointmentPage() {
         appointmentData.changeProfessional = true;
       }
 
+      if (emergency) appointmentData.emergency = true;
+
       // Include loved one info if booking for a loved one
       if (bookingFor === "loved-one" && lovedOneInfo.firstName) {
         appointmentData.lovedOneInfo = lovedOneInfo;
@@ -880,6 +889,13 @@ export default function BookAppointmentPage() {
         <h3 className="font-serif text-lg font-medium border-b border-border/40 pb-4 mb-4">
           {tB("requestSummary")}
         </h3>
+
+        {emergency && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{tB("emergencyBadge")}</span>
+          </div>
+        )}
 
         {/* Who is this for */}
         <div className={`space-y-1 ${currentStep <= 1 ? "opacity-50" : ""}`}>

@@ -157,6 +157,9 @@ export async function POST(req: NextRequest) {
       clientId: session.user.id,
       proposedTo: [lastApt.professionalId],
       routingStatus: "proposed",
+      // Stamp the proposal time so the 48h no-response timeout applies here too
+      // (consistent with the matcher + admin assign proposed-commits).
+      proposedAt: new Date(),
       date: appointmentDate,
       time,
       duration: finalDuration,

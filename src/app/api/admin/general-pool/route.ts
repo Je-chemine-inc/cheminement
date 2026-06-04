@@ -6,8 +6,14 @@ import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
 
 /**
- * GET /api/admin/service-requests
- * Pending appointment requests without an assigned professional (admin jumelage queue).
+ * GET /api/admin/general-pool
+ * Pending requests currently in the GENERAL pool (routingStatus "general" or
+ * legacy "refused") — open for any active professional to self-claim. Powers the
+ * admin "Pool Général" tab. Same shape as /api/admin/service-requests so both
+ * can share the RequestsQueueTable component and the assign/delete actions.
+ *
+ * NOTE: this is the APPOINTMENT-level general pool, distinct from the "Patients"
+ * tab (which is the client CRM, GET /api/admin/patients).
  */
 export async function GET() {
   try {
@@ -31,11 +37,10 @@ export async function GET() {
 
     await connectToDatabase();
 
-    // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
-    // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the
-    // matched ones lets admins reassign a request a pro accepted but never
-    // scheduled (the escalation email points here).
-    const requests = await Appointment.find({ status: "pending" })
+    const requests = await Appointment.find({
+      status: "pending",
+      routingStatus: { $in: ["general", "refused"] },
+    })
       .populate("clientId", "firstName lastName email phone")
       .populate("professionalId", "firstName lastName")
       .sort({ createdAt: -1 })
@@ -80,9 +85,9 @@ export async function GET() {
 
     return NextResponse.json({ requests: serialized });
   } catch (e: unknown) {
-    console.error("admin service-requests GET:", e);
+    console.error("admin general-pool GET:", e);
     return NextResponse.json(
-      { error: "Failed to load service requests" },
+      { error: "Failed to load general pool" },
       { status: 500 },
     );
   }

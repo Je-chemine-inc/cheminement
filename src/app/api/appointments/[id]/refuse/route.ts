@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
-import { sendAdminAppointmentMovedToGeneralAlert } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 /**
@@ -137,7 +136,7 @@ export async function POST(
       { _id: id, routingStatus: "proposed", proposedTo: fresh.proposedTo },
       {
         $set: { routingStatus: "pending" },
-        $unset: { proposedTo: "" },
+        $unset: { proposedTo: "", proposedAt: "" },
         // Advance the cascade — this is the ONLY genuine-refusal increment, done
         // atomically with the claim so exactly one winner counts the attempt.
         $inc: { cascadeAttempts: 1 },
@@ -169,36 +168,11 @@ export async function POST(
     // (proposals page) just re-fetches, so it doesn't read the body below.
     after(async () => {
       try {
-        const result = await routeAppointmentToProfessionals(id);
-        // "proposed" => re-routed to a new pro (matcher already notified them).
-        // "skipped"  => a concurrent admin assignment/acceptance took over — leave it.
-        // "general"  => matcher moved it to the general pool (and broadcast to
-        //               eligible pros); alert admins so it isn't left unseen.
-        if (result.routingStatus === "general") {
-          const moved = await Appointment.findById(id).populate(
-            "clientId",
-            "firstName lastName email phone location language",
-          );
-          if (moved) {
-            const clientPop = moved.clientId as unknown as {
-              firstName?: string;
-              lastName?: string;
-              email?: string;
-            } | null;
-            const clientName =
-              `${clientPop?.firstName ?? ""} ${
-                clientPop?.lastName ?? ""
-              }`.trim() || "Client";
-            const clientEmail = clientPop?.email?.trim() || "—";
-            await sendAdminAppointmentMovedToGeneralAlert({
-              clientName,
-              clientEmail,
-              motif: moved.issueType,
-              appointmentId: String(moved._id),
-              refusalCount: moved.refusedBy?.length ?? 0,
-            });
-          }
-        }
+        // Re-run jumelage. The matcher either re-proposes to the next eligible
+        // pro ("proposed"), or — once the 2-attempt cascade is exhausted — commits
+        // "awaiting_admin" and alerts admins itself (it no longer auto-broadcasts
+        // to the general pool). "skipped" means a concurrent admin action took over.
+        await routeAppointmentToProfessionals(id);
       } catch (err) {
         console.error("[refuse] re-route error:", err);
       }

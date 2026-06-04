@@ -61,6 +61,8 @@ interface SocialLinks {
   x: string;
   instagram: string;
   linkedin: string;
+  youtube: string;
+  tiktok: string;
 }
 
 // Brand names are proper nouns — not translated.
@@ -69,6 +71,8 @@ const SOCIAL_FIELDS = [
   { key: "x", label: "X / Twitter" },
   { key: "instagram", label: "Instagram" },
   { key: "linkedin", label: "LinkedIn" },
+  { key: "youtube", label: "YouTube" },
+  { key: "tiktok", label: "TikTok" },
 ] as const;
 
 const EMPTY_ADDRESS: PhysicalAddress = {

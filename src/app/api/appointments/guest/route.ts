@@ -374,6 +374,12 @@ export async function POST(req: NextRequest) {
       appointmentData.bookingFor = "self";
     }
 
+    // Normalize the self-declared emergency flag (sent as `emergency` from the
+    // "rendez-vous d'urgence" funnel) onto the persisted `isEmergency` field.
+    appointmentData.isEmergency =
+      appointmentData.isEmergency === true || appointmentData.emergency === true;
+    delete appointmentData.emergency;
+
     // Loved-one account activation decision:
     // - child (<18): onboarding link is sent automatically to the requester
     // - adult (>18): onboarding link is pending admin validation
@@ -463,6 +469,7 @@ export async function POST(req: NextRequest) {
       bookingFor: appointmentData.bookingFor || "self",
       motifs: motifs as string[],
       appointmentId: String(appointment._id),
+      isEmergency: Boolean(appointmentData.isEmergency),
     };
     after(() =>
       sendAdminNewServiceRequestAlert(adminAlertArgs).catch((err) =>

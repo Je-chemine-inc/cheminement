@@ -3,6 +3,7 @@ import ColorTransition from "@/components/ui/ColorTransition";
 import ValueSection from "@/components/sections/ValueSection";
 import ClientAdvantagesSection from "@/components/sections/ClientAdvantagesSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
+import EmergencyAppointmentSection from "@/components/sections/EmergencyAppointmentSection";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <ClientAdvantagesSection />
       <ColorTransition fromColor="muted" toColor="background" />
       <HowItWorksSection />
+      <EmergencyAppointmentSection />
     </main>
   );
 }

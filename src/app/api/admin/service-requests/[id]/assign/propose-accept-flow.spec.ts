@@ -142,11 +142,25 @@ vi.mock("@/models/Appointment", () => ({
     // Atomic claim used by the accept route. The filter asserts the request is
     // still unassigned + pending; the seeded appointment satisfies it, so we
     // apply the update and return the doc (a real lost-race would return null).
+    // Operator-aware ($set/$unset/$addToSet) to mirror Mongoose, since the accept
+    // route now uses $set + $unset (clears proposedTo/proposedAt on lock-in).
     findOneAndUpdate: (
       _filter: Record<string, unknown>,
       update: Record<string, unknown>,
     ) => {
-      Object.assign(h.store.appointment, update);
+      const u = update as Record<string, Record<string, unknown>>;
+      if (u.$set || u.$unset || u.$addToSet) {
+        if (u.$set) Object.assign(h.store.appointment, u.$set);
+        if (u.$unset)
+          for (const k of Object.keys(u.$unset)) delete h.store.appointment[k];
+        if (u.$addToSet)
+          for (const [k, v] of Object.entries(u.$addToSet)) {
+            const arr = (h.store.appointment[k] ||= []) as unknown[];
+            if (!arr.includes(v)) arr.push(v);
+          }
+      } else {
+        Object.assign(h.store.appointment, update);
+      }
       return h.makeQuery(h.store.appointment);
     },
     findOne: () => Promise.resolve(null), // no double-booking conflict
@@ -345,5 +359,30 @@ describe("guest booking: admin propose → professional accept", () => {
     // §3.1: reassignment is SILENT to the client — no email until the new pro
     // accepts (the jumelage confirmation). Only the new pro is notified.
     expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
+  });
+
+  it("a professional CANNOT accept an awaiting_admin dossier (admin-only state)", async () => {
+    // §3: after a failed auto-match cascade the dossier sits in routingStatus
+    // "awaiting_admin" awaiting a MANUAL admin decision. Even if a stale
+    // proposedTo entry survives, a pro must not be able to self-claim it.
+    Object.assign(h.store.appointment, {
+      routingStatus: "awaiting_admin",
+      proposedTo: [PRO_ID],
+      professionalId: null,
+      status: "pending",
+    });
+    h.getServerSession.mockResolvedValueOnce({
+      user: { id: PRO_ID, role: "professional" },
+    });
+
+    const res = (await acceptPOST({} as never, {
+      params: Promise.resolve({ id: APPT_ID }),
+    })) as unknown as { status: number; body: Record<string, unknown> };
+
+    expect(res.status).toBe(403);
+    // not locked in, still awaiting the admin, and no match email fired
+    expect(h.store.appointment.routingStatus).toBe("awaiting_admin");
+    expect(h.store.appointment.professionalId == null).toBe(true);
+    expect(h.notif.sendJumelageSuccessEmail).not.toHaveBeenCalled();
   });
 });

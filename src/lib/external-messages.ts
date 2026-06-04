@@ -3,6 +3,7 @@ import ExternalMessage, {
   ExternalMessageSource,
   IExternalMessage,
 } from "@/models/ExternalMessage";
+import { sendAdminNewExternalMessageAlert } from "@/lib/notifications";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,7 +46,7 @@ export async function createExternalMessage(
       )
     : undefined;
 
-  return ExternalMessage.create({
+  const created = await ExternalMessage.create({
     source: input.source,
     senderName: name,
     senderEmail: email,
@@ -59,6 +60,24 @@ export async function createExternalMessage(
         : undefined,
     status: "new",
   });
+
+  // §3.2: alert the admin team by email (via the configurable adminAlertEmail)
+  // so a contact/school/enterprise submission isn't missed. Non-fatal — the
+  // message is already persisted; a mail failure must not fail the submission.
+  try {
+    await sendAdminNewExternalMessageAlert({
+      source: input.source,
+      senderName: name,
+      senderEmail: email,
+      senderPhone: input.senderPhone?.trim() || undefined,
+      subject: input.subject?.trim() || undefined,
+      message,
+    });
+  } catch (e) {
+    console.error("[external-message] admin alert failed:", e);
+  }
+
+  return created;
 }
 
 export class ValidationError extends Error {

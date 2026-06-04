@@ -101,8 +101,19 @@ export interface IAppointment extends Document {
   // Referral information (when bookingFor === "patient")
   referralInfo?: IReferralInfo;
 
-  // Routing status for professional assignment workflow
-  routingStatus: "pending" | "proposed" | "accepted" | "refused" | "general";
+  // Routing status for professional assignment workflow.
+  // "awaiting_admin": the auto-match cascade was exhausted (2 failed attempts,
+  // by refusal or 48h no-response) or no eligible pro existed — the dossier is
+  // returned to the admin "Demande de service" queue for a MANUAL decision
+  // (assign a specific pro, or send to the general pool). It is admin-only and
+  // is NOT visible to professionals in the general pull.
+  routingStatus:
+    | "pending"
+    | "proposed"
+    | "accepted"
+    | "refused"
+    | "general"
+    | "awaiting_admin";
 
   /**
    * Set when a client requests a fresh appointment with a *different* professional
@@ -111,8 +122,25 @@ export interface IAppointment extends Document {
    */
   isReturningClient?: boolean;
 
+  /**
+   * Self-declared emergency request: set when the client comes through the
+   * "Prendre un rendez-vous d'urgence" funnel. Surfaced to admins (alert email
+   * + "Urgence" badge in the service-requests queue) so urgent requests are
+   * triaged first. NOT a substitute for emergency services — the public
+   * emergency page directs life-threatening situations to 911 / 988.
+   */
+  isEmergency?: boolean;
+
   // Array of professional IDs this appointment has been proposed to
   proposedTo?: mongoose.Types.ObjectId[];
+
+  /**
+   * When the current targeted proposal was sent (routingStatus → "proposed").
+   * Drives the 48h no-response timeout (proposal-timeout cron): a proposal left
+   * unanswered past 48h is treated exactly like a refusal and advances the
+   * cascade. Re-stamped on every new proposal; irrelevant once not "proposed".
+   */
+  proposedAt?: Date;
 
   // Array of professional IDs who refused this appointment
   refusedBy?: mongoose.Types.ObjectId[];
@@ -392,10 +420,18 @@ const AppointmentSchema = new Schema<IAppointment>(
     // Routing status for professional assignment workflow
     routingStatus: {
       type: String,
-      enum: ["pending", "proposed", "accepted", "refused", "general"],
+      enum: [
+        "pending",
+        "proposed",
+        "accepted",
+        "refused",
+        "general",
+        "awaiting_admin",
+      ],
       default: "pending",
     },
     isReturningClient: { type: Boolean, default: false },
+    isEmergency: { type: Boolean, default: false },
     // Array of professional IDs this appointment has been proposed to
     proposedTo: [
       {
@@ -403,6 +439,8 @@ const AppointmentSchema = new Schema<IAppointment>(
         ref: "User",
       },
     ],
+    // When the current targeted proposal was sent (drives the 48h timeout).
+    proposedAt: { type: Date, required: false },
     // Array of professional IDs who refused this appointment
     refusedBy: [
       {

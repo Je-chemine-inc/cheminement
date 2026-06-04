@@ -5,7 +5,7 @@ import MedicalProfile from "@/models/MedicalProfile";
 import { migrateLegacyAvailabilitySlots } from "@/config/clinical-availability-grid";
 import {
   sendProfessionalNotification,
-  sendGeneralRequestAvailableNotification,
+  sendAdminRequestReturnedToQueueAlert,
 } from "@/lib/notifications";
 
 /**
@@ -770,11 +770,11 @@ export async function routeAppointmentToProfessionals(
       };
     }
 
-    // Pros who already refused THIS request must never be re-proposed nor
-    // re-emailed. This matters on a refusal-triggered re-route (see the refuse
-    // route, which re-runs this matcher); refusedBy is empty on first routing,
-    // so it's a no-op then. Excluding here also drops them from the general-pool
-    // broadcast below, which keys off `professionals`.
+    // Pros who already refused OR let a proposal lapse (48h no-response) must
+    // never be re-proposed nor re-emailed (§3.1: "en excluant les professionnels
+    // qui a refusé/ignoré"). Both the refuse route and the proposal-timeout cron
+    // add the pro to refusedBy before re-running this matcher; refusedBy is empty
+    // on first routing, so this is a no-op then.
     const refusedIds = new Set(
       (appointment.refusedBy ?? []).map((r) => String(r)),
     );
@@ -797,43 +797,33 @@ export async function routeAppointmentToProfessionals(
       ]),
     );
 
-    // Professionals who turned OFF "accepting new clients" must not receive new
-    // requests — neither via scored matching nor the general-pool broadcast.
-    // Legacy/undefined profiles count as accepting (only an explicit `false`
-    // opts out), mirroring the `$ne: false` filter on the scored query below.
-    const notAcceptingNewClientsIds = new Set(
-      (
-        await Profile.find({
-          userId: { $in: professionalIds },
-          acceptingNewClients: false,
-        }).select("userId")
-      ).map((p) => String(p.userId)),
-    );
-
-    // Broadcast helper: when a request lands in the GENERAL pool (no specific
-    // match), ping every active professional ACCEPTING new clients so it
-    // doesn't sit unseen in the "Propositions → Général" tab. Awaited (not
-    // fire-and-forget) so the sends complete before this function — itself
-    // wrapped in after() by the caller — resolves; otherwise Vercel may kill
-    // the container mid-send.
-    const notifyGeneralPool = async () => {
-      const sends = professionals
-        .filter(
-          (p) => p.email && !notAcceptingNewClientsIds.has(String(p._id)),
-        )
-        .map((p) =>
-          sendGeneralRequestAvailableNotification({
-            professionalName: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
-            professionalEmail: p.email as string,
-            locale: (p as { language?: string }).language === "en" ? "en" : "fr",
-          }).catch((err) =>
-            console.error(
-              `[routing] general-pool notify failed for ${p._id}:`,
-              err,
-            ),
-          ),
-        );
-      await Promise.allSettled(sends);
+    // When the auto-match cascade is exhausted (2 failed attempts) or no
+    // eligible pro exists, the dossier is RETURNED to the admin "Demande de
+    // service" queue (routingStatus "awaiting_admin") for a MANUAL decision — it
+    // is NOT auto-broadcast to the general pool (that is now a deliberate admin
+    // action via mode:"general", or a pro release). Alert admins so a returned
+    // request doesn't sit unseen. Awaited (not fire-and-forget) so the send
+    // completes before this function — itself wrapped in after() by the caller —
+    // resolves; otherwise Vercel may kill the container mid-send.
+    const notifyAdminReturnedToQueue = async () => {
+      const populated = await Appointment.findById(appointmentId)
+        .populate("clientId", "firstName lastName email")
+        .lean();
+      if (!populated) return;
+      const c = populated.clientId as
+        | { firstName?: string; lastName?: string; email?: string }
+        | null;
+      const clientName =
+        `${c?.firstName ?? ""} ${c?.lastName ?? ""}`.trim() || "Client";
+      await sendAdminRequestReturnedToQueueAlert({
+        clientName,
+        clientEmail: c?.email?.trim() || "—",
+        motif: populated.issueType,
+        appointmentId: String(populated._id),
+        attempts: populated.cascadeAttempts ?? 0,
+      }).catch((err) =>
+        console.error("[routing] returned-to-queue alert failed:", err),
+      );
     };
 
     // Get profiles for all professionals
@@ -910,12 +900,15 @@ export async function routeAppointmentToProfessionals(
       console.log(
         `No professionals found for ${isPatientChild ? "child" : "adult"} patients`,
       );
-      if (!(await commitRouting({ routingStatus: "general" }))) {
+      if (!(await commitRouting({
+        $set: { routingStatus: "awaiting_admin" },
+        $unset: { proposedTo: "", proposedAt: "" },
+      }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyGeneralPool();
+      await notifyAdminReturnedToQueue();
 
-      return { success: true, matches: [], routingStatus: "general" };
+      return { success: true, matches: [], routingStatus: "awaiting_admin" };
     }
 
     // HARD filter by gender preference (when the client stated one). A stated
@@ -931,14 +924,17 @@ export async function routeAppointmentToProfessionals(
 
     if (genderFilteredProfiles.length === 0) {
       console.log(
-        `No professional matching the "${preferredGender}" gender preference — routing to general pool`,
+        `No professional matching the "${preferredGender}" gender preference — returning to admin queue`,
       );
-      if (!(await commitRouting({ routingStatus: "general" }))) {
+      if (!(await commitRouting({
+        $set: { routingStatus: "awaiting_admin" },
+        $unset: { proposedTo: "", proposedAt: "" },
+      }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyGeneralPool();
+      await notifyAdminReturnedToQueue();
 
-      return { success: true, matches: [], routingStatus: "general" };
+      return { success: true, matches: [], routingStatus: "awaiting_admin" };
     }
 
     // ===== 3-LEVEL CASCADE — ONE professional per attempt =====
@@ -948,11 +944,13 @@ export async function routeAppointmentToProfessionals(
     //   candidate exists, relax immediately rather than burn the attempt with no pro.
     // Tentative 2 (1 refusal so far): RELAXED — any reasonable match (score >= 20);
     //   availability is no longer required (still used to rank).
-    // Tentative 3 (>= 2 refusals): no targeted pick below → falls to the general pool.
+    // Tentative 3 (>= 2 attempts): no targeted pick below → the dossier RETURNS
+    //   to the admin "Demande de service" queue (routingStatus "awaiting_admin")
+    //   for a manual decision; it is NOT auto-dumped to the general pool.
     // The attempt counter is `cascadeAttempts` (incremented ONLY by a genuine
-    // refusal in the refuse re-route), NOT refusedBy.length — refusedBy is also
-    // written by release/reassign and must not advance the cascade. The 100/20
-    // thresholds map the client's "100% / 50%" tiers — tune freely.
+    // refusal in the refuse re-route OR a 48h timeout), NOT refusedBy.length —
+    // refusedBy is also written by release/reassign and must not advance the
+    // cascade. The 100/20 thresholds map the client's "100% / 50%" tiers.
     const STRICT_SCORE = 100;
     const RELAXED_SCORE = 20;
     const MAX_TARGETED_ATTEMPTS = 2;
@@ -1006,17 +1004,21 @@ export async function routeAppointmentToProfessionals(
       : null;
 
     // One pro per attempt. An empty list means "no targeted candidate for this
-    // attempt (or attempts exhausted) → general pool" — handled just below,
-    // reusing the existing general/proposed commit + notify machinery unchanged.
+    // attempt (or the 2-attempt cascade is exhausted) → return to the admin
+    // queue (awaiting_admin) for a manual decision", NOT an auto-dump to the
+    // general pool.
     const topMatches: ProfessionalMatch[] = selected ? [selected] : [];
 
     if (topMatches.length === 0) {
-      if (!(await commitRouting({ routingStatus: "general" }))) {
+      if (!(await commitRouting({
+        $set: { routingStatus: "awaiting_admin" },
+        $unset: { proposedTo: "", proposedAt: "" },
+      }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyGeneralPool();
+      await notifyAdminReturnedToQueue();
 
-      return { success: true, matches: [], routingStatus: "general" };
+      return { success: true, matches: [], routingStatus: "awaiting_admin" };
     }
 
     // Propose to the single selected professional for this attempt — only if
@@ -1027,6 +1029,8 @@ export async function routeAppointmentToProfessionals(
       !(await commitRouting({
         routingStatus: "proposed",
         proposedTo: proposedIds,
+        // Stamp the proposal time so the 48h no-response timeout can fire.
+        proposedAt: new Date(),
       }))
     ) {
       return { success: false, matches: [], routingStatus: "skipped" };

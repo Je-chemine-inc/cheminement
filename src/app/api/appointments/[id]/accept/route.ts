@@ -70,9 +70,17 @@ export async function POST(
 
     // Check if this professional is allowed to accept
     // (either proposed to them, or in general list)
-    const isProposed = appointment.proposedTo?.some(
-      (pId: { toString: () => string }) => pId.toString() === session.user.id,
-    );
+    // A pro may accept ONLY a request that is actively proposed to them OR sitting
+    // in the general pool. Keying isProposed on routingStatus too (not just
+    // proposedTo membership) ensures a dossier returned to the admin queue
+    // (routingStatus "awaiting_admin") can never be accepted by a pro even if a
+    // stale proposedTo entry survived — it is an admin-only decision.
+    const isProposed =
+      appointment.routingStatus === "proposed" &&
+      (appointment.proposedTo?.some(
+        (pId: { toString: () => string }) => pId.toString() === session.user.id,
+      ) ??
+        false);
     const isGeneral =
       appointment.routingStatus === "general" ||
       appointment.routingStatus === "refused";
@@ -101,11 +109,23 @@ export async function POST(
     // filter (professionalId null + status pending) lets exactly one win; the
     // loser gets the null below → 409, instead of silently overwriting the match.
     const updatedAppointment = await Appointment.findOneAndUpdate(
-      { _id: id, professionalId: null, status: "pending" },
       {
-        professionalId: session.user.id,
-        routingStatus: "accepted",
-        matchedAt: new Date(),
+        _id: id,
+        professionalId: null,
+        status: "pending",
+        // Belt-and-suspenders: only acceptable routing states can be claimed, so
+        // a row mid-re-route ("pending") or returned to the admin queue
+        // ("awaiting_admin") can't be claimed even if the checks above raced.
+        routingStatus: { $in: ["proposed", "general", "refused"] },
+      },
+      {
+        $set: {
+          professionalId: session.user.id,
+          routingStatus: "accepted",
+          matchedAt: new Date(),
+        },
+        // Clear the targeted-proposal bookkeeping now that a pro is locked in.
+        $unset: { proposedTo: "", proposedAt: "" },
       },
       { new: true },
     )
