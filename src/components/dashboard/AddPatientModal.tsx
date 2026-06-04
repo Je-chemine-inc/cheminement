@@ -21,7 +21,9 @@ export default function AddPatientModal({
   onClose,
   onSuccess,
 }: AddPatientModalProps) {
+  // `t` (legal copy reused from member signup) + `tm` (this modal's labels).
   const t = useTranslations("Auth.memberSignup");
+  const tm = useTranslations("AdminAddUserModal");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -69,7 +71,7 @@ export default function AddPatientModal({
       setAgreeToTerms(false);
       setAcceptPrivacyPolicy(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create patient");
+      setError(err instanceof Error ? err.message : tm("errCreatePatient"));
     } finally {
       setIsLoading(false);
     }
@@ -105,10 +107,10 @@ export default function AddPatientModal({
             </div>
             <div>
               <h2 className="text-xl font-serif font-light text-foreground">
-                Add New Patient
+                {tm("addPatientTitle")}
               </h2>
               <p className="text-sm text-muted-foreground font-light">
-                Create a new patient account
+                {tm("addPatientSubtitle")}
               </p>
             </div>
           </div>
@@ -134,7 +136,7 @@ export default function AddPatientModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="font-light">
-                  First Name *
+                  {tm("firstName")} *
                 </Label>
                 <Input
                   id="firstName"
@@ -150,7 +152,7 @@ export default function AddPatientModal({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="font-light">
-                  Last Name *
+                  {tm("lastName")} *
                 </Label>
                 <Input
                   id="lastName"
@@ -168,7 +170,7 @@ export default function AddPatientModal({
 
             <div className="space-y-2">
               <Label htmlFor="email" className="font-light">
-                Email Address *
+                {tm("email")} *
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,7 +189,7 @@ export default function AddPatientModal({
 
             <div className="space-y-2">
               <Label htmlFor="password" className="font-light">
-                Password *
+                {tm("password")} *
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -201,7 +203,7 @@ export default function AddPatientModal({
                   required
                   disabled={isLoading}
                   className="pl-10 font-light"
-                  placeholder="Minimum 8 characters"
+                  placeholder={tm("passwordPlaceholder")}
                   minLength={8}
                 />
               </div>
@@ -209,7 +211,7 @@ export default function AddPatientModal({
 
             <div className="space-y-2">
               <Label htmlFor="phone" className="font-light">
-                Phone Number
+                {tm("phone")}
               </Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -227,7 +229,7 @@ export default function AddPatientModal({
 
             <div className="space-y-2">
               <Label htmlFor="location" className="font-light">
-                Location
+                {tm("location")}
               </Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -240,7 +242,7 @@ export default function AddPatientModal({
                   }
                   disabled={isLoading}
                   className="pl-10 font-light"
-                  placeholder="City, State/Country"
+                  placeholder={tm("locationPlaceholder")}
                 />
               </div>
             </div>
@@ -299,7 +301,7 @@ export default function AddPatientModal({
               disabled={isLoading}
               className="font-light"
             >
-              Cancel
+              {tm("cancel")}
             </Button>
             <Button
               type="submit"
@@ -308,7 +310,7 @@ export default function AddPatientModal({
               }
               className="font-light tracking-wide transition-all duration-300 hover:scale-105"
             >
-              {isLoading ? "Creating..." : "Create Patient"}
+              {isLoading ? tm("creating") : tm("createPatient")}
             </Button>
           </div>
         </form>

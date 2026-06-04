@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2, Smartphone, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ interface Props {
 type Step = "init" | "code" | "done";
 
 export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
+  const t = useTranslations("PhoneVerificationModal");
   const [step, setStep] = useState<Step>("init");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? "Failed to initiate verification");
+        setError(data.error ?? t("errInitiate"));
         return;
       }
       if (data.alreadyVerified) {
@@ -76,10 +78,10 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Failed to send SMS");
+        setError(data.error ?? t("errSendSms"));
         return;
       }
-      setInfo("Code sent — check your phone.");
+      setInfo(t("infoCodeSent"));
       setStep("code");
     } finally {
       setBusy(false);
@@ -101,7 +103,7 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Invalid code");
+        setError(data.error ?? t("errInvalidCode"));
         return;
       }
       setStep("done");
@@ -121,11 +123,9 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-primary" />
-            Verify your phone
+            {t("title")}
           </DialogTitle>
-          <DialogDescription>
-            We need to confirm your phone number before your first booking.
-          </DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         {error && (
@@ -141,12 +141,10 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
 
         {step === "init" && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              We will send a verification code to the phone number on your account.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("initInfo")}</p>
             <Button className="w-full" disabled={busy} onClick={initiate}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Send verification code
+              {t("sendCode")}
             </Button>
           </div>
         )}
@@ -154,10 +152,10 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
         {step === "code" && (
           <form onSubmit={verifyCode} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Code sent to <span className="font-medium">{phoneMasked}</span>. Enter it below.
+              {t("codeSentTo", { phone: phoneMasked })}
             </p>
             <div className="space-y-1.5">
-              <Label htmlFor="phone-code">Verification code</Label>
+              <Label htmlFor="phone-code">{t("codeLabel")}</Label>
               <Input
                 id="phone-code"
                 inputMode="numeric"
@@ -171,7 +169,7 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
             </div>
             <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirm
+              {t("confirm")}
             </Button>
             <Button
               type="button"
@@ -181,7 +179,7 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
               disabled={busy}
               onClick={resendSms}
             >
-              Resend code
+              {t("resend")}
             </Button>
           </form>
         )}
@@ -189,8 +187,8 @@ export function PhoneVerificationModal({ open, onSuccess, onClose }: Props) {
         {step === "done" && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <CheckCircle2 className="h-10 w-10 text-green-500" />
-            <p className="text-sm font-medium">Phone verified!</p>
-            <p className="text-xs text-muted-foreground">Continuing your booking…</p>
+            <p className="text-sm font-medium">{t("verified")}</p>
+            <p className="text-xs text-muted-foreground">{t("continuing")}</p>
           </div>
         )}
       </DialogContent>

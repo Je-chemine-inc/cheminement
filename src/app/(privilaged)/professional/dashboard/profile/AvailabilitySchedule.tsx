@@ -191,12 +191,15 @@ const AvailabilitySchedule = ({
           setProfile({ ...profile, availability } as IProfile);
         }
       } else {
-        await profileAPI.update({ availability });
-        const updatedProfile = {
-          ...profile,
-          availability,
-        } as IProfile;
-        setProfile(updatedProfile);
+        // Use the server's full updated doc as the source of truth. Rebuilding
+        // from a stale local `profile` spread could push an outdated value of a
+        // sibling-owned field (e.g. acceptingNewClients, just toggled elsewhere)
+        // back into shared page state and visually revert it. Fall back to the
+        // local spread only if the PUT returns nothing.
+        const updated = await profileAPI.update({ availability });
+        setProfile(
+          (updated as IProfile) ?? ({ ...profile, availability } as IProfile),
+        );
       }
     } catch (error) {
       console.error("Error updating profile:", error);

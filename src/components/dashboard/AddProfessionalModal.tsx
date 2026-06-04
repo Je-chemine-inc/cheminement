@@ -29,7 +29,9 @@ export default function AddProfessionalModal({
   onClose,
   onSuccess,
 }: AddProfessionalModalProps) {
+  // `t` (legal copy reused from professional signup) + `tm` (this modal's labels).
   const t = useTranslations("Auth.professionalSignup");
+  const tm = useTranslations("AdminAddUserModal");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -90,9 +92,7 @@ export default function AddProfessionalModal({
       setAgreeToTerms(false);
       setAcceptPrivacyPolicy(false);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create professional",
-      );
+      setError(err instanceof Error ? err.message : tm("errCreatePro"));
     } finally {
       setIsLoading(false);
     }
@@ -130,10 +130,10 @@ export default function AddProfessionalModal({
             </div>
             <div>
               <h2 className="text-xl font-serif font-light text-foreground">
-                Add New Professional
+                {tm("addProTitle")}
               </h2>
               <p className="text-sm text-muted-foreground font-light">
-                Create a new professional account
+                {tm("addProSubtitle")}
               </p>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function AddProfessionalModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="font-light">
-                  First Name *
+                  {tm("firstName")} *
                 </Label>
                 <Input
                   id="firstName"
@@ -175,7 +175,7 @@ export default function AddProfessionalModal({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="font-light">
-                  Last Name *
+                  {tm("lastName")} *
                 </Label>
                 <Input
                   id="lastName"
@@ -193,7 +193,7 @@ export default function AddProfessionalModal({
 
             <div className="space-y-2">
               <Label htmlFor="email" className="font-light">
-                Email Address *
+                {tm("email")} *
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -212,7 +212,7 @@ export default function AddProfessionalModal({
 
             <div className="space-y-2">
               <Label htmlFor="password" className="font-light">
-                Password *
+                {tm("password")} *
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -226,7 +226,7 @@ export default function AddProfessionalModal({
                   required
                   disabled={isLoading}
                   className="pl-10 font-light"
-                  placeholder="Minimum 8 characters"
+                  placeholder={tm("passwordPlaceholder")}
                   minLength={8}
                 />
               </div>
@@ -234,7 +234,7 @@ export default function AddProfessionalModal({
 
             <div className="space-y-2">
               <Label htmlFor="phone" className="font-light">
-                Phone Number
+                {tm("phone")}
               </Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -252,7 +252,7 @@ export default function AddProfessionalModal({
 
             <div className="space-y-2">
               <Label htmlFor="location" className="font-light">
-                Location
+                {tm("location")}
               </Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -265,7 +265,7 @@ export default function AddProfessionalModal({
                   }
                   disabled={isLoading}
                   className="pl-10 font-light"
-                  placeholder="City, State/Country"
+                  placeholder={tm("locationPlaceholder")}
                 />
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function AddProfessionalModal({
           <div className="space-y-4 pt-4 border-t border-border/40">
             <div className="space-y-2">
               <Label htmlFor="specialty" className="font-light">
-                Specialty
+                {tm("specialty")}
               </Label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -288,14 +288,14 @@ export default function AddProfessionalModal({
                   }
                   disabled={isLoading}
                   className="pl-10 font-light"
-                  placeholder="e.g., Clinical Psychologist"
+                  placeholder={tm("specialtyPlaceholder")}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="license" className="font-light">
-                License Number
+                {tm("license")}
               </Label>
               <Input
                 id="license"
@@ -304,7 +304,7 @@ export default function AddProfessionalModal({
                 onChange={(e) => handleInputChange("license", e.target.value)}
                 disabled={isLoading}
                 className="font-light"
-                placeholder="Professional license number"
+                placeholder={tm("licensePlaceholder")}
               />
             </div>
           </div>
@@ -362,7 +362,7 @@ export default function AddProfessionalModal({
               disabled={isLoading}
               className="font-light"
             >
-              Cancel
+              {tm("cancel")}
             </Button>
             <Button
               type="submit"
@@ -371,7 +371,7 @@ export default function AddProfessionalModal({
               }
               className="font-light tracking-wide transition-all duration-300 hover:scale-105"
             >
-              {isLoading ? "Creating..." : "Create Professional"}
+              {isLoading ? tm("creating") : tm("createProfessional")}
             </Button>
           </div>
         </form>

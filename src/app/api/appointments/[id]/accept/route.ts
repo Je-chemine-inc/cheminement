@@ -84,14 +84,24 @@ export async function POST(
       );
     }
 
+    // NOTE: self-claiming from the general pool is open to EVERY professional,
+    // even one with "accepting new clients" OFF (client feedback §2 — the pool
+    // is an always-available PULL). The toggle gates only the automatic PUSH
+    // (cascade proposals + broadcast emails), handled in the matcher.
+
     // Accept = MATCH only. We deliberately keep status "pending" (no real date
     // yet) and just lock in the professional via routingStatus "accepted". The
     // first appointment date is set later by the pro via the dedicated
     // "Confirmer le 1er RDV" action (POST /api/appointments/[id]/schedule-first),
     // which is what flips status to "scheduled" and sends the confirmation +
     // payment-invitation email. Acceptance sends ONLY the jumelage email.
-    const updatedAppointment = await Appointment.findByIdAndUpdate(
-      id,
+    // Atomic claim: only succeeds if the request is STILL unassigned and pending.
+    // The pre-checks above can race — with the general pool now open to every
+    // pro (§2), two pros can "piger" the same client at the same instant. The
+    // filter (professionalId null + status pending) lets exactly one win; the
+    // loser gets the null below → 409, instead of silently overwriting the match.
+    const updatedAppointment = await Appointment.findOneAndUpdate(
+      { _id: id, professionalId: null, status: "pending" },
       {
         professionalId: session.user.id,
         routingStatus: "accepted",
@@ -101,6 +111,14 @@ export async function POST(
     )
       .populate("clientId", "firstName lastName email phone location")
       .populate("professionalId", "firstName lastName email phone");
+
+    if (!updatedAppointment) {
+      // Lost the race — another professional claimed this request first.
+      return NextResponse.json(
+        { error: "Appointment already assigned to a professional" },
+        { status: 409 },
+      );
+    }
 
     if (updatedAppointment && updatedAppointment.clientId) {
       const client = updatedAppointment.clientId as unknown as {

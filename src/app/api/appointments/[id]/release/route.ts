@@ -4,11 +4,7 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import {
-  sendAdminAppointmentMovedToGeneralAlert,
-  sendMatchUpdatedEmail,
-} from "@/lib/notifications";
-import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { sendAdminAppointmentMovedToGeneralAlert } from "@/lib/notifications";
 
 /**
  * POST /api/appointments/[id]/release
@@ -92,32 +88,10 @@ export async function POST(
       ),
     );
 
-    // Reassure the client (beneficiary, per LSSSS art. 14) that we're
-    // re-matching them — they were told "matched" and shouldn't be left
-    // wondering when the pro steps back.
-    const recipient = resolveAppointmentRecipient(
-      {
-        bookingFor: appointment.bookingFor,
-        lovedOneInfo: appointment.lovedOneInfo,
-      },
-      {
-        firstName: clientPop?.firstName,
-        lastName: clientPop?.lastName,
-        email: clientPop?.email,
-        language: clientPop?.language,
-      },
-    );
-    if (recipient.email) {
-      after(() =>
-        sendMatchUpdatedEmail({
-          clientName: recipient.name,
-          clientEmail: recipient.email,
-          locale: recipient.language,
-        }).catch((err) =>
-          console.error("[release] client re-match email error:", err),
-        ),
-      );
-    }
+    // §3.1: the client is NOT emailed when a pro steps back. The release stays
+    // silent to the client (admins are alerted above) to avoid the confusing
+    // "your match changed / cancelled" message. The client's next email is the
+    // jumelage confirmation once a NEW pro accepts.
 
     return NextResponse.json({ id: String(appointment._id), released: true });
   } catch (error) {

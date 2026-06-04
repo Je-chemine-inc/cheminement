@@ -78,6 +78,25 @@ export interface IPlatformContact {
   supportEmail: string;
 }
 
+/** Footer social-media hyperlinks (admin-editable). Empty string ⇒ icon hidden. */
+export interface ISocialLinks {
+  facebook: string;
+  x: string;
+  instagram: string;
+  linkedin: string;
+}
+
+/**
+ * Current footer URLs, kept as defaults so existing installs keep showing the
+ * same icons until an admin edits them. Also the fallback in getSocialLinks().
+ */
+export const DEFAULT_SOCIAL_LINKS: ISocialLinks = {
+  facebook: "https://facebook.com/jechemine",
+  x: "https://x.com/jechemine",
+  instagram: "https://instagram.com/jechemine",
+  linkedin: "https://linkedin.com/company/jechemine",
+};
+
 export interface IPlatformSettings extends Document {
   defaultPricing: {
     solo: number;
@@ -94,6 +113,16 @@ export interface IPlatformSettings extends Document {
   emailSettings: IEmailSettings;
   /** Courriel de dépôt Interac affiché aux clients (ex. paiements@domaine.com). */
   interacDepositEmail?: string;
+  /** Footer social-media links (Facebook, X, Instagram, LinkedIn). */
+  socialLinks: ISocialLinks;
+  /**
+   * Adresse(s) recevant les notifications/alertes admin de la plateforme (ex.
+   * support@ ou un compte dédié). Si renseignée, elle REMPLACE l'envoi aux
+   * comptes admin individuels (séparer par des virgules pour plusieurs). Voir
+   * getAdminAlertRecipients() dans notifications.ts. Interne — jamais exposée
+   * via l'API publique platform-contact.
+   */
+  adminAlertEmail?: string;
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -293,6 +322,20 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       type: String,
       trim: true,
       default: "",
+    },
+    // Recipient for admin/transactional alerts. Empty ⇒ fall back to admin
+    // accounts / ADMIN_ALERT_EMAIL (see getAdminAlertRecipients).
+    adminAlertEmail: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Footer social-media hyperlinks (admin-editable; empty hides the icon).
+    socialLinks: {
+      facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },
+      x: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.x },
+      instagram: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.instagram },
+      linkedin: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.linkedin },
     },
     platformContact: {
       physicalAddress: {

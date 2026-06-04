@@ -3136,21 +3136,47 @@ export async function sendProfessionalRejectionEmail(
 }
 
 /** Alerte admins : un client a choisi Interac / virement (entente de confiance à valider). */
+/**
+ * Resolve where platform/admin alerts are delivered. An admin-configured
+ * dedicated address (PlatformSettings.adminAlertEmail) takes PRECEDENCE so the
+ * team can route ALL transactional notifications to one mailbox (client §3.2)
+ * instead of personal admin accounts. Comma-separated values allowed. Falls back
+ * to admin user accounts, then the ADMIN_ALERT_EMAIL env var. Callers must have
+ * an open DB connection (they all call connectToDatabase() first).
+ */
+async function getAdminAlertRecipients(): Promise<string[]> {
+  const settings = await PlatformSettings.findOne()
+    .select("adminAlertEmail")
+    .lean();
+  const configured = (settings?.adminAlertEmail ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (configured.length > 0) return configured;
+
+  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
+    .select("email")
+    .lean();
+  const userEmails = adminUsers
+    .map((a) => a.email)
+    .filter((e): e is string => Boolean(e));
+  if (userEmails.length > 0) return userEmails;
+
+  if (process.env.ADMIN_ALERT_EMAIL) {
+    return process.env.ADMIN_ALERT_EMAIL.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export async function sendAdminInteracTrustRequestAlert(data: {
   clientName: string;
   clientEmail: string;
   appointmentId: string;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let emails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (emails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    emails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const emails = await getAdminAlertRecipients();
   if (emails.length === 0) {
     console.warn(
       "[admin_interac_trust_request] No admin emails — set ADMIN_ALERT_EMAIL or admin users.",
@@ -4166,15 +4192,7 @@ export async function sendAdminNoPaymentBeforeMeetingAlert(data: {
   appointmentId: string;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let adminEmails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const adminEmails = await getAdminAlertRecipients();
   if (adminEmails.length === 0) return;
 
   const branding = await getBranding();
@@ -4282,15 +4300,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
   appointmentId: string;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let adminEmails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const adminEmails = await getAdminAlertRecipients();
   if (adminEmails.length === 0) return;
 
   const branding = await getBranding();
@@ -4350,15 +4360,7 @@ export async function sendAdminAppointmentMovedToGeneralAlert(data: {
   refusalCount: number;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let adminEmails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const adminEmails = await getAdminAlertRecipients();
   if (adminEmails.length === 0) return;
 
   const branding = await getBranding();
@@ -4421,15 +4423,7 @@ export async function sendAdminUnscheduledMatchEscalation(data: {
   daysWaiting: number;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let adminEmails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const adminEmails = await getAdminAlertRecipients();
   if (adminEmails.length === 0) return;
 
   const branding = await getBranding();
@@ -4491,15 +4485,7 @@ export async function sendAdminNewProfessionalSignupAlert(data: {
   phone?: string;
 }): Promise<void> {
   await connectToDatabase();
-  const adminUsers = await User.find({ isAdmin: true, role: "admin" })
-    .select("email")
-    .lean();
-  let adminEmails = adminUsers
-    .map((a) => a.email)
-    .filter((e): e is string => Boolean(e));
-  if (adminEmails.length === 0 && process.env.ADMIN_ALERT_EMAIL) {
-    adminEmails = process.env.ADMIN_ALERT_EMAIL.split(",").map((s) => s.trim());
-  }
+  const adminEmails = await getAdminAlertRecipients();
   if (adminEmails.length === 0) {
     console.warn("[sendAdminNewProfessionalSignupAlert] no admin recipients");
     return;

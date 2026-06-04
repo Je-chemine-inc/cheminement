@@ -6,13 +6,12 @@ import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
+import Profile from "@/models/Profile";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import {
   sendProfessionalNotification,
-  sendMatchUpdatedEmail,
   sendGeneralRequestAvailableNotification,
 } from "@/lib/notifications";
-import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 /**
@@ -87,9 +86,22 @@ export async function POST(
               role: "professional",
               status: "active",
             }).select("firstName lastName email language");
+            // Exclude pros who turned OFF "accepting new clients" — they
+            // shouldn't be pinged about new general-pool requests. Legacy/
+            // undefined profiles count as accepting (only explicit false opts out).
+            const notAcceptingIds = new Set(
+              (
+                await Profile.find({
+                  userId: { $in: pros.map((p) => p._id) },
+                  acceptingNewClients: false,
+                }).select("userId")
+              ).map((p) => String(p.userId)),
+            );
             await Promise.allSettled(
               pros
-                .filter((p) => p.email)
+                .filter(
+                  (p) => p.email && !notAcceptingIds.has(String(p._id)),
+                )
                 .map((p) =>
                   sendGeneralRequestAvailableNotification({
                     professionalName: `${p.firstName ?? ""} ${
@@ -116,8 +128,10 @@ export async function POST(
 
       // mode === "auto": reset to a clean pending state, then run the matcher
       // (it only routes when routingStatus === "pending" && no professionalId).
+      // Reset cascadeAttempts so a deliberate admin re-match restarts at Tentative
+      // 1 (strict); refusedBy is kept, so pros who already refused stay excluded.
       await Appointment.findByIdAndUpdate(id, {
-        $set: { routingStatus: "pending" },
+        $set: { routingStatus: "pending", cascadeAttempts: 0 },
         $unset: { professionalId: "", matchedAt: "", proposedTo: "" },
       });
       const result = await routeAppointmentToProfessionals(id);
@@ -214,35 +228,10 @@ export async function POST(
       language?: string;
     } | null;
 
-    // On REASSIGNMENT, reassure the client (beneficiary, per LSSSS art. 14):
-    // they were matched with another pro and shouldn't be left wondering. Not
-    // sent on a first assignment — the booking acknowledgement already covered
-    // "we're looking for a match".
-    if (isReassignment && client?.email) {
-      const recipient = resolveAppointmentRecipient(
-        {
-          bookingFor: appointment.bookingFor,
-          lovedOneInfo: appointment.lovedOneInfo,
-        },
-        {
-          firstName: client.firstName,
-          lastName: client.lastName,
-          email: client.email,
-          language: client.language,
-        },
-      );
-      if (recipient.email) {
-        after(() =>
-          sendMatchUpdatedEmail({
-            clientName: recipient.name,
-            clientEmail: recipient.email,
-            locale: recipient.language,
-          }).catch((err) =>
-            console.error("[admin reassign] client re-match email error:", err),
-          ),
-        );
-      }
-    }
+    // §3.1: do NOT email the client on reassignment. Moving them to another pro
+    // (proposed, not yet accepted) stays SILENT — the client's only matching
+    // email is the jumelage confirmation once the NEW pro actually accepts.
+    // Admins still track the move in their dashboard.
 
     // Notify the chosen professional that a request was routed to them so they
     // can review and accept it. The request has no date/time yet (booking

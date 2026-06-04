@@ -189,10 +189,16 @@ function GuestCardSetupForm({
   onError: (error: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("Auth.memberSignup");
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Explicit tone so success/error styling doesn't depend on matching the
+  // (now localized) message text.
+  const [messageType, setMessageType] = useState<"success" | "error" | null>(
+    null,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,6 +207,7 @@ function GuestCardSetupForm({
 
     setLoading(true);
     setMessage(null);
+    setMessageType(null);
 
     const { error, setupIntent } = await stripe.confirmSetup({
       elements,
@@ -208,8 +215,9 @@ function GuestCardSetupForm({
     });
 
     if (error) {
-      const msg = error.message || "An error occurred";
+      const msg = error.message || t("cardErrorOccurred");
       setMessage(msg);
+      setMessageType("error");
       onError(msg);
       setLoading(false);
       return;
@@ -217,17 +225,19 @@ function GuestCardSetupForm({
 
     const pm = setupIntent?.payment_method;
     const paymentMethodId =
-      typeof pm === "string" ? pm : pm ? (pm as any).id : null;
+      typeof pm === "string" ? pm : pm ? (pm as { id: string }).id : null;
 
     if (!paymentMethodId) {
-      const msg = "Unable to retrieve payment method id";
+      const msg = t("cardNoPmId");
       setMessage(msg);
+      setMessageType("error");
       onError(msg);
       setLoading(false);
       return;
     }
 
-    setMessage("Card added successfully.");
+    setMessage(t("cardAdded"));
+    setMessageType("success");
     onSuccess(paymentMethodId);
     setLoading(false);
   };
@@ -241,9 +251,7 @@ function GuestCardSetupForm({
       {message && (
         <p
           className={`text-sm ${
-            message.includes("success") || message.includes("successfully")
-              ? "text-green-700"
-              : "text-destructive"
+            messageType === "success" ? "text-green-700" : "text-destructive"
           }`}
         >
           {message}
@@ -255,12 +263,11 @@ function GuestCardSetupForm({
         disabled={!canSubmit}
         className="w-full h-11 px-8 rounded-md font-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground"
       >
-        {loading ? "Adding..." : "Add card"}
+        {loading ? t("cardAdding") : t("addCard")}
       </button>
 
       <p className="text-xs text-muted-foreground text-center">
-        Secured by Stripe. Your card details are encrypted and never stored
-        on our servers.
+        {t("cardSecured")}
       </p>
     </form>
   );
@@ -414,7 +421,7 @@ export default function MemberSignupPage() {
         };
 
         if (!res.ok) {
-          throw new Error(data.error || "Failed to initialize card input");
+          throw new Error(data.error || t("cardInitFailed"));
         }
 
         if (!cancelled) {
@@ -423,7 +430,7 @@ export default function MemberSignupPage() {
       } catch (e) {
         if (!cancelled) {
           setStripeCardInitError(
-            e instanceof Error ? e.message : "Failed to initialize card input",
+            e instanceof Error ? e.message : t("cardInitFailed"),
           );
         }
       } finally {
@@ -442,6 +449,7 @@ export default function MemberSignupPage() {
     formData.firstName,
     formData.lastName,
     stripeCardPaymentMethodId,
+    t,
   ]);
 
   const sections = [
@@ -1814,7 +1822,7 @@ export default function MemberSignupPage() {
               <div className="space-y-4 rounded-lg border border-border/40 bg-muted/30 p-4">
                 {stripeCardPaymentMethodId ? (
                   <p className="text-sm text-green-700 font-light">
-                    Carte ajoutée avec succès.
+                    {t("cardAdded")}
                   </p>
                 ) : (
                   <>
@@ -1826,7 +1834,7 @@ export default function MemberSignupPage() {
 
                     {stripeCardInitLoading || !stripeCardClientSecret ? (
                       <p className="text-sm text-muted-foreground font-light">
-                        Initialisation du champ de carte sécurisé...
+                        {t("cardInitLoading")}
                       </p>
                     ) : (
                       <Elements

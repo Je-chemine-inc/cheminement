@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   Building2,
+  Share2,
 } from "lucide-react";
 
 interface EmailTemplateConfig {
@@ -54,6 +55,21 @@ interface PlatformContact {
   phoneNumber: string;
   supportEmail: string;
 }
+
+interface SocialLinks {
+  facebook: string;
+  x: string;
+  instagram: string;
+  linkedin: string;
+}
+
+// Brand names are proper nouns — not translated.
+const SOCIAL_FIELDS = [
+  { key: "facebook", label: "Facebook" },
+  { key: "x", label: "X / Twitter" },
+  { key: "instagram", label: "Instagram" },
+  { key: "linkedin", label: "LinkedIn" },
+] as const;
 
 const EMPTY_ADDRESS: PhysicalAddress = {
   street: "",
@@ -98,6 +114,8 @@ interface PlatformSettings {
   emailSettings: EmailSettings;
   platformContact?: PlatformContact;
   interacDepositEmail?: string;
+  adminAlertEmail?: string;
+  socialLinks?: SocialLinks;
   createdAt: string;
   updatedAt: string;
 }
@@ -265,6 +283,8 @@ export default function SettingsPage() {
           emailSettings: settings.emailSettings,
           platformContact: settings.platformContact,
           interacDepositEmail: settings.interacDepositEmail,
+          adminAlertEmail: settings.adminAlertEmail,
+          socialLinks: settings.socialLinks,
         }),
       });
 
@@ -525,7 +545,7 @@ export default function SettingsPage() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {t("refresh")}
           </button>
           <button
             onClick={handleSave}
@@ -751,7 +771,59 @@ export default function SettingsPage() {
                 {t("interacDepositEmailHelp")}
               </p>
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("adminAlertEmail")}
+              </label>
+              <input
+                type="text"
+                value={settings.adminAlertEmail ?? ""}
+                onChange={(e) =>
+                  updateSettings("adminAlertEmail", e.target.value)
+                }
+                placeholder={t("adminAlertEmailPlaceholder")}
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("adminAlertEmailHelp")}
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* Social Media Links Section */}
+        <div className="rounded-xl bg-card p-6 border border-border/40">
+          <div className="flex items-center gap-2 mb-2">
+            <Share2 className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-serif font-light text-foreground">
+              {t("socialLinks")}
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">
+            {t("socialLinksDescription")}
+          </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            {SOCIAL_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-sm font-light text-muted-foreground mb-2">
+                  {label}
+                </label>
+                <input
+                  type="url"
+                  value={settings.socialLinks?.[key] ?? ""}
+                  onChange={(e) =>
+                    updateSettings(key, e.target.value, "socialLinks")
+                  }
+                  placeholder={t("socialLinksPlaceholder")}
+                  className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            {t("socialLinksHelp")}
+          </p>
         </div>
 
         {/* Default Pricing Section */}

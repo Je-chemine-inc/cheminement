@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Instagram, Linkedin, Facebook } from "lucide-react";
 import { XLogoIcon } from "@/components/icons/XLogoIcon";
 import { getLegalTitles } from "@/lib/legal-content";
+import { getSocialLinks } from "@/lib/platform-contact";
 import type { LegalDocumentLocale } from "@/models/LegalDocument";
 
 export async function Footer() {
@@ -13,6 +14,8 @@ export async function Footer() {
   const rawLocale = await getLocale();
   const locale: LegalDocumentLocale = rawLocale === "fr" ? "fr" : "en";
   const legalTitles = await getLegalTitles(locale);
+  // Admin-configurable footer social links; an empty URL hides that icon.
+  const social = await getSocialLinks();
 
   return (
     <footer className="bg-primary text-primary-foreground pt-16 pb-8">
@@ -111,39 +114,50 @@ export async function Footer() {
                 />
               </div>
               <div className="flex flex-wrap gap-3">
-                <Link
-                  href="https://linkedin.com/company/jechemine"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
-                >
-                  <Linkedin size={18} />
-                </Link>
-                <Link
-                  href="https://x.com/jechemine"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t("socialX")}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
-                >
-                  <XLogoIcon size={18} />
-                </Link>
-                <Link
-                  href="https://facebook.com/jechemine"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
-                >
-                  <Facebook size={18} />
-                </Link>
-                <Link
-                  href="https://instagram.com/jechemine"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
-                >
-                  <Instagram size={18} />
-                </Link>
+                {social.linkedin && (
+                  <Link
+                    href={social.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="LinkedIn"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
+                  >
+                    <Linkedin size={18} />
+                  </Link>
+                )}
+                {social.x && (
+                  <Link
+                    href={social.x}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t("socialX")}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
+                  >
+                    <XLogoIcon size={18} />
+                  </Link>
+                )}
+                {social.facebook && (
+                  <Link
+                    href={social.facebook}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Facebook"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
+                  >
+                    <Facebook size={18} />
+                  </Link>
+                )}
+                {social.instagram && (
+                  <Link
+                    href={social.instagram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Instagram"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-foreground/30 text-primary-foreground/70 transition-all hover:border-primary-foreground hover:text-primary-foreground"
+                  >
+                    <Instagram size={18} />
+                  </Link>
+                )}
               </div>
             </div>
           </div>

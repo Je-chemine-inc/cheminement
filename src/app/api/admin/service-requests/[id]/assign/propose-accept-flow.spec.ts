@@ -139,6 +139,16 @@ vi.mock("@/models/Appointment", () => ({
       }
       return h.makeQuery(h.store.appointment);
     },
+    // Atomic claim used by the accept route. The filter asserts the request is
+    // still unassigned + pending; the seeded appointment satisfies it, so we
+    // apply the update and return the doc (a real lost-race would return null).
+    findOneAndUpdate: (
+      _filter: Record<string, unknown>,
+      update: Record<string, unknown>,
+    ) => {
+      Object.assign(h.store.appointment, update);
+      return h.makeQuery(h.store.appointment);
+    },
     findOne: () => Promise.resolve(null), // no double-booking conflict
   },
 }));
@@ -289,8 +299,9 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(
       h.notif.sendAdminAppointmentMovedToGeneralAlert,
     ).toHaveBeenCalledTimes(1);
-    // and the client is reassured we're re-matching them
-    expect(h.notif.sendMatchUpdatedEmail).toHaveBeenCalledTimes(1);
+    // §3.1: the client is NOT emailed when a pro backs out — silent until a new
+    // pro accepts (admin-only alert above), to avoid the confusing message.
+    expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
   });
 
   it("admin reassigns a stuck matched request to a different pro", async () => {
@@ -331,7 +342,8 @@ describe("guest booking: admin propose → professional accept", () => {
     // previous pro excluded from re-matching; new pro notified
     expect((appt.refusedBy as unknown[]).map(String)).toContain(PRO_ID);
     expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
-    // client is reassured we matched them with another professional
-    expect(h.notif.sendMatchUpdatedEmail).toHaveBeenCalledTimes(1);
+    // §3.1: reassignment is SILENT to the client — no email until the new pro
+    // accepts (the jumelage confirmation). Only the new pro is notified.
+    expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
   });
 });

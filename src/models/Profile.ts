@@ -54,6 +54,14 @@ export interface IProfile extends Document {
   profileVisible?: boolean;
   /** Afficher la note moyenne sur le profil public. */
   showRating?: boolean;
+  /**
+   * Le professionnel accepte-t-il de NOUVEAUX clients ? Défaut: true.
+   * Si false, le jumelage automatique et la liste générale ne lui proposent
+   * plus de nouvelles demandes, et la liste générale lui est masquée. Les
+   * propositions et rendez-vous existants ne sont pas touchés. Permet au pro
+   * de contrôler son afflux de nouvelles demandes.
+   */
+  acceptingNewClients?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,6 +153,8 @@ const ProfileSchema = new Schema<IProfile>(
     visibleToProfessionals: { type: Boolean, default: true },
     profileVisible: { type: Boolean, default: true },
     showRating: { type: Boolean, default: true },
+    // Accepte de nouveaux clients (jumelage + liste générale). Défaut: true.
+    acceptingNewClients: { type: Boolean, default: true },
   },
   {
     timestamps: true,

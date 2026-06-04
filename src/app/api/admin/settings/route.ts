@@ -237,6 +237,62 @@ export async function PUT(req: NextRequest) {
         settings.interacDepositEmail = String(data.interacDepositEmail).trim();
       }
 
+      // Admin notification recipient (§3.2). Validate before saving — a bad
+      // value here would silently break every platform alert. Empty clears it
+      // (falls back to admin accounts / ADMIN_ALERT_EMAIL). Comma-separated allowed.
+      if (data.adminAlertEmail !== undefined) {
+        const raw = String(data.adminAlertEmail).trim();
+        if (raw) {
+          const parts = raw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const bad = parts.find((p) => !emailRe.test(p));
+          if (bad) {
+            return NextResponse.json(
+              { error: `Invalid admin notification email: ${bad}` },
+              { status: 400 },
+            );
+          }
+          settings.adminAlertEmail = parts.join(", ");
+        } else {
+          settings.adminAlertEmail = "";
+        }
+      }
+
+      // Footer social-media links (§4). Each field: keep current value if not
+      // supplied; empty string hides the icon; otherwise must be an http(s) URL.
+      if (data.socialLinks) {
+        const incoming = data.socialLinks as Partial<
+          Record<"facebook" | "x" | "instagram" | "linkedin", unknown>
+        >;
+        const urlRe = /^https?:\/\/.+/i;
+        const keys = ["facebook", "x", "instagram", "linkedin"] as const;
+        const current = settings.socialLinks;
+        const resolve = (k: (typeof keys)[number]): string =>
+          incoming[k] === undefined
+            ? current?.[k] ?? ""
+            : String(incoming[k]).trim();
+        for (const k of keys) {
+          const v = resolve(k);
+          if (v && !urlRe.test(v)) {
+            return NextResponse.json(
+              {
+                error: `Invalid social link URL for ${k} (must start with http:// or https://)`,
+              },
+              { status: 400 },
+            );
+          }
+        }
+        settings.socialLinks = {
+          facebook: resolve("facebook"),
+          x: resolve("x"),
+          instagram: resolve("instagram"),
+          linkedin: resolve("linkedin"),
+        };
+      }
+
       // Handle email settings updates
       if (data.emailSettings) {
         if (!settings.emailSettings) {

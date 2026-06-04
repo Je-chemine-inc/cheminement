@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
+import Profile from "@/models/Profile";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -50,6 +51,18 @@ export async function GET(req: NextRequest) {
     // Get total count for pagination
     const total = await User.countDocuments(query);
 
+    // Whether each pro is currently accepting new clients (Profile flag).
+    // Legacy/undefined profiles default to accepting (only explicit false opts out).
+    const profileFlags = await Profile.find({
+      userId: { $in: professionals.map((p) => p._id) },
+    }).select("userId acceptingNewClients");
+    const acceptingById = new Map(
+      profileFlags.map((p) => [
+        String(p.userId),
+        p.acceptingNewClients !== false,
+      ]),
+    );
+
     // Get session and client counts for each professional
     const professionalsWithStats = await Promise.all(
       professionals.map(async (professional) => {
@@ -71,6 +84,8 @@ export async function GET(req: NextRequest) {
           specialty: prof.specialty || "General Practice",
           license: prof.license || "Pending",
           status: professional.status,
+          acceptingNewClients:
+            acceptingById.get(professional._id.toString()) ?? true,
           joinedDate: professional.createdAt.toISOString().split("T")[0],
           totalClients: activeClients.length,
           totalSessions,

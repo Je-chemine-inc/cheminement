@@ -361,6 +361,65 @@ export function scoreAvailabilityMatch(
   return { matched, total };
 }
 
+/** A scored professional candidate, used by the 3-level cascade selector. */
+export interface ScoredCandidate {
+  professionalId: string;
+  score: number;
+  reasons: string[];
+  /** How many of the client's preferred availability slots this pro covers. */
+  availMatched: number;
+  /** Total preferred slots the client gave (0 = no preference stated). */
+  availTotal: number;
+}
+
+/**
+ * 3-level cascade selector — picks ONE professional for the current attempt.
+ *
+ * - attemptsMade 0 → Tentative 1 (STRICT): a strong match (score ≥ strictScore,
+ *   i.e. an exact problématique match) AND availability overlap with the client's
+ *   preferred slots — or no preference stated. If no strict candidate exists,
+ *   relax immediately to the best reasonable match rather than skip the attempt.
+ * - attemptsMade 1 → Tentative 2 (RELAXED): any reasonable match (score ≥
+ *   relaxedScore); availability is no longer required (only used to break ties).
+ * - attemptsMade ≥ maxTargetedAttempts → null: caller routes to the general pool.
+ *
+ * Returns the single best candidate, or null when the caller should fall back to
+ * the general pool. Pure function (no I/O) so it is unit-tested directly.
+ */
+export function selectCascadeCandidate(
+  scored: ScoredCandidate[],
+  attemptsMade: number,
+  opts: {
+    strictScore: number;
+    relaxedScore: number;
+    maxTargetedAttempts: number;
+  },
+): ScoredCandidate | null {
+  if (attemptsMade >= opts.maxTargetedAttempts) return null;
+
+  // Best first: highest relevancy, then most preferred-slot overlap.
+  const byBestFirst = (a: ScoredCandidate, b: ScoredCandidate) =>
+    b.score - a.score || b.availMatched - a.availMatched;
+
+  // Availability is satisfied when the client stated no preference
+  // (availTotal === 0) or at least one preferred slot is covered.
+  const availabilityOk = (c: ScoredCandidate) =>
+    c.availTotal === 0 || c.availMatched > 0;
+
+  const relaxed = scored
+    .filter((c) => c.score >= opts.relaxedScore)
+    .sort(byBestFirst);
+
+  if (attemptsMade === 0) {
+    const strict = scored
+      .filter((c) => c.score >= opts.strictScore && availabilityOk(c))
+      .sort(byBestFirst);
+    return strict[0] ?? relaxed[0] ?? null;
+  }
+
+  return relaxed[0] ?? null;
+}
+
 /**
  * Calculate a relevancy score for a professional based on appointment requirements
  * and client medical profile preferences
@@ -711,11 +770,22 @@ export async function routeAppointmentToProfessionals(
       };
     }
 
-    // Get all active professionals with profiles
-    const professionals = await User.find({
-      role: "professional",
-      status: "active",
-    }).select("_id firstName lastName email language gender");
+    // Pros who already refused THIS request must never be re-proposed nor
+    // re-emailed. This matters on a refusal-triggered re-route (see the refuse
+    // route, which re-runs this matcher); refusedBy is empty on first routing,
+    // so it's a no-op then. Excluding here also drops them from the general-pool
+    // broadcast below, which keys off `professionals`.
+    const refusedIds = new Set(
+      (appointment.refusedBy ?? []).map((r) => String(r)),
+    );
+
+    // Get all active professionals with profiles (minus anyone who refused).
+    const professionals = (
+      await User.find({
+        role: "professional",
+        status: "active",
+      }).select("_id firstName lastName email language gender")
+    ).filter((p) => !refusedIds.has(String(p._id)));
 
     const professionalIds = professionals.map((p) => p._id);
     // Professional gender, keyed by id — fed into the relevancy score so a
@@ -727,14 +797,30 @@ export async function routeAppointmentToProfessionals(
       ]),
     );
 
+    // Professionals who turned OFF "accepting new clients" must not receive new
+    // requests — neither via scored matching nor the general-pool broadcast.
+    // Legacy/undefined profiles count as accepting (only an explicit `false`
+    // opts out), mirroring the `$ne: false` filter on the scored query below.
+    const notAcceptingNewClientsIds = new Set(
+      (
+        await Profile.find({
+          userId: { $in: professionalIds },
+          acceptingNewClients: false,
+        }).select("userId")
+      ).map((p) => String(p.userId)),
+    );
+
     // Broadcast helper: when a request lands in the GENERAL pool (no specific
-    // match), ping every active professional so it doesn't sit unseen in the
-    // "Propositions → Général" tab. Awaited (not fire-and-forget) so the sends
-    // complete before this function — itself wrapped in after() by the caller —
-    // resolves; otherwise Vercel may kill the container mid-send.
+    // match), ping every active professional ACCEPTING new clients so it
+    // doesn't sit unseen in the "Propositions → Général" tab. Awaited (not
+    // fire-and-forget) so the sends complete before this function — itself
+    // wrapped in after() by the caller — resolves; otherwise Vercel may kill
+    // the container mid-send.
     const notifyGeneralPool = async () => {
       const sends = professionals
-        .filter((p) => p.email)
+        .filter(
+          (p) => p.email && !notAcceptingNewClientsIds.has(String(p._id)),
+        )
         .map((p) =>
           sendGeneralRequestAvailableNotification({
             professionalName: `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim(),
@@ -754,6 +840,9 @@ export async function routeAppointmentToProfessionals(
     const profiles = await Profile.find({
       userId: { $in: professionalIds },
       profileCompleted: true,
+      // Only pros currently accepting new clients are eligible for matching.
+      // `$ne: false` keeps legacy/undefined profiles in (default: accepting).
+      acceptingNewClients: { $ne: false },
     });
 
     // Get client's medical profile for better matching
@@ -792,6 +881,26 @@ export async function routeAppointmentToProfessionals(
       isPatientChild = isChild(patientAge);
     }
 
+    // Commit a terminal routing decision (proposed/general) ONLY if no one else
+    // advanced this request while we were scoring — a concurrent admin
+    // assignment or acceptance moves it out of "pending" / sets professionalId.
+    // Without this guard the matcher (now re-run on a pro's refusal) could
+    // silently overwrite that assignment and email the wrong pros. Returns true
+    // when we won the write.
+    const commitRouting = async (
+      update: Record<string, unknown>,
+    ): Promise<boolean> => {
+      const res = await Appointment.findOneAndUpdate(
+        {
+          _id: appointmentId,
+          routingStatus: "pending",
+          professionalId: { $exists: false },
+        },
+        update,
+      );
+      return Boolean(res);
+    };
+
     // Filter professionals by age category BEFORE calculating relevancy scores
     const ageFilteredProfiles = profiles.filter((profile) =>
       professionalTreatsAgeCategory(profile.ageCategories, isPatientChild),
@@ -801,9 +910,9 @@ export async function routeAppointmentToProfessionals(
       console.log(
         `No professionals found for ${isPatientChild ? "child" : "adult"} patients`,
       );
-      await Appointment.findByIdAndUpdate(appointmentId, {
-        routingStatus: "general",
-      });
+      if (!(await commitRouting({ routingStatus: "general" }))) {
+        return { success: false, matches: [], routingStatus: "skipped" };
+      }
       await notifyGeneralPool();
 
       return { success: true, matches: [], routingStatus: "general" };
@@ -824,18 +933,32 @@ export async function routeAppointmentToProfessionals(
       console.log(
         `No professional matching the "${preferredGender}" gender preference — routing to general pool`,
       );
-      await Appointment.findByIdAndUpdate(appointmentId, {
-        routingStatus: "general",
-      });
+      if (!(await commitRouting({ routingStatus: "general" }))) {
+        return { success: false, matches: [], routingStatus: "skipped" };
+      }
       await notifyGeneralPool();
 
       return { success: true, matches: [], routingStatus: "general" };
     }
 
-    // Calculate relevancy scores only for age- + gender-filtered professionals
-    const matches: ProfessionalMatch[] = [];
+    // ===== 3-LEVEL CASCADE — ONE professional per attempt =====
+    // Tentative 1 (refusedBy empty): STRICT — strong match (score >= 100, i.e. an
+    //   exact problématique match) AND availability overlap with the client's
+    //   preferred slots (or the client stated no preference). If no strict
+    //   candidate exists, relax immediately rather than burn the attempt with no pro.
+    // Tentative 2 (1 refusal so far): RELAXED — any reasonable match (score >= 20);
+    //   availability is no longer required (still used to rank).
+    // Tentative 3 (>= 2 refusals): no targeted pick below → falls to the general pool.
+    // The attempt counter is `cascadeAttempts` (incremented ONLY by a genuine
+    // refusal in the refuse re-route), NOT refusedBy.length — refusedBy is also
+    // written by release/reassign and must not advance the cascade. The 100/20
+    // thresholds map the client's "100% / 50%" tiers — tune freely.
+    const STRICT_SCORE = 100;
+    const RELAXED_SCORE = 20;
+    const MAX_TARGETED_ATTEMPTS = 2;
+    const attemptsMade = appointment.cascadeAttempts ?? 0;
 
-    for (const profile of genderFilteredProfiles) {
+    const scored = genderFilteredProfiles.map((profile) => {
       const { score, reasons } = calculateRelevancyScore(
         profile,
         {
@@ -856,38 +979,58 @@ export async function routeAppointmentToProfessionals(
           : null,
         genderById.get(String(profile.userId)),
       );
+      const avail = scoreAvailabilityMatch(
+        appointment.preferredAvailability,
+        profile.availability?.days,
+      );
+      return {
+        professionalId: profile.userId.toString(),
+        score,
+        reasons,
+        availMatched: avail.matched,
+        availTotal: avail.total,
+      };
+    });
 
-      // Only include professionals with a minimum relevancy score
-      // Priority: professionals with exact matches (score >= 100) or good matches (score >= 20)
-      // Exact match on primary issue or appointment issueType gives 100 points
-      if (score >= 20 || score >= 100) {
-        matches.push({
-          professionalId: profile.userId.toString(),
-          score,
-          reasons,
-        });
-      }
-    }
+    const chosen = selectCascadeCandidate(scored, attemptsMade, {
+      strictScore: STRICT_SCORE,
+      relaxedScore: RELAXED_SCORE,
+      maxTargetedAttempts: MAX_TARGETED_ATTEMPTS,
+    });
+    const selected: ProfessionalMatch | null = chosen
+      ? {
+          professionalId: chosen.professionalId,
+          score: chosen.score,
+          reasons: chosen.reasons,
+        }
+      : null;
 
-    // Sort by score (highest first) and take top 5
-    matches.sort((a, b) => b.score - a.score);
-    const topMatches = matches.slice(0, 5);
+    // One pro per attempt. An empty list means "no targeted candidate for this
+    // attempt (or attempts exhausted) → general pool" — handled just below,
+    // reusing the existing general/proposed commit + notify machinery unchanged.
+    const topMatches: ProfessionalMatch[] = selected ? [selected] : [];
 
     if (topMatches.length === 0) {
-      await Appointment.findByIdAndUpdate(appointmentId, {
-        routingStatus: "general",
-      });
+      if (!(await commitRouting({ routingStatus: "general" }))) {
+        return { success: false, matches: [], routingStatus: "skipped" };
+      }
       await notifyGeneralPool();
 
       return { success: true, matches: [], routingStatus: "general" };
     }
 
-    // Update appointment with proposed professionals
+    // Propose to the single selected professional for this attempt — only if
+    // nothing else claimed it meanwhile (see commitRouting). If it lost the race,
+    // bail before notifying so we don't email a pro for an already-assigned request.
     const proposedIds = topMatches.map((m) => m.professionalId);
-    await Appointment.findByIdAndUpdate(appointmentId, {
-      routingStatus: "proposed",
-      proposedTo: proposedIds,
-    });
+    if (
+      !(await commitRouting({
+        routingStatus: "proposed",
+        proposedTo: proposedIds,
+      }))
+    ) {
+      return { success: false, matches: [], routingStatus: "skipped" };
+    }
 
     const populatedAppt = await Appointment.findById(appointmentId)
       .populate("clientId", "firstName lastName email phone")

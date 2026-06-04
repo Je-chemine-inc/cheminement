@@ -1,6 +1,9 @@
 import "server-only";
 import connectToDatabase from "@/lib/mongodb";
-import PlatformSettings from "@/models/PlatformSettings";
+import PlatformSettings, {
+  DEFAULT_SOCIAL_LINKS,
+  type ISocialLinks,
+} from "@/models/PlatformSettings";
 
 export type PlatformPhysicalAddress = {
   street: string;
@@ -83,5 +86,24 @@ export async function getPlatformContactInfo(): Promise<PlatformContactInfo> {
     supportEmail,
     interacDepositEmail,
     companyName,
+  };
+}
+
+/**
+ * Admin-configured footer social links. Falls back to DEFAULT_SOCIAL_LINKS only
+ * when a field is ABSENT (legacy docs / .lean() skips schema defaults) — an
+ * explicitly emptied value ("") is preserved so the admin can hide that icon.
+ */
+export async function getSocialLinks(): Promise<ISocialLinks> {
+  await connectToDatabase();
+  const settings = await PlatformSettings.findOne().select("socialLinks").lean();
+  const s = settings?.socialLinks as Partial<ISocialLinks> | undefined;
+  const pick = (k: keyof ISocialLinks): string =>
+    (s?.[k] ?? DEFAULT_SOCIAL_LINKS[k]).trim();
+  return {
+    facebook: pick("facebook"),
+    x: pick("x"),
+    instagram: pick("instagram"),
+    linkedin: pick("linkedin"),
   };
 }

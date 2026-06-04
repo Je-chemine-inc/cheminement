@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   PaymentElement,
   useStripe,
@@ -48,16 +49,28 @@ export default function CheckoutForm({
   paymentMethod = "card",
   currency = "CAD",
 }: CheckoutFormProps) {
+  const t = useTranslations("CheckoutForm");
+  const locale = useLocale();
   const stripe = useStripe();
   const elements = useElements();
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  // Track the message tone explicitly instead of string-matching the (now
+  // localized) message text — otherwise success vs error styling would break.
+  const [messageType, setMessageType] = useState<"success" | "error" | null>(
+    null,
+  );
   const [isComplete, setIsComplete] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingMethods, setLoadingMethods] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState<string>("new");
   const [showPaymentElement, setShowPaymentElement] = useState(true);
+
+  const notify = (text: string, type: "success" | "error") => {
+    setMessage(text);
+    setMessageType(type);
+  };
 
   // Simple inline radio component
   const RadioButton = ({
@@ -125,21 +138,22 @@ export default function CheckoutForm({
       .then(({ paymentIntent }) => {
         switch (paymentIntent?.status) {
           case "succeeded":
-            setMessage("Payment succeeded!");
+            notify(t("msgSucceeded"), "success");
             setIsComplete(true);
             onSuccess?.();
             break;
           case "processing":
-            setMessage("Your payment is processing.");
+            notify(t("msgProcessing"), "success");
             break;
           case "requires_payment_method":
-            setMessage("Please provide payment details.");
+            notify(t("msgProvideDetails"), "error");
             break;
           default:
-            setMessage("Something went wrong.");
+            notify(t("msgSomethingWrong"), "error");
             break;
         }
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stripe, onSuccess]);
 
   const fetchPaymentMethods = async () => {
@@ -166,6 +180,7 @@ export default function CheckoutForm({
     setSelectedMethod(value);
     setShowPaymentElement(value === "new");
     setMessage(null);
+    setMessageType(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,6 +192,7 @@ export default function CheckoutForm({
 
     setLoading(true);
     setMessage(null);
+    setMessageType(null);
 
     try {
       // For card payments with saved payment method
@@ -197,13 +213,13 @@ export default function CheckoutForm({
             error.type === "card_error" ||
             error.type === "validation_error"
           ) {
-            setMessage(error.message || "An error occurred");
+            notify(error.message || t("msgErrorOccurred"), "error");
           } else {
-            setMessage("An unexpected error occurred.");
+            notify(t("msgUnexpected"), "error");
           }
-          onError?.(error.message || "Payment failed");
+          onError?.(error.message || t("msgPaymentFailed"));
         } else if (paymentIntent && paymentIntent.status === "succeeded") {
-          setMessage("Payment succeeded!");
+          notify(t("msgSucceeded"), "success");
           setIsComplete(true);
           setTimeout(() => {
             onSuccess?.();
@@ -212,7 +228,7 @@ export default function CheckoutForm({
       } else {
         // For new payment methods (card, transfer, or direct debit)
         if (!elements) {
-          setMessage("Payment form not ready. Please try again.");
+          notify(t("msgFormNotReady"), "error");
           setLoading(false);
           return;
         }
@@ -230,36 +246,34 @@ export default function CheckoutForm({
             error.type === "card_error" ||
             error.type === "validation_error"
           ) {
-            setMessage(error.message || "An error occurred");
+            notify(error.message || t("msgErrorOccurred"), "error");
           } else {
-            setMessage("An unexpected error occurred.");
+            notify(t("msgUnexpected"), "error");
           }
-          onError?.(error.message || "Payment failed");
+          onError?.(error.message || t("msgPaymentFailed"));
         } else if (paymentIntent) {
           if (paymentIntent.status === "succeeded") {
-            setMessage("Payment succeeded!");
+            notify(t("msgSucceeded"), "success");
             setIsComplete(true);
             setTimeout(() => {
               onSuccess?.();
             }, 1500);
           } else if (paymentIntent.status === "processing") {
-            setMessage(
-              "Your payment is being processed. We'll notify you once it's complete.",
-            );
+            notify(t("msgBeingProcessed"), "success");
             setIsComplete(true);
             setTimeout(() => {
               onSuccess?.();
             }, 2000);
           } else if (paymentIntent.status === "requires_action") {
             // Handle any additional action required (like 3D Secure)
-            setMessage("Please complete the additional verification step.");
+            notify(t("msgRequiresAction"), "error");
           }
         }
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Payment failed";
-      setMessage(errorMessage);
+        err instanceof Error ? err.message : t("msgPaymentFailed");
+      notify(errorMessage, "error");
       onError?.(errorMessage);
     } finally {
       setLoading(false);
@@ -272,17 +286,17 @@ export default function CheckoutForm({
         <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-xl font-medium text-foreground mb-2">
           {paymentMethod === "transfer"
-            ? "Transfer Instructions Sent!"
+            ? t("transferSentTitle")
             : paymentMethod === "direct_debit"
-              ? "Pre-authorized Debit Set Up!"
-              : "Payment Successful!"}
+              ? t("padSetupTitle")
+              : t("paymentSuccessTitle")}
         </h3>
         <p className="text-muted-foreground">
           {paymentMethod === "transfer"
-            ? "Please complete the bank transfer to confirm your appointment."
+            ? t("transferSentDesc")
             : paymentMethod === "direct_debit"
-              ? "Your appointment will be confirmed once the debit is processed."
-              : "Your appointment has been confirmed."}
+              ? t("padSetupDesc")
+              : t("paymentSuccessDesc")}
         </p>
       </div>
     );
@@ -302,21 +316,30 @@ export default function CheckoutForm({
   const getPaymentMethodLabel = () => {
     switch (paymentMethod) {
       case "transfer":
-        return "Bank Transfer";
+        return t("methodTransfer");
       case "direct_debit":
-        return "Pre-authorized Debit";
+        return t("methodPad");
       default:
-        return "Card Payment";
+        return t("methodCard");
     }
   };
+
+  // Locale-aware currency (e.g. "120,00 $" in fr-CA, "$120.00" in en-CA) instead
+  // of a hardcoded "$120.00 CAD" with a period decimal.
+  const priceLabel = new Intl.NumberFormat(
+    locale === "fr" ? "fr-CA" : "en-CA",
+    { style: "currency", currency },
+  ).format(amount);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground">Amount to pay</span>
+          <span className="text-sm text-muted-foreground">
+            {t("amountToPay")}
+          </span>
           <span className="text-2xl font-semibold text-foreground">
-            ${amount.toFixed(2)} {currency}
+            {priceLabel}
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -332,12 +355,10 @@ export default function CheckoutForm({
             <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                Bank Transfer Instructions
+                {t("transferInstrTitle")}
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                Complete the payment form below to receive bank transfer
-                instructions. Your appointment will be confirmed once we receive
-                the funds (typically 1-3 business days).
+                {t("transferInstrDesc")}
               </p>
             </div>
           </div>
@@ -350,12 +371,10 @@ export default function CheckoutForm({
             <Landmark className="h-5 w-5 text-purple-600 dark:text-purple-400 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                Pre-authorized Debit (PAD)
+                {t("padTitle")}
               </p>
               <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-                Authorize a one-time debit from your Canadian bank account.
-                Processing typically takes 3-5 business days. You will receive a
-                confirmation email.
+                {t("padDesc")}
               </p>
             </div>
           </div>
@@ -371,7 +390,7 @@ export default function CheckoutForm({
             </div>
           ) : paymentMethods.length > 0 ? (
             <div className="space-y-4">
-              <Label className="text-base font-medium">Select Card</Label>
+              <Label className="text-base font-medium">{t("selectCard")}</Label>
               <div className="space-y-3">
                 {/* Saved Payment Methods */}
                 {paymentMethods.map((method) => (
@@ -392,7 +411,9 @@ export default function CheckoutForm({
                             {method.card.brand} ••••{method.card.last4}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Expires {method.card.expMonth}/{method.card.expYear}
+                            {t("expires", {
+                              date: `${method.card.expMonth}/${method.card.expYear}`,
+                            })}
                           </p>
                         </>
                       )}
@@ -412,10 +433,10 @@ export default function CheckoutForm({
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-foreground">
-                      Use a different card
+                      {t("useDifferentCard")}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Enter new payment details
+                      {t("enterNewDetails")}
                     </p>
                   </div>
                 </RadioButton>
@@ -439,12 +460,12 @@ export default function CheckoutForm({
       {message && (
         <div
           className={`rounded-lg border p-4 flex items-start gap-3 ${
-            message.includes("succeeded") || message.includes("processing")
+            messageType === "success"
               ? "border-green-200 bg-green-50 text-green-800 dark:bg-green-950/20 dark:text-green-200"
               : "border-red-200 bg-red-50 text-red-800 dark:bg-red-950/20 dark:text-red-200"
           }`}
         >
-          {message.includes("succeeded") || message.includes("processing") ? (
+          {messageType === "success" ? (
             <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" />
           ) : (
             <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
@@ -465,20 +486,20 @@ export default function CheckoutForm({
       >
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {loading
-          ? "Processing..."
+          ? t("processing")
           : paymentMethod === "transfer"
-            ? `Get Transfer Instructions - $${amount.toFixed(2)} ${currency}`
+            ? t("getTransferInstructions", { price: priceLabel })
             : paymentMethod === "direct_debit"
-              ? `Authorize Debit - $${amount.toFixed(2)} ${currency}`
-              : `Pay $${amount.toFixed(2)} ${currency}`}
+              ? t("authorizeDebit", { price: priceLabel })
+              : t("pay", { price: priceLabel })}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
         {paymentMethod === "transfer"
-          ? "You'll receive bank transfer instructions after submitting."
+          ? t("secureTransfer")
           : paymentMethod === "direct_debit"
-            ? "By authorizing, you agree to a one-time debit from your account."
-            : "Your payment is secured by Stripe. We do not store your card details."}
+            ? t("securePad")
+            : t("secureCard")}
       </p>
     </form>
   );

@@ -7,6 +7,7 @@ import {
   calculateRelevancyScore,
   professionalCoversAvailabilitySlot,
   scoreAvailabilityMatch,
+  selectCascadeCandidate,
 } from "./appointment-routing";
 
 describe("appointment-routing", () => {
@@ -159,6 +160,67 @@ describe("appointment-routing", () => {
       expect(
         scoreAvailabilityMatch(["2099-01-05-morning"], monDaytime),
       ).toEqual({ matched: 1, total: 1 });
+    });
+  });
+
+  describe("selectCascadeCandidate (3-level refusal cascade)", () => {
+    const OPTS = { strictScore: 100, relaxedScore: 20, maxTargetedAttempts: 2 };
+    const cand = (
+      professionalId: string,
+      score: number,
+      availMatched = 0,
+      availTotal = 0,
+    ) => ({ professionalId, score, reasons: [] as string[], availMatched, availTotal });
+
+    it("attempt 1: prefers a strict match (score≥100 + availability overlap)", () => {
+      const pick = selectCascadeCandidate(
+        [cand("A", 120, 1, 2), cand("B", 60, 2, 2)],
+        0,
+        OPTS,
+      );
+      expect(pick?.professionalId).toBe("A");
+    });
+
+    it("attempt 1: a high score with NO availability overlap isn't strict → relaxes to best score", () => {
+      // A scores high but covers none of the 2 preferred slots → not strict-eligible;
+      // no strict candidate exists, so we relax and pick the best score (A).
+      const pick = selectCascadeCandidate(
+        [cand("A", 120, 0, 2), cand("B", 60, 1, 2)],
+        0,
+        OPTS,
+      );
+      expect(pick?.professionalId).toBe("A");
+    });
+
+    it("attempt 1: score≥100 with no stated preference (availTotal 0) counts as strict", () => {
+      const pick = selectCascadeCandidate([cand("A", 100, 0, 0)], 0, OPTS);
+      expect(pick?.professionalId).toBe("A");
+    });
+
+    it("attempt 1: returns null when nobody meets the relaxed threshold", () => {
+      expect(selectCascadeCandidate([cand("A", 10, 0, 0)], 0, OPTS)).toBeNull();
+    });
+
+    it("attempt 2: picks the best reasonable match, availability NOT required", () => {
+      const pick = selectCascadeCandidate(
+        [cand("A", 40, 0, 3), cand("B", 25, 0, 3)],
+        1,
+        OPTS,
+      );
+      expect(pick?.professionalId).toBe("A");
+    });
+
+    it("attempt 3 (≥ max attempts): returns null so the caller routes to the general pool", () => {
+      expect(selectCascadeCandidate([cand("A", 200, 5, 5)], 2, OPTS)).toBeNull();
+    });
+
+    it("breaks score ties by more covered availability slots", () => {
+      const pick = selectCascadeCandidate(
+        [cand("A", 100, 1, 3), cand("B", 100, 3, 3)],
+        0,
+        OPTS,
+      );
+      expect(pick?.professionalId).toBe("B");
     });
   });
 });

@@ -7,6 +7,7 @@ import { IProfile } from "@/models/Profile";
 import { profileAPI } from "@/lib/api-client";
 import BasicInformation from "@/components/dashboard/BasicInformation";
 import ProfessionalProfile from "@/components/dashboard/ProfessionalProfile";
+import AcceptingNewClientsCard from "@/components/dashboard/AcceptingNewClientsCard";
 import AvailabilitySchedule from "./AvailabilitySchedule";
 
 interface DayAvailability {
@@ -64,6 +65,9 @@ export default function ProfilePage() {
         </h1>
         <p className="text-muted-foreground font-light mt-2">{t("subtitle")}</p>
       </div>
+
+      {/* Accepting new clients — pro controls their own intake */}
+      <AcceptingNewClientsCard profile={profile} setProfile={setProfile} />
 
       {/* Basic Information */}
       <BasicInformation isEditable={true} />

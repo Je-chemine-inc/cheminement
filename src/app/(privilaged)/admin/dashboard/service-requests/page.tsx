@@ -34,6 +34,7 @@ interface ProfessionalOption {
   id: string;
   name: string;
   email: string;
+  acceptingNewClients?: boolean;
 }
 
 interface ServiceRequestRow {
@@ -409,7 +410,9 @@ export default function AdminServiceRequestsPage() {
                             ) : (
                               professionals.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>
-                                  {p.name}
+                                  {p.acceptingNewClients === false
+                                    ? `${p.name} — ${t("notAcceptingMarker")}`
+                                    : p.name}
                                 </SelectItem>
                               ))
                             )}
@@ -437,6 +440,13 @@ export default function AdminServiceRequestsPage() {
                             : t("assignAction")}
                         </Button>
                       </div>
+                      {professionals.find(
+                        (p) => p.id === assignDraft[r.id],
+                      )?.acceptingNewClients === false && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          {t("notAcceptingWarning")}
+                        </p>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

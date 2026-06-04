@@ -25,6 +25,11 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // The general pool is a PULL mechanism open to EVERY professional at all
+    // times (client feedback §2): a pro can browse it and self-"piger" a client
+    // whenever they like. The "accepting new clients" toggle gates only the
+    // automatic PUSH (cascade proposals + broadcast emails), never this view.
+
     const { searchParams } = new URL(req.url);
     const issueType = searchParams.get("issueType");
     const type = searchParams.get("type"); // video, in-person, phone

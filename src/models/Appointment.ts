@@ -117,6 +117,16 @@ export interface IAppointment extends Document {
   // Array of professional IDs who refused this appointment
   refusedBy?: mongoose.Types.ObjectId[];
 
+  /**
+   * Genuine cascade-refusal count — the targeted-attempt counter driving the
+   * 3-level matching cascade (0 → Tentative 1 strict, 1 → Tentative 2 relaxed,
+   * ≥2 → general pool). Deliberately SEPARATE from `refusedBy` (the
+   * never-re-propose exclusion set), which is also written by release/reassign
+   * and so must not advance the cascade. Incremented only by the refuse
+   * re-route; reset to 0 when an admin re-runs automatic matching.
+   */
+  cascadeAttempts?: number;
+
   // Preferred availability slots provided by client
   preferredAvailability?: string[];
 
@@ -400,6 +410,8 @@ const AppointmentSchema = new Schema<IAppointment>(
         ref: "User",
       },
     ],
+    // Targeted-attempt counter for the 3-level cascade (see IAppointment).
+    cascadeAttempts: { type: Number, default: 0 },
     // Preferred availability slots provided by client
     preferredAvailability: [String],
 
