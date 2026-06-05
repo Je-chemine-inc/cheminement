@@ -52,9 +52,11 @@ function ToolbarButton({
 function Toolbar({
   editor,
   promptUrl,
+  headingLevels,
 }: {
   editor: Editor;
   promptUrl: () => void;
+  headingLevels: (2 | 3)[];
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-muted/30 p-2">
@@ -89,24 +91,28 @@ function Toolbar({
       >
         <Pilcrow className="h-4 w-4" />
       </ToolbarButton>
-      <ToolbarButton
-        label="Section title (H2)"
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 2 }).run()
-        }
-        active={editor.isActive("heading", { level: 2 })}
-      >
-        <Heading2 className="h-4 w-4" />
-      </ToolbarButton>
-      <ToolbarButton
-        label="Subsection (H3)"
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 3 }).run()
-        }
-        active={editor.isActive("heading", { level: 3 })}
-      >
-        <Heading3 className="h-4 w-4" />
-      </ToolbarButton>
+      {headingLevels.includes(2) && (
+        <ToolbarButton
+          label="Section title (H2)"
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
+          active={editor.isActive("heading", { level: 2 })}
+        >
+          <Heading2 className="h-4 w-4" />
+        </ToolbarButton>
+      )}
+      {headingLevels.includes(3) && (
+        <ToolbarButton
+          label="Subsection (H3)"
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 3 }).run()
+          }
+          active={editor.isActive("heading", { level: 3 })}
+        >
+          <Heading3 className="h-4 w-4" />
+        </ToolbarButton>
+      )}
 
       <span className="mx-1 h-5 w-px bg-border/60" />
 
@@ -161,14 +167,18 @@ function Toolbar({
 export default function LegalDocumentEditor({
   value,
   onChange,
+  headingLevels = [2, 3],
 }: {
   value: string;
   onChange: (html: string) => void;
+  /** Heading levels the toolbar offers. Section bodies pass [3] so H2 stays
+   *  reserved for section titles (owned by the section-cards editor). */
+  headingLevels?: (2 | 3)[];
 }) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2, 3] },
+        heading: { levels: headingLevels },
       }),
       Underline,
       Link.configure({
@@ -215,7 +225,11 @@ export default function LegalDocumentEditor({
 
   return (
     <div className="rounded-lg border border-border/60 bg-card">
-      <Toolbar editor={editor} promptUrl={promptUrl} />
+      <Toolbar
+        editor={editor}
+        promptUrl={promptUrl}
+        headingLevels={headingLevels}
+      />
       <EditorContent editor={editor} />
     </div>
   );

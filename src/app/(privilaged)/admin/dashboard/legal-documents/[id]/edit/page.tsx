@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   ExternalLink,
 } from "lucide-react";
-import LegalDocumentEditor from "@/components/admin/LegalDocumentEditor";
+import LegalSectionsEditor from "@/components/admin/LegalSectionsEditor";
 
 interface LegalDocDTO {
   id: string;
@@ -235,7 +235,7 @@ export default function LegalDocumentEditPage() {
             {t("fieldContent")}
           </label>
           <p className="text-xs text-muted-foreground">{t("contentHint")}</p>
-          <LegalDocumentEditor
+          <LegalSectionsEditor
             value={doc.contentHtml}
             onChange={setContentHtml}
           />

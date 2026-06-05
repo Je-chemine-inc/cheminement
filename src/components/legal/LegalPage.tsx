@@ -11,16 +11,24 @@ function slugify(value: string) {
 }
 
 /**
- * Add id attributes to <h2> tags based on their text content (for TOC anchors)
- * and return the list of headings found.
+ * Add id attributes to <h2> AND <h3> tags based on their text content (for TOC
+ * anchors) and return the ordered list of headings found (with their level), so
+ * the table of contents auto-syncs with every section + subsection in the
+ * document — including any newly-added section.
  */
 function processContentHtml(html: string) {
-  const headings: { id: string; text: string }[] = [];
+  const headings: { id: string; text: string; level: 2 | 3 }[] = [];
   const seen = new Set<string>();
 
   const processed = html.replace(
-    /<h2(\s[^>]*)?>([\s\S]*?)<\/h2>/gi,
-    (_match, attrs: string | undefined, inner: string) => {
+    /<h([23])(\s[^>]*)?>([\s\S]*?)<\/h\1>/gi,
+    (
+      _match,
+      levelStr: string,
+      attrs: string | undefined,
+      inner: string,
+    ) => {
+      const level: 2 | 3 = levelStr === "3" ? 3 : 2;
       const plain = inner.replace(/<[^>]+>/g, "").trim();
       let id = slugify(plain) || `section-${headings.length + 1}`;
       let n = 2;
@@ -29,11 +37,11 @@ function processContentHtml(html: string) {
         n += 1;
       }
       seen.add(id);
-      headings.push({ id, text: plain });
+      headings.push({ id, text: plain, level });
 
       const hasIdAttr = attrs && /\bid\s*=/.test(attrs);
       const attrString = hasIdAttr ? attrs : `${attrs || ""} id="${id}"`;
-      return `<h2${attrString} class="scroll-mt-24">${inner}</h2>`;
+      return `<h${level}${attrString} class="scroll-mt-24">${inner}</h${level}>`;
     },
   );
 
@@ -81,10 +89,17 @@ export default async function LegalPage({
               <nav>
                 <ol className="space-y-2 text-sm">
                   {headings.map((heading) => (
-                    <li key={heading.id}>
+                    <li
+                      key={heading.id}
+                      className={heading.level === 3 ? "ml-3" : ""}
+                    >
                       <a
                         href={`#${heading.id}`}
-                        className="block text-muted-foreground transition-colors hover:text-foreground"
+                        className={`block transition-colors hover:text-foreground ${
+                          heading.level === 3
+                            ? "text-xs text-muted-foreground/80"
+                            : "text-muted-foreground"
+                        }`}
                       >
                         {heading.text}
                       </a>
