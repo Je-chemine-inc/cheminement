@@ -1,0 +1,66 @@
+# Sub-daily cron triggers for time-sensitive SLAs.
+#
+# WHY: Vercel Hobby crons fire only once per day, so the urgent "Consultation
+# ponctuelle rapide" accept timeout (12h) and the 24h take-charge reminder can
+# lag up to ~24h. GitHub Actions runs hourly and pings the SAME CRON_SECRET-
+# protected endpoints more often, tightening detection to ~1h. The Vercel daily
+# crons stay in place as a backup — the jobs are idempotent (atomic claim / dedup
+# flags), so triggering them from both places is safe.
+#
+# SETUP (one-time):
+#   1. Add a repo Actions secret CRON_SECRET equal to the Vercel env CRON_SECRET:
+#        gh secret set CRON_SECRET           (paste the value when prompted)
+#      or via GitHub → Settings → Secrets and variables → Actions → New secret.
+#   2. (Optional) Override the target host with a repo VARIABLE CRON_BASE_URL.
+#      Default is the canonical production domain below. NOTE: target the exact
+#      host that serves the API WITHOUT a redirect — the apex jechemine.ca
+#      307-redirects to www.jechemine.ca, and a cross-host redirect drops the
+#      Authorization header, so use www.jechemine.ca (or cheminement-b77i.vercel.app).
+#
+# NOTES:
+#   - Scheduled workflows run ONLY from the default branch (main) — this must be
+#     merged to main to activate.
+#   - GitHub may delay a scheduled run by a few minutes (or skip it under heavy
+#     load); that's fine for a 12h/24h SLA, and a missed run is caught by the next
+#     one (the jobs are idempotent).
+name: cron-sla
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly (UTC). Change to "0 */2 * * *" etc. for fewer runs.
+  workflow_dispatch: {} # manual trigger for testing
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cron-sla
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.CRON_BASE_URL || 'https://www.jechemine.ca' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Guard — secret present
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set. Add it with the same value as the Vercel env CRON_SECRET."
+            exit 1
+          fi
+
+      - name: Proposal timeouts (hard accept SLA — 24h regular / 12h urgent)
+        run: |
+          curl -fsS --retry 2 --max-time 60 -X GET \
+            "$BASE_URL/api/cron/proposal-timeouts" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo
+
+      - name: Unscheduled-match reminders (soft take-charge SLA — 24h)
+        run: |
+          curl -fsS --retry 2 --max-time 60 -X GET \
+            "$BASE_URL/api/cron/unscheduled-match-reminders" \
+            -H "Authorization: Bearer $CRON_SECRET"
+          echo
