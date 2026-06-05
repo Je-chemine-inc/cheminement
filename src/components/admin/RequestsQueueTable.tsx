@@ -8,6 +8,7 @@ import {
   UserCheck,
   CalendarPlus,
   Flag,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,6 +127,9 @@ export default function RequestsQueueTable({
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
   const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [emergencyTogglingId, setEmergencyTogglingId] = useState<string | null>(
+    null,
+  );
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // "Fixer un rendez-vous" (§4) — direct in-place scheduling modal state.
@@ -378,6 +382,33 @@ export default function RequestsQueueTable({
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setAssigningId(null);
+    }
+  };
+
+  // §4 "Définir comme Consultation ponctuelle rapide": one-click toggle of the
+  // urgent flag straight from the queue (no popup). Drives the Urgence badge,
+  // top-sort, and the 12h accept SLA; toggling off reverts to a standard request.
+  const toggleEmergency = async (r: ServiceRequestRow) => {
+    try {
+      setEmergencyTogglingId(r.id);
+      setError(null);
+      const res = await fetch(
+        `/api/admin/service-requests/${r.id}/emergency`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isEmergency: !r.isEmergency }),
+        },
+      );
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Failed to update");
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setEmergencyTogglingId(null);
     }
   };
 
@@ -650,6 +681,32 @@ export default function RequestsQueueTable({
                         >
                           <CalendarPlus className="h-4 w-4 mr-1" />
                           {t("scheduleAction")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleEmergency(r)}
+                          disabled={loading || emergencyTogglingId === r.id}
+                          title={
+                            r.isEmergency
+                              ? t("unmarkEmergencyHint")
+                              : t("markEmergencyHint")
+                          }
+                          className={`whitespace-nowrap ${
+                            r.isEmergency
+                              ? "border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300"
+                              : ""
+                          }`}
+                        >
+                          {emergencyTogglingId === r.id ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <Zap className="h-4 w-4 mr-1" />
+                          )}
+                          {r.isEmergency
+                            ? t("unmarkEmergency")
+                            : t("markEmergency")}
                         </Button>
                         <Button
                           type="button"
