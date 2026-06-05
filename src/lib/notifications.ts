@@ -456,6 +456,9 @@ const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): stri
   const allRights = lang === "fr" ? "Tous droits réservés." : "All rights reserved.";
   const visitSite = lang === "fr" ? "Visiter notre site web" : "Visit our website";
   const contactSupport = lang === "fr" ? "Contacter le soutien" : "Contact support";
+  // Link to the Terms of Use in the footer of every platform email (client req).
+  const termsLabel =
+    lang === "fr" ? "Conditions d'utilisation" : "Terms of Use";
 
   return `
     <div class="footer">
@@ -465,6 +468,8 @@ const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): stri
         <a href="${url}" style="color: ${primaryColor};">${visitSite}</a>
         &nbsp;·&nbsp;
         <a href="mailto:${supportEmail}" style="color: ${primaryColor};">${contactSupport}</a>
+        &nbsp;·&nbsp;
+        <a href="${url}/terms" style="color: ${primaryColor};">${termsLabel}</a>
       </p>
     </div>
   `;
@@ -571,10 +576,16 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
 
 const buildEmailText = (sections: string[], lang: "fr" | "en" = "fr"): string => {
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
+  const url = process.env.NEXTAUTH_URL || "";
+  // Terms-of-Use link in the footer of every platform email (client req).
+  const termsLine =
+    lang === "fr"
+      ? `Conditions d'utilisation : ${url}/terms`
+      : `Terms of Use: ${url}/terms`;
   const copyright =
     lang === "fr"
-      ? `© ${new Date().getFullYear()} Je chemine. Tous droits réservés.\nSoutien : ${supportEmail}`
-      : `© ${new Date().getFullYear()} Je chemine. All rights reserved.\nSupport: ${supportEmail}`;
+      ? `© ${new Date().getFullYear()} Je chemine. Tous droits réservés.\nSoutien : ${supportEmail}\n${termsLine}`
+      : `© ${new Date().getFullYear()} Je chemine. All rights reserved.\nSupport: ${supportEmail}\n${termsLine}`;
   return sections.filter(Boolean).join("\n\n") + `\n\n${copyright}`;
 };
 
