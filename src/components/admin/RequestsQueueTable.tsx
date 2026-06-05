@@ -7,6 +7,7 @@ import {
   Trash2,
   UserCheck,
   CalendarPlus,
+  Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -533,7 +534,7 @@ export default function RequestsQueueTable({
                     {new Date(r.createdAt).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span>{r.clientName}</span>
                       {r.isEmergency ? (
                         <span
@@ -549,6 +550,18 @@ export default function RequestsQueueTable({
                           title={t("returningClientHint")}
                         >
                           {t("returningClient")}
+                        </span>
+                      ) : null}
+                      {/* §3.1: dossier refused/ignored by 2 pros (cascade
+                          exhausted) — flag the admin to re-verify the request. */}
+                      {typeof r.cascadeAttempts === "number" &&
+                      r.cascadeAttempts >= 2 ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-600 text-white dark:bg-red-700"
+                          title={t("refusedTwiceHint")}
+                        >
+                          <Flag className="h-3 w-3" />
+                          {t("refusedTwiceFlag")}
                         </span>
                       ) : null}
                     </div>

@@ -968,6 +968,8 @@
     "routingRefused": "Refusé",
     "routingAwaitingAdmin": "À jumeler",
     "attemptsLabel": "Tentatives : {n}",
+    "refusedTwiceFlag": "Refusé 2× — à revérifier",
+    "refusedTwiceHint": "Refusé ou ignoré par 2 professionnels. Vérifiez la demande (informations manquantes ou inexactes) et contactez le client ou d'autres professionnels avant de réassigner.",
     "filterAll": "Toutes",
     "scheduleAction": "Fixer un RDV",
     "scheduleTitle": "Fixer un rendez-vous",

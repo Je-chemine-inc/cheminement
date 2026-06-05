@@ -968,6 +968,8 @@
     "routingRefused": "Refused",
     "routingAwaitingAdmin": "Needs manual match",
     "attemptsLabel": "Attempts: {n}",
+    "refusedTwiceFlag": "Refused 2× — re-verify",
+    "refusedTwiceHint": "Refused or ignored by 2 professionals. Re-check the request (missing or inaccurate info), and contact the client or other professionals before reassigning.",
     "filterAll": "All",
     "scheduleAction": "Set appointment",
     "scheduleTitle": "Set an appointment",
