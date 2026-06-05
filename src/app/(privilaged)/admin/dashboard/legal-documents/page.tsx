@@ -13,7 +13,12 @@ import {
 
 interface LegalDocRow {
   id: string;
-  documentKey: "terms" | "privacy" | "professionalTerms" | "cookies";
+  documentKey:
+    | "terms"
+    | "privacy"
+    | "professionalTerms"
+    | "cookies"
+    | "emergencyConditions";
   locale: "fr" | "en";
   title: string;
   subtitle?: string;
@@ -22,13 +27,20 @@ interface LegalDocRow {
   updatedAt: string;
 }
 
-const DOCUMENT_KEYS = ["terms", "privacy", "professionalTerms", "cookies"] as const;
+const DOCUMENT_KEYS = [
+  "terms",
+  "privacy",
+  "professionalTerms",
+  "cookies",
+  "emergencyConditions",
+] as const;
 
 const PUBLIC_PATH: Record<LegalDocRow["documentKey"], string> = {
   terms: "/terms",
   privacy: "/privacy",
   professionalTerms: "/professional-terms",
   cookies: "/cookies",
+  emergencyConditions: "/emergency",
 };
 
 export default function LegalDocumentsListPage() {

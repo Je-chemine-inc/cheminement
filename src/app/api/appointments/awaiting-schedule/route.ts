@@ -33,7 +33,8 @@ export async function GET() {
       status: "pending",
     })
       .populate("clientId", "firstName lastName email phone location")
-      .sort({ createdAt: -1 });
+      // Urgent requests first so the 24h take-charge SLA stays visible, then recency.
+      .sort({ isEmergency: -1, createdAt: -1 });
 
     // Drop rows whose client User has been deleted (mirrors proposed/general).
     const safe = appointments.filter((apt) => apt.clientId != null);

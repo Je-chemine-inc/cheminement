@@ -74,7 +74,8 @@ export async function GET(req: NextRequest) {
 
     const appointments = await Appointment.find(query)
       .populate("clientId", "firstName lastName email phone location")
-      .sort({ createdAt: -1 });
+      // Urgent requests first so they stand out in the general pool, then recency.
+      .sort({ isEmergency: -1, createdAt: -1 });
 
     // Drop rows whose client User has been deleted — the pro UI assumes
     // clientId is populated and crashes on null, which used to white-screen

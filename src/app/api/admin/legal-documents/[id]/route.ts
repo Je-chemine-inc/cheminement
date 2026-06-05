@@ -27,6 +27,9 @@ function pathForKey(key: string): string | null {
   if (key === "terms") return "/terms";
   if (key === "privacy") return "/privacy";
   if (key === "professionalTerms") return "/professional-terms";
+  if (key === "cookies") return "/cookies";
+  // The emergency/consultation-rapide conditions render inline on /emergency.
+  if (key === "emergencyConditions") return "/emergency";
   return null;
 }
 

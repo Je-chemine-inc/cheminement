@@ -988,7 +988,7 @@
     "returningClient": "Former client",
     "returningClientHint": "This client already has prior appointments — they are requesting a new professional. Match without creating a duplicate account.",
     "emergency": "Emergency",
-    "emergencyHint": "Emergency appointment request — handle with priority.",
+    "emergencyHint": "Quick one-time consultation request (urgent) — reassign quickly, with priority.",
     "assignPlaceholder": "Assign a professional…",
     "assignAction": "Match",
     "reassignAction": "Reassign",
@@ -1172,7 +1172,7 @@
     "viewRequests": "View My Requests",
     "backDashboard": "Back to Dashboard",
     "requestSummary": "Request Summary",
-    "emergencyBadge": "Emergency appointment",
+    "emergencyBadge": "Quick one-time consultation",
     "forLabel": "For",
     "yourInfoLabel": "Your Info",
     "detailsLabel": "Details",
@@ -1288,6 +1288,7 @@
     "ios": "Je chemine for iOS",
     "android": "Je chemine for Android",
     "bookAppointment": "Book an Appointment",
+    "quickConsultation": "Quick one-time consultation",
     "exploreResources": "Explore Resources",
     "platformPress": "Platform Press",
     "helpCentre": "Help Centre",
@@ -1305,16 +1306,13 @@
     "socialX": "Je chemine on X"
   },
   "EmergencyAppointment": {
-    "homeTitle": "Need help quickly?",
-    "homeDescription": "If your situation needs prompt attention, submit an emergency appointment request. Your request will be flagged to our team as a priority.",
-    "homeButton": "Book an emergency appointment",
-    "pageTitle": "Book an emergency appointment",
-    "pageIntro": "Submit a priority appointment request. Please review the conditions below first.",
+    "pageTitle": "Quick one-time consultation",
+    "pageIntro": "Request a priority consultation. Please review the conditions below first.",
     "crisisTitle": "In a life-threatening emergency or immediate danger",
     "crisisBody": "This page is not a substitute for emergency services. If you or a loved one are in immediate danger, call 911. If you are in distress or having suicidal thoughts, call 988 (Suicide Crisis Helpline, available 24/7) or 1-866-277-3553 (1-866-APPELLE) in Quebec.",
-    "conditionsTitle": "Emergency request conditions",
+    "conditionsTitle": "Quick consultation conditions",
     "conditionsBody": "The specific conditions content will be added here. (To be provided by the Je chemine team.)",
-    "selectTitle": "Who is this emergency appointment for?",
+    "selectTitle": "Who is this quick consultation for?",
     "backHome": "Back to home"
   },
   "HeroSection": {
@@ -4922,6 +4920,10 @@
       "confirmFirstRdv": "Confirm 1st appointment",
       "confirmFirstRdvModalTitle": "Confirm the first appointment",
       "release": "Decline",
+      "emergencyBadge": "Urgent",
+      "emergencyHint": "Quick one-time consultation — commitment: accept within 12h, take charge within 24h.",
+      "acceptBy": "Accept by {time}",
+      "takeChargeBy": "Schedule by {time}",
       "filters": "Filters",
       "clearAll": "Clear all",
       "search": "Search",
@@ -5686,6 +5688,48 @@
           ]
         }
       ]
+    },
+    "emergencyConditions": {
+      "title": "Quick one-time consultation conditions",
+      "subtitle": "Please read before requesting",
+      "lastUpdated": "June 5, 2026",
+      "intro": "A quick one-time consultation (« consultation ponctuelle rapide ») is a priority request for people who need to be seen rapidly but are not in a life-threatening situation. Please review the conditions below before submitting your request.",
+      "sections": [
+        {
+          "title": "This is not an emergency service",
+          "blocks": [
+            { "paragraph": "Je chemine is not a real-time crisis or emergency service. If you or a loved one are in immediate danger or having suicidal thoughts, call 911, or 988 (Suicide Crisis Helpline, available 24/7), or 1-866-277-3553 (1-866-APPELLE) in Quebec." }
+          ]
+        },
+        {
+          "title": "Who it is for",
+          "blocks": [
+            { "paragraph": "This option is intended for situations that require prompt attention — heightened distress, a sudden deterioration, or a time-sensitive need — without constituting a medical or psychiatric emergency." }
+          ]
+        },
+        {
+          "title": "How it works",
+          "blocks": [
+            { "bullets": [
+              { "term": "Priority handling", "text": "your request is flagged to our team as urgent and triaged ahead of standard requests." },
+              { "term": "Response time", "text": "a professional aims to take charge of your file within 24 hours and to confirm the appointment within 12 hours of accepting it." },
+              { "term": "One-time consultation", "text": "this is a single, focused session; ongoing follow-up can be arranged separately afterwards." }
+            ]}
+          ]
+        },
+        {
+          "title": "Fees",
+          "blocks": [
+            { "paragraph": "The usual consultation fees apply. The exact amount and payment terms are confirmed during booking." }
+          ]
+        },
+        {
+          "title": "Provisional text — to be confirmed",
+          "blocks": [
+            { "callout": "This is a provisional version. The Je chemine team can update it at any time from the admin \"Legal documents\" section." }
+          ]
+        }
+      ]
     }
   },
   "AdminLegalDocuments": {
@@ -5707,6 +5751,10 @@
       "cookies": {
         "label": "Cookie Policy",
         "description": "Je chemine Cookie Policy – applies to all users."
+      },
+      "emergencyConditions": {
+        "label": "Quick consultation conditions",
+        "description": "Conditions shown on the public \"Consultation ponctuelle rapide\" page."
       }
     },
     "localeFrench": "French",

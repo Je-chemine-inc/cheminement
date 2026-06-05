@@ -38,7 +38,9 @@ export async function GET() {
     const requests = await Appointment.find({ status: "pending" })
       .populate("clientId", "firstName lastName email phone")
       .populate("professionalId", "firstName lastName")
-      .sort({ createdAt: -1 })
+      // Urgent "Consultation ponctuelle rapide" requests float to the top so
+      // admins triage/reassign them first (client spec §2), then by recency.
+      .sort({ isEmergency: -1, createdAt: -1 })
       .limit(200)
       .lean();
 

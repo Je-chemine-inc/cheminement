@@ -285,7 +285,7 @@ export default function BookAppointmentPage() {
   // so admins don't create duplicates.
   const changeProfessional = searchParams.get("changeProfessional") === "true";
 
-  // The "Prendre un rendez-vous d'urgence" funnel lands here with ?emergency=true.
+  // The "Consultation ponctuelle rapide" funnel lands here with ?emergency=true.
   // The flag rides the booking payload so admins are alerted it's an urgent
   // request at reception (alert email + "Urgence" badge in the admin queue).
   const emergency = searchParams.get("emergency") === "true";

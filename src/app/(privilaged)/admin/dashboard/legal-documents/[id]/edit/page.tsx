@@ -15,7 +15,12 @@ import LegalDocumentEditor from "@/components/admin/LegalDocumentEditor";
 
 interface LegalDocDTO {
   id: string;
-  documentKey: "terms" | "privacy" | "professionalTerms";
+  documentKey:
+    | "terms"
+    | "privacy"
+    | "professionalTerms"
+    | "cookies"
+    | "emergencyConditions";
   locale: "fr" | "en";
   title: string;
   subtitle?: string;
@@ -29,6 +34,8 @@ const PUBLIC_PATH: Record<LegalDocDTO["documentKey"], string> = {
   terms: "/terms",
   privacy: "/privacy",
   professionalTerms: "/professional-terms",
+  cookies: "/cookies",
+  emergencyConditions: "/emergency",
 };
 
 export default function LegalDocumentEditPage() {

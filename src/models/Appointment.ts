@@ -189,6 +189,17 @@ export interface IAppointment extends Document {
    * délai de relance pro (le pro a accepté mais n'a jamais fixé le 1er RDV). */
   firstRdvAdminEscalatedSent?: boolean;
 
+  /**
+   * Soft-SLA dedup flag for URGENT requests ("Consultation ponctuelle rapide" /
+   * isEmergency) at the TAKE-CHARGE stage: a pro who accepted commits to confirm
+   * the 1st RDV within 24h. When that lapses, a daily cron sends a soft reminder
+   * to the pro + an alert to admins — the request STAYS assigned (no auto-move).
+   * Deadline computed on the fly (matchedAt + 24h); reset to false on each accept.
+   * (The ACCEPT-stage deadline is HARD — the proposal timeout advances the
+   * cascade at 24h regular / 12h urgent. See proposal-timeout.ts.)
+   */
+  takeChargeSlaAlertSent?: boolean;
+
   /** Premier passage en « scheduled » (pour relance J+1 garantie). */
   firstScheduledAt?: Date;
   guaranteeDay1ReminderSent?: boolean;
@@ -469,6 +480,8 @@ const AppointmentSchema = new Schema<IAppointment>(
     matchedAt: Date,
     firstRdvReminderSent: { type: Boolean, default: false },
     firstRdvAdminEscalatedSent: { type: Boolean, default: false },
+    // Soft-SLA take-charge alert dedup flag for urgent requests (see IAppointment).
+    takeChargeSlaAlertSent: { type: Boolean, default: false },
     firstScheduledAt: Date,
     guaranteeDay1ReminderSent: { type: Boolean, default: false },
     guaranteeDay2ReminderSent: { type: Boolean, default: false },

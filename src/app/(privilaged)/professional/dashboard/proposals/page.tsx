@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertTriangle,
   Search,
   Eye,
   Phone,
@@ -91,6 +92,13 @@ interface ProposedAppointment {
   routingStatus: string;
   preferredAvailability?: string[];
   createdAt: string;
+  /** Urgent "Consultation ponctuelle rapide" flag — drives the urgency badge
+   *  and the soft-SLA deadline hints (accept ≤12h / take charge ≤24h). */
+  isEmergency?: boolean;
+  /** Proposal timestamp — accept-SLA deadline = proposedAt + 12h. */
+  proposedAt?: string;
+  /** Acceptance timestamp — take-charge-SLA deadline = matchedAt + 24h. */
+  matchedAt?: string;
 }
 
 interface AvailableSlot {
@@ -111,6 +119,13 @@ interface AvailabilityData {
 // How often the open Propositions page silently re-pulls the lists (general
 // pool, proposed, awaiting) so admin-pushed dossiers surface near-real-time.
 const POLL_INTERVAL_MS = 30_000;
+
+// Urgent ("Consultation ponctuelle rapide") deadlines surfaced on the rows:
+// accept within 12h (HARD — the proposal then auto-advances; see
+// proposal-timeout.ts) and take charge / confirm the 1st RDV within 24h (soft
+// reminder). Regular requests use a 24h accept window but aren't badged here.
+const EMERGENCY_ACCEPT_SLA_HOURS = 12;
+const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 24;
 
 export default function ProposalsPage() {
   const t = useTranslations("Professional.proposals");
@@ -379,6 +394,59 @@ export default function ProposalsPage() {
     } finally {
       setRefusingId(null);
     }
+  };
+
+  // Format an SLA deadline (base timestamp + N hours) in the active locale.
+  const formatDeadline = (iso: string | undefined, addHours: number) => {
+    if (!iso) return null;
+    const d = new Date(new Date(iso).getTime() + addHours * 60 * 60 * 1000);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleString(locale, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Urgency badge + soft-SLA deadline hint for "Consultation ponctuelle rapide"
+  // requests. The stage (and which deadline applies) is derived from the row's
+  // routingStatus, so this one helper works across the proposed/general/awaiting
+  // tabs: proposed → "accept by" (proposedAt+12h), accepted → "schedule by"
+  // (matchedAt+24h), general/refused → badge only (no per-pro clock).
+  const renderUrgencyInfo = (appointment: ProposedAppointment) => {
+    if (!appointment.isEmergency) return null;
+    let deadlineLabel: string | null = null;
+    if (appointment.routingStatus === "accepted") {
+      const deadline = formatDeadline(
+        appointment.matchedAt,
+        EMERGENCY_TAKE_CHARGE_SLA_HOURS,
+      );
+      if (deadline) deadlineLabel = t("takeChargeBy", { time: deadline });
+    } else if (appointment.routingStatus === "proposed") {
+      const deadline = formatDeadline(
+        appointment.proposedAt,
+        EMERGENCY_ACCEPT_SLA_HOURS,
+      );
+      if (deadline) deadlineLabel = t("acceptBy", { time: deadline });
+    }
+    return (
+      <div className="mt-1.5 flex flex-col gap-0.5">
+        <span
+          className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+          title={t("emergencyHint")}
+        >
+          <AlertTriangle className="h-3 w-3" />
+          {t("emergencyBadge")}
+        </span>
+        {deadlineLabel ? (
+          <span className="text-[11px] font-medium text-red-700/90 dark:text-red-300/90">
+            {deadlineLabel}
+          </span>
+        ) : null}
+      </div>
+    );
   };
 
   const getTypeBadge = (type: ProposedAppointment["type"]) => {
@@ -782,6 +850,7 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           </div>
+                          {renderUrgencyInfo(appointment)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -931,6 +1000,7 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           </div>
+                          {renderUrgencyInfo(appointment)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1064,6 +1134,7 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           </div>
+                          {renderUrgencyInfo(appointment)}
                         </div>
                       </TableCell>
                       <TableCell>

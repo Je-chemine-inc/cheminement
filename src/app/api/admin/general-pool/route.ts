@@ -43,7 +43,8 @@ export async function GET() {
     })
       .populate("clientId", "firstName lastName email phone")
       .populate("professionalId", "firstName lastName")
-      .sort({ createdAt: -1 })
+      // Urgent requests first (client spec §2 — réassigner rapidement), then recency.
+      .sort({ isEmergency: -1, createdAt: -1 })
       .limit(200)
       .lean();
 

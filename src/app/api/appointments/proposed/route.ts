@@ -42,7 +42,9 @@ export async function GET(req: NextRequest) {
 
     const appointments = await Appointment.find(query)
       .populate("clientId", "firstName lastName email phone location")
-      .sort({ createdAt: -1 });
+      // Urgent "Consultation ponctuelle rapide" requests float to the top so the
+      // pro sees them before the 12h accept-SLA lapses, then by recency.
+      .sort({ isEmergency: -1, createdAt: -1 });
 
     // Drop rows whose client User has been deleted — see /api/appointments/general
     // for the same defense against orphan records.

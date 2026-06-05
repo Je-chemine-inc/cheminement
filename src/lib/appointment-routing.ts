@@ -1029,7 +1029,8 @@ export async function routeAppointmentToProfessionals(
       !(await commitRouting({
         routingStatus: "proposed",
         proposedTo: proposedIds,
-        // Stamp the proposal time so the 48h no-response timeout can fire.
+        // Stamp the proposal time so the no-response timeout can fire (24h
+        // regular / 12h urgent — see proposal-timeout.ts).
         proposedAt: new Date(),
       }))
     ) {

@@ -521,7 +521,14 @@ export default function RequestsQueueTable({
             </TableHeader>
             <TableBody>
               {filteredRequests.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow
+                  key={r.id}
+                  className={
+                    r.isEmergency
+                      ? "bg-red-50/70 hover:bg-red-50 dark:bg-red-950/20"
+                      : undefined
+                  }
+                >
                   <TableCell className="whitespace-nowrap text-sm">
                     {new Date(r.createdAt).toLocaleString()}
                   </TableCell>

@@ -10,6 +10,8 @@ const VALID_KEYS: LegalDocumentKey[] = [
   "terms",
   "privacy",
   "professionalTerms",
+  "cookies",
+  "emergencyConditions",
 ];
 
 export async function GET(

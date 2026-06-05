@@ -8,17 +8,22 @@ const HOUR_MS = 60 * 60 * 1000;
  * A targeted proposal left unanswered (no accept/refuse) past this many hours is
  * treated EXACTLY like a refusal: the cascade advances by one attempt and the
  * matcher re-runs (next eligible pro, or the admin "Demande de service" queue
- * once the 2 attempts are exhausted). Client requirement §3 ("48h dépassées").
+ * once the 2 attempts are exhausted). Client requirement §3 — the window is
+ * isEmergency-dependent:
+ *   - regular requests: 24h
+ *   - urgent "Consultation ponctuelle rapide" (isEmergency): 12h
  */
-export const PROPOSAL_TIMEOUT_HOURS = 48;
+export const PROPOSAL_TIMEOUT_HOURS_REGULAR = 24;
+export const PROPOSAL_TIMEOUT_HOURS_URGENT = 12;
 
 /**
- * Find proposals stuck in "proposed" past the 48h window and advance them as if
- * the proposed professional had refused. Run by a DAILY cron (Vercel Hobby plan
- * allows daily only), so the 48h cutoff is exact but detection lags up to ~24h
- * (effective 48–72h). Idempotent and concurrency-safe via the same atomic claim
- * the refuse route uses (only one actor — this job OR a live refusal — flips a
- * given proposed dossier out of "proposed").
+ * Find proposals stuck in "proposed" past their window and advance them as if the
+ * proposed professional had refused. The window is isEmergency-dependent (§3):
+ * 24h for regular requests, 12h for urgent "Consultation ponctuelle rapide". Run
+ * by a DAILY cron (Vercel Hobby plan allows daily only), so the cutoff is exact
+ * but detection lags up to ~24h. Idempotent and concurrency-safe via the same
+ * atomic claim the refuse route uses (only one actor — this job OR a live
+ * refusal — flips a given proposed dossier out of "proposed").
  *
  * `proposedAt` drives the clock; legacy rows that pre-date the field fall back to
  * `createdAt` (mirrors unscheduled-match-reminders), so stuck legacy proposals
@@ -26,14 +31,28 @@ export const PROPOSAL_TIMEOUT_HOURS = 48;
  */
 export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
   await connectToDatabase();
-  const cutoff = new Date(Date.now() - PROPOSAL_TIMEOUT_HOURS * HOUR_MS);
+  const now = Date.now();
+  const urgentCutoff = new Date(now - PROPOSAL_TIMEOUT_HOURS_URGENT * HOUR_MS);
+  const regularCutoff = new Date(now - PROPOSAL_TIMEOUT_HOURS_REGULAR * HOUR_MS);
 
   const candidates = await Appointment.find({
     routingStatus: "proposed",
     status: "pending",
     $or: [
-      { proposedAt: { $lte: cutoff } },
-      { proposedAt: { $exists: false }, createdAt: { $lte: cutoff } },
+      // Urgent "Consultation ponctuelle rapide" → 12h window.
+      { isEmergency: true, proposedAt: { $lte: urgentCutoff } },
+      {
+        isEmergency: true,
+        proposedAt: { $exists: false },
+        createdAt: { $lte: urgentCutoff },
+      },
+      // Regular requests → 24h window.
+      { isEmergency: { $ne: true }, proposedAt: { $lte: regularCutoff } },
+      {
+        isEmergency: { $ne: true },
+        proposedAt: { $exists: false },
+        createdAt: { $lte: regularCutoff },
+      },
     ],
   })
     .select("_id proposedTo")

@@ -1,23 +1,41 @@
-"use client";
-
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Phone } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import BookingButtonsGroup from "@/components/appointments/BookingButtonsGroup";
+import { getLegalDocument } from "@/lib/legal-content";
+import type { LegalDocumentLocale } from "@/models/LegalDocument";
+
+export const dynamic = "force-dynamic";
 
 /**
- * Public "Prendre un rendez-vous d'urgence" page.
+ * Public "Consultation ponctuelle rapide" page (route/flag stay "emergency"
+ * internally; the request is still triaged as a priority one at reception).
  *
- * Presents the urgent-request conditions, a life-threatening-crisis disclaimer
- * (this is NOT a real-time crisis service), then routes the visitor into the
- * standard booking funnel via the three entry points (self / loved-one /
- * patient) with ?emergency=true so the request is flagged urgent at reception.
+ * Presents the conditions, a life-threatening-crisis disclaimer (this is NOT a
+ * real-time crisis service), then routes the visitor into the standard booking
+ * funnel via the three entry points (self / loved-one / patient) with
+ * ?emergency=true so the request is flagged urgent at reception.
  *
- * NOTE: the specific eligibility conditions are client-provided copy and live in
- * messages/{en,fr}.json under EmergencyAppointment.conditionsBody — edit there.
+ * CONDITIONS ARE ADMIN-EDITABLE: they come from the legal-documents CMS
+ * (LegalDocument key "emergencyConditions") — editable at
+ * /admin/dashboard/legal-documents. If the DB read fails we fall back to the
+ * static i18n placeholder (EmergencyAppointment.conditionsBody) so the page
+ * never renders empty.
  */
-export default function EmergencyAppointmentPage() {
-  const t = useTranslations("EmergencyAppointment");
+export default async function EmergencyAppointmentPage() {
+  const t = await getTranslations("EmergencyAppointment");
+  const rawLocale = await getLocale();
+  const locale: LegalDocumentLocale = rawLocale === "fr" ? "fr" : "en";
+
+  let conditionsTitle = t("conditionsTitle");
+  let conditionsHtml: string | null = null;
+  try {
+    const doc = await getLegalDocument("emergencyConditions", locale);
+    conditionsTitle = doc.title || conditionsTitle;
+    conditionsHtml = doc.contentHtml || null;
+  } catch (err) {
+    console.error("[emergency] failed to load conditions document:", err);
+  }
 
   return (
     <div className="bg-background min-h-screen">
@@ -50,14 +68,21 @@ export default function EmergencyAppointmentPage() {
           </div>
         </div>
 
-        {/* Specific conditions (client-provided copy) */}
+        {/* Specific conditions (admin-editable via the legal-documents CMS) */}
         <div className="rounded-2xl border border-border bg-card p-6 mb-10">
           <h2 className="font-serif text-xl font-semibold text-foreground mb-3">
-            {t("conditionsTitle")}
+            {conditionsTitle}
           </h2>
-          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-            {t("conditionsBody")}
-          </p>
+          {conditionsHtml ? (
+            <div
+              className="legal-prose text-muted-foreground leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: conditionsHtml }}
+            />
+          ) : (
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+              {t("conditionsBody")}
+            </p>
+          )}
         </div>
 
         {/* Three booking entries, carrying ?emergency=true */}

@@ -137,7 +137,13 @@ export async function getLegalDocument(
 export async function listLegalDocuments() {
   await connectToDatabase();
 
-  const keys: LegalDocumentKey[] = ["terms", "privacy", "professionalTerms", "cookies"];
+  const keys: LegalDocumentKey[] = [
+    "terms",
+    "privacy",
+    "professionalTerms",
+    "cookies",
+    "emergencyConditions",
+  ];
   const locales: LegalDocumentLocale[] = ["fr", "en"];
 
   const results = [];
@@ -175,6 +181,7 @@ export async function getLegalTitles(locale: LegalDocumentLocale) {
     privacy: "",
     professionalTerms: "",
     cookies: "",
+    emergencyConditions: "",
   };
   await Promise.all(
     keys.map(async (key) => {

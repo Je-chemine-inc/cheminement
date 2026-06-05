@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runUnscheduledMatchReminders } from "@/lib/unscheduled-match-reminders";
+import { runEmergencyTakeChargeSlaAlerts } from "@/lib/emergency-sla";
 
 /**
  * Daily cron. Call with header: Authorization: Bearer <CRON_SECRET>.
@@ -17,7 +18,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await runUnscheduledMatchReminders();
-    return NextResponse.json({ ok: true, ...result });
+    // Piggyback the urgent 24h-take-charge soft-SLA nudges on this daily run:
+    // urgent matches the pro accepted but never scheduled within 24h get a soft
+    // reminder to the pro + an alert to admins (request stays assigned).
+    const emergencyTakeCharge = await runEmergencyTakeChargeSlaAlerts();
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      emergencyTakeChargeAlerts: emergencyTakeCharge.alerted,
+    });
   } catch (e: unknown) {
     console.error("unscheduled-match-reminders cron:", e);
     return NextResponse.json(

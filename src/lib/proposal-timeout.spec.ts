@@ -1,9 +1,10 @@
 /**
- * §3: a targeted proposal left unanswered past 48h must advance the cascade
- * EXACTLY like a refusal — atomic claim, +1 cascadeAttempts, lapsed pro into
- * refusedBy, then re-run the matcher (next pro, or the admin queue once the
- * 2 attempts are exhausted). Concurrency-safe: the atomic claim makes a row
- * already handled by a live refusal a no-op.
+ * §3: a targeted proposal left unanswered past its window (24h regular / 12h
+ * urgent "Consultation ponctuelle rapide") must advance the cascade EXACTLY like
+ * a refusal — atomic claim, +1 cascadeAttempts, lapsed pro into refusedBy, then
+ * re-run the matcher (next pro, or the admin queue once the 2 attempts are
+ * exhausted). Concurrency-safe: the atomic claim makes a row already handled by a
+ * live refusal a no-op.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -30,7 +31,8 @@ vi.mock("@/lib/appointment-routing", () => ({
 
 import {
   runProposalTimeouts,
-  PROPOSAL_TIMEOUT_HOURS,
+  PROPOSAL_TIMEOUT_HOURS_REGULAR,
+  PROPOSAL_TIMEOUT_HOURS_URGENT,
 } from "@/lib/proposal-timeout";
 
 // Appointment.find(...).select(...).limit(...) → resolves to the rows array.
@@ -53,18 +55,22 @@ beforeEach(() => {
 });
 
 describe("runProposalTimeouts", () => {
-  it("uses a 48h window", () => {
-    expect(PROPOSAL_TIMEOUT_HOURS).toBe(48);
+  it("uses a 24h window for regular requests and 12h for urgent ones", () => {
+    expect(PROPOSAL_TIMEOUT_HOURS_REGULAR).toBe(24);
+    expect(PROPOSAL_TIMEOUT_HOURS_URGENT).toBe(12);
   });
 
-  it("queries only proposed + pending rows past the cutoff (proposedAt or legacy createdAt)", async () => {
+  it("queries only proposed + pending rows past the cutoff (urgent 12h / regular 24h, proposedAt or legacy createdAt)", async () => {
     h.find.mockReturnValue(makeFindResult([]));
     const res = await runProposalTimeouts();
     expect(res.timedOut).toBe(0);
     const query = h.find.mock.calls[0][0] as Record<string, unknown>;
     expect(query.routingStatus).toBe("proposed");
     expect(query.status).toBe("pending");
+    // $or holds the urgent (12h) + regular (24h) cutoff branches, each with a
+    // proposedAt arm and a legacy createdAt fallback arm.
     expect(Array.isArray(query.$or)).toBe(true);
+    expect((query.$or as unknown[]).length).toBe(4);
   });
 
   it("claims each timed-out proposal like a refusal and re-runs the matcher", async () => {

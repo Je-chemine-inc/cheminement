@@ -46,6 +46,13 @@ export async function Footer() {
                   {t("bookAppointment")}
                 </Link>
               </li>
+              {/* "Consultation ponctuelle rapide" — placed between the standard
+                  "Prendre un rendez-vous" link and "Services" per client spec §2. */}
+              <li>
+                <Link href="/emergency" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
+                  {t("quickConsultation")}
+                </Link>
+              </li>
               <li>
                 <Link href="/services" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
                   {tNav("services")}

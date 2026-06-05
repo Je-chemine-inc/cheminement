@@ -988,7 +988,7 @@
     "returningClient": "Ancien client",
     "returningClientHint": "Ce client a déjà des rendez-vous antérieurs — il demande un nouveau professionnel. Faites le jumelage sans créer de doublon de compte.",
     "emergency": "Urgence",
-    "emergencyHint": "Demande de rendez-vous d'urgence — à traiter en priorité.",
+    "emergencyHint": "Demande de consultation ponctuelle rapide (urgence) — à réassigner rapidement, en priorité.",
     "assignPlaceholder": "Assigner un professionnel…",
     "assignAction": "Jumeler",
     "reassignAction": "Réassigner",
@@ -1172,7 +1172,7 @@
     "viewRequests": "Voir mes demandes",
     "backDashboard": "Retour au tableau de bord",
     "requestSummary": "Résumé de la demande",
-    "emergencyBadge": "Rendez-vous d'urgence",
+    "emergencyBadge": "Consultation ponctuelle rapide",
     "forLabel": "Pour",
     "yourInfoLabel": "Vos infos",
     "detailsLabel": "Détails",
@@ -1288,6 +1288,7 @@
     "ios": "Je chemine pour iOS",
     "android": "Je chemine pour Android",
     "bookAppointment": "Prendre un rendez-vous",
+    "quickConsultation": "Consultation ponctuelle rapide",
     "exploreResources": "Explorez les ressources",
     "platformPress": "Plateforme Presse",
     "helpCentre": "Centre d'aide",
@@ -1305,16 +1306,13 @@
     "socialX": "Je chemine sur X"
   },
   "EmergencyAppointment": {
-    "homeTitle": "Besoin d'aide rapidement ?",
-    "homeDescription": "Si votre situation nécessite une prise en charge rapide, faites une demande de rendez-vous d'urgence. Votre demande sera signalée à notre équipe comme prioritaire.",
-    "homeButton": "Prendre un rendez-vous d'urgence",
-    "pageTitle": "Prendre un rendez-vous d'urgence",
-    "pageIntro": "Faites une demande de rendez-vous prioritaire. Veuillez d'abord prendre connaissance des conditions ci-dessous.",
+    "pageTitle": "Consultation ponctuelle rapide",
+    "pageIntro": "Faites une demande de consultation prioritaire. Veuillez d'abord prendre connaissance des conditions ci-dessous.",
     "crisisTitle": "En cas d'urgence vitale ou de danger immédiat",
     "crisisBody": "Cette page ne remplace pas les services d'urgence. Si vous ou un proche êtes en danger immédiat, composez le 911. En cas de détresse ou de pensées suicidaires, composez le 988 (ligne d'aide en cas de crise de suicide, 24 h/24, 7 j/7) ou le 1 866 277-3553 (1 866 APPELLE) au Québec.",
-    "conditionsTitle": "Conditions d'une demande d'urgence",
+    "conditionsTitle": "Conditions d'une consultation ponctuelle rapide",
     "conditionsBody": "Le contenu des conditions spécifiques sera ajouté ici. (À fournir par l'équipe Je chemine.)",
-    "selectTitle": "Pour qui est ce rendez-vous d'urgence ?",
+    "selectTitle": "Pour qui est cette consultation ponctuelle rapide ?",
     "backHome": "Retour à l'accueil"
   },
   "HeroSection": {
@@ -4921,6 +4919,10 @@
       "confirmFirstRdv": "Confirmer le 1er RDV",
       "confirmFirstRdvModalTitle": "Confirmer le premier rendez-vous",
       "release": "Se désister",
+      "emergencyBadge": "Urgence",
+      "emergencyHint": "Consultation ponctuelle rapide — engagement : accepter sous 12 h, prendre en charge sous 24 h.",
+      "acceptBy": "À accepter avant {time}",
+      "takeChargeBy": "À planifier avant {time}",
       "filters": "Filtres",
       "clearAll": "Tout effacer",
       "search": "Recherche",
@@ -5685,6 +5687,48 @@
           ]
         }
       ]
+    },
+    "emergencyConditions": {
+      "title": "Conditions d'une consultation ponctuelle rapide",
+      "subtitle": "À lire avant de faire une demande",
+      "lastUpdated": "5 juin 2026",
+      "intro": "La consultation ponctuelle rapide est une demande prioritaire pour les personnes qui doivent être vues rapidement, sans toutefois se trouver dans une situation mettant leur vie en danger. Veuillez prendre connaissance des conditions ci-dessous avant de soumettre votre demande.",
+      "sections": [
+        {
+          "title": "Ce n'est pas un service d'urgence",
+          "blocks": [
+            { "paragraph": "Je chemine n'est pas un service d'urgence ou d'intervention de crise en temps réel. Si vous ou un proche êtes en danger immédiat ou avez des pensées suicidaires, composez le 911, ou le 988 (ligne d'aide en cas de crise de suicide, 24 h/24, 7 j/7), ou le 1 866 277-3553 (1 866 APPELLE) au Québec." }
+          ]
+        },
+        {
+          "title": "À qui ça s'adresse",
+          "blocks": [
+            { "paragraph": "Cette option s'adresse aux situations qui nécessitent une prise en charge rapide — détresse accrue, détérioration soudaine ou besoin urgent dans le temps — sans constituer une urgence médicale ou psychiatrique." }
+          ]
+        },
+        {
+          "title": "Comment ça fonctionne",
+          "blocks": [
+            { "bullets": [
+              { "term": "Traitement prioritaire", "text": "votre demande est signalée à notre équipe comme urgente et traitée avant les demandes standard." },
+              { "term": "Délai de réponse", "text": "un professionnel vise à prendre en charge votre dossier dans les 24 heures et à confirmer le rendez-vous dans les 12 heures suivant son acceptation." },
+              { "term": "Consultation ponctuelle", "text": "il s'agit d'une séance unique et ciblée; un suivi régulier peut être organisé séparément par la suite." }
+            ]}
+          ]
+        },
+        {
+          "title": "Frais",
+          "blocks": [
+            { "paragraph": "Les frais de consultation habituels s'appliquent. Le montant exact et les modalités de paiement sont confirmés au moment de la prise de rendez-vous." }
+          ]
+        },
+        {
+          "title": "Texte provisoire — à confirmer",
+          "blocks": [
+            { "callout": "Ceci est une version provisoire. L'équipe Je chemine peut la mettre à jour à tout moment depuis la section « Documents légaux » de l'administration." }
+          ]
+        }
+      ]
     }
   },
   "AdminLegalDocuments": {
@@ -5706,6 +5750,10 @@
       "cookies": {
         "label": "Politique de témoins",
         "description": "Politique de témoins de connexion de Je chemine – applicable à tous les utilisateurs."
+      },
+      "emergencyConditions": {
+        "label": "Conditions — consultation ponctuelle rapide",
+        "description": "Conditions affichées sur la page publique « Consultation ponctuelle rapide »."
       }
     },
     "localeFrench": "Français",

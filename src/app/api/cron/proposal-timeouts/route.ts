@@ -4,10 +4,11 @@ import { runProposalTimeouts } from "@/lib/proposal-timeout";
 /**
  * Daily cron (Vercel Hobby plan allows daily crons only). Call with header:
  * Authorization: Bearer <CRON_SECRET>.
- * Advances targeted proposals left unanswered past 48h, treating the silence
- * like a refusal (cascade advances; matcher re-runs). The 48h cutoff is exact,
- * but with a daily run a lapsed proposal is detected up to ~24h late (effective
- * 48–72h). Idempotent via the atomic claim in the lib.
+ * Advances targeted proposals left unanswered past their window (24h regular /
+ * 12h urgent "Consultation ponctuelle rapide"), treating the silence like a
+ * refusal (cascade advances; matcher re-runs). The cutoff is exact, but with a
+ * daily run a lapsed proposal is detected up to ~24h late. Idempotent via the
+ * atomic claim in the lib.
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -19,6 +20,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // The accept-stage deadline (24h regular / 12h urgent) is HARD: a lapsed
+    // proposal advances the cascade exactly like a refusal (§3). No separate soft
+    // accept-alert — the take-charge 24h soft reminder lives on its own cron.
     const result = await runProposalTimeouts();
     return NextResponse.json({ ok: true, ...result });
   } catch (e: unknown) {
