@@ -171,15 +171,7 @@ export async function runAppointmentReminders(): Promise<{
         accountHolder != null &&
         clientLacksPaymentGuaranteeForAppointment(apt, accountHolder);
 
-      // Resolve URLs based on whether the account is claimed (active).
-      // Re-using the helper from H-72 above keeps the auth-gating consistent.
-      const confirmUrl = resolveAppointmentManageUrl({
-        userStatus: userStatus,
-        recipientEmail: recipient.email,
-        appointmentId: String(apt._id),
-        action: "confirm",
-        base: baseUrl,
-      });
+      // Resolve the payment-method URL based on whether the account is claimed.
       const billingUrl = noPaymentMethod
         ? await resolveBillingUrl({
             userStatus: userStatus,
@@ -197,7 +189,6 @@ export async function runAppointmentReminders(): Promise<{
         appointmentDateLabel: dateLabel,
         noPaymentMethod,
         locale,
-        confirmUrl,
         billingUrl,
       });
       if (ok) {

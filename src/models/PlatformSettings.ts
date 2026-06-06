@@ -249,11 +249,19 @@ const defaultEmailTemplates: Record<
   },
 };
 
+/**
+ * Seeded default footer tagline. Exported so the email layer can recognise the
+ * un-customised (seed) value and substitute a per-language tagline instead of
+ * leaking this English string into French emails. Keep this the single source
+ * of truth — never inline the literal elsewhere, or the two can silently drift.
+ */
+export const DEFAULT_EMAIL_FOOTER_TEXT = "Your journey to wellness starts here.";
+
 const defaultEmailBranding: IEmailBranding = {
   primaryColor: "#8B7355",
   secondaryColor: "#6B5344",
   companyName: "Je chemine",
-  footerText: "Your journey to wellness starts here.",
+  footerText: DEFAULT_EMAIL_FOOTER_TEXT,
 };
 
 const EmailTemplateConfigSchema = new Schema<IEmailTemplateConfig>(
@@ -272,7 +280,7 @@ const EmailBrandingSchema = new Schema<IEmailBranding>(
     companyName: { type: String, default: "Je chemine" },
     footerText: {
       type: String,
-      default: "Your journey to wellness starts here.",
+      default: DEFAULT_EMAIL_FOOTER_TEXT,
     },
   },
   { _id: false },

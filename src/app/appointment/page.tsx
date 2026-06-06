@@ -1109,7 +1109,7 @@ export default function BookAppointmentPage() {
             <ArrowLeft className="h-4 w-4" />
             {tB("back")}
           </Button>
-          <h1 className="text-4xl font-serif font-light text-foreground mb-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-light text-foreground mb-2">
             {tB("requestTitle")}
           </h1>
           <p className="text-muted-foreground text-lg">

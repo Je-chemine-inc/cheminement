@@ -39,7 +39,7 @@ const MONTH_NAMES = [
   "November",
   "December",
 ];
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00 → 20:00
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 8); // 8:00 → 23:00
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 // Local-date key — mirrors the professional calendar so both views place an

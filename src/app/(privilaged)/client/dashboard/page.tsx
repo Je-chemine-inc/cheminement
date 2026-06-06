@@ -227,7 +227,7 @@ export default function ClientDashboardPage() {
   return (
     <div className="space-y-10">
       {/* Welcome Section */}
-      <section className="rounded-3xl border border-border/20 bg-linear-to-r from-primary/10 via-card to-card/80 p-8 shadow-lg">
+      <section className="rounded-3xl border border-border/20 bg-linear-to-r from-primary/10 via-card to-card/80 p-5 sm:p-8 shadow-lg">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-4">
             <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground/70">

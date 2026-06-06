@@ -12,6 +12,7 @@ import {
   listContentAdmin,
   slugify,
 } from "@/lib/content-entry";
+import { isMediaType } from "@/lib/content-kind";
 
 async function requireContentAdmin() {
   const session = await getServerSession(authOptions);
@@ -33,6 +34,7 @@ function listingPath(kind: string): string | null {
   if (kind === "problematique") return "/book";
   if (kind === "traitement") return "/approaches";
   if (kind === "nouveaute") return "/nouveautes";
+  if (kind === "media") return "/medias";
   return null;
 }
 
@@ -72,6 +74,8 @@ interface CreateBody {
   iconUrl?: string;
   contentHtmlFr?: string;
   contentHtmlEn?: string;
+  mediaType?: string;
+  mediaUrl?: string;
   status?: "draft" | "published";
   sortOrder?: number;
 }
@@ -120,10 +124,22 @@ export async function POST(
     const sortOrder =
       typeof body.sortOrder === "number" ? body.sortOrder : 100;
 
+    // Media-only fields; ignored for the other kinds.
+    const mediaType =
+      kind === "media" && isMediaType(body.mediaType)
+        ? body.mediaType
+        : kind === "media"
+          ? "article"
+          : undefined;
+    const mediaUrl =
+      kind === "media" ? body.mediaUrl?.trim() || undefined : undefined;
+
     const common = {
       kind,
       slug,
       iconUrl: body.iconUrl,
+      mediaType,
+      mediaUrl,
       status,
       sortOrder,
       publishedAt: status === "published" ? now : undefined,

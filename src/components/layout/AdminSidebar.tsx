@@ -27,6 +27,7 @@ import {
   BookOpenCheck,
   Stethoscope,
   Newspaper,
+  Clapperboard,
   Layers,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -151,6 +152,11 @@ export function AdminSidebar() {
           title: t("nouveautes"),
           url: "/admin/dashboard/content/nouveaute",
           icon: Newspaper,
+        },
+        {
+          title: t("medias"),
+          url: "/admin/dashboard/content/media",
+          icon: Clapperboard,
         },
         {
           title: t("library"),

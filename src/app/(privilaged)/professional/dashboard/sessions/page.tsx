@@ -638,7 +638,7 @@ export default function SessionsPage() {
                         `/professional/dashboard/sessions/${session.id}`,
                       )
                     }
-                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-muted transition-colors"
                     title={t("viewDetails")}
                   >
                     <Eye className="h-4 w-4 text-muted-foreground" />
@@ -981,7 +981,7 @@ export default function SessionsPage() {
                             `/professional/dashboard/sessions/${session.id}`,
                           )
                         }
-                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                        className="inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-muted transition-colors"
                         title={t("viewDetails")}
                       >
                         <Eye className="h-4 w-4 text-muted-foreground" />
@@ -990,7 +990,7 @@ export default function SessionsPage() {
                         session.status === "scheduled" && (
                           <button
                             onClick={() => handleAddMeetingLink(session)}
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            className="inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-muted transition-colors"
                             title={
                               session.meetingLink
                                 ? t("updateMeetingLink")

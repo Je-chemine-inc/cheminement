@@ -5,8 +5,10 @@ import Problematique from "@/models/Problematique";
 import {
   CONTENT_KINDS,
   CONTENT_KIND_PUBLIC_BASE,
+  isDateSortedKind,
   type ContentKind,
   type ContentLocale,
+  type MediaType,
 } from "@/lib/content-kind";
 
 // --- Seed sources ---
@@ -18,8 +20,11 @@ type BilingualSeed = {
   titleEn: string;
   summaryFr: string;
   summaryEn: string;
-  /** Optional: days before "now" for publishedAt (used by nouveaute to stagger dates). */
+  /** Optional: days before "now" for publishedAt (used by date-sorted kinds to stagger dates). */
   daysAgo?: number;
+  /** Only for media seeds. */
+  mediaType?: MediaType;
+  mediaUrl?: string;
 };
 
 /** Problématiques — the 8 mental-health topics originally shown on /book. */
@@ -248,6 +253,50 @@ export const NOUVEAUTE_SEEDS: BilingualSeed[] = [
   },
 ];
 
+/**
+ * Médias — sample resources shown on /medias. Date-sorted (newest first).
+ * Seeded as articles (self-contained, no external URL); admins add videos &
+ * podcasts (with a YouTube/Vimeo/Spotify link) from the dashboard.
+ */
+export const MEDIA_SEEDS: BilingualSeed[] = [
+  {
+    slug: "apaiser-anxiete-au-quotidien",
+    sortOrder: 0,
+    daysAgo: 2,
+    mediaType: "article",
+    titleFr: "5 stratégies pour apaiser l'anxiété au quotidien",
+    titleEn: "5 strategies to ease everyday anxiety",
+    summaryFr:
+      "Des outils simples et concrets, validés par nos professionnels, pour retrouver un peu de calme dans les moments de tension.",
+    summaryEn:
+      "Simple, practical tools validated by our professionals to find some calm in tense moments.",
+  },
+  {
+    slug: "comprendre-la-therapie-cognitivo-comportementale",
+    sortOrder: 0,
+    daysAgo: 12,
+    mediaType: "article",
+    titleFr: "Comprendre la thérapie cognitivo-comportementale (TCC)",
+    titleEn: "Understanding cognitive-behavioral therapy (CBT)",
+    summaryFr:
+      "Comment fonctionne l'une des approches les plus étudiées en santé mentale, et à qui elle s'adresse.",
+    summaryEn:
+      "How one of the most-studied approaches in mental health works, and who it's for.",
+  },
+  {
+    slug: "prendre-soin-de-sa-sante-mentale-au-travail",
+    sortOrder: 0,
+    daysAgo: 26,
+    mediaType: "article",
+    titleFr: "Prendre soin de sa santé mentale au travail",
+    titleEn: "Caring for your mental health at work",
+    summaryFr:
+      "Reconnaître les signes d'épuisement et poser des limites saines pour préserver son équilibre professionnel.",
+    summaryEn:
+      "Recognize the signs of burnout and set healthy boundaries to protect your professional balance.",
+  },
+];
+
 // --- DTOs ---
 
 export interface ContentEntryDTO {
@@ -259,6 +308,8 @@ export interface ContentEntryDTO {
   summary: string;
   iconUrl?: string;
   contentHtml: string;
+  mediaType?: MediaType;
+  mediaUrl?: string;
   status: "draft" | "published";
   sortOrder: number;
   publishedAt?: string;
@@ -285,6 +336,8 @@ function toDTO(doc: IContentEntry): ContentEntryDTO {
     summary: doc.summary ?? "",
     iconUrl: doc.iconUrl,
     contentHtml: doc.contentHtml ?? "",
+    mediaType: doc.mediaType,
+    mediaUrl: doc.mediaUrl,
     status: doc.status,
     sortOrder: doc.sortOrder ?? 100,
     publishedAt: doc.publishedAt?.toISOString(),
@@ -353,6 +406,8 @@ async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
         title: s.titleFr,
         summary: s.summaryFr,
         contentHtml: "",
+        mediaType: s.mediaType,
+        mediaUrl: s.mediaUrl,
         status: "published" as const,
         sortOrder: s.sortOrder,
         publishedAt,
@@ -364,6 +419,8 @@ async function seedKind(kind: ContentKind, seeds: BilingualSeed[]) {
         title: s.titleEn,
         summary: s.summaryEn,
         contentHtml: "",
+        mediaType: s.mediaType,
+        mediaUrl: s.mediaUrl,
         status: "published" as const,
         sortOrder: s.sortOrder,
         publishedAt,
@@ -482,6 +539,13 @@ export async function ensureSeeded(): Promise<void> {
   } else {
     await publishUntouchedSeeds("nouveaute", NOUVEAUTE_SEEDS);
   }
+  // Médias — seed sample articles; admins add videos & podcasts.
+  const mediaCount = await ContentEntry.countDocuments({ kind: "media" });
+  if (mediaCount === 0) {
+    await seedKind("media", MEDIA_SEEDS);
+  } else {
+    await publishUntouchedSeeds("media", MEDIA_SEEDS);
+  }
 }
 
 // --- Queries ---
@@ -491,14 +555,14 @@ export async function listContentAdmin(
 ): Promise<ContentEntryPairDTO[]> {
   await connectToDatabase();
   await ensureSeeded();
-  const sort: Record<string, 1 | -1> =
-    kind === "nouveaute"
-      ? { publishedAt: -1, createdAt: -1 }
-      : { sortOrder: 1, slug: 1 };
+  const dateSorted = isDateSortedKind(kind);
+  const sort: Record<string, 1 | -1> = dateSorted
+    ? { publishedAt: -1, createdAt: -1 }
+    : { sortOrder: 1, slug: 1 };
   const docs = await ContentEntry.find({ kind }).sort(sort);
   const pairs = groupPairs(docs);
   pairs.sort((a, b) => {
-    if (kind === "nouveaute") {
+    if (dateSorted) {
       const da = a.publishedAt ?? "";
       const db = b.publishedAt ?? "";
       if (da !== db) return db.localeCompare(da);
@@ -525,10 +589,9 @@ export async function listPublishedContent(
 ): Promise<ContentEntryDTO[]> {
   await connectToDatabase();
   await ensureSeeded();
-  const sort: Record<string, 1 | -1> =
-    kind === "nouveaute"
-      ? { publishedAt: -1, createdAt: -1 }
-      : { sortOrder: 1, title: 1 };
+  const sort: Record<string, 1 | -1> = isDateSortedKind(kind)
+    ? { publishedAt: -1, createdAt: -1 }
+    : { sortOrder: 1, title: 1 };
   const docs = await ContentEntry.find({
     kind,
     locale,

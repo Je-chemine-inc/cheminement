@@ -770,8 +770,9 @@ export async function routeAppointmentToProfessionals(
       };
     }
 
-    // Pros who already refused OR let a proposal lapse (48h no-response) must
-    // never be re-proposed nor re-emailed (§3.1: "en excluant les professionnels
+    // Pros who already refused OR let a proposal lapse (no-response timeout:
+    // 24h regular / 12h urgent) must never be re-proposed nor re-emailed (§3.1:
+    // "en excluant les professionnels
     // qui a refusé/ignoré"). Both the refuse route and the proposal-timeout cron
     // add the pro to refusedBy before re-running this matcher; refusedBy is empty
     // on first routing, so this is a no-op then.
@@ -827,13 +828,21 @@ export async function routeAppointmentToProfessionals(
     };
 
     // Get profiles for all professionals
-    const profiles = await Profile.find({
+    const profileQuery: Record<string, unknown> = {
       userId: { $in: professionalIds },
       profileCompleted: true,
       // Only pros currently accepting new clients are eligible for matching.
       // `$ne: false` keeps legacy/undefined profiles in (default: accepting).
       acceptingNewClients: { $ne: false },
-    });
+    };
+    // For "Consultation ponctuelle rapide" (isEmergency) requests, only auto-push
+    // to pros who ALSO accept urgent consultations. Pros who opted out are not
+    // proposed/emailed, but can still self-claim these from the general pool.
+    // `$ne: false` keeps legacy/undefined profiles in (default: accepting).
+    if (appointment.isEmergency) {
+      profileQuery.acceptingEmergencyConsultations = { $ne: false };
+    }
+    const profiles = await Profile.find(profileQuery);
 
     // Get client's medical profile for better matching
     let medicalProfile = null;
@@ -948,7 +957,8 @@ export async function routeAppointmentToProfessionals(
     //   to the admin "Demande de service" queue (routingStatus "awaiting_admin")
     //   for a manual decision; it is NOT auto-dumped to the general pool.
     // The attempt counter is `cascadeAttempts` (incremented ONLY by a genuine
-    // refusal in the refuse re-route OR a 48h timeout), NOT refusedBy.length —
+    // refusal in the refuse re-route OR a proposal timeout — 24h regular /
+    // 12h urgent), NOT refusedBy.length —
     // refusedBy is also written by release/reassign and must not advance the
     // cascade. The 100/20 thresholds map the client's "100% / 50%" tiers.
     const STRICT_SCORE = 100;

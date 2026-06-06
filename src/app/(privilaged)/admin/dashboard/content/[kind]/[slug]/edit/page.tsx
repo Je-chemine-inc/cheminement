@@ -8,7 +8,11 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
 import ContentEntryForm, {
   type ContentEntryFormValues,
 } from "@/components/admin/ContentEntryForm";
-import { isContentKind, type ContentKind } from "@/lib/content-kind";
+import {
+  isContentKind,
+  type ContentKind,
+  type MediaType,
+} from "@/lib/content-kind";
 
 interface PairDTO {
   kind: ContentKind;
@@ -20,6 +24,8 @@ interface PairDTO {
     summary: string;
     iconUrl?: string;
     contentHtml: string;
+    mediaType?: MediaType;
+    mediaUrl?: string;
     status: "draft" | "published";
   };
   en: {
@@ -27,6 +33,8 @@ interface PairDTO {
     summary: string;
     iconUrl?: string;
     contentHtml: string;
+    mediaType?: MediaType;
+    mediaUrl?: string;
     status: "draft" | "published";
   };
 }
@@ -35,6 +43,7 @@ const PUBLIC_BASE: Record<ContentKind, string> = {
   problematique: "/explore",
   traitement: "/approaches",
   nouveaute: "/nouveautes",
+  media: "/medias",
 };
 
 export default function EditContentEntryPage() {
@@ -70,6 +79,8 @@ export default function EditContentEntryPage() {
         iconUrl: data.fr.iconUrl ?? "",
         contentHtmlFr: data.fr.contentHtml,
         contentHtmlEn: data.en.contentHtml,
+        mediaType: data.fr.mediaType ?? "article",
+        mediaUrl: data.fr.mediaUrl ?? "",
         status: data.fr.status,
         sortOrder: data.sortOrder,
       });
@@ -98,6 +109,8 @@ export default function EditContentEntryPage() {
           iconUrl: next.iconUrl || null,
           contentHtmlFr: next.contentHtmlFr,
           contentHtmlEn: next.contentHtmlEn,
+          mediaType: next.mediaType,
+          mediaUrl: next.mediaUrl || null,
           status: next.status,
           sortOrder: next.sortOrder,
         }),

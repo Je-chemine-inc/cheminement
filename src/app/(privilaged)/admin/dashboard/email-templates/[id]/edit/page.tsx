@@ -22,7 +22,7 @@ interface Placeholder {
 
 interface TemplateDTO {
   id: string;
-  templateKey: "welcomeClient" | "welcomeProfessional" | "jumelageSuccess";
+  templateKey: string;
   locale: "fr" | "en";
   subject: string;
   title: string;

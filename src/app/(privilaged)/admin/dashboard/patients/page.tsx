@@ -368,9 +368,9 @@ export default function PatientsPage() {
                 className="pl-10"
               />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder={t("filterStatus")} />
                 </SelectTrigger>
@@ -382,7 +382,7 @@ export default function PatientsPage() {
                 </SelectContent>
               </Select>
               <Select value={tierFilter} onValueChange={setTierFilter}>
-                <SelectTrigger className="w-[170px]">
+                <SelectTrigger className="w-full sm:w-[170px]">
                   <SelectValue placeholder={t("filterTier")} />
                 </SelectTrigger>
                 <SelectContent>

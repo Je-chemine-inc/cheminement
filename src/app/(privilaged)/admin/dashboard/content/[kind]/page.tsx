@@ -13,8 +13,22 @@ import {
   CheckCircle2,
   Circle,
   Trash2,
+  FileText,
+  PlayCircle,
+  Podcast,
 } from "lucide-react";
-import { isContentKind, type ContentKind } from "@/lib/content-kind";
+import {
+  isContentKind,
+  isDateSortedKind,
+  type ContentKind,
+  type MediaType,
+} from "@/lib/content-kind";
+
+const MEDIA_TYPE_ICON: Record<MediaType, typeof FileText> = {
+  article: FileText,
+  video: PlayCircle,
+  podcast: Podcast,
+};
 
 interface ContentDTO {
   id: string;
@@ -23,6 +37,8 @@ interface ContentDTO {
   title: string;
   summary: string;
   iconUrl?: string;
+  mediaType?: MediaType;
+  mediaUrl?: string;
   status: "draft" | "published";
   sortOrder: number;
   publishedAt?: string;
@@ -42,6 +58,7 @@ const PUBLIC_BASE: Record<ContentKind, string> = {
   problematique: "/explore",
   traitement: "/approaches",
   nouveaute: "/nouveautes",
+  media: "/medias",
 };
 
 export default function ContentListPage() {
@@ -113,7 +130,8 @@ export default function ContentListPage() {
     }
   };
 
-  const isNouveaute = kind === "nouveaute";
+  const isDateSorted = isDateSortedKind(kind);
+  const isMedia = kind === "media";
 
   return (
     <div className="space-y-6">
@@ -163,7 +181,7 @@ export default function ContentListPage() {
       ) : null}
 
       {rows && rows.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-border/40 bg-card">
+        <div className="overflow-x-auto rounded-xl border border-border/40 bg-card">
           <table className="w-full">
             <thead className="border-b border-border/40 bg-muted/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
@@ -171,7 +189,7 @@ export default function ContentListPage() {
                 <th className="px-4 py-3 font-medium">{t("colSlug")}</th>
                 <th className="px-4 py-3 font-medium">{t("colStatus")}</th>
                 <th className="px-4 py-3 font-medium">
-                  {isNouveaute ? t("colPublishedAt") : t("colUpdated")}
+                  {isDateSorted ? t("colPublishedAt") : t("colUpdated")}
                 </th>
                 <th className="px-4 py-3 text-right font-medium">
                   {t("colActions")}
@@ -182,11 +200,15 @@ export default function ContentListPage() {
               {rows.map((row) => {
                 const fr = row.fr;
                 const isPublished = fr.status === "published";
-                const dateStr = isNouveaute
+                const dateStr = isDateSorted
                   ? row.publishedAt
                     ? new Date(row.publishedAt).toLocaleDateString()
                     : "—"
                   : new Date(fr.updatedAt).toLocaleDateString();
+                const MediaIcon =
+                  isMedia && fr.mediaType
+                    ? MEDIA_TYPE_ICON[fr.mediaType]
+                    : null;
                 return (
                   <tr key={row.slug} className="hover:bg-muted/20">
                     <td className="px-4 py-3">
@@ -200,13 +222,27 @@ export default function ContentListPage() {
                           />
                         ) : (
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <BookOpenCheck className="h-4 w-4" />
+                            {MediaIcon ? (
+                              <MediaIcon className="h-4 w-4" />
+                            ) : (
+                              <BookOpenCheck className="h-4 w-4" />
+                            )}
                           </div>
                         )}
                         <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {fr.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">
+                              {fr.title}
+                            </p>
+                            {isMedia && fr.mediaType ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {MediaIcon ? (
+                                  <MediaIcon className="h-3 w-3" />
+                                ) : null}
+                                {t(`mediaType_${fr.mediaType}`)}
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             EN · {row.en.title}
                           </p>

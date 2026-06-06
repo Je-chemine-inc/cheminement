@@ -15,6 +15,7 @@ import PlatformSettings, {
   type IEmailSettings,
   type IEmailBranding,
   getDefaultEmailSettings,
+  DEFAULT_EMAIL_FOOTER_TEXT,
 } from "@/models/PlatformSettings";
 import {
   getEmailTemplate,
@@ -332,8 +333,9 @@ const getBaseStyles = (branding?: IEmailBranding): string => {
   const primaryColor = branding?.primaryColor || "#8B7355";
 
   return `
-    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    img { border: 0; max-width: 100%; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    .container { width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; box-sizing: border-box; }
     .content { background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     .details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${primaryColor}; }
     .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
@@ -341,8 +343,26 @@ const getBaseStyles = (branding?: IEmailBranding): string => {
     .detail-label { color: #666; font-size: 14px; }
     .detail-value { font-weight: 600; color: #333; }
     .button { display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${branding?.secondaryColor || "#6B5344"} 100%); color: white; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500; }
-    .footer { text-align: center; color: #666; font-size: 12px; padding: 20px; }
+    .footer { text-align: center; color: #666; font-size: 12px; padding: 24px 20px; line-height: 1.7; }
     .footer a { color: ${primaryColor}; text-decoration: none; }
+    .footer-link { color: ${primaryColor}; text-decoration: none; display: inline-block; padding: 2px 4px; }
+    .footer-sep { color: #b8b0a8; padding: 0 2px; }
+
+    /* Mobile (phone) optimisation — most clients that honour the embedded
+       <style> above (Apple Mail, iOS Mail, Gmail app) also honour this query.
+       !important is required so these rules beat the inline styles. */
+    @media only screen and (max-width: 600px) {
+      .container { padding: 10px !important; }
+      .content { padding: 22px 18px !important; }
+      .header { padding: 26px 18px !important; }
+      .header h1 { font-size: 22px !important; }
+      .header p { font-size: 15px !important; }
+      .details { padding: 16px !important; }
+      .button { display: block !important; width: 100% !important; box-sizing: border-box !important; padding: 16px 20px !important; margin: 18px 0 !important; text-align: center !important; }
+      .footer { padding: 20px 14px !important; }
+      .footer-link { display: block !important; padding: 9px 0 !important; font-size: 14px !important; }
+      .footer-sep { display: none !important; }
+    }
   `;
 };
 
@@ -439,7 +459,10 @@ const createButton = (
   // is kept as a progressive enhancement for clients that support it (split
   // into background-color + background-image so the shorthand doesn't reset
   // the solid fill).
-  return `<div style="text-align: center;"><a href="${url}" bgcolor="${primaryColor}" style="display: inline-block; background-color: ${primaryColor}; background-image: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500;">${text}</a></div>`;
+  // class="button" lets the responsive @media rule turn the CTA into a
+  // full-width, easy-to-tap block on phones while the inline styles stay as
+  // the bulletproof desktop/no-CSS fallback.
+  return `<div style="text-align: center;"><a href="${url}" class="button" bgcolor="${primaryColor}" style="display: inline-block; background-color: ${primaryColor}; background-image: linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%); color: #ffffff; padding: 14px 35px; text-decoration: none; border-radius: 25px; margin: 20px 0; font-weight: 500;">${text}</a></div>`;
 };
 
 const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): string => {
@@ -447,11 +470,20 @@ const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): stri
   const url = process.env.NEXTAUTH_URL || "";
   const companyName = branding?.companyName || "Je chemine";
   const supportEmail = process.env.SUPPORT_EMAIL || "support@jechemine.ca";
-  const footerText =
-    branding?.footerText ||
-    (lang === "fr"
+  const defaultTagline =
+    lang === "fr"
       ? "Votre parcours vers le mieux-être commence ici."
-      : "Your journey to wellness starts here.");
+      : DEFAULT_EMAIL_FOOTER_TEXT;
+  // PlatformSettings seeds branding.footerText with the English tagline, which
+  // leaked into French emails. Treat the seeded English default (and blanks) as
+  // "not customised" so each email falls back to its own-language tagline; a
+  // genuinely admin-edited value still wins. The sentinel is imported from the
+  // model so it can never drift from the value actually seeded into the DB.
+  const customTagline = branding?.footerText?.trim();
+  const footerText =
+    customTagline && customTagline !== DEFAULT_EMAIL_FOOTER_TEXT
+      ? customTagline
+      : defaultTagline;
   const primaryColor = branding?.primaryColor || "#8B7355";
   const allRights = lang === "fr" ? "Tous droits réservés." : "All rights reserved.";
   const visitSite = lang === "fr" ? "Visiter notre site web" : "Visit our website";
@@ -460,17 +492,20 @@ const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): stri
   const termsLabel =
     lang === "fr" ? "Conditions d'utilisation" : "Terms of Use";
 
+  // Links use class="footer-link" + class="footer-sep": one tidy line on
+  // desktop, and on phones the @media rule stacks each link on its own
+  // centred line (bigger tap target) and hides the "·" separators so none
+  // are left dangling at a line break.
+  // The surrounding &nbsp; preserve visible gaps between the links in clients
+  // that strip the embedded <style> (e.g. Gmail web for non-Google accounts);
+  // on phones the .footer-sep display:none rule hides the dot and the spaces
+  // collapse harmlessly since each link becomes its own block.
+  const sep = `&nbsp;<span class="footer-sep">&middot;</span>&nbsp;`;
   return `
     <div class="footer">
-      <p style="margin: 0 0 5px;">${footerText}</p>
-      <p style="margin: 0;">&copy; ${year} ${companyName}. ${allRights}</p>
-      <p style="margin: 8px 0 0;">
-        <a href="${url}" style="color: ${primaryColor};">${visitSite}</a>
-        &nbsp;·&nbsp;
-        <a href="mailto:${supportEmail}" style="color: ${primaryColor};">${contactSupport}</a>
-        &nbsp;·&nbsp;
-        <a href="${url}/terms" style="color: ${primaryColor};">${termsLabel}</a>
-      </p>
+      <p style="margin: 0 0 6px;">${footerText}</p>
+      <p style="margin: 0 0 12px;">&copy; ${year} ${companyName}. ${allRights}</p>
+      <p style="margin: 0;"><a href="${url}" class="footer-link" style="color: ${primaryColor};">${visitSite}</a>${sep}<a href="mailto:${supportEmail}" class="footer-link" style="color: ${primaryColor};">${contactSupport}</a>${sep}<a href="${url}/terms" class="footer-link" style="color: ${primaryColor};">${termsLabel}</a></p>
     </div>
   `;
 };
@@ -541,7 +576,12 @@ const buildEmailHtml = (options: EmailTemplateOptions): string => {
     <html>
       <head>
         <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+        <meta name="color-scheme" content="light">
+        <meta name="supported-color-schemes" content="light">
         <style>${getBaseStyles(branding)}</style>
       </head>
       <body>
@@ -868,6 +908,37 @@ export async function sendAccountEmailVerificationEmail(
             : "1. Confirmation of your email address via the secure link in the button above.<br>2. Receive and enter a 6-digit SMS code sent to your phone.",
       };
 
+  const editable = await loadEditableTemplate("accountVerification", lang, {
+    name: data.name,
+    singleFactor: isSingleFactor ? "true" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.verifyUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.verifyUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "email_verification",
+    );
+  }
+
   const html = buildEmailHtml({
     title,
     subtitle:
@@ -1111,6 +1182,38 @@ export async function sendPasswordResetEmail(
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
 
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("passwordReset", lang, {
+    name: data.name,
+    resetLink: data.resetLink,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.resetLink }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.resetLink}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "password_reset",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -1241,6 +1344,38 @@ export async function sendPasswordSetupLinkEmail(data: {
       ? "Ce lien expirera dans 1 heure pour des raisons de sécurité. Si vous n'attendiez pas ce courriel, ignorez-le."
       : "This link will expire in 1 hour for security reasons. If you weren't expecting this email, you can safely ignore it.";
 
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("passwordSetup", lang, {
+    name: data.name,
+    isReset: isReset ? "true" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.setupLink }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.setupLink}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "password_reset",
+    );
+  }
+
   const html = buildEmailHtml({
     title,
     theme: "info",
@@ -1309,6 +1444,38 @@ export async function sendServiceRequestOnboardingEmail(data: {
   const memberSignupUrl = `${baseUrl}/signup/member?email=${encodeURIComponent(
     data.toEmail,
   )}`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("serviceRequestOnboarding", lang, {
+    toName: data.toName,
+    companyName: branding?.companyName || "Je chemine",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: memberSignupUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${memberSignupUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.toEmail, subject: editable.subject, html, text },
+      "service_request_onboarding",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -1433,6 +1600,48 @@ export async function sendGuestPaymentConfirmation(
           { label: "Time", value: formattedTime },
           { label: "Duration", value: `${data.duration} minutes` },
         ];
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("guestPaymentConfirmation", lang, {
+    guestName: data.guestName,
+    sessionType,
+    appointmentType,
+    professionalName,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    appointmentDuration: `${data.duration} minutes`,
+    price: data.price.toFixed(2),
+    currency,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button:
+        data.paymentLink && editable.ctaText
+          ? { text: editable.ctaText, url: data.paymentLink }
+          : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.paymentLink && editable.ctaText
+          ? `${editable.ctaText} : ${data.paymentLink}`
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.guestEmail, subject: editable.subject, html, text },
+      "guest_payment_confirmation",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -1578,6 +1787,48 @@ export async function sendGuestPaymentComplete(
     });
   }
 
+  const editable = await loadEditableTemplate("guestPaymentComplete", lang, {
+    guestName: data.guestName,
+    sessionType,
+    appointmentType,
+    professionalName,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    appointmentDuration: `${data.duration} minutes`,
+    price: data.price.toFixed(2),
+    currency,
+    meetingLink: data.meetingLink || "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button:
+        data.meetingLink && editable.ctaText
+          ? { text: editable.ctaText, url: data.meetingLink }
+          : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.meetingLink && editable.ctaText
+          ? `${editable.ctaText} : ${data.meetingLink}`
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.guestEmail, subject: editable.subject, html, text },
+      "guest_payment_complete",
+    );
+  }
+
   const html = buildEmailHtml({
     title: lang === "fr" ? "Paiement confirmé" : "Payment confirmed",
     subtitle:
@@ -1717,6 +1968,47 @@ export async function sendAppointmentConfirmation(
     });
   }
 
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("appointmentConfirmation", lang, {
+    clientName: data.clientName,
+    professionalName,
+    appointmentType: appointmentType.toLowerCase(),
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    appointmentDuration: `${data.duration} minutes`,
+    meetingUrl: data.meetingLink || "",
+    location: data.location || "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button:
+        data.meetingLink && editable.ctaText
+          ? { text: editable.ctaText, url: data.meetingLink }
+          : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.meetingLink && editable.ctaText
+          ? `${editable.ctaText} : ${data.meetingLink}`
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "appointment_confirmation",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr" ? "Rendez-vous confirmé" : "Appointment confirmed",
@@ -1828,6 +2120,46 @@ export async function sendPaymentInvitation(
       label: lang === "fr" ? "Lieu" : "Location",
       value: data.location,
     });
+  }
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("paymentInvitation", lang, {
+    clientName: data.clientName,
+    professionalName,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    appointmentDuration: String(data.duration),
+    meetingLinkOrLocation: data.meetingLink || data.location || "",
+    price: data.price.toFixed(2),
+    currency,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.paymentUrl || dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText
+          ? `${editable.ctaText} : ${data.paymentUrl || dashboardUrl}`
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_invitation",
+    );
   }
 
   const html = buildEmailHtml({
@@ -1955,6 +2287,43 @@ export async function sendProfessionalNotification(
   // resolves to the login page and then deep-links to the request after sign-in.
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
 
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded. Body is French.
+  const editable = await loadEditableTemplate("professionalNewRequest", "fr", {
+    professionalName,
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    appointmentType,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      "fr",
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "appointment_professional_notification",
+    );
+  }
+
   const html = buildEmailHtml({
     title: "Nouvelle demande de rendez-vous",
     theme: "info",
@@ -2016,6 +2385,37 @@ export async function sendGeneralRequestAvailableNotification(data: {
   const name =
     data.professionalName?.trim() ||
     (lang === "fr" ? "cher professionnel" : "there");
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("generalPoolRequest", lang, {
+    professionalName: name,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "appointment_professional_notification",
+    );
+  }
 
   const html = buildEmailHtml({
     title: lang === "fr" ? "Nouvelle demande disponible" : "New request available",
@@ -2095,6 +2495,38 @@ export async function sendUnscheduledMatchReminder(data: {
     data.professionalName?.trim() ||
     (lang === "fr" ? "cher professionnel" : "there");
   const clientName = data.clientName?.trim() || (lang === "fr" ? "un client" : "a client");
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("unscheduledMatchReminder", lang, {
+    professionalName: name,
+    clientName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "appointment_professional_notification",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -2182,6 +2614,45 @@ export async function sendAppointmentReminder(
     });
   }
 
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded. Body is French.
+  const editable = await loadEditableTemplate("appointmentReminderGeneric", "fr", {
+    clientName: data.clientName,
+    professionalName,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    meetingLink: data.meetingLink || "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button:
+        data.meetingLink && editable.ctaText
+          ? { text: editable.ctaText, url: data.meetingLink }
+          : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.meetingLink && editable.ctaText
+          ? `${editable.ctaText} : ${data.meetingLink}`
+          : "",
+      ],
+      "fr",
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "appointment_reminder",
+    );
+  }
+
   const html = buildEmailHtml({
     title: "Rappel de rendez-vous",
     theme: "warning",
@@ -2239,6 +2710,54 @@ export async function sendAppointment72hReminder(data: {
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const professionalName = formatProfessionalName(data.professionalName, lang);
 
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded.
+  const editable = await loadEditableTemplate("reminder72h", lang, {
+    clientName: data.clientName,
+    professionalName,
+    appointmentDate: data.appointmentDateLabel,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.cancelUrl }
+        : undefined,
+      secondaryButton: {
+        preamble:
+          lang === "fr"
+            ? "Vous souhaitez plutôt déplacer la séance ? Demandez un autre rendez-vous :"
+            : "Prefer to move the session? Request another appointment:",
+        text:
+          lang === "fr"
+            ? "Demander un autre rendez-vous"
+            : "Request another appointment",
+        url: data.rescheduleUrl,
+      },
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.cancelUrl}` : "",
+        (lang === "fr"
+          ? "Demander un autre rendez-vous : "
+          : "Request another appointment: ") + data.rescheduleUrl,
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "appointment_reminder_72h",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -2257,7 +2776,7 @@ export async function sendAppointment72hReminder(data: {
       lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
     intro:
       lang === "fr"
-        ? `Petit rappel : votre rendez-vous avec ${professionalName} est prévu le ${data.appointmentDateLabel}. Vous êtes encore dans la fenêtre d'annulation gratuite (jusqu'à 48 h avant la séance).`
+        ? `Petit rappel : votre rendez-vous avec ${professionalName} est prévu le ${data.appointmentDateLabel}. Vous êtes encore dans la fenêtre d'annulation sans frais (jusqu'à 48 h avant la séance).`
         : `Friendly reminder: your appointment with ${professionalName} is scheduled on ${data.appointmentDateLabel}. You are still within the free-cancellation window (until 48h before the session).`,
     infoBox: {
       title:
@@ -2325,7 +2844,8 @@ export async function sendAppointment72hReminder(data: {
 
 /**
  * Email 7b — H-48 reminder. Past the strict 48h cancellation window:
- *  - Primary CTA: "Confirmer ma présence" → marks clientConfirmedAt server-side.
+ *  - No "confirm attendance" CTA (removed per client request): this is now a
+ *    pure reminder, not an action email.
  *  - Secondary CTA (conditional): "Choisir mon mode de paiement" when the
  *    client still has no payment method on file at H-48.
  *  - No cancel/reschedule button: the policy now strictly blocks self-cancel
@@ -2341,13 +2861,6 @@ export async function sendAppointment48hReminder(data: {
   noPaymentMethod?: boolean;
   locale?: "fr" | "en";
   /**
-   * "Confirm my attendance" CTA target. Caller resolves it — auth-gated
-   * dashboard URL for active clients, claim-account URL for unclaimed
-   * (so they can set a password before managing the appointment).
-   * Falls back to the dashboard URL if not provided (legacy callers).
-   */
-  confirmUrl?: string;
-  /**
    * "Choose my payment method" CTA target (only used when noPaymentMethod).
    * Caller resolves it — auth-gated dashboard URL for active clients,
    * tokenized `/pay?token=…` for unclaimed.
@@ -2361,14 +2874,60 @@ export async function sendAppointment48hReminder(data: {
     process.env.NEXTAUTH_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
-  const confirmUrl =
-    data.confirmUrl ??
-    `${base}/client/dashboard/appointments?id=${encodeURIComponent(
-      data.appointmentId,
-    )}&action=confirm`;
   const billingUrl =
     data.billingUrl ??
     `${base}/client/dashboard/billing?action=addPaymentMethod`;
+
+  // Admin-editable template (subject/title/subtitle/body); the hardcoded block
+  // below is the fallback if the DB row can't be loaded.
+  const editable = await loadEditableTemplate("reminder48h", lang, {
+    clientName: data.clientName,
+    professionalName,
+    appointmentDate: data.appointmentDateLabel,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: billingUrl }
+        : undefined,
+      secondaryButton: data.noPaymentMethod
+        ? {
+            preamble:
+              lang === "fr"
+                ? "Vous n'avez pas encore choisi votre mode de paiement. C'est obligatoire pour valider la séance."
+                : "You haven't chosen your payment method yet. This is required to validate the session.",
+            text:
+              lang === "fr"
+                ? "Choisir mon mode de paiement"
+                : "Choose my payment method",
+            url: billingUrl,
+          }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.noPaymentMethod
+          ? (lang === "fr"
+              ? "Choisir mon mode de paiement : "
+              : "Choose my payment method: ") + billingUrl
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "appointment_reminder_48h",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -2377,8 +2936,8 @@ export async function sendAppointment48hReminder(data: {
         : "Your appointment is in 48 hours",
     subtitle:
       lang === "fr"
-        ? "Confirmez votre présence"
-        : "Please confirm your attendance",
+        ? "Rappel de votre rendez-vous"
+        : "Appointment reminder",
     theme: "warning",
     badge: {
       text: lang === "fr" ? "⏰ Rappel — 48 h" : "⏰ Reminder — 48h",
@@ -2388,13 +2947,8 @@ export async function sendAppointment48hReminder(data: {
       lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
     intro:
       lang === "fr"
-        ? `Votre rendez-vous avec ${professionalName} aura lieu dans 48 heures (${data.appointmentDateLabel}). Merci de confirmer votre présence en un clic.`
-        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}). Please confirm your attendance in one click.`,
-    button: {
-      text:
-        lang === "fr" ? "Confirmer ma présence" : "Confirm my attendance",
-      url: confirmUrl,
-    },
+        ? `Votre rendez-vous avec ${professionalName} aura lieu dans 48 heures (${data.appointmentDateLabel}).`
+        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}).`,
     secondaryButton: data.noPaymentMethod
       ? {
           preamble:
@@ -2415,7 +2969,7 @@ export async function sendAppointment48hReminder(data: {
           : "Cancellation policy",
       content:
         lang === "fr"
-          ? "Le délai d'annulation gratuite est dépassé. Toute annulation à moins de 48 h doit passer par notre équipe ou votre professionnel — l'option d'annulation en libre-service n'est plus disponible."
+          ? "Le délai d'annulation sans frais est dépassé. Toute annulation à moins de 48 h doit passer par notre équipe ou votre professionnel — l'option d'annulation en libre-service n'est plus disponible."
           : "The free-cancellation window has closed. Any cancellation within 48h must go through our team or your professional — the self-service cancellation option is no longer available.",
     },
     outro:
@@ -2432,7 +2986,6 @@ export async function sendAppointment48hReminder(data: {
           "Rappel — votre rendez-vous est dans 48 heures",
           `Bonjour ${data.clientName},`,
           `Rendez-vous avec ${professionalName} le ${data.appointmentDateLabel}.`,
-          `Confirmer ma présence : ${confirmUrl}`,
           data.noPaymentMethod
             ? `Choisir mon mode de paiement : ${billingUrl}`
             : "",
@@ -2442,7 +2995,6 @@ export async function sendAppointment48hReminder(data: {
           "Reminder — your appointment is in 48 hours",
           `Hello ${data.clientName},`,
           `Appointment with ${professionalName} on ${data.appointmentDateLabel}.`,
-          `Confirm my attendance: ${confirmUrl}`,
           data.noPaymentMethod
             ? `Choose my payment method: ${billingUrl}`
             : "",
@@ -2471,6 +3023,43 @@ export async function sendMeetingLinkNotification(
   const formattedTime = formatTime(data.time, lang);
   const professionalName = formatProfessionalName(data.professionalName, lang);
   const appointmentType = formatAppointmentType(data.type, lang);
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("meetingLinkReady", lang, {
+    guestName: data.guestName,
+    professionalName,
+    appointmentType,
+    appointmentDate: formattedDate,
+    appointmentTime: formattedTime,
+    duration: String(data.duration),
+    meetingUrl: data.meetingLink,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.meetingLink }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.meetingLink}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.guestEmail, subject: editable.subject, html, text },
+      "meeting_link",
+    );
+  }
 
   const html = buildEmailHtml({
     title: lang === "fr" ? "Lien de réunion prêt" : "Meeting link ready",
@@ -2589,6 +3178,36 @@ export async function sendCancellationNotification(
     : lang === "fr"
       ? `Une demande de rendez-vous a été annulée par ${cancellerName}.`
       : `An appointment request has been cancelled by ${cancellerName}.`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("cancellationNotice", lang, {
+    recipientName,
+    cancellerName,
+    appointmentDate: hasSchedule ? formattedDate : "",
+    appointmentTime: hasSchedule ? formattedTime : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: recipientEmail, subject: editable.subject, html, text },
+      "appointment_cancellation",
+    );
+  }
 
   const html = buildEmailHtml({
     title: lang === "fr" ? "Rendez-vous annulé" : "Appointment cancelled",
@@ -2727,6 +3346,47 @@ export async function sendAppointmentChangeNotification(data: {
     const typeLabel = data.type ? formatAppointmentType(data.type, lang) : null;
 
     if (data.action === "rescheduled") {
+      // Admin-editable template; hardcoded block below is the fallback.
+      const prevDateTime = prevDate
+        ? prevTime
+          ? lang === "fr"
+            ? `${prevDate} à ${prevTime}`
+            : `${prevDate} at ${prevTime}`
+          : prevDate
+        : "";
+      const editableR = await loadEditableTemplate("appointmentRescheduled", lang, {
+        recipientName,
+        otherParty,
+        byTeam,
+        prevDateTime,
+        newDate,
+        newTime,
+        type: typeLabel || "",
+        location: data.location || "",
+      });
+      if (editableR) {
+        const html = buildEmailHtml({
+          title: editableR.title,
+          subtitle: editableR.subtitle,
+          theme: "info",
+          greeting: "",
+          intro: editableR.bodyHtml,
+          branding,
+          lang,
+        });
+        const text = buildEmailText(
+          [
+            editableR.title,
+            editableR.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+          ],
+          lang,
+        );
+        return sendEmail(
+          { to: toEmail, subject: editableR.subject, html, text },
+          "appointment_confirmation",
+        );
+      }
+
       const intro =
         lang === "fr"
           ? `Votre rendez-vous avec ${otherParty} a été reporté${byTeam}.`
@@ -2810,6 +3470,38 @@ export async function sendAppointmentChangeNotification(data: {
           ? ` du ${prevDate}`
           : ` on ${prevDate}`
       : "";
+    // Admin-editable template; hardcoded block below is the fallback.
+    const editableC = await loadEditableTemplate("appointmentChangeCancelled", lang, {
+      recipientName,
+      whenStr,
+      otherParty,
+      byTeam,
+      prevDate: prevDate || "",
+      prevTime: prevTime || "",
+    });
+    if (editableC) {
+      const html = buildEmailHtml({
+        title: editableC.title,
+        subtitle: editableC.subtitle,
+        theme: "danger",
+        greeting: "",
+        intro: editableC.bodyHtml,
+        branding,
+        lang,
+      });
+      const text = buildEmailText(
+        [
+          editableC.title,
+          editableC.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        ],
+        lang,
+      );
+      return sendEmail(
+        { to: toEmail, subject: editableC.subject, html, text },
+        "appointment_cancellation",
+      );
+    }
+
     const intro =
       lang === "fr"
         ? `Votre rendez-vous${whenStr} avec ${otherParty} a été annulé${byTeam}.`
@@ -2885,6 +3577,44 @@ export async function sendPaymentFailedNotification(
     lang === "fr"
       ? `${data.amount.toFixed(2)} $ ${currency}`
       : `${currency} $${data.amount.toFixed(2)}`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("paymentFailed", lang, {
+    clientName: data.name,
+    amount: amountStr,
+    appointmentDate: data.appointmentDate
+      ? formatEmailDate(data.appointmentDate, lang)
+      : "",
+    professionalName: data.professionalName
+      ? formatProfessionalName(data.professionalName, lang)
+      : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: paymentUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${paymentUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "payment_failed",
+    );
+  }
 
   const html = buildEmailHtml({
     title: lang === "fr" ? "Paiement échoué" : "Payment failed",
@@ -2987,6 +3717,37 @@ export async function sendRefundConfirmation(
       ? `${data.amount.toFixed(2)} $ ${currency}`
       : `${currency} $${data.amount.toFixed(2)}`;
 
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("refundConfirmation", lang, {
+    name: data.name,
+    amount: amountStr,
+    appointmentDate: data.appointmentDate
+      ? formatEmailDate(data.appointmentDate, lang)
+      : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "payment_refund",
+    );
+  }
+
   const html = buildEmailHtml({
     title: lang === "fr" ? "Remboursement traité" : "Refund processed",
     theme: "info",
@@ -3067,6 +3828,37 @@ export async function sendProfessionalApprovalEmail(
 ): Promise<boolean> {
   const branding = await getBranding();
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard`;
+  const lang = "fr";
+
+  const editable = await loadEditableTemplate("professionalApproval", lang, {
+    name: data.name,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "professional_approval",
+    );
+  }
 
   const html = buildEmailHtml({
     title: "Demande approuvée !",
@@ -3109,6 +3901,36 @@ export async function sendProfessionalRejectionEmail(
   data: ProfessionalStatusEmailData,
 ): Promise<boolean> {
   const branding = await getBranding();
+
+  // Admin-editable template (subject/title/body); the hardcoded block below is
+  // the fallback if the DB row can't be loaded. French-only, no CTA button.
+  const editable = await loadEditableTemplate("professionalRejection", "fr", {
+    name: data.name,
+    reason: data.reason ?? "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      "fr",
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "professional_rejection",
+    );
+  }
 
   const html = buildEmailHtml({
     title: "Mise à jour de votre candidature",
@@ -3202,6 +4024,44 @@ export async function sendAdminInteracTrustRequestAlert(data: {
   const reviewUrl = `${base}/admin/dashboard/payment-trust`;
 
   const branding = await getBranding();
+
+  // Admin-editable template; the hardcoded block below is the fallback. Body is
+  // French (admin alert).
+  const editable = await loadEditableTemplate("adminInteracTrustRequest", "fr", {
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: reviewUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${reviewUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of emails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "admin_interac_trust_request",
+      );
+    }
+    return;
+  }
+
   const html = buildEmailHtml({
     title: "Validation garantie Interac / virement",
     theme: "warning",
@@ -3270,6 +4130,45 @@ export async function sendInteracTransferInstructionsEmail(data: {
           "The system uses this code to match your transfer to your file.",
         ]
   ).join("\n");
+
+  const amountStr =
+    lang === "fr"
+      ? `${data.amountCad.toFixed(2)} $`
+      : `CAD $${data.amountCad.toFixed(2)}`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("interacInstructions", lang, {
+    clientName: data.clientName,
+    clientLegalName: data.clientLegalName,
+    professionalName: data.professionalName,
+    appointmentDateLabel: data.appointmentDateLabel,
+    depositEmail: data.depositEmail,
+    amount: amountStr,
+    interacReferenceCode: data.interacReferenceCode,
+    companyName: company,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "interac_transfer_instructions",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -3423,6 +4322,45 @@ export async function sendInteracPaymentReminder(data: {
         ]
   ).join("\n");
 
+  const amountStr =
+    lang === "fr"
+      ? `${data.amountCad.toFixed(2)} $ CAD`
+      : `CAD $${data.amountCad.toFixed(2)}`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("interacReminder", lang, {
+    clientName: data.clientName,
+    appointmentDateLabel: data.appointmentDateLabel,
+    depositEmail: data.depositEmail,
+    amount: amountStr,
+    interacReferenceCode: data.interacReferenceCode,
+    companyName: company,
+    reminderNumber: String(data.reminderNumber),
+    isUrgent: isUrgent ? "true" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: isUrgent ? "warning" : "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "interac_payment_reminder",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -3564,6 +4502,50 @@ export async function sendFiscalReceiptEmail(data: {
   const amountFr = `${data.amountCad.toFixed(2)} $ CAD`;
   const amountEn = `CAD $${data.amountCad.toFixed(2)}`;
 
+  const editable = await loadEditableTemplate("fiscalReceipt", lang, {
+    clientName: data.clientName,
+    amount: lang === "fr" ? amountFr : amountEn,
+    paymentPendingTransfer: data.paymentPendingTransfer ? "true" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: data.paymentPendingTransfer ? "warning" : "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+      ],
+      lang,
+    );
+    return sendEmail(
+      {
+        to: data.clientEmail,
+        subject: editable.subject,
+        html,
+        text,
+        attachments: [
+          {
+            filename:
+              lang === "fr"
+                ? `recu-${data.appointmentId.slice(-8)}.pdf`
+                : `receipt-${data.appointmentId.slice(-8)}.pdf`,
+            content: data.pdfBuffer,
+            contentType: "application/pdf",
+          },
+        ],
+      },
+      "fiscal_receipt",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       data.paymentPendingTransfer
@@ -3683,6 +4665,36 @@ export async function sendPaymentGuaranteeDay1Reminder(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const editable = await loadEditableTemplate("paymentGuaranteeDay1", lang, {
+    clientName: data.clientName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.billingUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.billingUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_guarantee_day1_reminder",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -3755,6 +4767,36 @@ export async function sendPaymentGuaranteeDay2Reminder(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const editable = await loadEditableTemplate("paymentGuaranteeDay2", lang, {
+    clientName: data.clientName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.billingUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.billingUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_guarantee_day2_reminder",
+    );
+  }
+
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -3836,6 +4878,36 @@ export async function sendPaymentGuarantee48hClientReminder(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const editable = await loadEditableTemplate("paymentGuarantee48hClient", lang, {
+    clientName: data.clientName,
+    appointmentDateLabel: data.appointmentDateLabel,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: data.billingUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${data.billingUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_guarantee_48h_client",
+    );
+  }
   const html = buildEmailHtml({
     title:
       lang === "fr"
@@ -3901,6 +4973,40 @@ export async function sendPaymentGuarantee48hProfessionalAlert(data: {
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
   const dashboardUrl = `${base}/professional/dashboard/sessions`;
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("paymentGuarantee48hPro", lang, {
+    professionalName: data.professionalName,
+    clientName: data.clientName,
+    appointmentDateLabel: data.appointmentDateLabel,
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "payment_guarantee_48h_professional",
+    );
+  }
 
   const html = buildEmailHtml({
     title:
@@ -3976,6 +5082,41 @@ export async function sendJumelageSuccessEmail(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
+
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("jumelageSuccess", lang, {
+    clientName: data.clientName,
+    professionalName: data.professionalName || "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button:
+        data.completeAccountUrl && editable.ctaText
+          ? { text: editable.ctaText, url: data.completeAccountUrl }
+          : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        data.completeAccountUrl && editable.ctaText
+          ? `${editable.ctaText} : ${data.completeAccountUrl}`
+          : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_invitation",
+    );
+  }
 
   const title = lang === "fr" ? "Jumelage réussi !" : "You've been matched!";
   const subtitle =
@@ -4154,6 +5295,38 @@ export async function sendPostMeetingPaymentReminder(data: {
       ? `Votre séance du ${data.appointmentDateLabel} a eu lieu, mais aucun mode de paiement n'a encore été configuré sur votre compte. Veuillez régulariser votre situation dès que possible.`
       : `Your session on ${data.appointmentDateLabel} has taken place, but no payment method has been set up on your account yet. Please settle this as soon as possible.`;
 
+  // Admin-editable template; hardcoded block below is the fallback.
+  const editable = await loadEditableTemplate("postMeetingPayment", lang, {
+    clientName: data.clientName,
+    appointmentDateLabel: data.appointmentDateLabel,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: billingUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${billingUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.clientEmail, subject: editable.subject, html, text },
+      "payment_invitation",
+    );
+  }
+
   const html = buildEmailHtml({
     title: lang === "fr" ? "Action requise — paiement en attente" : "Action required — payment pending",
     theme: "danger",
@@ -4172,6 +5345,7 @@ export async function sendPostMeetingPaymentReminder(data: {
         ? "Si vous avez des questions, notre équipe est disponible depuis votre tableau de bord."
         : "If you have any questions, our team is available from your dashboard.",
     branding,
+    lang,
   });
 
   const text = buildEmailText([
@@ -4180,7 +5354,7 @@ export async function sendPostMeetingPaymentReminder(data: {
     intro,
     lang === "fr" ? "Configurer votre paiement :" : "Set up your payment:",
     billingUrl,
-  ]);
+  ], lang);
 
   const subject =
     lang === "fr"
@@ -4209,6 +5383,46 @@ export async function sendAdminNoPaymentBeforeMeetingAlert(data: {
   const branding = await getBranding();
   const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/patients`;
+
+  // Admin-editable template; the hardcoded block below is the fallback. Body is
+  // French (admin alert).
+  const editable = await loadEditableTemplate("adminNoPaymentBeforeMeeting", "fr", {
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    appointmentDateLabel: data.appointmentDateLabel,
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "danger",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "admin_interac_trust_request",
+      ).catch((e) =>
+        console.error("sendAdminNoPaymentBeforeMeetingAlert:", e),
+      );
+    }
+    return;
+  }
 
   const html = buildEmailHtml({
     title: "⚠️ Aucun paiement avant la rencontre",
@@ -4248,7 +5462,11 @@ export async function sendResendInvitationEmail(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang = data.locale || "fr";
-  const loginUrl = "https://cheminement.vercel.app/login";
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const loginUrl = `${base}/login`;
 
   const titles = {
     fr: "Finalisez votre inscription",
@@ -4271,6 +5489,39 @@ export async function sendResendInvitationEmail(data: {
     en: "If you have any questions, feel free to contact us.",
   };
 
+  const companyName = branding?.companyName || "Je chemine";
+
+  const editable = await loadEditableTemplate("resendInvitation", lang, {
+    name: data.name,
+    companyName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: loginUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${loginUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.email, subject: editable.subject, html, text },
+      "welcome",
+    );
+  }
+
   const html = buildEmailHtml({
     title: titles[lang],
     subtitle: branding?.companyName || "Je chemine",
@@ -4280,6 +5531,7 @@ export async function sendResendInvitationEmail(data: {
     button: { text: buttons[lang], url: loginUrl },
     outro: outros[lang],
     branding,
+    lang,
   });
 
   const text = buildEmailText([
@@ -4289,7 +5541,7 @@ export async function sendResendInvitationEmail(data: {
     intros[lang],
     `${buttons[lang]}: ${loginUrl}`,
     outros[lang],
-  ]);
+  ], lang);
 
   const subject =
     lang === "fr"
@@ -4325,6 +5577,46 @@ export async function sendAdminNewServiceRequestAlert(data: {
   // Urgent requests get a louder email (warning theme + flagged subject/intro)
   // so admins triage them ahead of standard demandes.
   const isEmergency = Boolean(data.isEmergency);
+
+  // Admin-editable template (subject/title/body/CTA); the hardcoded block below
+  // is the fallback if the DB row can't be loaded. French-only admin alert.
+  const editable = await loadEditableTemplate("adminNewServiceRequest", "fr", {
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    bookingFor: data.bookingFor,
+    motifs: data.motifs.join(", ") || "—",
+    appointmentId: data.appointmentId,
+    isEmergency: isEmergency ? "1" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: isEmergency ? "warning" : "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) => console.error("sendAdminNewServiceRequestAlert:", e));
+    }
+    return;
+  }
 
   const html = buildEmailHtml({
     title: isEmergency
@@ -4398,6 +5690,51 @@ export async function sendAdminAppointmentMovedToGeneralAlert(data: {
     "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/service-requests`;
 
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded. Body is French.
+  const editable = await loadEditableTemplate(
+    "adminAppointmentMovedToGeneral",
+    "fr",
+    {
+      clientName: data.clientName,
+      clientEmail: data.clientEmail,
+      motif: data.motif || "—",
+      refusalCount: String(data.refusalCount),
+      appointmentId: data.appointmentId,
+    },
+  );
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) =>
+        console.error("sendAdminAppointmentMovedToGeneralAlert:", e),
+      );
+    }
+    return;
+  }
+
   const html = buildEmailHtml({
     title: "Demande basculée en liste générale",
     theme: "warning",
@@ -4461,6 +5798,47 @@ export async function sendAdminRequestReturnedToQueueAlert(data: {
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded. Body is French.
+  const editable = await loadEditableTemplate("adminRequestReturnedToQueue", "fr", {
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    motif: data.motif || "—",
+    attempts: String(data.attempts),
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) =>
+        console.error("sendAdminRequestReturnedToQueueAlert:", e),
+      );
+    }
+    return;
+  }
 
   const html = buildEmailHtml({
     title: "Demande à jumeler manuellement",
@@ -4535,6 +5913,48 @@ export async function sendAdminNewExternalMessageAlert(data: {
   const preview =
     data.message.length > 600 ? `${data.message.slice(0, 600)}…` : data.message;
 
+  // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
+  // block below is the fallback if the DB row can't be loaded. French-only.
+  const editable = await loadEditableTemplate("adminNewExternalMessage", "fr", {
+    sourceLabel,
+    senderName: data.senderName,
+    senderEmail: data.senderEmail,
+    senderPhone: data.senderPhone ?? "",
+    messageSubject: data.subject ?? "",
+    preview,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) =>
+        console.error("sendAdminNewExternalMessageAlert:", e),
+      );
+    }
+    return;
+  }
+
   const html = buildEmailHtml({
     title: "Nouveau message de contact",
     theme: "info",
@@ -4598,6 +6018,48 @@ export async function sendAdminUnscheduledMatchEscalation(data: {
     process.env.NEXT_PUBLIC_APP_URL ||
     "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  // Admin-editable template; the hardcoded block below is the fallback if the
+  // DB row can't be loaded. French-only admin alert.
+  const editable = await loadEditableTemplate("adminUnscheduledMatchEscalation", "fr", {
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    professionalName: data.professionalName,
+    motif: data.motif || "—",
+    daysWaiting: String(data.daysWaiting),
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) =>
+        console.error("sendAdminUnscheduledMatchEscalation:", e),
+      );
+    }
+    return;
+  }
 
   const html = buildEmailHtml({
     title: "Jumelage sans 1er rendez-vous",
@@ -4687,6 +6149,38 @@ export async function sendEmergencyProSlaAlert(data: {
       ? "Confirmer le 1er RDV"
       : "Confirm the 1st appointment";
 
+  const editable = await loadEditableTemplate("emergencyProSla", lang, {
+    name,
+    clientName,
+    isAccept: isAccept ? "true" : "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "appointment_professional_notification",
+    );
+  }
+
   const html = buildEmailHtml({
     title,
     theme: "warning",
@@ -4755,6 +6249,47 @@ export async function sendAdminEmergencySlaBreachAlert(data: {
   const isAccept = data.stage === "accept";
   const stageLabel = isAccept ? "Acceptation (12 h)" : "Prise en charge (24 h)";
   const proName = data.professionalName?.trim() || "—";
+
+  // Admin-editable template (subject/title/body/CTA); the hardcoded block below
+  // is the fallback if the DB row can't be loaded. French-only admin alert.
+  const editable = await loadEditableTemplate("adminEmergencySlaBreach", "fr", {
+    stageLabel,
+    clientName: data.clientName,
+    clientEmail: data.clientEmail,
+    proName,
+    proNamePresent: proName !== "—" ? "1" : "",
+    motif: data.motif || "—",
+    appointmentId: data.appointmentId,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) => console.error("sendAdminEmergencySlaBreachAlert:", e));
+    }
+    return;
+  }
 
   const html = buildEmailHtml({
     title: "⚠ Délai dépassé — consultation ponctuelle rapide",
@@ -4826,6 +6361,45 @@ export async function sendAdminNewProfessionalSignupAlert(data: {
   ];
   if (data.phone) details.push({ label: "Téléphone", value: data.phone });
 
+  // Admin-editable template (subject/title/body/CTA); the hardcoded block below
+  // is the fallback if the DB row can't be loaded. French-only admin alert.
+  const editable = await loadEditableTemplate("adminNewProfessionalSignup", "fr", {
+    professionalName: data.professionalName,
+    professionalEmail: data.professionalEmail,
+    phone: data.phone || "",
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: adminUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
+      ],
+      "fr",
+    );
+    for (const to of adminEmails) {
+      await sendEmail(
+        { to, subject: editable.subject, html, text },
+        "service_request_onboarding",
+      ).catch((e) =>
+        console.error("sendAdminNewProfessionalSignupAlert:", e),
+      );
+    }
+    return;
+  }
+
   const html = buildEmailHtml({
     title: "Nouvelle inscription professionnel(le)",
     theme: "info",
@@ -4867,6 +6441,38 @@ export async function sendAppointmentTakenNotification(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const dashboardUrl = `${process.env.NEXTAUTH_URL || ""}/professional/dashboard/requests`;
+
+  // Admin-editable template (subject/title/body/CTA); the hardcoded block below
+  // is the fallback if the DB row can't be loaded. Body is French.
+  const editable = await loadEditableTemplate("appointmentTaken", "fr", {
+    professionalName: data.professionalName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "warning",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: dashboardUrl }
+        : undefined,
+      branding,
+      lang: "fr",
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
+      ],
+      "fr",
+    );
+    return sendEmail(
+      { to: data.professionalEmail, subject: editable.subject, html, text },
+      "appointment_professional_notification",
+    );
+  }
 
   const html = buildEmailHtml({
     title: "Demande de rendez-vous attribuée",

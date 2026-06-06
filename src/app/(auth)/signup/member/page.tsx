@@ -1452,7 +1452,7 @@ export default function MemberSignupPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2 min-w-0 -ml-1">
+              <div className="space-y-2 min-w-0 sm:-ml-1">
                 <Label htmlFor="duration">{t("profileModal.step3.duration")}</Label>
                 <Select
                   value={formData.duration}

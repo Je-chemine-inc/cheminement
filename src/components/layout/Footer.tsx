@@ -78,7 +78,7 @@ export async function Footer() {
             </h4>
             <ul className="space-y-3 text-sm">
               <li>
-                <Link href="/press" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
+                <Link href="/medias" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
                   {t("press")}
                 </Link>
               </li>

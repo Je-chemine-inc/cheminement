@@ -9,7 +9,7 @@ type Locale = "fr" | "en";
 
 interface TemplateRow {
   id: string;
-  templateKey: "welcomeClient" | "welcomeProfessional" | "jumelageSuccess";
+  templateKey: string;
   locale: Locale;
   subject: string;
   title: string;

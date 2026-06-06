@@ -62,6 +62,15 @@ export interface IProfile extends Document {
    * de contrôler son afflux de nouvelles demandes.
    */
   acceptingNewClients?: boolean;
+  /**
+   * Le professionnel accepte-t-il les « Consultations ponctuelles rapides »
+   * (demandes urgentes / isEmergency) ? Défaut: true. Si false, le jumelage
+   * automatique ne lui propose plus de demandes urgentes et il n'est pas
+   * notifié — mais il peut toujours les piger dans la liste générale. Indépendant
+   * de `acceptingNewClients` : un pro peut accepter de nouveaux clients sans
+   * accepter les demandes urgentes (et inversement).
+   */
+  acceptingEmergencyConsultations?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -155,6 +164,8 @@ const ProfileSchema = new Schema<IProfile>(
     showRating: { type: Boolean, default: true },
     // Accepte de nouveaux clients (jumelage + liste générale). Défaut: true.
     acceptingNewClients: { type: Boolean, default: true },
+    // Accepte les consultations ponctuelles rapides (demandes urgentes). Défaut: true.
+    acceptingEmergencyConsultations: { type: Boolean, default: true },
   },
   {
     timestamps: true,

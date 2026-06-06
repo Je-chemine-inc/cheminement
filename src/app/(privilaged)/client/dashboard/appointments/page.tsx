@@ -333,7 +333,7 @@ export default function ClientAppointmentsPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-serif text-3xl font-light text-foreground">
@@ -380,7 +380,7 @@ export default function ClientAppointmentsPage() {
       <div className="flex gap-2 border-b border-border/40">
         <button
           onClick={() => setActiveTab("upcoming")}
-          className={`rounded-t-lg px-6 py-3 font-medium transition ${
+          className={`rounded-t-lg px-3 py-2 sm:px-6 sm:py-3 font-medium transition ${
             activeTab === "upcoming"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -390,7 +390,7 @@ export default function ClientAppointmentsPage() {
         </button>
         <button
           onClick={() => setActiveTab("past")}
-          className={`rounded-t-lg px-6 py-3 font-medium transition ${
+          className={`rounded-t-lg px-3 py-2 sm:px-6 sm:py-3 font-medium transition ${
             activeTab === "past"
               ? "border-b-2 border-primary text-primary"
               : "text-muted-foreground hover:text-foreground"
@@ -658,7 +658,7 @@ export default function ClientAppointmentsPage() {
                 {/* More Options */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-10 w-10">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

@@ -18,6 +18,8 @@ const EMPTY_VALUES: ContentEntryFormValues = {
   iconUrl: "",
   contentHtmlFr: "",
   contentHtmlEn: "",
+  mediaType: "article",
+  mediaUrl: "",
   status: "draft",
   sortOrder: 100,
 };

@@ -2,9 +2,11 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 import {
   CONTENT_KINDS,
   CONTENT_KIND_PUBLIC_BASE,
+  MEDIA_TYPES,
   type ContentKind,
   type ContentLocale,
   type ContentStatus,
+  type MediaType,
 } from "@/lib/content-kind";
 
 export {
@@ -13,6 +15,7 @@ export {
   type ContentKind,
   type ContentLocale,
   type ContentStatus,
+  type MediaType,
 };
 
 export interface IContentEntry extends Document {
@@ -24,6 +27,10 @@ export interface IContentEntry extends Document {
   summary: string;
   iconUrl?: string;
   contentHtml: string;
+  /** Only for kind "media": distinguishes articles, videos and podcasts. */
+  mediaType?: MediaType;
+  /** Only for kind "media": external source (YouTube/Vimeo video, podcast feed, article link). */
+  mediaUrl?: string;
   status: ContentStatus;
   /** Listing order (problematique + traitement). Ignored for nouveaute (date-sorted). */
   sortOrder: number;
@@ -57,6 +64,8 @@ const ContentEntrySchema = new Schema<IContentEntry>(
     summary: { type: String, default: "" },
     iconUrl: { type: String },
     contentHtml: { type: String, default: "" },
+    mediaType: { type: String, enum: MEDIA_TYPES },
+    mediaUrl: { type: String },
     status: {
       type: String,
       enum: ["draft", "published"],

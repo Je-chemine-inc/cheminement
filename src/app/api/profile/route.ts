@@ -63,6 +63,7 @@ export async function PUT(req: NextRequest) {
       "profileVisible",
       "showRating",
       "acceptingNewClients",
+      "acceptingEmergencyConsultations",
     ] as const) {
       if (key in update) update[key] = update[key] === true;
     }

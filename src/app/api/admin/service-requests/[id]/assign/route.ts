@@ -92,13 +92,22 @@ export async function POST(
               status: "active",
             }).select("firstName lastName email language");
             // Exclude pros who turned OFF "accepting new clients" — they
-            // shouldn't be pinged about new general-pool requests. Legacy/
-            // undefined profiles count as accepting (only explicit false opts out).
+            // shouldn't be pinged about new general-pool requests. For urgent
+            // ("Consultation ponctuelle rapide") requests, ALSO exclude pros who
+            // opted out of emergency consultations (mirrors the matcher gate).
+            // Legacy/undefined profiles count as accepting (only explicit false
+            // opts out). They can still self-claim from the pool either way.
+            const optedOutOr: Record<string, unknown>[] = [
+              { acceptingNewClients: false },
+            ];
+            if (appt.isEmergency) {
+              optedOutOr.push({ acceptingEmergencyConsultations: false });
+            }
             const notAcceptingIds = new Set(
               (
                 await Profile.find({
                   userId: { $in: pros.map((p) => p._id) },
-                  acceptingNewClients: false,
+                  $or: optedOutOr,
                 }).select("userId")
               ).map((p) => String(p.userId)),
             );

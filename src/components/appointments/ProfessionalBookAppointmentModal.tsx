@@ -283,7 +283,7 @@ export function ProfessionalBookAppointmentModal({
           ) : null}
 
           {/* Date + Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>{t("dateLabel")}</Label>
               <Input
@@ -303,7 +303,7 @@ export function ProfessionalBookAppointmentModal({
           </div>
 
           {/* Duration + Type */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>{t("durationLabel")}</Label>
               <Select

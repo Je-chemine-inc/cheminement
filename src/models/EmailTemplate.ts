@@ -8,7 +8,49 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export type EmailTemplateKey =
   | "welcomeClient"
   | "welcomeProfessional"
-  | "jumelageSuccess";
+  | "jumelageSuccess"
+  | "reminder72h"
+  | "reminder48h"
+  | "meetingLinkReady"
+  | "paymentFailed"
+  | "appointmentConfirmation"
+  | "paymentInvitation"
+  | "cancellationNotice"
+  | "refundConfirmation"
+  | "passwordReset"
+  | "serviceRequestOnboarding"
+  | "guestPaymentConfirmation"
+  | "guestPaymentComplete"
+  | "appointmentReminderGeneric"
+  | "unscheduledMatchReminder"
+  | "interacInstructions"
+  | "interacReminder"
+  | "accountVerification"
+  | "passwordSetup"
+  | "fiscalReceipt"
+  | "postMeetingPayment"
+  | "resendInvitation"
+  | "appointmentTaken"
+  | "paymentGuaranteeDay1"
+  | "paymentGuaranteeDay2"
+  | "paymentGuarantee48hClient"
+  | "paymentGuarantee48hPro"
+  | "professionalNewRequest"
+  | "generalPoolRequest"
+  | "professionalApproval"
+  | "professionalRejection"
+  | "emergencyProSla"
+  | "adminInteracTrustRequest"
+  | "adminNoPaymentBeforeMeeting"
+  | "adminNewServiceRequest"
+  | "adminNewProfessionalSignup"
+  | "adminAppointmentMovedToGeneral"
+  | "adminRequestReturnedToQueue"
+  | "adminNewExternalMessage"
+  | "adminUnscheduledMatchEscalation"
+  | "adminEmergencySlaBreach"
+  | "appointmentRescheduled"
+  | "appointmentChangeCancelled";
 
 export type EmailTemplateLocale = "fr" | "en";
 
@@ -34,7 +76,53 @@ const EmailTemplateSchema = new Schema<IEmailTemplate>(
   {
     templateKey: {
       type: String,
-      enum: ["welcomeClient", "welcomeProfessional", "jumelageSuccess"],
+      enum: [
+        "welcomeClient",
+        "welcomeProfessional",
+        "jumelageSuccess",
+        "reminder72h",
+        "reminder48h",
+        "meetingLinkReady",
+        "paymentFailed",
+        "appointmentConfirmation",
+        "paymentInvitation",
+        "cancellationNotice",
+        "refundConfirmation",
+        "passwordReset",
+        "serviceRequestOnboarding",
+        "guestPaymentConfirmation",
+        "guestPaymentComplete",
+        "appointmentReminderGeneric",
+        "unscheduledMatchReminder",
+        "interacInstructions",
+        "interacReminder",
+        "accountVerification",
+        "passwordSetup",
+        "fiscalReceipt",
+        "postMeetingPayment",
+        "resendInvitation",
+        "appointmentTaken",
+        "paymentGuaranteeDay1",
+        "paymentGuaranteeDay2",
+        "paymentGuarantee48hClient",
+        "paymentGuarantee48hPro",
+        "professionalNewRequest",
+        "generalPoolRequest",
+        "professionalApproval",
+        "professionalRejection",
+        "emergencyProSla",
+        "adminInteracTrustRequest",
+        "adminNoPaymentBeforeMeeting",
+        "adminNewServiceRequest",
+        "adminNewProfessionalSignup",
+        "adminAppointmentMovedToGeneral",
+        "adminRequestReturnedToQueue",
+        "adminNewExternalMessage",
+        "adminUnscheduledMatchEscalation",
+        "adminEmergencySlaBreach",
+        "appointmentRescheduled",
+        "appointmentChangeCancelled",
+      ],
       required: true,
     },
     locale: { type: String, enum: ["fr", "en"], required: true },

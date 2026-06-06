@@ -9,6 +9,7 @@ import ContentEntry, {
   CONTENT_KIND_PUBLIC_BASE,
 } from "@/models/ContentEntry";
 import { getContentPair, isContentKind } from "@/lib/content-entry";
+import { isMediaType } from "@/lib/content-kind";
 
 async function requireContentAdmin() {
   const session = await getServerSession(authOptions);
@@ -30,6 +31,7 @@ function listingPath(kind: string): string | null {
   if (kind === "problematique") return "/book";
   if (kind === "traitement") return "/approaches";
   if (kind === "nouveaute") return "/nouveautes";
+  if (kind === "media") return "/medias";
   return null;
 }
 
@@ -71,6 +73,8 @@ interface UpdateBody {
   iconUrl?: string | null;
   contentHtmlFr?: string;
   contentHtmlEn?: string;
+  mediaType?: string;
+  mediaUrl?: string | null;
   status?: "draft" | "published";
   sortOrder?: number;
 }
@@ -122,6 +126,21 @@ export async function PUT(
         body.iconUrl === null || body.iconUrl === "" ? undefined : body.iconUrl;
       frDoc.iconUrl = value;
       enDoc.iconUrl = value;
+    }
+
+    if (kind === "media") {
+      if (isMediaType(body.mediaType)) {
+        frDoc.mediaType = body.mediaType;
+        enDoc.mediaType = body.mediaType;
+      }
+      if (body.mediaUrl !== undefined) {
+        const value =
+          body.mediaUrl === null || body.mediaUrl.trim() === ""
+            ? undefined
+            : body.mediaUrl.trim();
+        frDoc.mediaUrl = value;
+        enDoc.mediaUrl = value;
+      }
     }
 
     if (typeof body.sortOrder === "number") {

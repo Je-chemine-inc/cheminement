@@ -8,6 +8,7 @@ import { profileAPI } from "@/lib/api-client";
 import BasicInformation from "@/components/dashboard/BasicInformation";
 import ProfessionalProfile from "@/components/dashboard/ProfessionalProfile";
 import AcceptingNewClientsCard from "@/components/dashboard/AcceptingNewClientsCard";
+import AcceptingEmergencyConsultationsCard from "@/components/dashboard/AcceptingEmergencyConsultationsCard";
 import AvailabilitySchedule from "./AvailabilitySchedule";
 
 interface DayAvailability {
@@ -68,6 +69,12 @@ export default function ProfilePage() {
 
       {/* Accepting new clients — pro controls their own intake */}
       <AcceptingNewClientsCard profile={profile} setProfile={setProfile} />
+
+      {/* Accepting quick one-time (emergency) consultations — separate opt-in */}
+      <AcceptingEmergencyConsultationsCard
+        profile={profile}
+        setProfile={setProfile}
+      />
 
       {/* Basic Information */}
       <BasicInformation isEditable={true} />

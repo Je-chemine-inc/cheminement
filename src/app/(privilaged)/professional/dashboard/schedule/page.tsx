@@ -176,7 +176,7 @@ export default function SchedulePage() {
     return days;
   };
 
-  const hours = Array.from({ length: 13 }, (_, i) => i + 8);
+  const hours = Array.from({ length: 16 }, (_, i) => i + 8); // 8:00 → 23:00
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
@@ -378,7 +378,7 @@ export default function SchedulePage() {
   return (
     <div className="w-full p-6">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-serif font-light text-foreground">
               {t("title")}
@@ -414,7 +414,7 @@ export default function SchedulePage() {
         </div>
 
         <div className="rounded-xl bg-card p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 mb-6">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigateDate("prev")}
@@ -422,7 +422,7 @@ export default function SchedulePage() {
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <h2 className="text-xl font-serif font-light text-foreground min-w-[200px] text-center">
+              <h2 className="text-xl font-serif font-light text-foreground sm:min-w-[200px] text-center">
                 {view === "day" && formatDate(currentDate)}
                 {view === "week" &&
                   `${t("weekOf")} ${formatDate(getWeekDays()[0])}`}
@@ -575,7 +575,8 @@ export default function SchedulePage() {
           ) : null}
 
           {view === "month" && (
-            <div className="grid grid-cols-7 gap-px bg-border/40 border border-border/40 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="grid grid-cols-7 gap-px bg-border/40 border border-border/40 rounded-lg overflow-hidden min-w-[640px]">
               {dayNames.map((day) => (
                 <div
                   key={day}
@@ -630,6 +631,7 @@ export default function SchedulePage() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
 
@@ -639,7 +641,7 @@ export default function SchedulePage() {
             </div>
           ) : view === "day" ? (
             <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                 <div className="rounded-lg bg-muted/30 p-4">
                   <div className="text-sm font-light text-muted-foreground mb-1">
                     {t("totalSessions")}

@@ -573,14 +573,14 @@ export default function ClientsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleViewDetails(client)}
-                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                        className="inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-muted transition-colors"
                         title={t("viewDetails")}
                       >
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </button>
                       <button
                         onClick={() => openBookForClient(client)}
-                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                        className="inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-muted transition-colors"
                         title={t("schedule")}
                       >
                         <Calendar className="h-4 w-4 text-muted-foreground" />

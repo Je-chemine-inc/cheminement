@@ -49,6 +49,7 @@ interface ProfessionalOption {
   name: string;
   email: string;
   acceptingNewClients?: boolean;
+  acceptingEmergencyConsultations?: boolean;
 }
 
 interface ServiceRequestRow {
@@ -118,6 +119,16 @@ export default function RequestsQueueTable({
     () => buildMotifLabelResolver(motifs, locale),
     [motifs, locale],
   );
+  // Marker(s) appended to a pro's name in the assign dropdowns when they opted
+  // out of intake relevant to THIS request: "new clients" always, and
+  // "emergency consultations" only for urgent (isEmergency) rows.
+  const proOptionLabel = (p: ProfessionalOption, isEmergency?: boolean) => {
+    const markers: string[] = [];
+    if (p.acceptingNewClients === false) markers.push(t("notAcceptingMarker"));
+    if (isEmergency && p.acceptingEmergencyConsultations === false)
+      markers.push(t("notAcceptingEmergencyMarker"));
+    return markers.length ? `${p.name} — ${markers.join(" · ")}` : p.name;
+  };
   const [requests, setRequests] = useState<ServiceRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -744,9 +755,7 @@ export default function RequestsQueueTable({
                             ) : (
                               professionals.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>
-                                  {p.acceptingNewClients === false
-                                    ? `${p.name} — ${t("notAcceptingMarker")}`
-                                    : p.name}
+                                  {proOptionLabel(p, r.isEmergency)}
                                 </SelectItem>
                               ))
                             )}
@@ -781,6 +790,14 @@ export default function RequestsQueueTable({
                           {t("notAcceptingWarning")}
                         </p>
                       )}
+                      {r.isEmergency &&
+                        professionals.find(
+                          (p) => p.id === assignDraft[r.id],
+                        )?.acceptingEmergencyConsultations === false && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            {t("notAcceptingEmergencyWarning")}
+                          </p>
+                        )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -861,9 +878,7 @@ export default function RequestsQueueTable({
                   ) : (
                     professionals.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.acceptingNewClients === false
-                          ? `${p.name} — ${t("notAcceptingMarker")}`
-                          : p.name}
+                        {proOptionLabel(p, scheduleTarget?.isEmergency)}
                       </SelectItem>
                     ))
                   )}
@@ -872,7 +887,7 @@ export default function RequestsQueueTable({
             </div>
 
             {/* Date + Time */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>{tBook("dateLabel")}</Label>
                 <Input
@@ -893,7 +908,7 @@ export default function RequestsQueueTable({
             </div>
 
             {/* Duration + Type */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>{tBook("durationLabel")}</Label>
                 <Select

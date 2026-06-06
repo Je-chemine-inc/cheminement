@@ -51,15 +51,22 @@ export async function GET(req: NextRequest) {
     // Get total count for pagination
     const total = await User.countDocuments(query);
 
-    // Whether each pro is currently accepting new clients (Profile flag).
-    // Legacy/undefined profiles default to accepting (only explicit false opts out).
+    // Whether each pro is currently accepting new clients / emergency
+    // consultations (Profile flags). Legacy/undefined profiles default to
+    // accepting (only an explicit false opts out).
     const profileFlags = await Profile.find({
       userId: { $in: professionals.map((p) => p._id) },
-    }).select("userId acceptingNewClients");
+    }).select("userId acceptingNewClients acceptingEmergencyConsultations");
     const acceptingById = new Map(
       profileFlags.map((p) => [
         String(p.userId),
         p.acceptingNewClients !== false,
+      ]),
+    );
+    const acceptingEmergencyById = new Map(
+      profileFlags.map((p) => [
+        String(p.userId),
+        p.acceptingEmergencyConsultations !== false,
       ]),
     );
 
@@ -86,6 +93,8 @@ export async function GET(req: NextRequest) {
           status: professional.status,
           acceptingNewClients:
             acceptingById.get(professional._id.toString()) ?? true,
+          acceptingEmergencyConsultations:
+            acceptingEmergencyById.get(professional._id.toString()) ?? true,
           joinedDate: professional.createdAt.toISOString().split("T")[0],
           totalClients: activeClients.length,
           totalSessions,

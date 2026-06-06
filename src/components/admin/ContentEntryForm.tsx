@@ -10,9 +10,13 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  FileText,
+  PlayCircle,
+  Podcast,
+  Link2,
 } from "lucide-react";
 import ContentEntryEditor from "@/components/admin/ContentEntryEditor";
-import type { ContentKind } from "@/lib/content-kind";
+import { MEDIA_TYPES, type ContentKind, type MediaType } from "@/lib/content-kind";
 
 export interface ContentEntryFormValues {
   slug: string;
@@ -23,9 +27,17 @@ export interface ContentEntryFormValues {
   iconUrl: string;
   contentHtmlFr: string;
   contentHtmlEn: string;
+  mediaType: MediaType;
+  mediaUrl: string;
   status: "draft" | "published";
   sortOrder: number;
 }
+
+const MEDIA_TYPE_ICON: Record<MediaType, typeof FileText> = {
+  article: FileText,
+  video: PlayCircle,
+  podcast: Podcast,
+};
 
 interface Props {
   kind: ContentKind;
@@ -159,7 +171,8 @@ export default function ContentEntryForm({
     }
   };
 
-  const isNouveaute = kind === "nouveaute";
+  const isMedia = kind === "media";
+  const isDateSorted = kind === "nouveaute" || isMedia;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -228,7 +241,7 @@ export default function ContentEntryForm({
               {slugEditable ? t("slugHintEditable") : t("slugHintLocked")}
             </p>
           </div>
-          {!isNouveaute ? (
+          {!isDateSorted ? (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 {t("fieldSortOrder")}
@@ -337,6 +350,59 @@ export default function ContentEntryForm({
           </div>
         </div>
       </div>
+
+      {isMedia ? (
+        <div className="space-y-5 rounded-xl border border-border/40 bg-card p-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              {t("fieldMediaType")}
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {t("mediaTypeHint")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {MEDIA_TYPES.map((type) => {
+                const Icon = MEDIA_TYPE_ICON[type];
+                const active = values.mediaType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => update("mediaType", type)}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors ${
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {t(`mediaType_${type}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              {t(`mediaUrlLabel_${values.mediaType}`)}
+            </label>
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 focus-within:ring-2 focus-within:ring-primary">
+              <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                type="url"
+                value={values.mediaUrl}
+                onChange={(e) => update("mediaUrl", e.target.value)}
+                placeholder={t(`mediaUrlPlaceholder_${values.mediaType}`)}
+                className="w-full bg-transparent py-2 text-sm text-foreground focus:outline-none"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t(`mediaUrlHint_${values.mediaType}`)}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-border/40 bg-card">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 px-4 py-3">
