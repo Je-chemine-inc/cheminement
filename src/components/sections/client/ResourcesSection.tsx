@@ -1,86 +1,59 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import {
-  BookOpen,
-  Video,
-  FileText,
-  Headphones,
-  Lock,
-  Unlock,
-} from "lucide-react";
+import { BookOpen, Lock, Unlock } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-  },
+  visible: { opacity: 1, y: 0 },
 };
 
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
+    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
   },
 };
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.8 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-  },
+  visible: { opacity: 1, scale: 1 },
 };
+
+interface ResourceItem {
+  slug: string;
+  title: string;
+  summary: string;
+  iconUrl?: string;
+}
 
 export default function ResourcesSection() {
   const t = useTranslations("Resources");
   const locale = useLocale();
+  const [items, setItems] = useState<ResourceItem[] | null>(null);
 
-  const freeResources = [
-    {
-      icon: BookOpen,
-      titleEn: "Educational Articles",
-      titleFr: "Articles éducatifs",
-      descriptionEn:
-        "Access a comprehensive library of articles about mental health, self-care strategies, and wellness tips.",
-      descriptionFr:
-        "Accédez à une bibliothèque complète d'articles sur la santé mentale, les stratégies d'auto-soin et les conseils de bien-être.",
-    },
-    {
-      icon: Video,
-      titleEn: "Video Guides",
-      titleFr: "Guides vidéo",
-      descriptionEn:
-        "Watch educational videos on managing stress, anxiety, and building healthy habits to prepare for your journey.",
-      descriptionFr:
-        "Regardez des vidéos éducatives sur la gestion du stress, de l'anxiété et l'adoption d'habitudes saines pour préparer votre parcours.",
-    },
-    {
-      icon: FileText,
-      titleEn: "Self-Assessment Tools",
-      titleFr: "Outils d'auto-évaluation",
-      descriptionEn:
-        "Use our guided questionnaires to better understand your needs and communicate effectively with professionals.",
-      descriptionFr:
-        "Utilisez nos questionnaires guidés pour mieux comprendre vos besoins et communiquer efficacement avec les professionnels.",
-    },
-    {
-      icon: Headphones,
-      titleEn: "Guided Meditations",
-      titleFr: "Méditations guidées",
-      descriptionEn:
-        "Begin your self-care practice with free guided meditation and mindfulness exercises.",
-      descriptionFr:
-        "Commencez votre pratique d'auto-soin avec des exercices gratuits de méditation guidée et de pleine conscience.",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/content/resource?locale=${locale}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { items: ResourceItem[] };
+        if (!cancelled) setItems(data.items);
+      } catch (err) {
+        console.error("Failed to load resources:", err);
+        if (!cancelled) setItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
 
   return (
     <section id="resources" className="py-20 bg-muted">
@@ -126,47 +99,56 @@ export default function ResourcesSection() {
           </div>
 
           {/* Free Resources */}
-          <motion.div
-            variants={fadeInUp}
-            transition={{ duration: 0.6 }}
-            className="mb-12"
-          >
-            <div className="flex items-center justify-center gap-2 mb-8">
-              <Unlock className="w-5 h-5 text-primary" />
-              <h3 className="text-2xl font-serif font-light text-foreground">
-                {t("freeAccessTitle")}
-              </h3>
-            </div>
-
+          {items && items.length > 0 ? (
             <motion.div
-              variants={staggerContainer}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+              variants={fadeInUp}
+              transition={{ duration: 0.6 }}
+              className="mb-12"
             >
-              {freeResources.map((resource, index) => (
-                <motion.div
-                  key={index}
-                  variants={scaleIn}
-                  transition={{ duration: 0.5 }}
-                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                  className="p-6 rounded-xl bg-card/50 backdrop-blur-sm hover:bg-card transition-all duration-300"
-                >
-                  <div className="mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                      <resource.icon className="w-6 h-6" />
+              <div className="flex items-center justify-center gap-2 mb-8">
+                <Unlock className="w-5 h-5 text-primary" />
+                <h3 className="text-2xl font-serif font-light text-foreground">
+                  {t("freeAccessTitle")}
+                </h3>
+              </div>
+
+              <motion.div
+                variants={staggerContainer}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+              >
+                {items.map((resource) => (
+                  <motion.div
+                    key={resource.slug}
+                    variants={scaleIn}
+                    transition={{ duration: 0.5 }}
+                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                    className="p-6 rounded-xl bg-card/50 backdrop-blur-sm hover:bg-card transition-all duration-300"
+                  >
+                    <div className="mb-4">
+                      {resource.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={resource.iconUrl}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <BookOpen className="w-6 h-6" />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <h4 className="text-lg font-light text-foreground mb-3">
-                    {locale === "fr" ? resource.titleFr : resource.titleEn}
-                  </h4>
-                  <p className="text-muted-foreground text-sm leading-relaxed font-light">
-                    {locale === "fr"
-                      ? resource.descriptionFr
-                      : resource.descriptionEn}
-                  </p>
-                </motion.div>
-              ))}
+                    <h4 className="text-lg font-light text-foreground mb-3">
+                      {resource.title}
+                    </h4>
+                    <p className="text-muted-foreground text-sm leading-relaxed font-light">
+                      {resource.summary}
+                    </p>
+                  </motion.div>
+                ))}
+              </motion.div>
             </motion.div>
-          </motion.div>
+          ) : null}
 
           {/* Premium Resources CTA */}
           <motion.div
@@ -187,25 +169,11 @@ export default function ResourcesSection() {
                 <p className="text-base md:text-lg text-muted-foreground leading-relaxed font-light mb-6">
                   {t("premiumDesc")}
                 </p>
-                <Link
-                  href="/resources/premium"
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-full text-base font-light tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                >
-                  {t("explorePremium")}
-                </Link>
+                <span className="inline-flex items-center rounded-full border border-amber-300/60 bg-amber-100/60 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                  {t("comingSoon")}
+                </span>
               </div>
             </div>
-          </motion.div>
-
-          {/* Benefits Note */}
-          <motion.div
-            variants={fadeInUp}
-            transition={{ duration: 0.6 }}
-            className="mt-12 text-center"
-          >
-            <p className="text-sm text-muted-foreground font-light max-w-2xl mx-auto">
-              {t("benefitsNote")}
-            </p>
           </motion.div>
         </motion.div>
       </div>

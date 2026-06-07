@@ -27,6 +27,13 @@ export interface IUser extends Document {
   dateOfBirth?: Date;
   location?: string;
   status: "active" | "pending" | "inactive";
+  /**
+   * Horodatage de la désactivation volontaire du compte par l'utilisateur
+   * (libre-service, zone de danger des paramètres). Distingue un compte
+   * `inactive` désactivé par son titulaire d'une coquille auto-provisionnée
+   * jamais réclamée (qui, elle, n'a pas de `deactivatedAt`).
+   */
+  deactivatedAt?: Date;
   emailVerified?: Date;
   /** Double validation compte : SMS après courriel (v1 = flux sécurisé public). */
   phoneVerifiedAt?: Date;
@@ -183,6 +190,7 @@ const UserSchema = new Schema<IUser>(
       enum: ["active", "pending", "inactive"],
       default: "pending",
     },
+    deactivatedAt: Date,
     emailVerified: Date,
     phoneVerifiedAt: Date,
     accountSecurityVersion: { type: Number, default: 0 },

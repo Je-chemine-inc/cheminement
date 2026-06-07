@@ -163,9 +163,9 @@ export default function PlatformBenefitsSection() {
       titleEn: "Social Mission",
       titleFr: "Mission sociale",
       descriptionEn:
-        "Priority support for remote-region clients and reduced rates for family/child cases with platform support.",
+        "Priority support for remote-region clients and reduced rates for family/child cases with space support.",
       descriptionFr:
-        "Soutien prioritaire pour les clients des régions éloignées et tarifs réduits pour les cas famille/enfant avec soutien conjoint de la plateforme.",
+        "Soutien prioritaire pour les clients des régions éloignées et tarifs réduits pour les cas famille/enfant avec soutien conjoint de l'espace.",
     },
   ];
 

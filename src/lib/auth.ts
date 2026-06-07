@@ -71,9 +71,14 @@ export const authOptions: NextAuthOptions = {
           // Phone verification is deferred to the booking flow, not required at login.
         }
 
-        // Inactive client accounts were auto-provisioned by the system but never claimed.
-        // Block login and direct them to the signup/claim flow.
-        if (user.role === "client" && user.status === "inactive") {
+        // Block inactive accounts. For clients this is either an auto-provisioned
+        // shell that was never claimed, or a self-deactivated account; for
+        // professionals it is a self-deactivated account. The precise message is
+        // resolved by /api/auth/account/login-reason (claim vs. deactivated).
+        if (
+          (user.role === "client" || user.role === "professional") &&
+          user.status === "inactive"
+        ) {
           void logAuthEvent(credentials.email, "login_blocked_unverified", user._id.toString());
           throw new Error("AUTH_ACCOUNT_INACTIVE");
         }

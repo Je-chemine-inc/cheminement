@@ -114,6 +114,8 @@ export default function LoginPage() {
               setVerifyHint("email");
             } else if (code === "AUTH_ACCOUNT_INACTIVE") {
               setError(t("errors.accountInactive"));
+            } else if (code === "AUTH_ACCOUNT_DEACTIVATED") {
+              setError(t("errors.accountDeactivated"));
             } else if (code === "AUTH_LICENSE_REJECTED") {
               setError(t("errors.licenseRejected"));
             } else if (code === "OK") {

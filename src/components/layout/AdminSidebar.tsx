@@ -159,6 +159,11 @@ export function AdminSidebar() {
           icon: Clapperboard,
         },
         {
+          title: t("ressources"),
+          url: "/admin/dashboard/content/resource",
+          icon: BookOpen,
+        },
+        {
           title: t("library"),
           url: "/admin/dashboard/library",
           icon: Library,

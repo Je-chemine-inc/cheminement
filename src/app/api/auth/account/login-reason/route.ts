@@ -27,7 +27,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid" }, { status: 401 });
     }
 
-    // Auto-provisioned accounts that were never claimed by the client
+    // Self-deactivated accounts (clients & professionals) carry `deactivatedAt`.
+    if (user.status === "inactive" && user.deactivatedAt) {
+      return NextResponse.json({ code: "AUTH_ACCOUNT_DEACTIVATED" });
+    }
+
+    // Inactive client accounts without `deactivatedAt` are auto-provisioned
+    // shells that were never claimed (professionals fall through to the
+    // license-rejected check below).
     if (user.role === "client" && user.status === "inactive") {
       return NextResponse.json({ code: "AUTH_ACCOUNT_INACTIVE" });
     }

@@ -10,7 +10,16 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function SettingsPage() {
   const t = useTranslations("Dashboard.settings");
@@ -19,10 +28,26 @@ export default function SettingsPage() {
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [language, setLanguage] = useState("fr");
   const [saved, setSaved] = useState(false);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+  const [deactivateError, setDeactivateError] = useState(false);
 
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleDeactivate = async () => {
+    setDeactivating(true);
+    setDeactivateError(false);
+    try {
+      const res = await fetch("/api/users/me/deactivate", { method: "POST" });
+      if (!res.ok) throw new Error("deactivate failed");
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setDeactivateError(true);
+      setDeactivating(false);
+    }
   };
 
   return (
@@ -124,7 +149,14 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
-        <Button variant="outline" className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setDeactivateError(false);
+            setDeactivateOpen(true);
+          }}
+          className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+        >
           <AlertTriangle className="h-4 w-4" />
           {t("deactivate")}
         </Button>
@@ -132,6 +164,43 @@ export default function SettingsPage() {
           {t("deactivateDesc")}
         </p>
       </section>
+
+      {/* Deactivate confirmation dialog */}
+      <Dialog
+        open={deactivateOpen}
+        onOpenChange={(open) => {
+          if (!deactivating) setDeactivateOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("deactivateConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("deactivateConfirmDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          {deactivateError && (
+            <p className="text-sm text-red-600">{t("deactivateError")}</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeactivateOpen(false)}
+              disabled={deactivating}
+            >
+              {t("deactivateCancel")}
+            </Button>
+            <Button
+              onClick={handleDeactivate}
+              disabled={deactivating}
+              className="gap-2 bg-red-600 text-white hover:bg-red-700"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              {deactivating ? t("deactivating") : t("deactivateConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Save button */}
       <div className="flex items-center justify-end gap-3">

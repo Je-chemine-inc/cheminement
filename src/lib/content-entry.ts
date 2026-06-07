@@ -253,6 +253,50 @@ export const NOUVEAUTE_SEEDS: BilingualSeed[] = [
   },
 ];
 
+/** Ressources libres — affiché sur /book dans la section « Ressources en accès libre ». */
+export const RESOURCE_SEEDS: BilingualSeed[] = [
+  {
+    slug: "articles-educatifs",
+    sortOrder: 10,
+    titleFr: "Articles éducatifs",
+    titleEn: "Educational Articles",
+    summaryFr:
+      "Accédez à une bibliothèque complète d'articles sur la santé mentale, les stratégies d'auto-soin et les conseils de bien-être.",
+    summaryEn:
+      "Access a comprehensive library of articles about mental health, self-care strategies, and wellness tips.",
+  },
+  {
+    slug: "guides-video",
+    sortOrder: 20,
+    titleFr: "Guides vidéo",
+    titleEn: "Video Guides",
+    summaryFr:
+      "Regardez des vidéos éducatives sur la gestion du stress, de l'anxiété et l'adoption d'habitudes saines pour préparer votre parcours.",
+    summaryEn:
+      "Watch educational videos on managing stress, anxiety, and building healthy habits to prepare for your journey.",
+  },
+  {
+    slug: "outils-auto-evaluation",
+    sortOrder: 30,
+    titleFr: "Outils d'auto-évaluation",
+    titleEn: "Self-Assessment Tools",
+    summaryFr:
+      "Utilisez nos questionnaires guidés pour mieux comprendre vos besoins et communiquer efficacement avec les professionnels.",
+    summaryEn:
+      "Use our guided questionnaires to better understand your needs and communicate effectively with professionals.",
+  },
+  {
+    slug: "meditations-guidees",
+    sortOrder: 40,
+    titleFr: "Méditations guidées",
+    titleEn: "Guided Meditations",
+    summaryFr:
+      "Commencez votre pratique d'auto-soin avec des exercices gratuits de méditation guidée et de pleine conscience.",
+    summaryEn:
+      "Begin your self-care practice with free guided meditation and mindfulness exercises.",
+  },
+];
+
 /**
  * Médias — sample resources shown on /medias. Date-sorted (newest first).
  * Seeded as articles (self-contained, no external URL); admins add videos &
@@ -545,6 +589,13 @@ export async function ensureSeeded(): Promise<void> {
     await seedKind("media", MEDIA_SEEDS);
   } else {
     await publishUntouchedSeeds("media", MEDIA_SEEDS);
+  }
+  // Ressources — free resource cards shown on /book.
+  const resourceCount = await ContentEntry.countDocuments({ kind: "resource" });
+  if (resourceCount === 0) {
+    await seedKind("resource", RESOURCE_SEEDS);
+  } else {
+    await publishUntouchedSeeds("resource", RESOURCE_SEEDS);
   }
 }
 

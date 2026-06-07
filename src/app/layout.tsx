@@ -7,7 +7,7 @@ import { Providers } from "@/components/providers";
 export const metadata: Metadata = {
   title: "Je chemine - Soins en santé mentale",
   description:
-    "Your journey to better health and wellness with our comprehensive platform featuring mental health support, primary care, and employee assistance programs.",
+    "Your journey to better health and wellness with our comprehensive space featuring mental health support, primary care, and employee assistance programs.",
   icons: {
     icon: "/favicon.png",
   },

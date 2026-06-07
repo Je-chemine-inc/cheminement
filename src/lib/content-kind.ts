@@ -3,7 +3,8 @@ export type ContentKind =
   | "problematique"
   | "traitement"
   | "nouveaute"
-  | "media";
+  | "media"
+  | "resource";
 export type ContentStatus = "draft" | "published";
 
 /** Sub-type for the "media" kind (the Médias / press library). */
@@ -14,6 +15,7 @@ export const CONTENT_KINDS: ContentKind[] = [
   "traitement",
   "nouveaute",
   "media",
+  "resource",
 ];
 
 export const MEDIA_TYPES: MediaType[] = ["article", "video", "podcast"];
@@ -24,6 +26,7 @@ export const CONTENT_KIND_PUBLIC_BASE: Record<ContentKind, string> = {
   traitement: "/approaches",
   nouveaute: "/nouveautes",
   media: "/medias",
+  resource: "/book",
 };
 
 /** Kinds whose listings are ordered by publish date (newest first) rather than sortOrder. */
@@ -40,7 +43,8 @@ export function isContentKind(
     value === "problematique" ||
     value === "traitement" ||
     value === "nouveaute" ||
-    value === "media"
+    value === "media" ||
+    value === "resource"
   );
 }
 

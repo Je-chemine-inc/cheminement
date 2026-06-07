@@ -1251,7 +1251,7 @@
       "services": "Services",
       "servicesOverview": "All Services",
       "schoolServices": "School Services",
-      "platform": "Platform",
+      "platform": "Space",
       "contact": "Contact",
       "professional": "I am a Professional"
     },
@@ -1286,7 +1286,7 @@
     "careers": "Careers",
     "press": "Media",
     "brandGuidelines": "Brand guidelines",
-    "platform": "Platform",
+    "platform": "Space",
     "integratedHealthPlatform": "Integrated Health Platform",
     "eap": "Employee Assistance Program (EAP)",
     "mentalHealthPlus": "Mental Health+",
@@ -1325,9 +1325,9 @@
   },
   "HeroSection": {
     "tagline": "YOUR JOURNEY TO WELLNESS STARTS HERE",
-    "designedByPsychologists": "A Platform Designed by Psychologists",
+    "designedByPsychologists": "A Space Designed by Psychologists",
     "headline": "Find Your Mental Health Professional",
-    "description": "Take the first step towards better mental health. Our platform connects you with qualified professionals who understand your unique journey and provide the support you need, when you need it most.",
+    "description": "Take the first step towards better mental health. Our space connects you with a network of qualified professionals who understand your unique journey and provide the support you need, when you need it most.",
     "bookNow": "Book now",
     "bookingTitle": "Book an appointment",
     "bookingSubtitle": "Who would you like to book an appointment for?",
@@ -1375,7 +1375,7 @@
   },
   "ClientAdvantagesSection": {
     "badge": "YOUR BENEFITS",
-    "title": "A Health Platform Designed for You",
+    "title": "A Health Space Designed for You",
     "subtitle": "Quick access to qualified professionals and educational content to take care of your mental health.",
     "quickAccess": {
       "title": "Quick Access",
@@ -1487,12 +1487,12 @@
   "ProfessionalHero": {
     "tagline": "FOR MENTAL HEALTH PROFESSIONALS",
     "headline": "Focus on people, we'll handle the rest.",
-    "description": "Join our platform and let us handle the administrative work. Connect with clients who match your expertise, optimize your practice, and grow your impact.",
-    "joinPlatform": "Join Our Platform",
+    "description": "Join our space and let us handle the administrative work. Connect with clients who match your expertise, optimize your practice, and grow your impact.",
+    "joinPlatform": "Join Our Space",
     "learnMore": "Learn More",
     "activeProfessionals": "Several Active Professionals",
     "satisfactionRate": "95% Satisfaction Rate",
-    "platformSupport": "24/7 Platform Support"
+    "platformSupport": "24/7 Space Support"
   },
   "MatchingSystem": {
     "badge": "SMART MATCHING SYSTEM",
@@ -1511,7 +1511,7 @@
   },
   "PlatformBenefits": {
     "badge": "WHY CHOOSE US",
-    "title": "Platform Benefits for Professionals",
+    "title": "Space Benefits for Professionals",
     "subtitle": "We provide comprehensive support so you can focus on what matters most—delivering exceptional mental health care to your clients.",
     "simpleManagement": "Simple & Efficient Management",
     "simpleManagementDesc": "Provide us with your available time slots, meet your clients, and we handle the rest—scheduling, billing, and administrative tasks.",
@@ -1545,7 +1545,7 @@
   "ProfessionalCTA": {
     "badge": "READY TO GET STARTED?",
     "title": "Join Our Community Today",
-    "description": "Take the next step in your professional journey. Join thousands of mental health professionals who have transformed their practice with our platform.",
+    "description": "Take the next step in your professional journey. Join thousands of mental health professionals who have transformed their practice with our space.",
     "fact1": "No upfront costs",
     "fact2": "Flexible scheduling",
     "fact3": "Dedicated support team",
@@ -1638,6 +1638,7 @@
         "phoneNotVerified": "After email confirmation, validate your phone number with the SMS code.",
         "licenseRejected": "Your professional license file was declined. Contact support if you need help.",
         "accountInactive": "An account was created for you following your service request. Click the invitation link sent to your email to activate it, or create your full account via the sign-up page.",
+        "accountDeactivated": "This account has been deactivated. Contact support to reactivate it.",
         "genericSignIn": "Something went wrong while signing in."
       },
       "sessionExpiredInactivity": "Your session expired due to inactivity. Please sign in again.",
@@ -1690,7 +1691,7 @@
       },
       "professional": {
         "title": "Professional",
-        "description": "Join our platform as a mental health professional to connect with clients and grow your practice.",
+        "description": "Join our space as a mental health professional to connect with clients and grow your practice.",
         "cta": "Sign up as Professional →"
       },
       "hasAccount": "Already have an account?",
@@ -2396,6 +2397,7 @@
       "traitements": "Treatments",
       "nouveautes": "What's new",
       "medias": "Media",
+      "ressources": "Resources",
       "externalMessages": "External emails",
       "emailTemplates": "Email templates",
       "employees": "Employees",
@@ -3166,6 +3168,12 @@
       "dangerDesc": "Irreversible actions. Please be careful.",
       "deactivate": "Deactivate account",
       "deactivateDesc": "Temporarily deactivate your account. You can reactivate it later.",
+      "deactivateConfirmTitle": "Deactivate your account?",
+      "deactivateConfirmDesc": "You will be signed out immediately and will no longer be able to log in. Contact support to reactivate your account.",
+      "deactivateConfirm": "Deactivate",
+      "deactivateCancel": "Cancel",
+      "deactivating": "Deactivating…",
+      "deactivateError": "Could not deactivate your account. Please try again.",
       "saved": "Settings saved",
       "save": "Save changes"
     }
@@ -3175,7 +3183,7 @@
       "badge": "Who We Are",
       "designedBy": {
         "label": "Our Difference",
-        "title": "A Platform Designed by Psychologists"
+        "title": "A Space Designed by Psychologists"
       },
       "headline": "At Je chemine, we believe that everyone deserves human, confidential, and personalized support tailored to their reality.",
       "description1": "Our mission is to support your emotional and psychological well-being through a personalized journey designed to meet your unique needs and pace. We offer simple and caring access to a team of experts whose practice is regulated, recognized, and compliant with their professional order requirements.",
@@ -3188,7 +3196,7 @@
     "commitment": {
       "title": "Our Commitment",
       "description1": "With Je chemine, you are no longer alone. We are here to support you, guide you, and help you journey towards a more serene, balanced, and fulfilling life.",
-      "description2": "Our platform offers a simple, human, and secure gateway to take care of your mental health – for you or your family – while giving you access to relevant tools, clear information, and reliable professional support."
+      "description2": "Our space offers a simple, human, and secure gateway to take care of your mental health – for you or your family – while giving you access to relevant tools, clear information, and reliable professional support."
     },
     "expertise": {
       "badge": "Regulated and Recognized Expertise",
@@ -3220,7 +3228,7 @@
     },
     "accessibility": {
       "badge": "Accessible, flexible, wherever you are",
-      "title": "A platform designed to adapt to your daily life.",
+      "title": "A space designed to adapt to your daily life.",
       "description": "We know your reality is unique. Je chemine makes help accessible according to your preferences, so you can move forward at your own pace, wherever you are.",
       "options": {
         "remote": {
@@ -3236,7 +3244,7 @@
         "choice": {
           "title": "Professional Choice",
           "description": "You remain in control: find the specialist who suits you and build a solid therapeutic relationship.",
-          "details": "Our platform offers you transparent profiles and support to make the right choice."
+          "details": "Our space offers you transparent profiles and support to make the right choice."
         }
       }
     }
@@ -3251,7 +3259,7 @@
         "items": [
           "Qualified experts for every issue",
           "Intelligent matching for quick support",
-          "A simple and reassuring platform to track your journey"
+          "A simple and reassuring space to track your journey"
         ]
       }
     },
@@ -3474,7 +3482,7 @@
         "Varied offerings for every need",
         "Total flexibility (online and in-person)",
         "Educational support to complement therapy",
-        "A simple, reassuring, and secure platform"
+        "A simple, reassuring, and secure space"
       ]
     }
   },
@@ -3582,7 +3590,7 @@
     "ethics": {
       "badge": "Ethics and Confidentiality",
       "title": "We protect your trust, at every moment.",
-      "description": "Confidentiality is not an option, it's our foundation. We designed our platform and processes to ensure maximum protection of your privacy, from the first contact to the closure of your file.",
+      "description": "Confidentiality is not an option, it's our foundation. We designed our space and processes to ensure maximum protection of your privacy, from the first contact to the closure of your file.",
       "note": "Each professional is a signatory to specific commitments regarding data protection and benefits from ongoing training on confidentiality.",
       "commitments": {
         "ethics": {
@@ -3664,7 +3672,7 @@
         },
         {
           "title": "Selection of the Ideal Professional",
-          "description": "Our platform identifies the person who has the expertise, style, and availability suited to your situation."
+          "description": "Our space identifies the person who has the expertise, style, and availability suited to your situation."
         },
         {
           "title": "Continuous Monitoring and Adjustments",
@@ -3751,7 +3759,7 @@
     "joinUs": {
       "badge": "Join Our Team",
       "title": "You are a professional in mental health? Join our mission.",
-      "description": "Become part of a collaborative platform dedicated to quality care, supported practice, and meaningful client relationships. Together, let's build a more human, accessible, and professional mental health ecosystem.",
+      "description": "Become part of a collaborative space dedicated to quality care, supported practice, and meaningful client relationships. Together, let's build a more human, accessible, and professional mental health ecosystem.",
       "highlights": {
         "matching": {
           "title": "Intelligent Matching",
@@ -3796,7 +3804,7 @@
     "hero": {
       "badge": "Why Choose Us",
       "headline": "Choosing Je chemine means choosing a human, professional, and structured approach to take care of your mental health.",
-      "description": "Our platform was designed to eliminate obstacles, simplify access to help, and support you at every stage of your journey. We move forward with you, at your pace, so that every interaction is smooth, reassuring, and deeply human.",
+      "description": "Our space was designed to eliminate obstacles, simplify access to help, and support you at every stage of your journey. We move forward with you, at your pace, so that every interaction is smooth, reassuring, and deeply human.",
       "subtitle": "An experience built on trust and care"
     },
     "reasons": {
@@ -3840,7 +3848,7 @@
     "access": {
       "badge": "Accessible wherever you are, when you need it",
       "title": "You choose the modality that suits you, we ensure the quality of the experience.",
-      "description": "We eliminate barriers that prevent consultation and simplify your journey through a platform designed for you. You choose the option that suits you best, we support you with the same quality of care.",
+      "description": "We eliminate barriers that prevent consultation and simplify your journey through a space designed for you. You choose the option that suits you best, we support you with the same quality of care.",
       "modes": {
         "remote": {
           "title": "Remote",
@@ -3859,7 +3867,7 @@
         }
       },
       "platform": {
-        "badge": "A simple, human platform designed for you",
+        "badge": "A simple, human space designed for you",
         "title": "Your journey is smooth, reassuring, and continuously supported.",
         "highlights": {
           "navigation": {
@@ -4591,10 +4599,6 @@
         "subtitle": "Documents and resources shared by your professional or the platform",
         "noDocuments": "No documents yet.",
         "noDocumentsDesc": "When your professional shares documents or materials, they will appear here.",
-        "uploadButton": "Upload a Document",
-        "uploadHint": "PDF, JPG or PNG — max 10 MB",
-        "uploading": "Uploading...",
-        "uploadError": "Upload failed. Please try again.",
         "download": "Download",
         "uploadedAt": "Added on",
         "sharedByYou": "Uploaded by you",
@@ -5167,11 +5171,11 @@
     "hero": {
       "badge": "INTEGRATED HEALTH PLATFORM",
       "headline": "Our Integrated Health Platform™",
-      "description": "Outdated, fragmented, slow. This should not describe your health and wellness programs. Reimagined to answer the needs of today's organizations, our platform gives you peace of mind knowing that everyone has easy access to the right support, at a time that works for them.",
+      "description": "Outdated, fragmented, slow. This should not describe your health and wellness programs. Reimagined to answer the needs of today's organizations, our space gives you peace of mind knowing that everyone has easy access to the right support, at a time that works for them.",
       "benefits": {
-        "title": "PLATFORM BENEFITS",
+        "title": "SPACE BENEFITS",
         "items": [
-          "One unified platform for all health and wellness needs",
+          "One unified space for all health and wellness needs",
           "24/7/365 access to care when you need it",
           "Reduced complexity with integrated services",
           "Real-time progress tracking and insights",
@@ -5308,7 +5312,7 @@
     "integrationBenefits": {
       "badge": "WHY INTEGRATED",
       "title": "The Power of Integration",
-      "subtitle": "When all your health programs work together on one platform, everyone wins—you get seamless care and better outcomes.",
+      "subtitle": "When all your health programs work together on one space, everyone wins—you get seamless care and better outcomes.",
       "benefits": [
         {
           "title": "Unified Experience",
@@ -5337,7 +5341,7 @@
       ],
       "cta": {
         "title": "Built for Everyone",
-        "description": "Our platform scales to meet your needs while maintaining personalized care for every individual.",
+        "description": "Our space scales to meet your needs while maintaining personalized care for every individual.",
         "points": [
           "Seamless experience across all services",
           "Customizable programs to match your needs",
@@ -5348,7 +5352,7 @@
     },
     "cta": {
       "badge": "GET STARTED",
-      "title": "Experience the Platform",
+      "title": "Experience the Space",
       "description": "Discover how our Integrated Health Platform can transform your access to comprehensive health and wellness support.",
       "contactButton": "Contact Us",
       "demoButton": "Book a Consultation",
@@ -5981,10 +5985,19 @@
       "createSubtitle": "Pick a type (article, video or podcast), then fill in the French and English fields.",
       "empty": "No media yet. Click \"Add\" to publish your first piece."
     },
+    "kind_resource": {
+      "title": "Free Access Resources",
+      "subtitle": "Manage the resource cards displayed on the \"Browse resources\" page (/book). Each entry has a French and English version. Display order is manual.",
+      "createButton": "Add a resource",
+      "createTitle": "New resource",
+      "createSubtitle": "Fill in the title and summary in both French and English. You can add an image and detailed content.",
+      "empty": "No resources yet. Click \"Add\" to create the first card."
+    },
     "pathPrefix_problematique": "/explore",
     "pathPrefix_traitement": "/approaches",
     "pathPrefix_nouveaute": "/nouveautes",
     "pathPrefix_media": "/medias",
+    "pathPrefix_resource": "/book",
     "createSubmit": "Create",
     "editSubmit": "Save changes",
     "createdMessage": "Entry created. Fill in the content, then publish it when ready.",

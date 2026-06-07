@@ -59,6 +59,7 @@ const PUBLIC_BASE: Record<ContentKind, string> = {
   traitement: "/approaches",
   nouveaute: "/nouveautes",
   media: "/medias",
+  resource: "/book",
 };
 
 export default function ContentListPage() {

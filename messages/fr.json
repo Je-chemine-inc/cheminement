@@ -1250,7 +1250,7 @@
       "nouveautes": "Nouveautés",
       "services": "Services",
       "servicesOverview": "Tous les services",
-      "platform": "Plateforme",
+      "platform": "Espace",
       "contact": "Contact",
       "professional": "Je suis un professionnel",
       "schoolServices": "Services scolaires"
@@ -1286,7 +1286,7 @@
     "careers": "Carrières",
     "press": "Médias",
     "brandGuidelines": "Directives de marque",
-    "platform": "Plateforme",
+    "platform": "Espace",
     "integratedHealthPlatform": "Plateforme de santé mentale",
     "eap": "Programme d'aide aux employés (PAE)",
     "mentalHealthPlus": "Santé mentale+",
@@ -1325,9 +1325,9 @@
   },
   "HeroSection": {
     "tagline": "VOTRE PARCOURS VERS LE BIEN-ÊTRE COMMENCE ICI",
-    "designedByPsychologists": "Une plateforme conçue par des psychologues",
+    "designedByPsychologists": "Un espace conçu par des psychologues",
     "headline": "Trouvez votre professionnel de santé mentale",
-    "description": "Faites le premier pas vers une meilleure santé mentale. Notre plateforme vous met en relation avec des professionnels qualifiés qui comprennent votre parcours unique et vous apportent le soutien dont vous avez besoin, quand vous en avez le plus besoin.",
+    "description": "Faites le premier pas vers une meilleure santé mentale. Notre espace vous met en relation avec un réseau de professionnels qualifiés qui comprennent votre parcours unique et vous apportent le soutien dont vous avez besoin, quand vous en avez le plus besoin.",
     "bookNow": "Prendre rendez-vous",
     "bookingTitle": "Prise de rendez-vous",
     "bookingSubtitle": "Pour qui souhaitez-vous prendre rendez-vous ?",
@@ -1353,9 +1353,9 @@
     }
   },
   "ValueSection": {
-    "title": "Plateforme spécialisée en santé mentale",
+    "title": "Espace spécialisé en santé mentale",
     "subtitle": "Un jumelage intelligent",
-    "description": "Notre Plateforme offre un accès rapide à des professionnels de la santé mentale.\nCheminez vers l'équilibre plus tôt.",
+    "description": "Notre espace offre un accès rapide à des professionnels de la santé mentale.\nCheminez vers l'équilibre plus tôt.",
     "integratedPlatform": "Plateforme de santé mentale™"
   },
   "HowItWorksSection": {
@@ -1375,7 +1375,7 @@
   },
   "ClientAdvantagesSection": {
     "badge": "VOS AVANTAGES",
-    "title": "Une plateforme pensée pour vous",
+    "title": "Un espace pensé pour vous",
     "subtitle": "Accédez rapidement à des professionnels qualifiés et à du contenu éducatif pour prendre soin de votre santé mentale.",
     "quickAccess": {
       "title": "Accès rapide",
@@ -1487,12 +1487,12 @@
   "ProfessionalHero": {
     "tagline": "POUR LES PROFESSIONNELS DE LA SANTÉ MENTALE",
     "headline": "Concentrez-vous sur l'humain, nous nous occupons du reste.",
-    "description": "Rejoignez notre plateforme et laissez-nous gérer le travail administratif. Connectez-vous avec des clients qui correspondent à votre expertise, optimisez votre pratique et augmentez votre impact.",
-    "joinPlatform": "Rejoindre notre plateforme",
+    "description": "Rejoignez notre espace et laissez-nous gérer le travail administratif. Connectez-vous avec des clients qui correspondent à votre expertise, optimisez votre pratique et augmentez votre impact.",
+    "joinPlatform": "Rejoindre notre espace",
     "learnMore": "En savoir plus",
     "activeProfessionals": "Plusieurs professionnels actifs",
     "satisfactionRate": "95 % de satisfaction",
-    "platformSupport": "Soutien de la plateforme 24 h sur 24, 7 j sur 7"
+    "platformSupport": "Soutien de l'espace 24 h sur 24, 7 j sur 7"
   },
   "MatchingSystem": {
     "badge": "SYSTÈME DE JUMELAGE INTELLIGENT",
@@ -1511,7 +1511,7 @@
   },
   "PlatformBenefits": {
     "badge": "POURQUOI NOUS CHOISIR",
-    "title": "Avantages de la plateforme pour les professionnels",
+    "title": "Avantages de l'espace pour les professionnels",
     "subtitle": "Nous fournissons un soutien complet afin que vous puissiez vous concentrer sur ce qui compte le plus—offrir des soins de santé mentale exceptionnels à vos clients.",
     "simpleManagement": "Gestion simple et efficace",
     "simpleManagementDesc": "Fournissez-nous vos plages horaires disponibles, rencontrez vos clients et nous nous occupons du reste—planification, facturation et tâches administratives.",
@@ -1545,7 +1545,7 @@
   "ProfessionalCTA": {
     "badge": "PRÊT À COMMENCER ?",
     "title": "Rejoignez notre communauté aujourd'hui",
-    "description": "Franchissez la prochaine étape de votre parcours professionnel. Rejoignez notre équipe de professionnels de la santé mentale qui ont transformé leur pratique avec notre plateforme.",
+    "description": "Franchissez la prochaine étape de votre parcours professionnel. Rejoignez notre équipe de professionnels de la santé mentale qui ont transformé leur pratique avec notre espace.",
     "fact1": "Aucun coût initial",
     "fact2": "Horaire flexible",
     "fact3": "Équipe de soutien dédiée",
@@ -1638,6 +1638,7 @@
         "phoneNotVerified": "Après le courriel, validez votre numéro avec le code SMS envoyé à votre téléphone.",
         "licenseRejected": "Votre dossier (permis OPQ) a été refusé. Contactez le support si besoin.",
         "accountInactive": "Un compte vous a été créé suite à votre demande de service. Cliquez sur le lien d'invitation reçu par courriel pour l'activer, ou créez votre compte complet via la page d'inscription.",
+        "accountDeactivated": "Ce compte a été désactivé. Contactez le soutien pour le réactiver.",
         "genericSignIn": "Une erreur s'est produite lors de la connexion."
       },
       "sessionExpiredInactivity": "Votre session a expiré en raison d'inactivité. Veuillez vous reconnecter.",
@@ -1690,7 +1691,7 @@
       },
       "professional": {
         "title": "Professionnel",
-        "description": "Rejoignez notre plateforme en tant que professionnel de la santé mentale pour vous connecter avec des clients et développer votre pratique.",
+        "description": "Rejoignez notre espace en tant que professionnel de la santé mentale pour vous connecter avec des clients et développer votre pratique.",
         "cta": "S'inscrire en tant que professionnel →"
       },
       "hasAccount": "Vous avez déjà un compte ?",
@@ -2397,6 +2398,7 @@
       "traitements": "Traitements",
       "nouveautes": "Nouveautés",
       "medias": "Médias",
+      "ressources": "Ressources",
       "externalMessages": "Courriels externes",
       "emailTemplates": "Modèles de courriels",
       "employees": "Employés",
@@ -3166,6 +3168,12 @@
       "dangerDesc": "Actions irréversibles. Soyez prudent.",
       "deactivate": "Désactiver le compte",
       "deactivateDesc": "Désactivez temporairement votre compte. Vous pourrez le réactiver plus tard.",
+      "deactivateConfirmTitle": "Désactiver votre compte ?",
+      "deactivateConfirmDesc": "Vous serez déconnecté immédiatement et ne pourrez plus vous connecter. Contactez le soutien pour réactiver votre compte.",
+      "deactivateConfirm": "Désactiver",
+      "deactivateCancel": "Annuler",
+      "deactivating": "Désactivation…",
+      "deactivateError": "Impossible de désactiver votre compte. Veuillez réessayer.",
       "saved": "Paramètres enregistrés",
       "save": "Enregistrer les modifications"
     }
@@ -3175,7 +3183,7 @@
       "badge": "Qui nous sommes",
       "designedBy": {
         "label": "Notre différence",
-        "title": "Une plateforme conçue par des psychologues"
+        "title": "Un espace conçu par des psychologues"
       },
       "headline": "Chez Je chemine, nous croyons que chaque personne mérite un accompagnement humain, confidentiel et adapté à sa réalité.",
       "description1": "Notre mission est de vous soutenir dans votre bien-être émotionnel et psychologique grâce à un parcours personnalisé, conçu pour répondre à vos besoins uniques et à votre rythme. Nous offrons un accès simple et bienveillant à une équipe d'experts dont la pratique est encadrée, reconnue et conforme aux exigences de leur ordre professionnel.",
@@ -3188,7 +3196,7 @@
     "commitment": {
       "title": "Notre engagement",
       "description1": "Avec Je chemine, vous n'êtes plus seul. Nous sommes là pour vous soutenir, vous guider et vous aider à cheminer vers une vie plus sereine, équilibrée et épanouie.",
-      "description2": "Notre plateforme offre une porte d'entrée simple, humaine et sécurisée pour prendre soin de votre santé mentale – pour vous ou votre famille – tout en vous donnant accès à des outils pertinents, des informations claires et un accompagnement professionnel fiable."
+      "description2": "Notre espace offre une porte d'entrée simple, humaine et sécurisée pour prendre soin de votre santé mentale – pour vous ou votre famille – tout en vous donnant accès à des outils pertinents, des informations claires et un accompagnement professionnel fiable."
     },
     "expertise": {
       "badge": "Une expertise encadrée et reconnue",
@@ -3220,7 +3228,7 @@
     },
     "accessibility": {
       "badge": "Accessible, flexible, où que vous soyez",
-      "title": "Une plateforme pensée pour s'adapter à votre quotidien.",
+      "title": "Un espace pensé pour s'adapter à votre quotidien.",
       "description": "Nous savons que votre réalité est unique. Je chemine rend l'aide accessible selon vos préférences, pour que vous puissiez avancer à votre rythme, où que vous soyez.",
       "options": {
         "remote": {
@@ -3236,7 +3244,7 @@
         "choice": {
           "title": "Choix du professionnel",
           "description": "Vous gardez le contrôle : cheminez uniquement avec le spécialiste qui vous convient et tissez une alliance thérapeutique solide.",
-          "details": "Notre plateforme vous offre des profils transparents et un accompagnement pour faire le bon choix. Vous pouvez toujours demander un changement du professionnel proposé."
+          "details": "Notre espace vous offre des profils transparents et un accompagnement pour faire le bon choix. Vous pouvez toujours demander un changement du professionnel proposé."
         }
       }
     }
@@ -3251,7 +3259,7 @@
         "items": [
           "Des experts qualifiés pour chaque problématique",
           "Un jumelage intelligent pour un accompagnement rapide",
-          "Une plateforme simple pour amorcer rapidement votre cheminement"
+          "Un espace simple pour amorcer rapidement votre cheminement"
         ]
       }
     },
@@ -3474,7 +3482,7 @@
         "Des offres variées pour chaque besoin",
         "Une flexibilité totale (en ligne et en personne)",
         "Un accompagnement éducatif pour soutenir la thérapie",
-        "Une plateforme simple, rassurante et sécurisée"
+        "Un espace simple, rassurant et sécurisé"
       ]
     }
   },
@@ -3582,7 +3590,7 @@
     "ethics": {
       "badge": "Éthique et confidentialité",
       "title": "Nous protégeons votre confiance, à chaque instant.",
-      "description": "La confidentialité n'est pas une option, c'est notre fondation. Nous avons conçu notre plateforme et nos processus pour assurer une protection maximale de votre vie privée, du premier contact à la clôture de votre dossier.",
+      "description": "La confidentialité n'est pas une option, c'est notre fondation. Nous avons conçu notre espace et nos processus pour assurer une protection maximale de votre vie privée, du premier contact à la clôture de votre dossier.",
       "note": "Chaque professionnel est signataire d'engagements précis en matière de protection des données et bénéficie d'une formation continue sur la confidentialité.",
       "commitments": {
         "ethics": {
@@ -3664,7 +3672,7 @@
         },
         {
           "title": "Sélection du professionnel idéal",
-          "description": "Notre plateforme identifie la personne qui possède l'expertise, le style et la disponibilité adaptés à votre situation."
+          "description": "Notre espace identifie la personne qui possède l'expertise, le style et la disponibilité adaptés à votre situation."
         },
         {
           "title": "Suivi et ajustements continus",
@@ -3751,7 +3759,7 @@
     "joinUs": {
       "badge": "Rejoignez plusieurs professionnels actifs",
       "title": "Vous êtes un professionnel en santé mentale ? Rejoignez notre mission.",
-      "description": "Faites partie d'une plateforme collaborative dédiée à la qualité des soins, à une pratique encadrée et à des relations clients significatives. Ensemble, construisons un écosystème de santé mentale plus humain, accessible et professionnel.",
+      "description": "Faites partie d'un espace collaboratif dédié à la qualité des soins, à une pratique encadrée et à des relations clients significatives. Ensemble, construisons un écosystème de santé mentale plus humain, accessible et professionnel.",
       "highlights": {
         "matching": {
           "title": "Jumelage intelligent",
@@ -3796,7 +3804,7 @@
     "hero": {
       "badge": "Pourquoi nous choisir",
       "headline": "Choisir Je chemine, c'est choisir une approche humaine, professionnelle et structurée pour prendre soin de votre santé mentale.",
-      "description": "Notre plateforme a été pensée pour éliminer les obstacles, simplifier l'accès à l'aide et vous accompagner à chaque étape de votre démarche. Nous avançons avec vous, à votre rythme, pour que chaque interaction soit fluide, rassurante et profondément humaine.",
+      "description": "Notre espace a été pensé pour éliminer les obstacles, simplifier l'accès à l'aide et vous accompagner à chaque étape de votre démarche. Nous avançons avec vous, à votre rythme, pour que chaque interaction soit fluide, rassurante et profondément humaine.",
       "subtitle": "Une expérience bâtie sur la confiance et la bienveillance"
     },
     "reasons": {
@@ -3840,7 +3848,7 @@
     "access": {
       "badge": "Accessible où que vous soyez, quand vous en avez besoin",
       "title": "Vous choisissez la modalité qui vous convient, nous assurons la qualité de l'expérience.",
-      "description": "Nous éliminons les barrières qui empêchent de consulter et simplifions votre cheminement grâce à une plateforme pensée pour vous. Vous choisissez l'option qui vous convient le mieux, nous vous accompagnons avec la même qualité de soins.",
+      "description": "Nous éliminons les barrières qui empêchent de consulter et simplifions votre cheminement grâce à un espace pensé pour vous. Vous choisissez l'option qui vous convient le mieux, nous vous accompagnons avec la même qualité de soins.",
       "modes": {
         "remote": {
           "title": "À distance",
@@ -3859,7 +3867,7 @@
         }
       },
       "platform": {
-        "badge": "Une plateforme simple, humaine et conçue pour vous",
+        "badge": "Un espace simple, humain et conçu pour vous",
         "title": "Votre démarche est fluide, rassurante et soutenue en continu.",
         "highlights": {
           "navigation": {
@@ -4590,10 +4598,6 @@
         "subtitle": "Documents et ressources partagés par votre professionnel ou la plateforme",
         "noDocuments": "Aucun document pour l'instant.",
         "noDocumentsDesc": "Lorsque votre professionnel partagera des documents ou ressources, ils apparaîtront ici.",
-        "uploadButton": "Ajouter un document",
-        "uploadHint": "PDF, JPG ou PNG — max 10 Mo",
-        "uploading": "Téléversement...",
-        "uploadError": "Échec du téléversement. Veuillez réessayer.",
         "download": "Télécharger",
         "uploadedAt": "Ajouté le",
         "sharedByYou": "Ajouté par vous",
@@ -5166,11 +5170,11 @@
     "hero": {
       "badge": "PLATEFORME DE SANTÉ INTÉGRÉE",
       "headline": "Notre plateforme de santé mentale™",
-      "description": "Dépassé, fragmenté, lent. Cela ne devrait pas décrire vos programmes de santé et de bien-être. Réinventée pour répondre aux besoins d'aujourd'hui, notre plateforme vous donne la tranquillité d'esprit en sachant que chacun a facilement accès au bon soutien, au moment qui lui convient.",
+      "description": "Dépassé, fragmenté, lent. Cela ne devrait pas décrire vos programmes de santé et de bien-être. Réinventé pour répondre aux besoins d'aujourd'hui, notre espace vous donne la tranquillité d'esprit en sachant que chacun a facilement accès au bon soutien, au moment qui lui convient.",
       "benefits": {
-        "title": "AVANTAGES DE LA PLATEFORME",
+        "title": "AVANTAGES DE L'ESPACE",
         "items": [
-          "Une plateforme unifiée pour tous les besoins de santé et de bien-être",
+          "Un espace unifié pour tous les besoins de santé et de bien-être",
           "Accès aux soins 24/7/365 quand vous en avez besoin",
           "Complexité réduite grâce aux services intégrés",
           "Suivi des progrès et insights en temps réel",
@@ -5307,7 +5311,7 @@
     "integrationBenefits": {
       "badge": "POURQUOI L'INTÉGRATION",
       "title": "La puissance de l'intégration",
-      "subtitle": "Lorsque tous vos programmes de santé fonctionnent ensemble sur une seule plateforme, tout le monde y gagne — vous recevez des soins fluides et obtenez de meilleurs résultats.",
+      "subtitle": "Lorsque tous vos programmes de santé fonctionnent ensemble sur un seul espace, tout le monde y gagne — vous recevez des soins fluides et obtenez de meilleurs résultats.",
       "benefits": [
         {
           "title": "Expérience unifiée",
@@ -5336,7 +5340,7 @@
       ],
       "cta": {
         "title": "Conçu pour tous",
-        "description": "Notre plateforme s'adapte à vos besoins tout en maintenant des soins personnalisés pour chaque individu.",
+        "description": "Notre espace s'adapte à vos besoins tout en maintenant des soins personnalisés pour chaque individu.",
         "points": [
           "Expérience fluide à travers tous les services",
           "Programmes personnalisables selon vos besoins",
@@ -5347,7 +5351,7 @@
     },
     "cta": {
       "badge": "COMMENCER",
-      "title": "Découvrez la plateforme",
+      "title": "Découvrez l'espace",
       "description": "Découvrez comment notre plateforme de santé mentale peut transformer votre accès à un soutien complet en santé et bien-être.",
       "contactButton": "Nous contacter",
       "demoButton": "Réserver une consultation",
@@ -5980,10 +5984,19 @@
       "createSubtitle": "Choisissez le type (article, vidéo ou balado), puis remplissez les champs en français et en anglais.",
       "empty": "Aucun média pour l'instant. Cliquez sur « Ajouter » pour publier votre premier contenu."
     },
+    "kind_resource": {
+      "title": "Ressources en accès libre",
+      "subtitle": "Gérez les cartes de ressources affichées sur la page « Parcourir les ressources » (/book). Chaque entrée a une version française et anglaise. L'ordre d'affichage est manuel.",
+      "createButton": "Ajouter une ressource",
+      "createTitle": "Nouvelle ressource",
+      "createSubtitle": "Remplissez le titre et le résumé en français et en anglais. Vous pouvez ajouter une image et du contenu détaillé.",
+      "empty": "Aucune ressource pour l'instant. Cliquez sur « Ajouter » pour créer la première carte."
+    },
     "pathPrefix_problematique": "/explore",
     "pathPrefix_traitement": "/approaches",
     "pathPrefix_nouveaute": "/nouveautes",
     "pathPrefix_media": "/medias",
+    "pathPrefix_resource": "/book",
     "createSubmit": "Créer",
     "editSubmit": "Enregistrer",
     "createdMessage": "Entrée créée. Complétez le contenu, puis publiez-la lorsqu'elle est prête.",
