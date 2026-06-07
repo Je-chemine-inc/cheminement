@@ -2891,33 +2891,40 @@ export function renderTemplate(
   vars: Record<string, string | undefined>,
 ): string {
   if (!source) return "";
-  // 1) Conditional sections: {{#key}}...{{/key}} renders the inner block only
-  //    when vars[key] is truthy (non-empty). Lets a template hide an optional
-  //    row (meeting link, location, original date…) without leaving dangling
-  //    labels. Single level only — no nesting. Run before plain substitution.
-  let out = source.replace(
-    /\{\{#\s*([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/\s*\1\s*\}\}/g,
-    (_full, key, inner) => {
-      const v = vars[key];
-      return v ? inner : "";
-    },
-  );
-  // 1b) Inverted sections: {{^key}}...{{/key}} renders inner only when vars[key]
-  //     is falsy/empty (the "else" to {{#key}}).
-  out = out.replace(
-    /\{\{\^\s*([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/\s*\1\s*\}\}/g,
-    (_full, key, inner) => {
-      const v = vars[key];
-      return v ? "" : inner;
-    },
-  );
-  // 2) Plain substitution. Only keys defined in the registry are substituted;
-  //    unknown tokens are left untouched (so an admin typo doesn't silently
-  //    render an empty string).
-  out = out.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (full, key) => {
+  let out = source;
+  // 1) Conditional sections: {{#key}}...{{/key}} keeps the inner block only when
+  //    vars[key] is truthy; {{^key}}...{{/key}} keeps it only when falsy. Looped
+  //    so nested sections resolve (each pass exposes the next level), capped to
+  //    avoid any pathological input spinning.
+  for (let i = 0; i < 6; i++) {
+    let changed = false;
+    out = out.replace(
+      /\{\{#\s*([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/\s*\1\s*\}\}/g,
+      (_full, key, inner) => {
+        changed = true;
+        return vars[key] ? inner : "";
+      },
+    );
+    out = out.replace(
+      /\{\{\^\s*([a-zA-Z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/\s*\1\s*\}\}/g,
+      (_full, key, inner) => {
+        changed = true;
+        return vars[key] ? "" : inner;
+      },
+    );
+    if (!changed) break;
+  }
+  // 2) Plain substitution. An unknown/undefined token renders EMPTY (never left
+  //    as literal {{token}} text) — a missing var or admin typo must not leak
+  //    "code in brackets" into a sent email.
+  out = out.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_full, key) => {
     const value = vars[key];
-    return value === undefined ? full : value;
+    return value === undefined || value === null ? "" : value;
   });
+  // 3) Safety net: strip ANY remaining {{...}} (malformed / unclosed / nested
+  //    section markers, stray typos) so the rendered output can never contain
+  //    raw mustache syntax.
+  out = out.replace(/\{\{[^{}]*\}\}/g, "");
   return out;
 }
 

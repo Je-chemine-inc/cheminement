@@ -120,10 +120,11 @@ interface AvailabilityData {
 // pool, proposed, awaiting) so admin-pushed dossiers surface near-real-time.
 const POLL_INTERVAL_MS = 30_000;
 
-// Urgent ("Consultation ponctuelle rapide") deadlines surfaced on the rows:
-// accept within 12h (HARD — the proposal then auto-advances; see
-// proposal-timeout.ts) and take charge / confirm the 1st RDV within 24h (soft
-// reminder). Regular requests use a 24h accept window but aren't badged here.
+// Accept-deadline windows surfaced on the proposed rows (HARD — the proposal
+// auto-advances when it lapses; see proposal-timeout.ts): 24h for a regular
+// request, 12h for an urgent "Consultation ponctuelle rapide". Urgent rows also
+// show the take-charge soft SLA (confirm the 1st RDV within 24h of accepting).
+const REGULAR_ACCEPT_SLA_HOURS = 24;
 const EMERGENCY_ACCEPT_SLA_HOURS = 12;
 const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 24;
 
@@ -416,7 +417,26 @@ export default function ProposalsPage() {
   // tabs: proposed → "accept by" (proposedAt+12h), accepted → "schedule by"
   // (matchedAt+24h), general/refused → badge only (no per-pro clock).
   const renderUrgencyInfo = (appointment: ProposedAppointment) => {
-    if (!appointment.isEmergency) return null;
+    // Regular (non-urgent) requests: surface only the 24h accept deadline on
+    // proposed rows (no urgency badge). Backend auto-advances at proposedAt+24h.
+    if (!appointment.isEmergency) {
+      if (appointment.routingStatus === "proposed") {
+        const deadline = formatDeadline(
+          appointment.proposedAt,
+          REGULAR_ACCEPT_SLA_HOURS,
+        );
+        if (deadline) {
+          return (
+            <div className="mt-1.5">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {t("acceptBy", { time: deadline })}
+              </span>
+            </div>
+          );
+        }
+      }
+      return null;
+    }
     let deadlineLabel: string | null = null;
     if (appointment.routingStatus === "accepted") {
       const deadline = formatDeadline(

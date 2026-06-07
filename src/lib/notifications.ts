@@ -5084,9 +5084,17 @@ export async function sendJumelageSuccessEmail(data: {
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
 
   // Admin-editable template; hardcoded block below is the fallback.
+  // NOTE: jumelageSuccess is the one template that may have a PRE-EXISTING
+  // (stale-seeded) DB row using the original placeholder names
+  // ({{firstName}}, {{supportEmail}}, {{companyName}}). Pass those legacy
+  // aliases alongside the current names so the email renders correctly whether
+  // or not the DB row has been re-seeded to the corrected default.
   const editable = await loadEditableTemplate("jumelageSuccess", lang, {
     clientName: data.clientName,
+    firstName: data.clientName,
     professionalName: data.professionalName || "",
+    supportEmail: process.env.SUPPORT_EMAIL || "support@jechemine.ca",
+    companyName: branding?.companyName || "Je chemine",
   });
   if (editable) {
     const html = buildEmailHtml({
