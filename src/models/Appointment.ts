@@ -16,7 +16,7 @@ export interface IPayment {
     | "partially_refunded"
     | "cancelled"
     | "overdue";
-  method?: "card" | "transfer" | "direct_debit";
+  method?: "card" | "transfer" | "direct_debit" | "manual";
   stripePaymentIntentId?: string;
   /** Encrypted at rest when FIELD_ENCRYPTION_KEY is set (see `encryptPaymentMethodReference`). */
   stripePaymentMethodId?: string;
@@ -286,7 +286,7 @@ const PaymentSchema = new Schema<IPayment>(
     },
     method: {
       type: String,
-      enum: ["card", "transfer", "direct_debit"],
+      enum: ["card", "transfer", "direct_debit", "manual"],
       default: "card",
     },
     stripePaymentIntentId: String,

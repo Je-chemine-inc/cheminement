@@ -820,7 +820,31 @@
       "day": "Jour",
       "week": "Semaine",
       "month": "Mois",
-      "weekOf": "Semaine du"
+      "weekOf": "Semaine du",
+      "slotActions": "Actions sur la plage horaire",
+      "viewEdit": "Voir / modifier",
+      "generateManualInvoice": "Générer une facture/reçu manuel"
+    },
+    "manualInvoice": {
+      "title": "Générer une facture/reçu manuel",
+      "description": "Émettez une facture ou un reçu manuel pour {name}.",
+      "dateLabel": "Date",
+      "timeLabel": "Heure",
+      "clientLabel": "Nom du client",
+      "clientPlaceholder": "Sélectionnez un client",
+      "professionalLabel": "Professionnel",
+      "serviceLabel": "Nature du service / raison",
+      "servicePlaceholder": "Choisissez un motif",
+      "serviceOtherLabel": "Autre (préciser)",
+      "serviceOtherPlaceholder": "Ex. : Évaluation, Séance spéciale…",
+      "amountLabel": "Montant à facturer (CAD)",
+      "amountPlaceholder": "0,00",
+      "requestButton": "Envoyer une demande de paiement",
+      "paidButton": "Enregistrer comme payé et envoyer le reçu",
+      "paidHint": "Mode secours : à utiliser si le client a déjà payé autrement ou si le paiement automatique a échoué.",
+      "validationError": "Sélectionnez un client et saisissez un montant valide.",
+      "error": "Échec de l'opération. Veuillez réessayer.",
+      "close": "Fermer"
     },
     "professionalDetail": {
       "loadError": "Impossible de charger le dossier professionnel.",

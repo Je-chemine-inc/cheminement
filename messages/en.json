@@ -820,7 +820,31 @@
       "day": "Day",
       "week": "Week",
       "month": "Month",
-      "weekOf": "Week of"
+      "weekOf": "Week of",
+      "slotActions": "Time-slot actions",
+      "viewEdit": "View / edit",
+      "generateManualInvoice": "Generate manual invoice/receipt"
+    },
+    "manualInvoice": {
+      "title": "Generate manual invoice/receipt",
+      "description": "Issue a manual invoice or receipt for {name}.",
+      "dateLabel": "Date",
+      "timeLabel": "Time",
+      "clientLabel": "Client name",
+      "clientPlaceholder": "Select a client",
+      "professionalLabel": "Professional",
+      "serviceLabel": "Service nature / reason",
+      "servicePlaceholder": "Choose a reason",
+      "serviceOtherLabel": "Other (specify)",
+      "serviceOtherPlaceholder": "e.g. Evaluation, Special session…",
+      "amountLabel": "Amount to bill (CAD)",
+      "amountPlaceholder": "0.00",
+      "requestButton": "Send a payment request",
+      "paidButton": "Mark as paid & send receipt",
+      "paidHint": "Backup mode: use if the client already paid another way or the automatic payment failed.",
+      "validationError": "Select a client and enter a valid amount.",
+      "error": "The operation failed. Please try again.",
+      "close": "Close"
     },
     "professionalDetail": {
       "loadError": "Failed to load professional record.",

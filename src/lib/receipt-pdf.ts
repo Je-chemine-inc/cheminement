@@ -201,7 +201,9 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
         ? "Virement Interac"
         : appointment.payment.method === "direct_debit"
           ? "Prélèvement bancaire (PAD)"
-          : "Carte (Stripe)",
+          : appointment.payment.method === "manual"
+            ? "Paiement manuel"
+            : "Carte (Stripe)",
     stripePaymentIntentId: appointment.payment.stripePaymentIntentId,
   };
 }
