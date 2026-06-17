@@ -210,6 +210,8 @@
       "colStatusTier": "Statut dossier",
       "filterTier": "Statut dossier",
       "allTiers": "Tous les statuts",
+      "filterProblematique": "Problématique",
+      "allProblematiques": "Toutes les problématiques",
       "statusTierLegendTitle": "Résumé des statuts (codes couleur)",
       "statusTierMeaning": "Signification",
       "statusTierAction": "Action requise",

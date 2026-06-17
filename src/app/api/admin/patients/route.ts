@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "all";
+    const problematique = searchParams.get("problematique") || "all";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -47,11 +48,22 @@ export async function GET(req: NextRequest) {
     const query: {
       role: { $in: string[] };
       status?: string;
+      _id?: { $in: unknown[] };
       $or?: Record<string, unknown>[];
     } = { role: { $in: ["client", "guest", "prospect"] } };
 
     if (status !== "all") {
       query.status = status;
+    }
+
+    // Filter by problématique (the appointment motif). Resolved to the set of
+    // clients who have at least one appointment with this motif, so it works
+    // across pagination.
+    if (problematique !== "all") {
+      const clientIds = await Appointment.distinct("clientId", {
+        issueType: problematique,
+      });
+      query._id = { $in: clientIds };
     }
 
     // Add search functionality
@@ -108,8 +120,20 @@ export async function GET(req: NextRequest) {
         const allAppointments = await Appointment.find({
           clientId: patient._id,
         })
-          .select("status payment awaitingPaymentGuarantee sessionCompletedAt")
+          .select(
+            "status payment awaitingPaymentGuarantee sessionCompletedAt issueType createdAt",
+          )
           .lean();
+
+        // Problématique = the motif of the patient's most recent appointment.
+        const latestWithMotif = allAppointments
+          .filter((a) => (a.issueType ?? "").trim().length > 0)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt as Date).getTime() -
+              new Date(a.createdAt as Date).getTime(),
+          )[0];
+        const issueType = latestWithMotif?.issueType?.trim() || "—";
 
         const statusTier = computeClientStatusTier(
           patient.paymentGuaranteeStatus as
@@ -144,7 +168,7 @@ export async function GET(req: NextRequest) {
           matchedWith,
           joinedDate: patient.createdAt.toISOString().split("T")[0],
           totalSessions,
-          issueType: "General",
+          issueType,
           statusTier,
           possibleDuplicate: Boolean(patient.possibleDuplicateOf?.length),
         };
@@ -168,8 +192,16 @@ export async function GET(req: NextRequest) {
       status: "completed",
     });
 
+    // Distinct problématiques (appointment motifs) for the filter dropdown.
+    const availableIssueTypes = (await Appointment.distinct("issueType"))
+      .filter(
+        (v): v is string => typeof v === "string" && v.trim().length > 0,
+      )
+      .sort((a, b) => a.localeCompare(b));
+
     return NextResponse.json({
       patients: patientsWithStats,
+      availableIssueTypes,
       summary: {
         totalPatients,
         activePatients,
