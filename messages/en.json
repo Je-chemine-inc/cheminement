@@ -727,7 +727,16 @@
       "sendButton": "Send password setup link",
       "sending": "Sending…",
       "sendSuccess": "Link sent. The user has 1 hour to set their password.",
-      "sendError": "Failed to send the link. Please try again."
+      "sendError": "Failed to send the link. Please try again.",
+      "reactivateDesc": "This account is deactivated: access is blocked but the data is kept. The user cannot sign in until it is reactivated.",
+      "reactivateButton": "Reactivate account",
+      "reactivating": "Reactivating…",
+      "reactivateSuccess": "Account reactivated. The user can sign in again.",
+      "reactivateError": "Failed to reactivate the account. Please try again.",
+      "deactivateButton": "Deactivate account",
+      "deactivating": "Deactivating…",
+      "deactivateSuccess": "Account deactivated. Access is blocked; the data is kept.",
+      "deactivateError": "Failed to deactivate the account. Please try again."
     },
     "patientDetail": {
       "detailTitle": "Patient Details",
@@ -2763,7 +2772,7 @@
         "in-person": "In person",
         "phone": "Phone"
       },
-      "motifLabel": "Service / reason",
+      "motifLabel": "Service / reason (optional)",
       "motifPlaceholder": "Choose a reason",
       "professionalLabel": "Professional",
       "professionalPlaceholder": "Choose a professional",
@@ -2944,6 +2953,13 @@
         "cancelled": "Cancelled",
         "no-show": "No Show",
         "ongoing": "In progress",
+        "processing": "Processing",
+        "failed": "Failed",
+        "refunded": "Refunded",
+        "video": "Video call",
+        "in-person": "In person",
+        "phone": "Phone",
+        "both": "Video or in person",
         "loading": "Loading sessions..."
       },
       "documents": {
@@ -3174,6 +3190,18 @@
       "deactivateCancel": "Cancel",
       "deactivating": "Deactivating…",
       "deactivateError": "Could not deactivate your account. Please try again.",
+      "deleteSectionTitle": "Permanent account deletion",
+      "deleteLegalMention": "To permanently delete your account, email our team:",
+      "deleteRetentionNotice": "Permanent deletion erases all your personal data, except invoices and financial data, which are kept securely for the period required by our legal obligations.",
+      "deleteRequestButton": "Request permanent deletion",
+      "deleteConfirmTitle": "Request permanent deletion?",
+      "deleteConfirmDesc": "Your request will be sent to our team, who will process it in accordance with our legal obligations. Invoices and financial data will be retained; all other personal data will be erased. This action is irreversible once processed.",
+      "deleteConfirmCta": "Send request",
+      "deleteCancel": "Cancel",
+      "deleteSubmitting": "Sending…",
+      "deleteError": "Could not send your request. Please try again or email support@jechemine.ca.",
+      "deleteSuccessTitle": "Request sent",
+      "deleteSuccessDesc": "Our team has been notified and will contact you to confirm the permanent deletion of your account.",
       "saved": "Settings saved",
       "save": "Save changes"
     }

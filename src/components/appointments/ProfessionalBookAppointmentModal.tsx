@@ -126,9 +126,8 @@ export function ProfessionalBookAppointmentModal({
     Boolean(clientId) &&
     Boolean(date) &&
     Boolean(time) &&
-    // §4: the motif is optional for admins (they can fill it later); pro-mode
-    // bookings still require it.
-    (isAdminMode || Boolean(motifLabel)) &&
+    // The motif is strictly optional in both modes (client request §2): a
+    // missing reason must never block recording the meeting.
     (!isAdminMode || Boolean(professionalId)) &&
     !saving;
 
@@ -179,7 +178,7 @@ export function ProfessionalBookAppointmentModal({
           time,
           duration,
           type,
-          motif: motifLabel,
+          motif: motifLabel || undefined,
           notes: notes.trim() || undefined,
           location:
             type === "in-person" ? location.trim() || undefined : undefined,

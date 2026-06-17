@@ -727,7 +727,16 @@
       "sendButton": "Envoyer un lien de mot de passe",
       "sending": "Envoi en cours…",
       "sendSuccess": "Lien envoyé. L'utilisateur a 1 heure pour définir son mot de passe.",
-      "sendError": "Échec de l'envoi du lien. Veuillez réessayer."
+      "sendError": "Échec de l'envoi du lien. Veuillez réessayer.",
+      "reactivateDesc": "Ce compte est désactivé : l'accès est bloqué mais les données sont conservées. L'utilisateur ne pourra pas se connecter tant qu'il n'est pas réactivé.",
+      "reactivateButton": "Réactiver le compte",
+      "reactivating": "Réactivation…",
+      "reactivateSuccess": "Compte réactivé. L'utilisateur peut de nouveau se connecter.",
+      "reactivateError": "Échec de la réactivation. Veuillez réessayer.",
+      "deactivateButton": "Désactiver le compte",
+      "deactivating": "Désactivation…",
+      "deactivateSuccess": "Compte désactivé. L'accès est bloqué; les données sont conservées.",
+      "deactivateError": "Échec de la désactivation. Veuillez réessayer."
     },
     "patientDetail": {
       "detailTitle": "Détails du Patient",
@@ -2763,7 +2772,7 @@
         "in-person": "En personne",
         "phone": "Téléphone"
       },
-      "motifLabel": "Service / motif",
+      "motifLabel": "Service / motif (facultatif)",
       "motifPlaceholder": "Choisissez un motif",
       "professionalLabel": "Professionnel",
       "professionalPlaceholder": "Choisissez un professionnel",
@@ -2944,6 +2953,13 @@
         "cancelled": "Annulé",
         "no-show": "Absence",
         "ongoing": "En cours",
+        "processing": "En traitement",
+        "failed": "Échoué",
+        "refunded": "Remboursé",
+        "video": "Visioconférence",
+        "in-person": "En personne",
+        "phone": "Téléphone",
+        "both": "Visio ou en personne",
         "loading": "Chargement des séances..."
       },
       "documents": {
@@ -3174,6 +3190,18 @@
       "deactivateCancel": "Annuler",
       "deactivating": "Désactivation…",
       "deactivateError": "Impossible de désactiver votre compte. Veuillez réessayer.",
+      "deleteSectionTitle": "Suppression définitive du compte",
+      "deleteLegalMention": "Pour supprimer définitivement votre compte, écrivez à notre équipe :",
+      "deleteRetentionNotice": "La suppression définitive efface toutes vos données personnelles, à l'exception des factures et des données financières, qui sont conservées de façon sécurisée pendant la durée prévue par nos obligations légales.",
+      "deleteRequestButton": "Demander la suppression définitive",
+      "deleteConfirmTitle": "Demander la suppression définitive ?",
+      "deleteConfirmDesc": "Votre demande sera transmise à notre équipe, qui la traitera dans le respect de nos obligations légales. Les factures et les données financières seront conservées; toutes les autres données personnelles seront effacées. Cette action est irréversible une fois traitée.",
+      "deleteConfirmCta": "Envoyer la demande",
+      "deleteCancel": "Annuler",
+      "deleteSubmitting": "Envoi…",
+      "deleteError": "Impossible d'envoyer votre demande. Veuillez réessayer ou écrire à support@jechemine.ca.",
+      "deleteSuccessTitle": "Demande transmise",
+      "deleteSuccessDesc": "Notre équipe a été notifiée et vous contactera pour confirmer la suppression définitive de votre compte.",
       "saved": "Paramètres enregistrés",
       "save": "Enregistrer les modifications"
     }

@@ -6004,6 +6004,88 @@ export async function sendAdminNewExternalMessageAlert(data: {
 }
 
 /**
+ * Droit à l'oubli : alerte l'équipe admin quand un utilisateur (client ou
+ * professionnel) soumet, depuis ses paramètres, une demande de DÉSACTIVATION
+ * ou de SUPPRESSION DÉFINITIVE de son compte. Routé par getAdminAlertRecipients
+ * (adminAlertEmail configurable) comme toutes les autres alertes admin. Le CTA
+ * pointe vers la fiche du compte concerné (réactivation côté admin, ou
+ * traitement de la demande de suppression).
+ */
+export async function sendAdminAccountActionAlert(data: {
+  kind: "deactivation" | "deletion_request";
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  userId: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn(
+      "[admin_account_action] No admin emails — set ADMIN_ALERT_EMAIL or admin users.",
+    );
+    return;
+  }
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const detailSegment =
+    data.userRole === "professional" ? "professionals" : "patients";
+  const adminUrl = `${base}/admin/dashboard/${detailSegment}/${data.userId}`;
+
+  const isDeletion = data.kind === "deletion_request";
+  const requestLabel = isDeletion
+    ? "Suppression définitive"
+    : "Désactivation";
+
+  const intro = isDeletion
+    ? `${data.userName} (${data.userEmail}) a demandé la SUPPRESSION DÉFINITIVE de son compte depuis ses paramètres. Les factures et données financières doivent être conservées de façon sécurisée conformément aux obligations légales; les autres données personnelles doivent être effacées après traitement.`
+    : `${data.userName} (${data.userEmail}) a DÉSACTIVÉ son compte depuis ses paramètres. L'accès est bloqué et les données sont conservées; le compte peut être réactivé par un administrateur.`;
+
+  const html = buildEmailHtml({
+    title: isDeletion
+      ? "⚠ Demande de suppression définitive de compte"
+      : "Désactivation de compte",
+    theme: isDeletion ? "warning" : "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Utilisateur", value: data.userName },
+      { label: "Courriel", value: data.userEmail },
+      { label: "Rôle", value: data.userRole },
+      { label: "Type de demande", value: requestLabel },
+    ],
+    button: { text: "Voir le compte", url: adminUrl },
+    branding,
+  });
+
+  const text = buildEmailText([
+    isDeletion
+      ? "Demande de suppression définitive de compte"
+      : "Désactivation de compte",
+    intro,
+    `Utilisateur : ${data.userName} — ${data.userEmail}`,
+    `Rôle : ${data.userRole}`,
+    `Type de demande : ${requestLabel}`,
+    adminUrl,
+  ]);
+
+  const subject = isDeletion
+    ? `⚠ Suppression définitive demandée — ${data.userName}`
+    : `Désactivation de compte — ${data.userName}`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) => console.error("sendAdminAccountActionAlert:", e));
+  }
+}
+
+/**
  * Escalade admin : un professionnel a accepté un client (jumelé) mais n'a
  * toujours pas confirmé la date du 1er rendez-vous après le délai de relance.
  * L'admin peut relancer le pro ou réassigner la demande.

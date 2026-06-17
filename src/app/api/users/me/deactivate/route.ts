@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
+import { recordAccountActionRequest } from "@/lib/account-action-alerts";
 
 /**
  * POST /api/users/me/deactivate
@@ -32,15 +33,40 @@ export async function POST() {
 
     await connectToDatabase();
 
-    const user = await User.findByIdAndUpdate(
-      session.user.id,
+    // Only transition active/pending -> inactive. Guarding on status keeps a
+    // replayed POST from a still-valid session from re-stamping `deactivatedAt`
+    // and re-alerting admins for an account that is already deactivated.
+    const user = await User.findOneAndUpdate(
+      { _id: session.user.id, status: { $ne: "inactive" } },
       { $set: { status: "inactive", deactivatedAt: new Date() } },
       { new: true },
-    ).select("_id status");
+    ).select("_id status firstName lastName email role");
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      // No match: either the account no longer exists, or it was already
+      // inactive. A valid session almost always means the latter — acknowledge
+      // idempotently (without re-alerting).
+      const exists = await User.exists({ _id: session.user.id });
+      if (!exists) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
     }
+
+    // Notify admins (email + in-app inbox) that the user deactivated their
+    // account. Best-effort, after the response — the deactivation already
+    // succeeded and the client signs out immediately.
+    after(() =>
+      recordAccountActionRequest({
+        kind: "deactivation",
+        userId: user._id.toString(),
+        userName: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+        userEmail: user.email,
+        userRole: user.role,
+      }).catch((err) =>
+        console.error("deactivate admin alert failed:", err),
+      ),
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
