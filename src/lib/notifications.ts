@@ -4487,6 +4487,80 @@ export async function sendInteracPaymentReminder(data: {
   );
 }
 
+/**
+ * Demande de paiement post-séance (carte de crédit) — courriel épuré envoyé dès
+ * que le professionnel valide la séance, AVANT toute confirmation de paiement.
+ * Référence le numéro de facture unique et propose un bouton « Payer
+ * maintenant » (passerelle Stripe). Le reçu officiel n'est PAS joint : il suit
+ * uniquement après la confirmation réelle du paiement (règle d'or).
+ */
+export async function sendSessionInvoiceEmail(data: {
+  clientEmail: string;
+  clientName: string;
+  amountCad: number;
+  invoiceNumber: string;
+  appointmentDateLabel: string;
+  payUrl: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const amount =
+    lang === "fr"
+      ? `${data.amountCad.toFixed(2)} $ CAD`
+      : `CAD $${data.amountCad.toFixed(2)}`;
+
+  const html = buildEmailHtml({
+    title: lang === "fr" ? "Paiement de votre séance" : "Payment for your session",
+    subtitle:
+      lang === "fr"
+        ? `Facture n° ${data.invoiceNumber}`
+        : `Invoice no. ${data.invoiceNumber}`,
+    theme: "info",
+    greeting:
+      lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
+    intro:
+      lang === "fr"
+        ? `Votre séance du ${data.appointmentDateLabel} est terminée. Montant à régler : ${amount} (facture n° ${data.invoiceNumber}). Réglez en quelques secondes par carte de crédit avec le bouton ci-dessous. Votre reçu officiel vous sera transmis dès la confirmation du paiement.`
+        : `Your session on ${data.appointmentDateLabel} is complete. Amount due: ${amount} (invoice no. ${data.invoiceNumber}). Pay in seconds by credit card using the button below. Your official receipt will be sent as soon as the payment is confirmed.`,
+    button: {
+      text: lang === "fr" ? "Payer maintenant" : "Pay now",
+      url: data.payUrl,
+    },
+    outro:
+      lang === "fr"
+        ? "Merci,<br>L'équipe de Je chemine"
+        : "Thank you,<br>The Je chemine team",
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    [
+      lang === "fr"
+        ? `Facture n° ${data.invoiceNumber}`
+        : `Invoice no. ${data.invoiceNumber}`,
+      lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
+      lang === "fr"
+        ? `Montant à régler : ${amount} pour votre séance du ${data.appointmentDateLabel}.`
+        : `Amount due: ${amount} for your session on ${data.appointmentDateLabel}.`,
+      lang === "fr" ? "Payer maintenant :" : "Pay now:",
+      data.payUrl,
+    ],
+    lang,
+  );
+
+  const subject =
+    lang === "fr"
+      ? `Facture ${data.invoiceNumber} — paiement de votre séance`
+      : `Invoice ${data.invoiceNumber} — payment for your session`;
+
+  return sendEmail(
+    { to: data.clientEmail, subject, html, text },
+    "payment_invitation",
+  );
+}
+
 export async function sendFiscalReceiptEmail(data: {
   clientEmail: string;
   clientName: string;

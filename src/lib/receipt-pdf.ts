@@ -43,6 +43,8 @@ export type FiscalReceiptPdfInput = {
   professionalPayoutCad: number;
   paymentStatus: "paid" | "pending_transfer";
   paymentMethodLabel: string;
+  /** Unique fiscal invoice number (e.g. "JC-2026-000123"), shown under the receipt number. */
+  invoiceNumber?: string;
   stripePaymentIntentId?: string;
   /** Hides client gross + platform fee; shows only the professional's net earnings. */
   audience?: ReceiptAudience;
@@ -316,6 +318,10 @@ export function buildFiscalReceiptPdfBuffer(
     y,
   );
   y += 6;
+  if (input.invoiceNumber) {
+    doc.text(`Facture n° ${input.invoiceNumber}`, MARGIN, y);
+    y += 6;
+  }
   if (input.appointmentDateLabel && input.appointmentDateLabel !== "—") {
     doc.text(`Date de la rencontre : ${input.appointmentDateLabel}`, MARGIN, y);
     y += 6;
