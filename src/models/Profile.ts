@@ -55,6 +55,17 @@ export interface IProfile extends Document {
   /** Afficher la note moyenne sur le profil public. */
   showRating?: boolean;
   /**
+   * Décaissement manuel interne (aucun frais Stripe) : mode de versement choisi
+   * par le professionnel pour recevoir ses paiements de la plateforme.
+   */
+  payoutMethod?: "interac" | "direct_deposit";
+  /** Courriel de dépôt Interac (si payoutMethod === "interac"). */
+  payoutInteracEmail?: string;
+  /** URL du spécimen de chèque téléversé (si payoutMethod === "direct_deposit"). */
+  payoutChequeUrl?: string;
+  /** Nom de fichier d'origine du spécimen de chèque. */
+  payoutChequeName?: string;
+  /**
    * Le professionnel accepte-t-il de NOUVEAUX clients ? Défaut: true.
    * Si false, le jumelage automatique et la liste générale ne lui proposent
    * plus de nouvelles demandes, et la liste générale lui est masquée. Les
@@ -164,6 +175,10 @@ const ProfileSchema = new Schema<IProfile>(
     showRating: { type: Boolean, default: true },
     // Accepte de nouveaux clients (jumelage + liste générale). Défaut: true.
     acceptingNewClients: { type: Boolean, default: true },
+    payoutMethod: { type: String, enum: ["interac", "direct_deposit"] },
+    payoutInteracEmail: { type: String, trim: true },
+    payoutChequeUrl: { type: String, trim: true },
+    payoutChequeName: { type: String, trim: true },
     // Accepte les consultations ponctuelles rapides (demandes urgentes). Défaut: true.
     acceptingEmergencyConsultations: { type: Boolean, default: true },
   },

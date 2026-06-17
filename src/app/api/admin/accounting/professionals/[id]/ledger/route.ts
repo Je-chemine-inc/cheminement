@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import User from "@/models/User";
+import Profile from "@/models/Profile";
 import { getBiweeklyCycleKey, getBiweeklyRange } from "@/lib/ledger-cycle";
 
 export async function GET(
@@ -137,12 +138,23 @@ export async function GET(
     const creditsCyc = cycleBal[0]?.credits ?? 0;
     const debitsCyc = cycleBal[0]?.debits ?? 0;
 
+    // The pro's chosen payout method so the admin knows HOW to disburse.
+    const profile = await Profile.findOne({ userId: id })
+      .select("payoutMethod payoutInteracEmail payoutChequeUrl payoutChequeName")
+      .lean();
+
     return NextResponse.json({
       professional,
       entries,
       currentCycleKey,
       balanceLifetimeCad: Math.round((creditsLife - debitsLife) * 100) / 100,
       balanceCurrentCycleCad: Math.round((creditsCyc - debitsCyc) * 100) / 100,
+      payout: {
+        method: profile?.payoutMethod ?? null,
+        interacEmail: profile?.payoutInteracEmail ?? null,
+        chequeUrl: profile?.payoutChequeUrl ?? null,
+        chequeName: profile?.payoutChequeName ?? null,
+      },
     });
   } catch (e: unknown) {
     console.error("GET /api/admin/accounting/professionals/[id]/ledger:", e);

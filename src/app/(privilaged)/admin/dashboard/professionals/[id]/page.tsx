@@ -149,6 +149,7 @@ export default function ProfessionalDetailPage({
   // Ledger states
   const [ledger, setLedger] = useState<any>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
+  const [payingOut, setPayingOut] = useState(false);
 
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "ongoing";
@@ -224,6 +225,29 @@ export default function ProfessionalDetailPage({
       setLoadingLedger(false);
     }
   }, [id]);
+
+  // "Marquer comme payé au professionnel" — archives the manual disbursement
+  // (Interac / direct deposit done out-of-band) as a debit ledger entry, which
+  // zeroes the balance owed.
+  const handlePayProfessional = async () => {
+    if (payingOut || !(ledger?.balanceLifetimeCad > 0)) return;
+    setPayingOut(true);
+    try {
+      const res = await fetch(
+        `/api/admin/accounting/professionals/${id}/payout`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+      );
+      if (!res.ok) throw new Error();
+      setFeedback({ type: "success", message: t("payoutSuccess") });
+      setTimeout(() => setFeedback(null), 3000);
+      fetchLedger();
+    } catch {
+      setFeedback({ type: "error", message: t("payoutError") });
+      setTimeout(() => setFeedback(null), 3000);
+    } finally {
+      setPayingOut(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -848,6 +872,45 @@ export default function ProfessionalDetailPage({
                       {ledger ? `${ledger.balanceCurrentCycleCad.toFixed(2)} $` : "—"}
                     </p>
                   </div>
+                </div>
+
+                {/* Payout method + manual disbursement */}
+                <div className="p-4 rounded-xl border bg-muted/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                      {t("payoutMethodLabel")}
+                    </p>
+                    <p className="text-sm mt-1">
+                      {ledger?.payout?.method === "interac"
+                        ? `${t("payoutInterac")} — ${ledger.payout.interacEmail || "—"}`
+                        : ledger?.payout?.method === "direct_deposit"
+                          ? t("payoutDirectDeposit")
+                          : t("payoutNotSet")}
+                    </p>
+                    {ledger?.payout?.method === "direct_deposit" &&
+                      ledger?.payout?.chequeUrl && (
+                        <a
+                          href={ledger.payout.chequeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline mt-1 inline-block"
+                        >
+                          {t("payoutViewCheque")}
+                        </a>
+                      )}
+                  </div>
+                  <Button
+                    onClick={handlePayProfessional}
+                    disabled={payingOut || !(ledger?.balanceLifetimeCad > 0)}
+                    className="gap-2 shrink-0"
+                  >
+                    {payingOut ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {t("markPaidToProfessional")}
+                  </Button>
                 </div>
 
                 <div className="border rounded-xl bg-card overflow-hidden">
