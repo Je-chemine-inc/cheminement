@@ -42,13 +42,22 @@ export async function GET(
       }
     }
 
-    // Mongoose `Buffer` types come back as Node Buffers under .data
-    const bytes = file.data instanceof Buffer ? file.data : Buffer.from(file.data);
-    return new NextResponse(new Uint8Array(bytes), {
+    // `.lean()` returns the raw driver value for `data`: a Node Buffer when the
+    // bytes are promoted, but otherwise a BSON `Binary` whose payload lives under
+    // `.buffer` (and whose `.length` is a method, so `Buffer.from(binary)` yields
+    // an EMPTY buffer — a 200 with no body). Normalize to a real Buffer.
+    const raw = file.data as unknown;
+    const bytes = Buffer.isBuffer(raw)
+      ? raw
+      : raw && typeof raw === "object" && "buffer" in raw
+        ? Buffer.from((raw as { buffer: Uint8Array }).buffer)
+        : Buffer.from(raw as Uint8Array);
+    const body = new Uint8Array(bytes);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": file.fileType || "application/octet-stream",
-        "Content-Length": String(file.fileSize ?? bytes.length),
+        "Content-Length": String(body.length),
         "Content-Disposition": `inline; filename="${encodeURIComponent(file.fileName)}"`,
         "Cache-Control": isPublic
           ? "public, max-age=86400, immutable"
