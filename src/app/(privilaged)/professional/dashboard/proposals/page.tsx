@@ -236,6 +236,21 @@ export default function ProposalsPage() {
     fetchAllAppointments();
   }, [fetchAllAppointments]);
 
+  // Deep-link support: the pro sidebar's "Liste Générale" entry links here with
+  // a #general hash. Open the matching tab on mount and on later hash changes
+  // (clicking the sidebar item again while already on this page).
+  useEffect(() => {
+    const applyHash = () => {
+      const h = window.location.hash.replace("#", "");
+      if (h === "general" || h === "awaiting" || h === "proposed") {
+        setActiveTab(h);
+      }
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
+
   // Background auto-refresh: keep the lists live so a dossier the admin just
   // pushed to the general pool (§3.2 "instantanément visible") — or one another
   // pro just claimed — appears/disappears without a manual reload. Updates the
