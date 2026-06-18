@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
+import StoredFile from "@/models/StoredFile";
 
 const ALLOWED_FOLDERS = new Set(["content", "problematiques", "misc"]);
 const ALLOWED_MIME: Record<string, string> = {
@@ -65,14 +63,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Persist in MongoDB (not the filesystem) so uploads work on serverless
+    // hosts with a read-only filesystem (Vercel) and survive redeploys. Served
+    // publicly via /api/files/[id]. `folder` is kept for backward-compatible
+    // bookkeeping only.
     const bytes = Buffer.from(await file.arrayBuffer());
-    const filename = `${randomUUID()}.${ext}`;
-    const targetDir = path.join(process.cwd(), "public", "uploads", folder);
-    await mkdir(targetDir, { recursive: true });
-    await writeFile(path.join(targetDir, filename), bytes);
+    const stored = await StoredFile.create({
+      fileName: file.name || `image.${ext}`,
+      fileType: file.type,
+      fileSize: file.size,
+      data: bytes,
+      kind: "content-image",
+      uploadedBy: session.user.id,
+    });
 
-    const url = `/uploads/${folder}/${filename}`;
-    return NextResponse.json({ url, filename, size: file.size, mime: file.type });
+    const url = `/api/files/${stored._id.toString()}`;
+    return NextResponse.json({
+      url,
+      filename: file.name || `image.${ext}`,
+      size: file.size,
+      mime: file.type,
+      folder,
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(

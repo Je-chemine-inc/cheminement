@@ -21,10 +21,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -35,6 +31,17 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Content images are referenced from PUBLIC pages (nouveautés, problématiques,
+    // etc.), so they must be served without a session. Every other kind stays
+    // behind authentication.
+    const isPublic = file.kind === "content-image";
+    if (!isPublic) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     // Mongoose `Buffer` types come back as Node Buffers under .data
     const bytes = file.data instanceof Buffer ? file.data : Buffer.from(file.data);
     return new NextResponse(new Uint8Array(bytes), {
@@ -43,7 +50,9 @@ export async function GET(
         "Content-Type": file.fileType || "application/octet-stream",
         "Content-Length": String(file.fileSize ?? bytes.length),
         "Content-Disposition": `inline; filename="${encodeURIComponent(file.fileName)}"`,
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": isPublic
+          ? "public, max-age=86400, immutable"
+          : "private, max-age=300",
       },
     });
   } catch (error) {
