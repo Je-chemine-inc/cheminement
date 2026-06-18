@@ -2808,6 +2808,7 @@
       },
       "motifLabel": "Service / reason (optional)",
       "motifPlaceholder": "Choose a reason",
+      "motifNone": "Not specified (optional)",
       "professionalLabel": "Professional",
       "professionalPlaceholder": "Choose a professional",
       "noProfessionals": "No professional available",

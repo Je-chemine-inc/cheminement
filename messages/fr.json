@@ -2808,6 +2808,7 @@
       },
       "motifLabel": "Service / motif (facultatif)",
       "motifPlaceholder": "Choisissez un motif",
+      "motifNone": "Non précisé (facultatif)",
       "professionalLabel": "Professionnel",
       "professionalPlaceholder": "Choisissez un professionnel",
       "noProfessionals": "Aucun professionnel disponible",

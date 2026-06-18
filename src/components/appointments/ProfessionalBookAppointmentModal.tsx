@@ -59,6 +59,9 @@ type Props = {
 
 const DURATION_OPTIONS = [30, 50, 60, 90];
 const TYPE_OPTIONS = ["video", "in-person", "phone"] as const;
+// Radix <Select> forbids empty-string item values, so the "no motif" choice
+// uses this sentinel and is mapped back to "" on change. The motif is optional.
+const NO_MOTIF = "__none__";
 
 export function ProfessionalBookAppointmentModal({
   open,
@@ -346,13 +349,14 @@ export function ProfessionalBookAppointmentModal({
             <Label>{t("motifLabel")}</Label>
             <Select
               value={motifLabel || undefined}
-              onValueChange={setMotifLabel}
+              onValueChange={(v) => setMotifLabel(v === NO_MOTIF ? "" : v)}
               disabled={motifsLoading}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("motifPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NO_MOTIF}>{t("motifNone")}</SelectItem>
                 {motifs.map((m) => {
                   const label = pickMotifLabel(m, locale);
                   return (
