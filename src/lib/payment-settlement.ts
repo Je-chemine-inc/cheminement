@@ -1,6 +1,7 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import ClientReceipt from "@/models/ClientReceipt";
+import { issueFiscalReceipt } from "@/lib/session-post-closure";
 
 /**
  * Acknowledge an Interac e-transfer (or other out-of-band payment) for an
@@ -33,8 +34,17 @@ export async function settleInteracPayment(appointmentId: string): Promise<{
     await appointment.save();
   }
 
-  // Reveal the receipt that was held back pending the transfer. Scoped to
-  // `pending_transfer` so we never resurrect a refunded/voided receipt.
+  // GOLDEN RULE: the transfer is now confirmed → issue + send the official
+  // receipt. This also flips the held `pending_transfer` row to `paid` (its
+  // upsert), revealing it to the client. Must run BEFORE the explicit flip
+  // below: issueFiscalReceipt skips sending if it sees an already-`paid` row.
+  await issueFiscalReceipt(appointmentId).catch((err) =>
+    console.error("issueFiscalReceipt (settleInteracPayment):", err),
+  );
+
+  // Legacy safety net: appointments closed before the golden-rule change have
+  // `fiscalReceiptIssuedAt` set (so issueFiscalReceipt no-ops) but still carry a
+  // `pending_transfer` row — reveal it. Scoped so we never resurrect a refund.
   await ClientReceipt.findOneAndUpdate(
     { appointmentId, status: "pending_transfer" },
     { $set: { status: "paid" } },

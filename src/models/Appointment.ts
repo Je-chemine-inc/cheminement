@@ -16,7 +16,7 @@ export interface IPayment {
     | "partially_refunded"
     | "cancelled"
     | "overdue";
-  method?: "card" | "transfer" | "direct_debit";
+  method?: "card" | "transfer" | "direct_debit" | "manual";
   stripePaymentIntentId?: string;
   /** Encrypted at rest when FIELD_ENCRYPTION_KEY is set (see `encryptPaymentMethodReference`). */
   stripePaymentMethodId?: string;
@@ -230,6 +230,12 @@ export interface IAppointment extends Document {
   sessionCompletedAt?: Date;
   /** Reçu fiscal émis (PDF envoyé / disponible). */
   fiscalReceiptIssuedAt?: Date;
+  /**
+   * Numéro de facture unique attribué à la clôture (séance facturable). Sert sur
+   * la demande de paiement post-séance ET sur le reçu fiscal final. Émis une
+   * seule fois (idempotent), avant toute confirmation de paiement.
+   */
+  invoiceNumber?: string;
 
   /**
    * Rappel post-séance envoyé au client quand aucun mode de paiement n'était
@@ -280,7 +286,7 @@ const PaymentSchema = new Schema<IPayment>(
     },
     method: {
       type: String,
-      enum: ["card", "transfer", "direct_debit"],
+      enum: ["card", "transfer", "direct_debit", "manual"],
       default: "card",
     },
     stripePaymentIntentId: String,
@@ -505,6 +511,7 @@ const AppointmentSchema = new Schema<IAppointment>(
     nextAppointmentAt: { type: Date, required: false },
     sessionCompletedAt: { type: Date, required: false },
     fiscalReceiptIssuedAt: { type: Date, required: false },
+    invoiceNumber: { type: String, required: false, index: true },
   },
   {
     timestamps: true,

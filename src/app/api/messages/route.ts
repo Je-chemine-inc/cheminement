@@ -53,13 +53,22 @@ export async function GET() {
             role: p.role,
           }));
 
+    // `.lean()` may return the Map field as a Map or a plain object depending
+    // on the driver/version — read it robustly either way.
+    const rawCounts = conv.unreadCounts as unknown;
+    const unread =
+      rawCounts instanceof Map
+        ? (rawCounts.get(session.user.id) ?? 0)
+        : ((rawCounts as Record<string, number> | undefined)?.[
+            session.user.id
+          ] ?? 0);
+
     return {
       id: conv._id,
       subject: conv.subject,
       lastMessageAt: conv.lastMessageAt,
       lastMessagePreview: conv.lastMessagePreview,
-      unread:
-        (conv.unreadCounts as Record<string, number>)?.[session.user.id] ?? 0,
+      unread,
       participants: displayParticipants,
     };
   });

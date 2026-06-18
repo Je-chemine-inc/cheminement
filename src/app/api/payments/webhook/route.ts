@@ -16,6 +16,7 @@ import {
   voidReceiptForRefund,
   restoreReceiptForReversedRefund,
 } from "@/lib/payment-settlement";
+import { issueFiscalReceipt } from "@/lib/session-post-closure";
 import { markClientPaymentGuaranteeGreen } from "@/lib/payment-guarantee";
 
 // Disable body parsing, need raw body for webhook signature verification
@@ -155,6 +156,14 @@ async function handlePaymentIntentSucceeded(
   await appointment.save();
 
   console.log(`Appointment ${appointmentId} payment completed`);
+
+  // GOLDEN RULE: payment is now confirmed → issue the official fiscal receipt.
+  // Idempotent + gated on a closed, billable session, so it is a no-op for
+  // pre-session payments and for sessions whose receipt was already sent at
+  // closure (saved-card charge that settled at H+0).
+  await issueFiscalReceipt(appointmentId).catch((err) =>
+    console.error("issueFiscalReceipt (payment_intent.succeeded):", err),
+  );
 
   // Send confirmation email for guest payments
   if (

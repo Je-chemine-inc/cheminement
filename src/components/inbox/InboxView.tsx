@@ -62,23 +62,50 @@ export default function InboxView({ subtitleKey = "subtitle" }: { subtitleKey?: 
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoadingConvs(true);
+        const res = await fetch("/api/messages");
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setConversations(data.conversations);
+      } catch {
+        if (!silent) setError(t("loadError"));
+      } finally {
+        if (!silent) setLoadingConvs(false);
+      }
+    },
+    [t],
+  );
+
+  // Silently refresh the open thread (no spinner, keeps the reply box intact)
+  // so a message from the other party lands without a manual reload.
+  const refreshActiveMessages = useCallback(async (convId: string) => {
     try {
-      setLoadingConvs(true);
-      const res = await fetch("/api/messages");
-      if (!res.ok) throw new Error();
+      const res = await fetch(`/api/messages/${convId}`);
+      if (!res.ok) return;
       const data = await res.json();
-      setConversations(data.conversations);
+      setMessages(data.messages);
+      setActiveConv(data.conversation);
     } catch {
-      setError(t("loadError"));
-    } finally {
-      setLoadingConvs(false);
+      /* silent — polling will retry */
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  // Live updates: poll the inbox (and the open thread) so messages sent from the
+  // other interface appear in near-real-time without a page reload.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadConversations(true);
+      if (activeConvId) void refreshActiveMessages(activeConvId);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [loadConversations, refreshActiveMessages, activeConvId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

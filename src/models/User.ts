@@ -34,6 +34,13 @@ export interface IUser extends Document {
    * jamais réclamée (qui, elle, n'a pas de `deactivatedAt`).
    */
   deactivatedAt?: Date;
+  /**
+   * Droit à l'oubli : horodatage de la demande de SUPPRESSION DÉFINITIVE soumise
+   * par l'utilisateur depuis ses paramètres. Sert de verrou d'idempotence —
+   * l'admin n'est notifié qu'une seule fois; la suppression effective reste un
+   * traitement manuel (conservation des factures / données financières).
+   */
+  deletionRequestedAt?: Date;
   emailVerified?: Date;
   /** Double validation compte : SMS après courriel (v1 = flux sécurisé public). */
   phoneVerifiedAt?: Date;
@@ -191,6 +198,7 @@ const UserSchema = new Schema<IUser>(
       default: "pending",
     },
     deactivatedAt: Date,
+    deletionRequestedAt: Date,
     emailVerified: Date,
     phoneVerifiedAt: Date,
     accountSecurityVersion: { type: Number, default: 0 },

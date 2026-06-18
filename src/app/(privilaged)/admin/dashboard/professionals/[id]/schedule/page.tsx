@@ -8,6 +8,8 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
+  Edit,
+  FileText,
   Loader2,
   MapPin,
   Phone,
@@ -17,11 +19,21 @@ import {
 import { appointmentsAPI } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ProfessionalBookAppointmentModal,
   type BookableClient,
   type BookableProfessional,
 } from "@/components/appointments/ProfessionalBookAppointmentModal";
 import { AppointmentEditDialog } from "@/components/appointments/AppointmentEditDialog";
+import {
+  ManualInvoiceModal,
+  type ManualInvoiceContext,
+} from "@/components/billing/ManualInvoiceModal";
 import type { AppointmentResponse } from "@/types/api";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -69,6 +81,11 @@ export default function AdminProfessionalSchedulePage({
   }>({});
 
   const [editApt, setEditApt] = useState<AppointmentResponse | null>(null);
+
+  // Manual invoice/receipt generator (admin-only), launched from a slot or an
+  // existing appointment via the calendar action menu.
+  const [manualInvoiceCtx, setManualInvoiceCtx] =
+    useState<ManualInvoiceContext | null>(null);
 
   const professionals: BookableProfessional[] = useMemo(
     () => [{ id, name: professionalName || id }],
@@ -241,28 +258,63 @@ export default function AdminProfessionalSchedulePage({
     setBookOpen(true);
   };
 
+  const openManualInvoiceForSlot = (date: Date, hour?: number) => {
+    setManualInvoiceCtx({
+      date: localDateKey(date),
+      time: typeof hour === "number" ? `${pad2(hour)}:00` : undefined,
+    });
+  };
+
+  const openManualInvoiceForApt = (a: AppointmentResponse) => {
+    setManualInvoiceCtx({ appointment: a });
+  };
+
+  // Existing appointment → action menu (view/edit OR generate a manual invoice).
   const renderAptChip = (a: AppointmentResponse, compact = false) => (
-    <button
-      type="button"
-      key={a._id}
-      onClick={(e) => {
-        e.stopPropagation();
-        setEditApt(a);
-      }}
-      className={`w-full text-left border rounded p-1.5 mb-1 hover:brightness-95 transition ${aptColor(a)}`}
-    >
-      <div className="flex items-center gap-1 text-xs font-medium">
-        {typeIcon(a.type)}
-        <span className="truncate">
-          {a.clientId?.firstName} {a.clientId?.lastName}
-        </span>
-      </div>
-      {!compact && (
-        <div className="text-[11px] opacity-80">
-          {a.time} · {a.duration}m
-        </div>
-      )}
-    </button>
+    <DropdownMenu key={a._id}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={`w-full text-left border rounded p-1.5 mb-1 hover:brightness-95 transition ${aptColor(a)}`}
+        >
+          <div className="flex items-center gap-1 text-xs font-medium">
+            {typeIcon(a.type)}
+            <span className="truncate">
+              {a.clientId?.firstName} {a.clientId?.lastName}
+            </span>
+          </div>
+          {!compact && (
+            <div className="text-[11px] opacity-80">
+              {a.time} · {a.duration}m
+            </div>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={() => setEditApt(a)}>
+          <Edit className="h-4 w-4" />
+          {t("viewEdit")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openManualInvoiceForApt(a)}>
+          <FileText className="h-4 w-4" />
+          {t("generateManualInvoice")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // Empty slot → action menu (book OR generate a manual invoice).
+  const renderSlotMenuItems = (date: Date, hour?: number) => (
+    <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuItem onClick={() => openBookForSlot(date, hour)}>
+        <CalendarPlus className="h-4 w-4" />
+        {t("bookAppointment")}
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={() => openManualInvoiceForSlot(date, hour)}>
+        <FileText className="h-4 w-4" />
+        {t("generateManualInvoice")}
+      </DropdownMenuItem>
+    </DropdownMenuContent>
   );
 
   return (
@@ -376,17 +428,26 @@ export default function AdminProfessionalSchedulePage({
                     {getWeekDays().map((day, idx) => {
                       const slot = slotAppointments(day, hour);
                       return (
-                        <button
-                          type="button"
+                        <div
                           key={`${idx}-${hour}`}
-                          onClick={() => openBookForSlot(day, hour)}
-                          className="bg-card p-1.5 min-h-[60px] text-left hover:bg-primary/5 transition group relative"
+                          className="bg-card p-1.5 min-h-[60px] flex flex-col"
                         >
                           {slot.map((a) => renderAptChip(a))}
-                          {slot.length === 0 && (
-                            <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 absolute top-1.5 right-1.5 transition" />
-                          )}
-                        </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label={t("slotActions")}
+                                className="flex-1 min-h-[20px] rounded hover:bg-primary/5 transition group relative"
+                              >
+                                {slot.length === 0 && (
+                                  <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 absolute top-0.5 right-0.5 transition" />
+                                )}
+                              </button>
+                            </DropdownMenuTrigger>
+                            {renderSlotMenuItems(day, hour)}
+                          </DropdownMenu>
+                        </div>
                       );
                     })}
                   </React.Fragment>
@@ -405,11 +466,9 @@ export default function AdminProfessionalSchedulePage({
               </div>
             ))}
             {getMonthDays().map((day, idx) => (
-              <button
-                type="button"
+              <div
                 key={idx}
-                onClick={() => openBookForSlot(day)}
-                className={`bg-card p-2 min-h-[96px] text-left align-top hover:bg-primary/5 transition ${
+                className={`bg-card p-2 min-h-[96px] flex flex-col ${
                   !isSameMonth(day) ? "opacity-40" : ""
                 } ${isToday(day) ? "ring-1 ring-primary/30" : ""}`}
               >
@@ -423,7 +482,17 @@ export default function AdminProfessionalSchedulePage({
                     .slice(0, 3)
                     .map((a) => renderAptChip(a, true))}
                 </div>
-              </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("slotActions")}
+                      className="flex-1 min-h-[16px] rounded hover:bg-primary/5 transition"
+                    />
+                  </DropdownMenuTrigger>
+                  {renderSlotMenuItems(day)}
+                </DropdownMenu>
+              </div>
             ))}
           </div>
         ) : (
@@ -435,13 +504,19 @@ export default function AdminProfessionalSchedulePage({
                   <div className="w-16 text-sm font-light text-muted-foreground pt-2">
                     {hour}:00
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openBookForSlot(currentDate, hour)}
-                    className="flex-1 min-h-[56px] border-l border-border/40 pl-4 py-1 text-left hover:bg-primary/5 transition rounded-r"
-                  >
+                  <div className="flex-1 min-h-[56px] border-l border-border/40 pl-4 py-1 flex flex-col">
                     {slot.map((a) => renderAptChip(a))}
-                  </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t("slotActions")}
+                          className="flex-1 min-h-[24px] rounded hover:bg-primary/5 transition"
+                        />
+                      </DropdownMenuTrigger>
+                      {renderSlotMenuItems(currentDate, hour)}
+                    </DropdownMenu>
+                  </div>
                 </div>
               );
             })}
@@ -475,6 +550,27 @@ export default function AdminProfessionalSchedulePage({
           }}
         />
       )}
+
+      <ManualInvoiceModal
+        key={
+          manualInvoiceCtx
+            ? (manualInvoiceCtx.appointment?._id ??
+              `${manualInvoiceCtx.date ?? ""}-${manualInvoiceCtx.time ?? ""}`)
+            : "closed"
+        }
+        open={manualInvoiceCtx !== null}
+        onOpenChange={(o) => {
+          if (!o) setManualInvoiceCtx(null);
+        }}
+        professionalId={id}
+        professionalName={professionalName}
+        clients={clients}
+        context={manualInvoiceCtx}
+        onGenerated={() => {
+          setManualInvoiceCtx(null);
+          fetchAppointments();
+        }}
+      />
     </div>
   );
 }

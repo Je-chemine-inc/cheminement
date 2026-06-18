@@ -58,6 +58,7 @@ interface Patient {
 
 interface PatientsData {
   patients: Patient[];
+  availableIssueTypes?: string[];
   summary: {
     totalPatients: number;
     activePatients: number;
@@ -80,6 +81,8 @@ export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [tierFilter, setTierFilter] = useState<string>("all");
+  const [problematiqueFilter, setProblematiqueFilter] = useState<string>("all");
+  const [issueTypeOptions, setIssueTypeOptions] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchPatients = useCallback(
@@ -92,6 +95,7 @@ export default function PatientsPage() {
           limit: "20",
           search: searchQuery,
           status: statusFilter,
+          problematique: problematiqueFilter,
         });
         const response = await fetch(`/api/admin/patients?${params}`);
         if (!response.ok) {
@@ -99,6 +103,11 @@ export default function PatientsPage() {
         }
         const result = await response.json();
         setData(result);
+        // Keep the dropdown options stable across filtered fetches (the API
+        // returns the full distinct list, but it may be empty on the rare error).
+        if (Array.isArray(result.availableIssueTypes) && result.availableIssueTypes.length > 0) {
+          setIssueTypeOptions(result.availableIssueTypes);
+        }
         setCurrentPage(page);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -106,7 +115,7 @@ export default function PatientsPage() {
         setLoading(false);
       }
     },
-    [searchQuery, statusFilter],
+    [searchQuery, statusFilter, problematiqueFilter],
   );
 
   useEffect(() => {
@@ -399,6 +408,23 @@ export default function PatientsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select
+                value={problematiqueFilter}
+                onValueChange={setProblematiqueFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[210px]">
+                  <Filter className="h-4 w-4 mr-2 shrink-0" />
+                  <SelectValue placeholder={t("filterProblematique")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("allProblematiques")}</SelectItem>
+                  {issueTypeOptions.map((it) => (
+                    <SelectItem key={it} value={it}>
+                      {it}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -478,6 +504,23 @@ export default function PatientsPage() {
                         `statusTier.tiers.${patient.statusTier ?? "gray"}.label`,
                       )}
                     />
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        patient.status === "active"
+                          ? "bg-green-100 text-green-700"
+                          : patient.status === "pending"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {patient.status === "active"
+                        ? t("statusActive")
+                        : patient.status === "pending"
+                          ? t("statusPending")
+                          : t("statusInactive")}
+                    </span>
                   </TableCell>
                   <TableCell className="text-sm font-light text-muted-foreground">
                     {patient.matchedWith || "-"}

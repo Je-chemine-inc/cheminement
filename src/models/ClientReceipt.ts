@@ -5,6 +5,8 @@ export interface IClientReceipt extends Document {
   appointmentId: mongoose.Types.ObjectId;
   issuedAt: Date;
   amountCad: number;
+  /** Unique invoice number carried over from the appointment (shown on the receipt). */
+  invoiceNumber?: string;
   /**
    * paid = Stripe captured / Interac confirmed by admin;
    * pending_transfer = Interac instructions sent, awaiting admin confirmation;
@@ -29,6 +31,7 @@ const ClientReceiptSchema = new Schema<IClientReceipt>(
     },
     issuedAt: { type: Date, required: true, default: Date.now },
     amountCad: { type: Number, required: true },
+    invoiceNumber: { type: String },
     status: {
       type: String,
       enum: ["paid", "pending_transfer", "refunded"],

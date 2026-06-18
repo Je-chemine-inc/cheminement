@@ -9,10 +9,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const h = vi.hoisted(() => {
   const receiptUpdate = vi.fn().mockResolvedValue(null);
+  const issueFiscalReceipt = vi.fn().mockResolvedValue(undefined);
   const store: { appointment: Record<string, unknown> | null } = {
     appointment: null,
   };
-  return { receiptUpdate, store };
+  return { receiptUpdate, issueFiscalReceipt, store };
 });
 
 vi.mock("@/lib/mongodb", () => ({
@@ -23,6 +24,11 @@ vi.mock("@/models/Appointment", () => ({
 }));
 vi.mock("@/models/ClientReceipt", () => ({
   default: { findOneAndUpdate: h.receiptUpdate },
+}));
+// Mock the receipt-issuance side effect so the test doesn't pull in the
+// server-only PDF/notifications chain; its behavior is covered separately.
+vi.mock("@/lib/session-post-closure", () => ({
+  issueFiscalReceipt: h.issueFiscalReceipt,
 }));
 
 import {
@@ -53,6 +59,8 @@ describe("settleInteracPayment (H2)", () => {
       { appointmentId: "a1", status: "pending_transfer" },
       { $set: { status: "paid" } },
     );
+    // Golden rule: the confirmed transfer issues + sends the official receipt.
+    expect(h.issueFiscalReceipt).toHaveBeenCalledWith("a1");
   });
 
   it("is idempotent when already paid (no save) but still reveals the receipt", async () => {

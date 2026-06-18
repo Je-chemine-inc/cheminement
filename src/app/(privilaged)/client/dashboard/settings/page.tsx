@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Save,
   CheckCircle,
+  Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
@@ -31,6 +32,30 @@ export default function SettingsPage() {
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState(false);
+  const [deletionOpen, setDeletionOpen] = useState(false);
+  const [deletionSubmitting, setDeletionSubmitting] = useState(false);
+  const [deletionError, setDeletionError] = useState(false);
+  const [deletionSent, setDeletionSent] = useState(false);
+
+  // Permanent deletion is NOT performed in-app: this submits a request that
+  // notifies admins (email + in-app inbox). The actual erasure is handled by
+  // the team, preserving invoices/financial data per legal retention rules.
+  const handleRequestDeletion = async () => {
+    setDeletionSubmitting(true);
+    setDeletionError(false);
+    try {
+      const res = await fetch("/api/users/me/request-deletion", {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("request failed");
+      setDeletionSent(true);
+      setDeletionOpen(false);
+    } catch {
+      setDeletionError(true);
+    } finally {
+      setDeletionSubmitting(false);
+    }
+  };
 
   const handleSave = () => {
     setSaved(true);
@@ -163,7 +188,83 @@ export default function SettingsPage() {
         <p className="mt-2 text-xs text-muted-foreground">
           {t("deactivateDesc")}
         </p>
+
+        {/* Right to be forgotten — permanent deletion request */}
+        <div className="mt-8 border-t border-red-200/40 pt-6">
+          <h3 className="font-medium text-foreground">
+            {t("deleteSectionTitle")}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("deleteLegalMention")}{" "}
+            <a
+              href="mailto:support@jechemine.ca"
+              className="font-medium text-primary underline"
+            >
+              support@jechemine.ca
+            </a>
+            .
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("deleteRetentionNotice")}
+          </p>
+          {deletionSent ? (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-200">
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">{t("deleteSuccessTitle")}</p>
+                <p>{t("deleteSuccessDesc")}</p>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeletionError(false);
+                setDeletionOpen(true);
+              }}
+              className="mt-4 gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t("deleteRequestButton")}
+            </Button>
+          )}
+        </div>
       </section>
+
+      {/* Permanent deletion request confirmation dialog */}
+      <Dialog
+        open={deletionOpen}
+        onOpenChange={(open) => {
+          if (!deletionSubmitting) setDeletionOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("deleteConfirmDesc")}</DialogDescription>
+          </DialogHeader>
+          {deletionError && (
+            <p className="text-sm text-red-600">{t("deleteError")}</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeletionOpen(false)}
+              disabled={deletionSubmitting}
+            >
+              {t("deleteCancel")}
+            </Button>
+            <Button
+              onClick={handleRequestDeletion}
+              disabled={deletionSubmitting}
+              className="gap-2 bg-red-600 text-white hover:bg-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deletionSubmitting ? t("deleteSubmitting") : t("deleteConfirmCta")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Deactivate confirmation dialog */}
       <Dialog

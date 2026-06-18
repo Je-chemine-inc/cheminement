@@ -21,10 +21,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
@@ -35,15 +31,37 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Mongoose `Buffer` types come back as Node Buffers under .data
-    const bytes = file.data instanceof Buffer ? file.data : Buffer.from(file.data);
-    return new NextResponse(new Uint8Array(bytes), {
+    // Content images are referenced from PUBLIC pages (nouveautés, problématiques,
+    // etc.), so they must be served without a session. Every other kind stays
+    // behind authentication.
+    const isPublic = file.kind === "content-image";
+    if (!isPublic) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
+    // `.lean()` returns the raw driver value for `data`: a Node Buffer when the
+    // bytes are promoted, but otherwise a BSON `Binary` whose payload lives under
+    // `.buffer` (and whose `.length` is a method, so `Buffer.from(binary)` yields
+    // an EMPTY buffer — a 200 with no body). Normalize to a real Buffer.
+    const raw = file.data as unknown;
+    const bytes = Buffer.isBuffer(raw)
+      ? raw
+      : raw && typeof raw === "object" && "buffer" in raw
+        ? Buffer.from((raw as { buffer: Uint8Array }).buffer)
+        : Buffer.from(raw as Uint8Array);
+    const body = new Uint8Array(bytes);
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": file.fileType || "application/octet-stream",
-        "Content-Length": String(file.fileSize ?? bytes.length),
+        "Content-Length": String(body.length),
         "Content-Disposition": `inline; filename="${encodeURIComponent(file.fileName)}"`,
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": isPublic
+          ? "public, max-age=86400, immutable"
+          : "private, max-age=300",
       },
     });
   } catch (error) {

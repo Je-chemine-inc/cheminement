@@ -119,8 +119,31 @@ export default function ClientDetailsModal({
     );
   };
 
+  // Translate a session enum (status/type/payment) safely: fall back to the raw
+  // value when no label exists so an unexpected value never renders a raw
+  // message key like "sessions.failed".
+  const SESSION_LABEL_KEYS = new Set([
+    "scheduled",
+    "completed",
+    "cancelled",
+    "no-show",
+    "ongoing",
+    "pending",
+    "paid",
+    "processing",
+    "overdue",
+    "failed",
+    "refunded",
+    "video",
+    "in-person",
+    "phone",
+    "both",
+  ]);
+  const sessionLabel = (value?: string) =>
+    value && SESSION_LABEL_KEYS.has(value) ? t(`sessions.${value}`) : value ?? "";
+
   const getSessionStatusBadge = (status: AppointmentResponse["status"]) => {
-    const styles = {
+    const styles: Record<string, string> = {
       completed: "bg-green-100 text-green-700",
       cancelled: "bg-red-100 text-red-700",
       scheduled: "bg-blue-100 text-blue-700",
@@ -131,31 +154,31 @@ export default function ClientDetailsModal({
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-light ${styles[status]}`}
+        className={`px-2 py-1 rounded-full text-xs font-light ${styles[status] ?? "bg-gray-100 text-gray-700"}`}
       >
-        {t(`sessions.${status}`)}
+        {sessionLabel(status)}
       </span>
     );
   };
 
   const getPaymentStatusBadge = (
-    paymentStatus: AppointmentResponse["payment"]["status"],
+    paymentStatus?: AppointmentResponse["payment"]["status"],
   ) => {
-    const styles = {
+    const styles: Record<string, string> = {
       paid: "bg-green-100 text-green-700",
       pending: "bg-yellow-100 text-yellow-700",
       processing: "bg-blue-100 text-blue-700",
       overdue: "bg-orange-100 text-orange-700",
       cancelled: "bg-red-100 text-red-700",
       failed: "bg-red-100 text-red-700",
-      refunded: "bg-brown-100 text-brown-700",
+      refunded: "bg-amber-100 text-amber-800",
     };
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-light ${styles[paymentStatus]}`}
+        className={`px-2 py-1 rounded-full text-xs font-light ${(paymentStatus && styles[paymentStatus]) || "bg-gray-100 text-gray-700"}`}
       >
-        {t(`sessions.${paymentStatus}`)}
+        {sessionLabel(paymentStatus)}
       </span>
     );
   };
@@ -494,10 +517,10 @@ export default function ClientDetailsModal({
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <p className="text-sm font-medium text-foreground">
-                            {session.type}
+                            {sessionLabel(session.type)}
                           </p>
                           {getSessionStatusBadge(session.status)}
-                          {getPaymentStatusBadge(session.payment.status)}
+                          {getPaymentStatusBadge(session.payment?.status)}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground font-light mb-2">
                           <div className="flex items-center gap-1">

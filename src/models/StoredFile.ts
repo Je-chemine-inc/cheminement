@@ -18,6 +18,8 @@ export interface IStoredFile extends Document {
     | "patient-document"
     | "client-document"
     | "employee-cv"
+    | "payout-cheque"
+    | "content-image"
     | "referral"
     | "generic";
   uploadedBy: mongoose.Types.ObjectId;
@@ -37,6 +39,8 @@ const StoredFileSchema = new Schema<IStoredFile>(
         "patient-document",
         "client-document",
         "employee-cv",
+        "payout-cheque",
+        "content-image",
         "referral",
         "generic",
       ],

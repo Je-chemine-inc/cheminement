@@ -77,6 +77,37 @@ export default function PatientDetailPage({
   // Feedback states
   const [feedback, setFeedback] = useState<{type: "success" | "error", message: string} | null>(null);
   const [sendingPwdLink, setSendingPwdLink] = useState(false);
+  const [accountActionLoading, setAccountActionLoading] = useState<null | "activate" | "deactivate">(null);
+
+  // Force-activate / force-deactivate the account. Reactivation is the one the
+  // client asked for: re-sending a password never flips `status`, so a
+  // deactivated account stayed unreachable. Data is always preserved.
+  const handleAccountActivation = async (activate: boolean) => {
+    if (accountActionLoading) return;
+    setAccountActionLoading(activate ? "activate" : "deactivate");
+    try {
+      const res = await fetch(`/api/admin/users/${id}/account-activation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activate }),
+      });
+      if (!res.ok) throw new Error();
+      setFeedback({
+        type: "success",
+        message: activate ? tPwd("reactivateSuccess") : tPwd("deactivateSuccess"),
+      });
+      setTimeout(() => setFeedback(null), 4000);
+      fetchData();
+    } catch {
+      setFeedback({
+        type: "error",
+        message: activate ? tPwd("reactivateError") : tPwd("deactivateError"),
+      });
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setAccountActionLoading(null);
+    }
+  };
 
   const handleSendPasswordSetupLink = async () => {
     if (sendingPwdLink) return;
@@ -690,6 +721,49 @@ export default function PatientDetailPage({
               )}
               {sendingPwdLink ? tPwd("sending") : tPwd("sendButton")}
             </Button>
+
+            {user.status === "inactive" && user.deactivatedAt && (
+              <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-3 text-sm text-amber-800 dark:text-amber-200">
+                  <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{tPwd("reactivateDesc")}</span>
+                </div>
+                <Button
+                  onClick={() => handleAccountActivation(true)}
+                  disabled={accountActionLoading !== null}
+                  className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {accountActionLoading === "activate" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {accountActionLoading === "activate"
+                    ? tPwd("reactivating")
+                    : tPwd("reactivateButton")}
+                </Button>
+              </div>
+            )}
+
+            {user.status === "active" && (
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <Button
+                  onClick={() => handleAccountActivation(false)}
+                  disabled={accountActionLoading !== null}
+                  variant="outline"
+                  className="w-full gap-2 text-muted-foreground"
+                >
+                  {accountActionLoading === "deactivate" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="h-4 w-4" />
+                  )}
+                  {accountActionLoading === "deactivate"
+                    ? tPwd("deactivating")
+                    : tPwd("deactivateButton")}
+                </Button>
+              </div>
+            )}
           </div>
 
           {["client", "guest", "prospect"].includes(user.role) && (

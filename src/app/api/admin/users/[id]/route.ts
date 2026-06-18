@@ -76,6 +76,10 @@ export async function GET(
         phone: user.phone || "",
         role: user.role,
         status: user.status,
+        // Distinguishes a genuinely deactivated account (set) from a
+        // never-claimed auto-provisioned shell (absent). The admin UI only
+        // offers "Réactiver le compte" when this is present.
+        deactivatedAt: user.deactivatedAt || null,
         location: user.location || "",
         gender: user.gender || "",
         dateOfBirth: user.dateOfBirth || null,

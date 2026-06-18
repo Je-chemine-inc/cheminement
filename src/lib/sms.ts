@@ -65,6 +65,32 @@ export async function sendSms(toPhone: string, body: string): Promise<void> {
   );
 }
 
+/**
+ * SMS épuré de demande de paiement post-séance. Accompagne le courriel de
+ * facture : référence le numéro de facture et pointe vers la page de paiement.
+ * Aucun reçu n'est joint — le reçu suit après confirmation du paiement.
+ */
+export async function sendSessionInvoiceSms(
+  toPhone: string,
+  data: {
+    invoiceNumber: string;
+    amountCad: number;
+    payUrl: string;
+    lang?: "fr" | "en";
+  },
+): Promise<void> {
+  const lang = data.lang === "en" ? "en" : "fr";
+  const amount =
+    lang === "en"
+      ? `CAD $${data.amountCad.toFixed(2)}`
+      : `${data.amountCad.toFixed(2)} $`;
+  const body =
+    lang === "en"
+      ? `Je chemine: invoice ${data.invoiceNumber} — ${amount} due for your session. Pay: ${data.payUrl}`
+      : `Je chemine : facture ${data.invoiceNumber} — ${amount} à régler pour votre séance. Payer : ${data.payUrl}`;
+  return sendSms(toPhone, body);
+}
+
 /** SMS pour codes OTP (validation téléphone). */
 export async function sendSmsOtp(toPhone: string, code: string, lang: "fr" | "en" = "fr"): Promise<void> {
   const body = 
