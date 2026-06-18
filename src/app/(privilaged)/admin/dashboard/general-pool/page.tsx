@@ -14,6 +14,7 @@ export default function AdminGeneralPoolPage() {
       fetchUrl="/api/admin/general-pool"
       titleKey="poolTitle"
       subtitleKey="poolSubtitle"
+      enableStatusFilter
     />
   );
 }
