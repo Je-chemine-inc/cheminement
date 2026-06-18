@@ -2798,6 +2798,7 @@
       "noClients": "Aucun client correspondant",
       "dateLabel": "Date",
       "timeLabel": "Heure",
+      "timePlaceholder": "Choisir l'heure",
       "durationLabel": "Durée",
       "minutesValue": "{count} minutes",
       "typeLabel": "Type",

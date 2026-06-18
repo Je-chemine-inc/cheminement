@@ -59,6 +59,18 @@ type Props = {
 
 const DURATION_OPTIONS = [30, 50, 60, 90];
 const TYPE_OPTIONS = ["video", "in-person", "phone"] as const;
+// 15-minute start-time slots (06:00–23:00). A controlled <Select> replaces the
+// native <input type="time">, whose clock dialog gets clipped off-screen on some
+// mobile browsers.
+const BASE_TIME_OPTIONS: string[] = (() => {
+  const slots: string[] = [];
+  for (let minutes = 6 * 60; minutes <= 23 * 60; minutes += 15) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+  }
+  return slots;
+})();
 // Radix <Select> forbids empty-string item values, so the "no motif" choice
 // uses this sentinel and is mapped back to "" on change. The motif is optional.
 const NO_MOTIF = "__none__";
@@ -124,6 +136,15 @@ export function ProfessionalBookAppointmentModal({
     if (!defaultClientId) return null;
     return clients.find((c) => c.id === defaultClientId) ?? null;
   }, [clients, defaultClientId]);
+
+  // Always include the current time (e.g. a calendar-slot prefill) even if it
+  // isn't on the 15-minute grid, so the Select can display it.
+  const timeOptions = useMemo(() => {
+    if (time && !BASE_TIME_OPTIONS.includes(time)) {
+      return [...BASE_TIME_OPTIONS, time].sort();
+    }
+    return BASE_TIME_OPTIONS;
+  }, [time]);
 
   const canSubmit =
     Boolean(clientId) &&
@@ -296,11 +317,18 @@ export function ProfessionalBookAppointmentModal({
             </div>
             <div className="space-y-2">
               <Label>{t("timeLabel")}</Label>
-              <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              <Select value={time || undefined} onValueChange={setTime}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("timePlaceholder")} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {timeOptions.map((slot) => (
+                    <SelectItem key={slot} value={slot}>
+                      {slot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
