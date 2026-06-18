@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import StoredFile from "@/models/StoredFile";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -15,17 +16,29 @@ const ALLOWED_TYPES = [
 /**
  * POST /api/upload/referral
  *
- * Used by the appointment booking form when a referring professional attaches
- * a referral letter (PDF/image). The returned URL is stored on the Appointment
- * via the standard booking flow. Authenticated to prevent open-relay abuse —
- * the booking pages already require a session.
+ * Used by the appointment booking form when a referral letter (PDF/image) is
+ * attached. The returned URL is stored on the Appointment via the standard
+ * booking flow. The booking form is PUBLIC (guests can book before they have an
+ * account), so a session is optional here; we rate-limit by IP and keep the
+ * strict type/size checks to prevent open-relay abuse. The stored file is only
+ * served (via /api/files/[id]) to authenticated admins/professionals.
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ip = getClientIp(req);
+    const rl = rateLimit(`referral-upload:${ip}`, 15, 60 * 60 * 1000);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many uploads. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          },
+        },
+      );
     }
+    const session = await getServerSession(authOptions);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -54,7 +67,7 @@ export async function POST(req: NextRequest) {
       fileSize: file.size,
       data: buffer,
       kind: "referral",
-      uploadedBy: session.user.id,
+      uploadedBy: session?.user?.id,
     });
 
     return NextResponse.json({

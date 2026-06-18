@@ -22,7 +22,7 @@ export interface IStoredFile extends Document {
     | "content-image"
     | "referral"
     | "generic";
-  uploadedBy: mongoose.Types.ObjectId;
+  uploadedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,7 +47,8 @@ const StoredFileSchema = new Schema<IStoredFile>(
       default: "generic",
       index: true,
     },
-    uploadedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Optional: guest-booking referral uploads have no authenticated user.
+    uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },
 );
