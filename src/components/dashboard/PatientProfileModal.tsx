@@ -125,12 +125,23 @@ export default function AppointmentDetailsModal({
         {/* Content */}
         <div className="p-6">
           <Tabs defaultValue="appointment-details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="appointment-details">
+            <TabsList className="grid h-auto w-full grid-cols-3">
+              <TabsTrigger
+                value="appointment-details"
+                className="h-auto whitespace-normal px-1 py-1.5 text-center text-xs leading-tight sm:text-sm"
+              >
                 {t("tabs.appointmentDetails")}
               </TabsTrigger>
-              <TabsTrigger value="basic-info">{t("tabs.basicInfo")}</TabsTrigger>
-              <TabsTrigger value="medical-info">
+              <TabsTrigger
+                value="basic-info"
+                className="h-auto whitespace-normal px-1 py-1.5 text-center text-xs leading-tight sm:text-sm"
+              >
+                {t("tabs.basicInfo")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="medical-info"
+                className="h-auto whitespace-normal px-1 py-1.5 text-center text-xs leading-tight sm:text-sm"
+              >
                 {t("tabs.medicalInfo")}
               </TabsTrigger>
             </TabsList>
