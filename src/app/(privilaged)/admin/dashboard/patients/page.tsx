@@ -505,6 +505,23 @@ export default function PatientsPage() {
                       )}
                     />
                   </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        patient.status === "active"
+                          ? "bg-green-100 text-green-700"
+                          : patient.status === "pending"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {patient.status === "active"
+                        ? t("statusActive")
+                        : patient.status === "pending"
+                          ? t("statusPending")
+                          : t("statusInactive")}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-sm font-light text-muted-foreground">
                     {patient.matchedWith || "-"}
                   </TableCell>
