@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Wallet,
   Star,
+  Layers,
   MessageSquare,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -114,6 +115,14 @@ export function ProfessionalSidebar() {
           url: "/professional/dashboard/proposals",
           icon: Star,
           badge: pendingProposalsCount,
+        },
+        {
+          // Direct entry point to the always-open general pool ("Liste
+          // Générale") — deep-links to the General tab of the Propositions page
+          // so every pro can browse and self-claim pooled clients (§3.2).
+          title: t("generalPool"),
+          url: "/professional/dashboard/proposals#general",
+          icon: Layers,
         },
         {
           title: t("myClients"),
