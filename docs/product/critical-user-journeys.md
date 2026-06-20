@@ -1,0 +1,28 @@
+# Critical user journeys (CUJs)
+
+The flows that **must never break**. Inferred from the central routes and the matching/payment engines. Every row is **`[inferred — confirm]`** until the product owner confirms it.
+
+**Rule going forward:** a change that touches a CUJ must **verify that journey** (run it, or run/extend its tests) before claiming done — see [/verify](../../.claude/skills/verify/SKILL.md). A new user-visible feature must extend or register a CUJ here. "Test coverage" below is the *existing* automated coverage; **"none"** means manual verification is the only safety net, so be extra careful (see [debt-map](../quality/debt-map.md)).
+
+| ID | Journey | Steps (user's words) | Where it lives in code | Test coverage | Status |
+| --- | --- | --- | --- | --- | --- |
+| CUJ-1 | **Client intake → match** | "I pick who it's for, choose my reasons, submit — and get matched to a professional." | `src/app/appointment/page.tsx` → `POST /api/appointments` → `src/lib/appointment-routing.ts` (`routeAppointmentToProfessionals`) | matcher + cascade: `lib/appointment-routing.spec.ts`, `appointment-routing-gender.spec.ts`, `proposal-timeout.spec.ts`, `service-request.spec.ts`. **Route handler: none** | `[inferred — confirm]` |
+| CUJ-2 | **Guest booking + guest payment** | "Without an account, I book and pay through the link I was sent." | `src/app/appointment` (guest) → `POST /api/appointments/guest` → `src/app/pay/page.tsx` (`?token=`) → `api/payments/guest*` | **none** (all guest payment routes untested — debt-map P2) | `[inferred — confirm]` |
+| CUJ-3 | **Pro accepts a proposal / self-claims** | "I review the request and take the client (or pull one from the general pool)." | `src/app/(privilaged)/professional/dashboard/proposals/page.tsx` → `POST /api/appointments/[id]/accept` (+ `/refuse`) | cascade logic: `proposal-timeout.spec.ts`. **Accept/refuse routes: none** | `[inferred — confirm]` |
+| CUJ-4 | **Schedule → payment-method capture** | "My pro sets a date; I'm invited to add a payment method to confirm." | `POST /api/appointments/[id]/schedule-first` → payment-invitation email → `/pay` or `billing?action=addPaymentMethod` → SetupIntent | `client-payment-guarantee.spec.ts`, `client-portal-urls.spec.ts`. **Setup routes: none** | `[inferred — confirm]` |
+| CUJ-5 | **Session closure → charge → receipt** | "After my session I'm charged and get my official receipt." | `POST /api/appointments/[id]/complete-session` → `lib/session-closure.ts` (no-show billing) → `lib/stripe-off-session-charge.ts` / Interac → `issueFiscalReceipt` (`lib/session-post-closure.ts`) → receipt PDF | `complete-session/route.spec.ts`, `payment-settlement.spec.ts`, `session-post-closure.spec.ts`, `stripe-off-session-charge.spec.ts`, `pricing.spec.ts` ✅ | `[inferred — confirm]` |
+| CUJ-6 | **Stripe webhook settlement** | (system) "Payment confirms → mark paid, issue receipt, green the guarantee." | `src/app/api/payments/webhook/route.ts` → `lib/payment-settlement.ts` | **none** — the webhook itself is untested (debt-map **P1**); depends on LIVE event subscriptions | `[inferred — confirm]` |
+| CUJ-7 | **Professional payout** | "I get paid for my completed sessions." | `POST /api/stripe-connect/payout` and `api/admin/accounting/professionals/[id]/payout` → `ProfessionalLedgerEntry` debit | `stripe-connect/payout/route.spec.ts`, `admin/accounting/.../payout` spec ✅ | `[inferred — confirm]` |
+| CUJ-8 | **Signup → verify → login** | "I register, confirm my email, confirm my phone, then sign in." | `src/app/(auth)/signup/member` → `POST /api/auth/signup` → `(verify)/verify-account` (email link → SMS) → `(auth)/login` | `auth/account/verify-email/route.spec.ts`, `auth/forgot-password/route.spec.ts`. **Signup route (618 lines): none** | `[inferred — confirm]` |
+| CUJ-9 | **Account lifecycle (deactivate / RTBF)** | "I can deactivate my account or request permanent deletion." | settings pages → `POST /api/users/me/deactivate`, `POST /api/users/me/request-deletion` (admin alerted, financial data retained) | `users/me/deactivate` + `request-deletion` route specs ✅ | `[inferred — confirm]` |
+| CUJ-10 | **Internal messaging** | "I message my professional / support and get a reply." | `src/components/inbox/InboxView.tsx` → `api/messages/*` (allow-list in `lib/messaging-permissions.ts`) | `api/messages/messaging-security.spec.ts` ✅ | `[inferred — confirm]` |
+| CUJ-11 | **Admin triage queue** | "I assign, auto-match, release, or schedule a pending request." | `src/components/admin/RequestsQueueTable.tsx` → `api/admin/service-requests/[id]/{assign,approve,schedule}`, `/general-pool` | `service-requests/[id]/{assign,schedule}` specs; appointment `[id]` PATCH auth specs ✅ (partial) | `[inferred — confirm]` |
+| CUJ-12 | **Public content & legal pages render** | "I browse the library and read the terms/privacy pages." | `(public)/{explore,approaches,nouveautes,medias}/[slug]`, `(public)/{terms,privacy,cookies}` → `ContentEntry` / `LegalDocument` via `lib/legal-content.ts` | `legal-sections.spec.ts` (parse/serialize). **Page render: none** | `[inferred — confirm]` |
+
+## Highest-risk, least-covered (verify manually with extra care)
+
+- **CUJ-6 (Stripe webhook)** — untested and money-critical; also deploy-coupled to LIVE event subscriptions.
+- **CUJ-2 (guest payment)** — entirely untested money path.
+- **CUJ-1 / CUJ-8** — the matcher/cascade *logic* is well tested, but the booking and signup **route handlers** (the largest in the app) are not.
+
+When you touch any of these, run the relevant `pnpm test` specs **and** exercise the flow in a running app (`pnpm dev`), per [/verify](../../.claude/skills/verify/SKILL.md).
