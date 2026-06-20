@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
+import { triggerDueCascadeCron } from "@/lib/lazy-cron";
 
 /**
  * GET /api/admin/service-requests
@@ -30,6 +31,12 @@ export async function GET() {
     }
 
     await connectToDatabase();
+
+    // Opportunistically advance the matching cascade (24h/12h proposal timeouts:
+    // Pro 1 → expire → Pro 2 → expire → general pool) off this admin poll, so it
+    // progresses without an external scheduler. Throttled + idempotent — see
+    // lazy-cron.ts. after() runs it post-response so it never slows the queue.
+    after(() => triggerDueCascadeCron());
 
     // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
     // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the
@@ -77,6 +84,17 @@ export async function GET() {
           ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
           : null,
         matchedAt: a.matchedAt ?? null,
+        // Referral attachment (doctor-initiated bookingFor="patient" requests):
+        // surface the uploaded reference document so admins can open it from the
+        // queue. Minimal projection — no patient phone/email leaks here.
+        referral: a.referralInfo?.documentUrl
+          ? {
+              referrerName: a.referralInfo.referrerName,
+              referralReason: a.referralInfo.referralReason,
+              documentUrl: a.referralInfo.documentUrl,
+              documentName: a.referralInfo.documentName,
+            }
+          : null,
       };
     });
 

@@ -671,6 +671,23 @@ export default function SessionDetailsPage() {
                 </div>
               )}
 
+              {appointment.referralInfo?.documentUrl && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">
+                    {t("referralDocument")}
+                  </Label>
+                  <a
+                    href={appointment.referralInfo.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 text-sm text-primary hover:underline block break-all"
+                  >
+                    {appointment.referralInfo.documentName ||
+                      appointment.referralInfo.documentUrl}
+                  </a>
+                </div>
+              )}
+
               {appointment.location && (
                 <div>
                   <Label className="text-xs text-muted-foreground">

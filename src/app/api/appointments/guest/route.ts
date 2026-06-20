@@ -7,11 +7,13 @@ import { calculateAppointmentPricing } from "@/lib/pricing";
 import {
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
+  sendReferralConfirmationEmail,
   sendAdminNewServiceRequestAlert,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { parseAppointmentDate } from "@/lib/appointment-date";
 import { isMinor, isUnder14 } from "@/lib/guardian-utils";
+import { resolveServiceRequestRecipient } from "@/lib/service-request-recipient";
 
 export async function POST(req: NextRequest) {
   try {
@@ -478,43 +480,64 @@ export async function POST(req: NextRequest) {
     );
 
     // Automatically send onboarding invitation (Email 1 — Confirmation immédiate)
-    // Recipient rules:
+    // Recipient rules (see resolveServiceRequestRecipient):
     //   - self                  → the requester (themselves)
     //   - loved-one <14         → the requester (parent owns the account; legal
     //                              protection of the minor, LSSSS art. 14)
     //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
-    //   - patient referral      → the referrer (kept as-is)
+    //   - patient referral       → the PATIENT (referralInfo.patientEmail), so the
+    //                              patient is informed and not the referring
+    //                              professional; falls back to the referrer (the
+    //                              guest row was built from the referrer) when no
+    //                              patient email was provided (it is optional).
     // Sent on EVERY new request (not just first-ever), so a returning requester
     // still gets an acknowledgement and isn't left with only the admin alert.
+    let onboardingToEmail = email;
     {
       const emailLocale: "fr" | "en" =
         notificationLocale === "en" ? "en" : "fr";
       const bookingFor = appointmentData.bookingFor || "self";
       const lovedOneInfo = (appointmentData as { lovedOneInfo?: { firstName?: string; email?: string } }).lovedOneInfo;
+      const referralInfo = (appointmentData as {
+        referralInfo?: {
+          patientFirstName?: string;
+          patientLastName?: string;
+          patientEmail?: string;
+          referrerName?: string;
+        };
+      }).referralInfo;
 
-      let onboardingToName = firstName;
-      let onboardingToEmail = email;
-
-      if (
-        bookingFor === "loved-one" &&
-        !lovedOneIsUnder14 &&
-        lovedOneInfo?.email
-      ) {
-        onboardingToName = lovedOneInfo.firstName || firstName;
-        onboardingToEmail = lovedOneInfo.email;
-      }
+      const recipient = resolveServiceRequestRecipient({
+        bookingFor,
+        referralInfo,
+        lovedOneInfo,
+        lovedOneUnder14: lovedOneIsUnder14,
+        fallbackName: firstName,
+        fallbackEmail: email,
+      });
+      const onboardingToName = recipient.toName || firstName;
+      onboardingToEmail = recipient.toEmail || email;
 
       // Acknowledge EVERY new service request. This was previously gated on
       // isNewGuest, which silently skipped the acknowledgement whenever the
       // email already existed (returning prospect / re-used test address) — the
       // client then saw only the admin alert. One acknowledgement per request.
-      const onboardingArgs = {
-        toName: onboardingToName,
-        toEmail: onboardingToEmail,
-        locale: emailLocale,
-      };
+      // A referred patient gets the account-aware referral email (log in vs sign
+      // up); everyone else gets the generic service-request onboarding.
       after(() =>
-        sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
+        (recipient.recipientKind === "patient"
+          ? sendReferralConfirmationEmail({
+              toName: onboardingToName,
+              toEmail: onboardingToEmail,
+              referrerName: referralInfo?.referrerName,
+              locale: emailLocale,
+            })
+          : sendServiceRequestOnboardingEmail({
+              toName: onboardingToName,
+              toEmail: onboardingToEmail,
+              locale: emailLocale,
+            })
+        ).catch((err) =>
           console.error("Error sending onboarding email:", err),
         ),
       );
@@ -526,7 +549,7 @@ export async function POST(req: NextRequest) {
         appointment: populatedAppointment,
         message:
           "Appointment created successfully. A confirmation email has been sent to " +
-          email,
+          onboardingToEmail,
       },
       { status: 201 },
     );

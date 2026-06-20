@@ -19,6 +19,8 @@ export type EmailTemplateKey =
   | "refundConfirmation"
   | "passwordReset"
   | "serviceRequestOnboarding"
+  | "referralNewPatient"
+  | "referralExistingMember"
   | "guestPaymentConfirmation"
   | "guestPaymentComplete"
   | "appointmentReminderGeneric"
@@ -36,7 +38,6 @@ export type EmailTemplateKey =
   | "paymentGuarantee48hClient"
   | "paymentGuarantee48hPro"
   | "professionalNewRequest"
-  | "generalPoolRequest"
   | "professionalApproval"
   | "professionalRejection"
   | "emergencyProSla"
@@ -90,6 +91,8 @@ const EmailTemplateSchema = new Schema<IEmailTemplate>(
         "refundConfirmation",
         "passwordReset",
         "serviceRequestOnboarding",
+        "referralNewPatient",
+        "referralExistingMember",
         "guestPaymentConfirmation",
         "guestPaymentComplete",
         "appointmentReminderGeneric",
@@ -107,7 +110,6 @@ const EmailTemplateSchema = new Schema<IEmailTemplate>(
         "paymentGuarantee48hClient",
         "paymentGuarantee48hPro",
         "professionalNewRequest",
-        "generalPoolRequest",
         "professionalApproval",
         "professionalRejection",
         "emergencyProSla",

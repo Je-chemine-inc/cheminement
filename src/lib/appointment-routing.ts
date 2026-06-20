@@ -5,7 +5,7 @@ import MedicalProfile from "@/models/MedicalProfile";
 import { migrateLegacyAvailabilitySlots } from "@/config/clinical-availability-grid";
 import {
   sendProfessionalNotification,
-  sendAdminRequestReturnedToQueueAlert,
+  sendAdminAppointmentMovedToGeneralAlert,
 } from "@/lib/notifications";
 
 /**
@@ -798,15 +798,16 @@ export async function routeAppointmentToProfessionals(
       ]),
     );
 
-    // When the auto-match cascade is exhausted (2 failed attempts) or no
-    // eligible pro exists, the dossier is RETURNED to the admin "Demande de
-    // service" queue (routingStatus "awaiting_admin") for a MANUAL decision — it
-    // is NOT auto-broadcast to the general pool (that is now a deliberate admin
-    // action via mode:"general", or a pro release). Alert admins so a returned
-    // request doesn't sit unseen. Awaited (not fire-and-forget) so the send
-    // completes before this function — itself wrapped in after() by the caller —
-    // resolves; otherwise Vercel may kill the container mid-send.
-    const notifyAdminReturnedToQueue = async () => {
+    // When the auto-match cascade is exhausted (2 failed attempts: Pro 1 →
+    // expire/refuse → Pro 2 → expire/refuse) or no eligible pro can be targeted,
+    // the dossier FALLS TO THE GENERAL POOL (routingStatus "general", client
+    // feedback §4 "tombe liste générale") so ANY active professional can
+    // self-claim it — rather than sitting in the red "awaiting_admin" queue.
+    // Admins are still alerted so the fallback never goes unseen. Awaited (not
+    // fire-and-forget) so the send completes before this function — itself
+    // wrapped in after() by the caller — resolves; otherwise Vercel may kill the
+    // container mid-send.
+    const notifyAdminMovedToGeneral = async () => {
       const populated = await Appointment.findById(appointmentId)
         .populate("clientId", "firstName lastName email")
         .lean();
@@ -816,14 +817,14 @@ export async function routeAppointmentToProfessionals(
         | null;
       const clientName =
         `${c?.firstName ?? ""} ${c?.lastName ?? ""}`.trim() || "Client";
-      await sendAdminRequestReturnedToQueueAlert({
+      await sendAdminAppointmentMovedToGeneralAlert({
         clientName,
         clientEmail: c?.email?.trim() || "—",
         motif: populated.issueType,
         appointmentId: String(populated._id),
-        attempts: populated.cascadeAttempts ?? 0,
+        refusalCount: populated.cascadeAttempts ?? 0,
       }).catch((err) =>
-        console.error("[routing] returned-to-queue alert failed:", err),
+        console.error("[routing] moved-to-general alert failed:", err),
       );
     };
 
@@ -910,14 +911,14 @@ export async function routeAppointmentToProfessionals(
         `No professionals found for ${isPatientChild ? "child" : "adult"} patients`,
       );
       if (!(await commitRouting({
-        $set: { routingStatus: "awaiting_admin" },
+        $set: { routingStatus: "general" },
         $unset: { proposedTo: "", proposedAt: "" },
       }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyAdminReturnedToQueue();
+      await notifyAdminMovedToGeneral();
 
-      return { success: true, matches: [], routingStatus: "awaiting_admin" };
+      return { success: true, matches: [], routingStatus: "general" };
     }
 
     // HARD filter by gender preference (when the client stated one). A stated
@@ -936,14 +937,14 @@ export async function routeAppointmentToProfessionals(
         `No professional matching the "${preferredGender}" gender preference — returning to admin queue`,
       );
       if (!(await commitRouting({
-        $set: { routingStatus: "awaiting_admin" },
+        $set: { routingStatus: "general" },
         $unset: { proposedTo: "", proposedAt: "" },
       }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyAdminReturnedToQueue();
+      await notifyAdminMovedToGeneral();
 
-      return { success: true, matches: [], routingStatus: "awaiting_admin" };
+      return { success: true, matches: [], routingStatus: "general" };
     }
 
     // ===== 3-LEVEL CASCADE — ONE professional per attempt =====
@@ -953,9 +954,10 @@ export async function routeAppointmentToProfessionals(
     //   candidate exists, relax immediately rather than burn the attempt with no pro.
     // Tentative 2 (1 refusal so far): RELAXED — any reasonable match (score >= 20);
     //   availability is no longer required (still used to rank).
-    // Tentative 3 (>= 2 attempts): no targeted pick below → the dossier RETURNS
-    //   to the admin "Demande de service" queue (routingStatus "awaiting_admin")
-    //   for a manual decision; it is NOT auto-dumped to the general pool.
+    // Tentative 3 (>= 2 attempts): no targeted pick below → the dossier FALLS TO
+    //   THE GENERAL POOL (routingStatus "general") so any active pro can
+    //   self-claim it (client feedback §4 "2 profs 24h après tombe liste
+    //   générale"); admins are alerted.
     // The attempt counter is `cascadeAttempts` (incremented ONLY by a genuine
     // refusal in the refuse re-route OR a proposal timeout — 24h regular /
     // 12h urgent), NOT refusedBy.length —
@@ -1014,21 +1016,21 @@ export async function routeAppointmentToProfessionals(
       : null;
 
     // One pro per attempt. An empty list means "no targeted candidate for this
-    // attempt (or the 2-attempt cascade is exhausted) → return to the admin
-    // queue (awaiting_admin) for a manual decision", NOT an auto-dump to the
-    // general pool.
+    // attempt (or the 2-attempt cascade is exhausted) → FALL TO THE GENERAL POOL
+    // (routingStatus "general") so any active pro can self-claim it", with an
+    // admin alert.
     const topMatches: ProfessionalMatch[] = selected ? [selected] : [];
 
     if (topMatches.length === 0) {
       if (!(await commitRouting({
-        $set: { routingStatus: "awaiting_admin" },
+        $set: { routingStatus: "general" },
         $unset: { proposedTo: "", proposedAt: "" },
       }))) {
         return { success: false, matches: [], routingStatus: "skipped" };
       }
-      await notifyAdminReturnedToQueue();
+      await notifyAdminMovedToGeneral();
 
-      return { success: true, matches: [], routingStatus: "awaiting_admin" };
+      return { success: true, matches: [], routingStatus: "general" };
     }
 
     // Propose to the single selected professional for this attempt — only if

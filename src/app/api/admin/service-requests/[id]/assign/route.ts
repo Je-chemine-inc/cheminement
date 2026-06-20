@@ -6,12 +6,8 @@ import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
-import Profile from "@/models/Profile";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import {
-  sendProfessionalNotification,
-  sendGeneralRequestAvailableNotification,
-} from "@/lib/notifications";
+import { sendProfessionalNotification } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 /**
@@ -82,57 +78,11 @@ export async function POST(
             proposedAt: "",
           },
         });
-        // Broadcast so available pros see it in their general pool and can
-        // self-assign. Awaited inside after() so Vercel keeps the container
-        // alive until the SMTP sends finish.
-        after(async () => {
-          try {
-            const pros = await User.find({
-              role: "professional",
-              status: "active",
-            }).select("firstName lastName email language");
-            // Exclude pros who turned OFF "accepting new clients" — they
-            // shouldn't be pinged about new general-pool requests. For urgent
-            // ("Consultation ponctuelle rapide") requests, ALSO exclude pros who
-            // opted out of emergency consultations (mirrors the matcher gate).
-            // Legacy/undefined profiles count as accepting (only explicit false
-            // opts out). They can still self-claim from the pool either way.
-            const optedOutOr: Record<string, unknown>[] = [
-              { acceptingNewClients: false },
-            ];
-            if (appt.isEmergency) {
-              optedOutOr.push({ acceptingEmergencyConsultations: false });
-            }
-            const notAcceptingIds = new Set(
-              (
-                await Profile.find({
-                  userId: { $in: pros.map((p) => p._id) },
-                  $or: optedOutOr,
-                }).select("userId")
-              ).map((p) => String(p.userId)),
-            );
-            await Promise.allSettled(
-              pros
-                .filter(
-                  (p) => p.email && !notAcceptingIds.has(String(p._id)),
-                )
-                .map((p) =>
-                  sendGeneralRequestAvailableNotification({
-                    professionalName: `${p.firstName ?? ""} ${
-                      p.lastName ?? ""
-                    }`.trim(),
-                    professionalEmail: p.email as string,
-                    locale:
-                      (p as { language?: string }).language === "en"
-                        ? "en"
-                        : "fr",
-                  }),
-                ),
-            );
-          } catch (e) {
-            console.error("[admin send-to-general] broadcast error:", e);
-          }
-        });
+        // No email broadcast: professionals are notified ONLY when a client is
+        // specifically proposed/assigned to them (sendProfessionalNotification
+        // on a targeted jumelage). The general pool is a PULL — pros see new
+        // requests in their "Propositions → Général" tab and self-claim there,
+        // without an email per new entry (client feedback §3).
         return NextResponse.json({
           id,
           mode: "general",
@@ -143,9 +93,11 @@ export async function POST(
       // mode === "auto": reset to a clean pending state, then run the matcher
       // (it only routes when routingStatus === "pending" && no professionalId).
       // Reset cascadeAttempts so a deliberate admin re-match restarts at Tentative
-      // 1 (strict); refusedBy is kept, so pros who already refused stay excluded.
+      // 1 (strict), and CLEAR refusedBy so the re-run retries EVERY professional
+      // (incl. anyone who previously declined/let a proposal expire) — a manual
+      // re-launch is an explicit "try them all again" (client feedback §4).
       await Appointment.findByIdAndUpdate(id, {
-        $set: { routingStatus: "pending", cascadeAttempts: 0 },
+        $set: { routingStatus: "pending", cascadeAttempts: 0, refusedBy: [] },
         $unset: {
           professionalId: "",
           matchedAt: "",

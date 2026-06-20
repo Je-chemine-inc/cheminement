@@ -81,6 +81,17 @@ export async function GET(
           paidAt: apt.payment?.paidAt ?? null,
         },
         createdAt: apt.createdAt,
+        // Referral attachment (doctor-initiated bookingFor="patient" requests) so
+        // the patient detail page can show/open the uploaded reference document.
+        referralInfo: apt.referralInfo?.documentUrl
+          ? {
+              referrerName: apt.referralInfo.referrerName,
+              referralReason: apt.referralInfo.referralReason,
+              desiredApproaches: apt.referralInfo.desiredApproaches ?? [],
+              documentUrl: apt.referralInfo.documentUrl,
+              documentName: apt.referralInfo.documentName,
+            }
+          : null,
       };
     });
 

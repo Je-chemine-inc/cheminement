@@ -91,8 +91,9 @@ export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
 
     try {
       // Re-run jumelage. The matcher re-proposes to the next eligible pro, or —
-      // once attempts are exhausted — commits "awaiting_admin" and alerts admins
-      // itself. Awaited so its SMTP fan-out completes before the cron resolves.
+      // once the 2 attempts are exhausted — drops the dossier into the general
+      // pool (routingStatus "general") and alerts admins itself. Awaited so its
+      // SMTP fan-out completes before the cron resolves.
       await routeAppointmentToProfessionals(String(c._id));
     } catch (err) {
       console.error("[proposal-timeout] re-route error:", String(c._id), err);

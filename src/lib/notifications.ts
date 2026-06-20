@@ -22,6 +22,7 @@ import {
   renderTemplate,
 } from "@/lib/email-template-registry";
 import type { EmailTemplateKey } from "@/models/EmailTemplate";
+import { findRealAccountByEmail } from "@/lib/account-dedup";
 
 /**
  * Loads an admin-editable email template + renders {{placeholder}} tokens.
@@ -1570,6 +1571,164 @@ export async function sendServiceRequestOnboardingEmail(data: {
   );
 }
 
+/**
+ * Referral confirmation — sent to the PATIENT when a professional books on their
+ * behalf (bookingFor="patient"). Picks one of two admin-editable templates based
+ * on whether the patient already has a REAL (loginable) Je chemine account:
+ *   - existing member → "referralExistingMember" (CTA → their space / log in)
+ *   - new patient     → "referralNewPatient"      (CTA → member sign-up)
+ * The referrer's name is woven in when available (optional {{referrerName}}).
+ */
+export async function sendReferralConfirmationEmail(data: {
+  toName: string;
+  toEmail: string;
+  referrerName?: string;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const baseUrl = process.env.NEXTAUTH_URL || "";
+  const companyName = branding?.companyName || "Je chemine";
+
+  // Has the referred patient already signed up (real account, not a passwordless
+  // lead-capture shell)? Drives which variant + CTA we send.
+  let hasAccount = false;
+  try {
+    hasAccount = Boolean(await findRealAccountByEmail(data.toEmail));
+  } catch (err) {
+    // On lookup failure, default to the sign-up variant (safe: an existing
+    // member can still sign in from the sign-up page).
+    console.warn("Referral account lookup failed:", err);
+  }
+
+  const templateKey: EmailTemplateKey = hasAccount
+    ? "referralExistingMember"
+    : "referralNewPatient";
+  const ctaUrl = hasAccount
+    ? `${baseUrl}/client/dashboard`
+    : `${baseUrl}/signup/member?email=${encodeURIComponent(data.toEmail)}`;
+  const referrerSuffix = data.referrerName?.trim()
+    ? ` (${data.referrerName.trim()})`
+    : "";
+
+  const editable = await loadEditableTemplate(templateKey, lang, {
+    toName: data.toName,
+    referrerName: data.referrerName?.trim() || "",
+    companyName,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "info",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: editable.ctaText
+        ? { text: editable.ctaText, url: ctaUrl }
+        : undefined,
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        editable.ctaText ? `${editable.ctaText} : ${ctaUrl}` : "",
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.toEmail, subject: editable.subject, html, text },
+      "service_request_onboarding",
+    );
+  }
+
+  // Hardcoded fallback (used only if the editable template fails to load).
+  const html = buildEmailHtml({
+    title: hasAccount
+      ? lang === "fr"
+        ? "Une demande a été faite en votre nom"
+        : "A request was made on your behalf"
+      : lang === "fr"
+        ? "Vous avez été référé à Je chemine"
+        : "You've been referred to Je chemine",
+    subtitle: hasAccount
+      ? lang === "fr"
+        ? "Connectez-vous à votre espace pour la suivre"
+        : "Log in to your space to follow it"
+      : lang === "fr"
+        ? "Créez votre compte pour suivre votre demande"
+        : "Create your account to follow your request",
+    theme: "info",
+    greeting: lang === "fr" ? `Bonjour ${data.toName},` : `Hello ${data.toName},`,
+    intro:
+      lang === "fr"
+        ? `Un professionnel${referrerSuffix} a soumis une demande de rendez-vous en votre nom sur ${companyName}. Notre équipe recherche dès maintenant le professionnel qui correspond le mieux à votre situation.`
+        : `A professional${referrerSuffix} submitted an appointment request on your behalf on ${companyName}. Our team is now looking for the professional who best fits your situation.`,
+    infoBox: {
+      title: hasAccount
+        ? lang === "fr"
+          ? "Suivez votre demande"
+          : "Follow your request"
+        : lang === "fr"
+          ? "Prochaine étape"
+          : "Next step",
+      content: hasAccount
+        ? lang === "fr"
+          ? "Comme vous possédez déjà un compte, connectez-vous à votre espace pour suivre l'avancement de votre demande et confirmer les prochaines étapes dès qu'un professionnel l'aura acceptée."
+          : "Since you already have an account, log in to your space to follow your request and confirm the next steps as soon as a professional has accepted it."
+        : lang === "fr"
+          ? "Pour suivre votre demande et recevoir les prochaines étapes, créez votre compte de membre — cela ne prend que quelques minutes."
+          : "To follow your request and receive the next steps, create your member account — it only takes a few minutes.",
+    },
+    button: {
+      text: hasAccount
+        ? lang === "fr"
+          ? "Accéder à mon espace"
+          : "Go to my space"
+        : lang === "fr"
+          ? "Créer mon compte"
+          : "Create my account",
+      url: ctaUrl,
+    },
+    outro:
+      lang === "fr"
+        ? "Chaleureusement,<br>L'équipe de Je chemine"
+        : "Warmly,<br>The Je chemine team",
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      hasAccount
+        ? lang === "fr"
+          ? "Une demande a été faite en votre nom"
+          : "A request was made on your behalf"
+        : lang === "fr"
+          ? "Vous avez été référé à Je chemine"
+          : "You've been referred to Je chemine",
+      lang === "fr" ? `Bonjour ${data.toName},` : `Hello ${data.toName},`,
+      lang === "fr"
+        ? `Un professionnel${referrerSuffix} a soumis une demande de rendez-vous en votre nom sur ${companyName}.`
+        : `A professional${referrerSuffix} submitted an appointment request on your behalf on ${companyName}.`,
+      ctaUrl,
+      lang === "fr" ? "Chaleureusement," : "Warmly,",
+      lang === "fr" ? "L'équipe de Je chemine" : "The Je chemine team",
+    ],
+    lang,
+  );
+  const subject = await getSubject(
+    "service_request_onboarding",
+    lang === "fr"
+      ? "Une demande de rendez-vous a été faite en votre nom — Je chemine"
+      : "An appointment request was made on your behalf — Je chemine",
+  );
+  return sendEmail(
+    { to: data.toEmail, subject, html, text },
+    "service_request_onboarding",
+  );
+}
+
 export async function sendGuestPaymentConfirmation(
   data: GuestBookingEmailData,
 ): Promise<boolean> {
@@ -2359,116 +2518,6 @@ export async function sendProfessionalNotification(
   const subject = await getSubject(
     "appointment_professional_notification",
     "Nouvelle demande de rendez-vous — Je chemine",
-  );
-
-  return sendEmail(
-    { to: data.professionalEmail, subject, html, text },
-    "appointment_professional_notification",
-  );
-}
-
-/**
- * Broadcast notification: a new service request landed in the GENERAL pool
- * (auto-routing found no specific match, or no age-appropriate completed
- * profile). Sent to active professionals so the request doesn't sit unseen in
- * the "Propositions → Général" tab. Locale-aware (defaults to FR). No client
- * PII in the body — the details live behind auth in the dashboard.
- */
-export async function sendGeneralRequestAvailableNotification(data: {
-  professionalName: string;
-  professionalEmail: string;
-  locale?: "fr" | "en";
-}): Promise<boolean> {
-  const branding = await getBranding();
-  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
-  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
-  const name =
-    data.professionalName?.trim() ||
-    (lang === "fr" ? "cher professionnel" : "there");
-
-  // Admin-editable template; hardcoded block below is the fallback.
-  const editable = await loadEditableTemplate("generalPoolRequest", lang, {
-    professionalName: name,
-  });
-  if (editable) {
-    const html = buildEmailHtml({
-      title: editable.title,
-      subtitle: editable.subtitle,
-      theme: "info",
-      greeting: "",
-      intro: editable.bodyHtml,
-      button: editable.ctaText
-        ? { text: editable.ctaText, url: dashboardUrl }
-        : undefined,
-      branding,
-      lang,
-    });
-    const text = buildEmailText(
-      [
-        editable.title,
-        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
-        editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
-      ],
-      lang,
-    );
-    return sendEmail(
-      { to: data.professionalEmail, subject: editable.subject, html, text },
-      "appointment_professional_notification",
-    );
-  }
-
-  const html = buildEmailHtml({
-    title: lang === "fr" ? "Nouvelle demande disponible" : "New request available",
-    subtitle:
-      lang === "fr"
-        ? "File générale — à prendre en charge"
-        : "General pool — open to claim",
-    theme: "info",
-    badge: {
-      text: lang === "fr" ? "📋 File générale" : "📋 General pool",
-      theme: "info",
-    },
-    greeting: lang === "fr" ? `Bonjour ${name},` : `Hello ${name},`,
-    intro:
-      lang === "fr"
-        ? "Une nouvelle demande de service est disponible dans la file générale et peut être prise en charge par tout professionnel disponible. Consultez-la dans votre tableau de bord pour l'accepter."
-        : "A new service request is available in the general pool and can be claimed by any available professional. Open your dashboard to review and accept it.",
-    button: {
-      text: lang === "fr" ? "Voir les demandes" : "View requests",
-      url: dashboardUrl,
-    },
-    outro:
-      lang === "fr"
-        ? "Les demandes de la file générale sont attribuées au premier professionnel qui les accepte."
-        : "General-pool requests go to the first professional who accepts them.",
-    branding,
-    lang,
-  });
-
-  const text = buildEmailText(
-    lang === "fr"
-      ? [
-          "Nouvelle demande disponible",
-          `Bonjour ${name},`,
-          "Une nouvelle demande de service est disponible dans la file générale et peut être prise en charge par tout professionnel disponible.",
-          `Voir les demandes : ${dashboardUrl}`,
-          "Les demandes de la file générale sont attribuées au premier professionnel qui les accepte.",
-        ]
-      : [
-          "New request available",
-          `Hello ${name},`,
-          "A new service request is available in the general pool and can be claimed by any available professional.",
-          `View requests: ${dashboardUrl}`,
-          "General-pool requests go to the first professional who accepts them.",
-        ],
-    lang,
-  );
-
-  const subject = await getSubject(
-    "appointment_professional_notification",
-    lang === "fr"
-      ? "Nouvelle demande disponible (file générale) — Je chemine"
-      : "New request available (general pool) — Je chemine",
   );
 
   return sendEmail(

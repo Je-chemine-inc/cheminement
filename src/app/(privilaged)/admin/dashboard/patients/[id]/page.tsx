@@ -15,6 +15,7 @@ import {
   CalendarPlus,
   BadgeCheck,
   FileDown,
+  FileText,
   Eye,
   KeyRound,
 } from "lucide-react";
@@ -548,6 +549,54 @@ export default function PatientDetailPage({
           </div>
         )}
       </div>
+
+      {/* Document(s) de référence — uploaded by a referring professional when the
+          request was created (bookingFor="patient"). Stays accessible here for
+          the admin permanently. */}
+      {appointments.some((apt) => apt.referralInfo?.documentUrl) && (
+        <div className="bg-card border border-border/40 rounded-xl p-6">
+          <h2 className="text-xl font-serif font-light mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            {t("referralSectionTitle")}
+          </h2>
+          <div className="space-y-3">
+            {appointments
+              .filter((apt) => apt.referralInfo?.documentUrl)
+              .map((apt) => (
+                <div
+                  key={`referral-${apt.id}`}
+                  className="flex flex-col gap-1 border border-border/40 rounded-lg p-3"
+                >
+                  <a
+                    href={apt.referralInfo.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline break-all"
+                  >
+                    <FileDown className="h-4 w-4 shrink-0" />
+                    {apt.referralInfo.documentName || t("referralDocument")}
+                  </a>
+                  {apt.referralInfo.referrerName ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("referredBy")}: {apt.referralInfo.referrerName}
+                    </p>
+                  ) : null}
+                  {apt.referralInfo.referralReason ? (
+                    <p className="text-xs text-muted-foreground">
+                      {apt.referralInfo.referralReason}
+                    </p>
+                  ) : null}
+                  {apt.referralInfo.desiredApproaches?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("desiredApproaches")}:{" "}
+                      {apt.referralInfo.desiredApproaches.join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Col - Info */}

@@ -81,6 +81,17 @@ export async function GET() {
           ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
           : null,
         matchedAt: a.matchedAt ?? null,
+        // Referral attachment (doctor-initiated bookingFor="patient" requests):
+        // surface the uploaded reference document so admins can open it from the
+        // pool. Minimal projection — no patient phone/email leaks here.
+        referral: a.referralInfo?.documentUrl
+          ? {
+              referrerName: a.referralInfo.referrerName,
+              referralReason: a.referralInfo.referralReason,
+              documentUrl: a.referralInfo.documentUrl,
+              documentName: a.referralInfo.documentName,
+            }
+          : null,
       };
     });
 

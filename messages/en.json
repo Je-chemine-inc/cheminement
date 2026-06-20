@@ -782,6 +782,10 @@
       "cancel": "Cancel",
       "confirm": "Confirm",
       "clinicalTracking": "Clinical Tracking (Sessions)",
+      "referralSectionTitle": "Reference document",
+      "referralDocument": "Reference document",
+      "referredBy": "Referred by",
+      "desiredApproaches": "Desired approach",
       "noSessions": "No sessions found.",
       "colDate": "Date",
       "colPro": "Professional",
@@ -1013,6 +1017,7 @@
     "attemptsLabel": "Attempts: {n}",
     "refusedTwiceFlag": "Refused 2× — re-verify",
     "refusedTwiceHint": "Refused or ignored by 2 professionals. Re-check the request (missing or inaccurate info), and contact the client or other professionals before reassigning.",
+    "referralDocument": "Reference document",
     "filterAll": "All",
     "scheduleAction": "Set appointment",
     "markEmergency": "Quick one-time consultation",
@@ -2699,6 +2704,7 @@
       "addMeetingLink": "Add Meeting Link",
       "meetingLinkDesc": "Provide an external meeting link for this video appointment (Zoom, Google Meet, Microsoft Teams, etc.)",
       "meetingLinkUrl": "Meeting Link URL",
+      "referralDocument": "Reference document",
       "urlPlaceholder": "https://zoom.us/j/123456789",
       "appointmentDetails": "Appointment Details",
       "at": "at",
@@ -2842,12 +2848,14 @@
         "title": "Issue Types You Specialize In",
         "required": "*",
         "subtitle": "Select the mental health challenges you are qualified to treat",
-        "minSelection": "Select at least one issue type"
+        "minSelection": "Select at least one issue type",
+        "searchPlaceholder": "Search issue types (e.g. anxiety, trauma…)"
       },
       "step2": {
         "title": "Therapeutic Approaches",
         "subtitle": "Select the methods and approaches you use in your practice",
-        "minSelection": "Select at least one approach"
+        "minSelection": "Select at least one approach",
+        "searchPlaceholder": "Search approaches (e.g. CBT, EMDR…)"
       },
       "step3": {
         "title": "Age Categories",
@@ -4279,6 +4287,10 @@
         "primaryIssuePlaceholder": "What's your main concern?",
         "secondaryIssues": "Secondary Issues",
         "secondaryIssuesDesc": "Select any additional concerns",
+        "secondaryIssuesPlaceholder": "Search and add concerns (e.g. anxiety, stress…)",
+        "consultationMotifs": "Reasons for consultation",
+        "consultationMotifsDesc": "Search and add the reasons for the consultation",
+        "consultationMotifsPlaceholder": "Search a reason (e.g. anxiety, depression…)",
         "secondaryIssueOptions": {
           "anxiety": "Anxiety",
           "depression": "Depression",
@@ -4349,6 +4361,7 @@
         "subtitle": "What are your treatment goals?",
         "treatmentGoals": "Treatment Goals",
         "treatmentGoalsDesc": "Select your goals for therapy",
+        "treatmentGoalsPlaceholder": "Search and add goals",
         "treatmentGoalOptions": {
           "reduceAnxiety": "Reduce Anxiety",
           "improveMood": "Improve Mood",
@@ -4367,6 +4380,7 @@
         },
         "therapyApproach": "Preferred Therapy Approach",
         "therapyApproachDesc": "Select preferred approaches",
+        "therapyApproachPlaceholder": "Search an approach (e.g. CBT, EMDR…)",
         "therapyApproachOptions": {
           "cbt": "Cognitive Behavioral Therapy (CBT)",
           "psychodynamicTherapy": "Psychodynamic Therapy",
@@ -4439,7 +4453,15 @@
         "preferredAge": "Preferred Age Range",
         "preferredAgePlaceholder": "Select age range",
         "languagePreference": "Language Preference",
-        "languagePreferencePlaceholder": "Preferred language",
+        "languagePreferencePlaceholder": "Select a language",
+        "languageOptions": {
+          "french": "French",
+          "english": "English",
+          "arabic": "Arabic",
+          "spanish": "Spanish",
+          "mandarin": "Mandarin",
+          "other": "Other"
+        },
         "languagePreferenceBilingual": "Bilingual (English & French)",
         "culturalConsiderations": "Cultural Considerations",
         "culturalConsiderationsPlaceholder": "Any cultural preferences?"
@@ -5100,6 +5122,24 @@
         "location": "Location",
         "notes": "Notes",
         "meetingLink": "Meeting Link",
+        "referralDocument": "Reference document",
+        "therapyTypeLabel": "Therapy type",
+        "therapyType": {
+          "solo": "Solo",
+          "couple": "Couple",
+          "group": "Group"
+        },
+        "bookingForLabel": "Request for",
+        "bookingFor": {
+          "self": "For Self",
+          "patient": "Patient Referral",
+          "lovedOne": "For Loved One"
+        },
+        "preferredAvailability": "Preferred availability",
+        "flexible": "Flexible",
+        "referredBy": "Referred by",
+        "referralReason": "Reason for referral",
+        "desiredApproaches": "Desired approach",
         "toBeScheduled": "To be scheduled",
         "notAvailable": "N/A",
         "close": "Close",

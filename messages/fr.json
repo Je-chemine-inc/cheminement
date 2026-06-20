@@ -782,6 +782,10 @@
       "cancel": "Annuler",
       "confirm": "Confirmer",
       "clinicalTracking": "Suivi Clinique (Séances)",
+      "referralSectionTitle": "Document de référence",
+      "referralDocument": "Document de référence",
+      "referredBy": "Référé par",
+      "desiredApproaches": "Approche souhaitée",
       "noSessions": "Aucune séance trouvée.",
       "colDate": "Date",
       "colPro": "Professionnel",
@@ -1013,6 +1017,7 @@
     "attemptsLabel": "Tentatives : {n}",
     "refusedTwiceFlag": "Refusé 2× — à revérifier",
     "refusedTwiceHint": "Refusé ou ignoré par 2 professionnels. Vérifiez la demande (informations manquantes ou inexactes) et contactez le client ou d'autres professionnels avant de réassigner.",
+    "referralDocument": "Document de référence",
     "filterAll": "Toutes",
     "scheduleAction": "Fixer un RDV",
     "markEmergency": "Consultation ponctuelle rapide",
@@ -2699,6 +2704,7 @@
       "addMeetingLink": "Ajouter un lien vidéo",
       "meetingLinkDesc": "Fournissez un lien de réunion externe pour ce rendez-vous vidéo (Zoom, Google Meet, Microsoft Teams, etc.)",
       "meetingLinkUrl": "URL du lien de réunion",
+      "referralDocument": "Document de référence",
       "urlPlaceholder": "https://zoom.us/j/123456789",
       "appointmentDetails": "Détails du rendez-vous",
       "at": "à",
@@ -2842,12 +2848,14 @@
         "title": "Types de problèmes dans lesquels vous vous spécialisez",
         "required": "*",
         "subtitle": "Sélectionnez les défis de santé mentale que vous êtes qualifié pour traiter",
-        "minSelection": "Sélectionnez au moins un type de problème"
+        "minSelection": "Sélectionnez au moins un type de problème",
+        "searchPlaceholder": "Rechercher des types de problèmes (ex. anxiété, trauma…)"
       },
       "step2": {
         "title": "Approches thérapeutiques",
         "subtitle": "Sélectionnez les méthodes et approches que vous utilisez dans votre pratique",
-        "minSelection": "Sélectionnez au moins une approche"
+        "minSelection": "Sélectionnez au moins une approche",
+        "searchPlaceholder": "Rechercher des approches (ex. TCC, EMDR…)"
       },
       "step3": {
         "title": "Catégories d'âge",
@@ -4278,6 +4286,10 @@
         "primaryIssuePlaceholder": "Quelle est votre préoccupation principale?",
         "secondaryIssues": "Problèmes secondaires",
         "secondaryIssuesDesc": "Sélectionnez toute préoccupation supplémentaire",
+        "secondaryIssuesPlaceholder": "Rechercher et ajouter des préoccupations (ex. anxiété, stress…)",
+        "consultationMotifs": "Motifs de consultation",
+        "consultationMotifsDesc": "Recherchez et ajoutez les motifs de la consultation",
+        "consultationMotifsPlaceholder": "Rechercher un motif (ex. anxiété, dépression…)",
         "secondaryIssueOptions": {
           "anxiety": "Anxiété",
           "depression": "Dépression",
@@ -4348,6 +4360,7 @@
         "subtitle": "Quels sont vos objectifs de traitement?",
         "treatmentGoals": "Objectifs de traitement",
         "treatmentGoalsDesc": "Sélectionnez vos objectifs pour la thérapie",
+        "treatmentGoalsPlaceholder": "Rechercher et ajouter des objectifs",
         "treatmentGoalOptions": {
           "reduceAnxiety": "Réduire l'anxiété",
           "improveMood": "Améliorer l'humeur",
@@ -4366,6 +4379,7 @@
         },
         "therapyApproach": "Approche thérapeutique préférée",
         "therapyApproachDesc": "Sélectionnez les approches préférées",
+        "therapyApproachPlaceholder": "Rechercher une approche (ex. TCC, EMDR…)",
         "therapyApproachOptions": {
           "cbt": "Thérapie cognitivo-comportementale (TCC)",
           "psychodynamicTherapy": "Thérapie psychodynamique",
@@ -4438,7 +4452,15 @@
         "preferredAge": "Tranche d'âge préférée",
         "preferredAgePlaceholder": "Sélectionnez la tranche d'âge",
         "languagePreference": "Préférence linguistique",
-        "languagePreferencePlaceholder": "Langue préférée",
+        "languagePreferencePlaceholder": "Sélectionnez une langue",
+        "languageOptions": {
+          "french": "Français",
+          "english": "Anglais",
+          "arabic": "Arabe",
+          "spanish": "Espagnol",
+          "mandarin": "Mandarin",
+          "other": "Autre"
+        },
         "languagePreferenceBilingual": "Bilingue (anglais et français)",
         "culturalConsiderations": "Considérations culturelles",
         "culturalConsiderationsPlaceholder": "Des préférences culturelles ?"
@@ -5099,6 +5121,24 @@
         "location": "Lieu",
         "notes": "Notes",
         "meetingLink": "Lien de la rencontre",
+        "referralDocument": "Document de référence",
+        "therapyTypeLabel": "Type de thérapie",
+        "therapyType": {
+          "solo": "Individuel",
+          "couple": "Couple",
+          "group": "Groupe"
+        },
+        "bookingForLabel": "Demande pour",
+        "bookingFor": {
+          "self": "Pour soi",
+          "patient": "Référence patient",
+          "lovedOne": "Pour un proche"
+        },
+        "preferredAvailability": "Disponibilités préférées",
+        "flexible": "Flexible",
+        "referredBy": "Référé par",
+        "referralReason": "Motif de la référence",
+        "desiredApproaches": "Approche souhaitée",
         "toBeScheduled": "À planifier",
         "notAvailable": "N/D",
         "close": "Fermer",
