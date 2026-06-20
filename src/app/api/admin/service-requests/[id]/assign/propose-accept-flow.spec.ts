@@ -362,9 +362,11 @@ describe("guest booking: admin propose → professional accept", () => {
   });
 
   it("a professional CANNOT accept an awaiting_admin dossier (admin-only state)", async () => {
-    // §3: after a failed auto-match cascade the dossier sits in routingStatus
-    // "awaiting_admin" awaiting a MANUAL admin decision. Even if a stale
-    // proposedTo entry survives, a pro must not be able to self-claim it.
+    // "awaiting_admin" is an admin-only state (legacy / manual). A pro must not
+    // be able to self-claim it even if a stale proposedTo entry survives. (The
+    // auto-match cascade itself now falls to the general pool, not awaiting_admin
+    // — see appointment-routing.ts — but the guard for any awaiting_admin row
+    // still holds.)
     Object.assign(h.store.appointment, {
       routingStatus: "awaiting_admin",
       proposedTo: [PRO_ID],

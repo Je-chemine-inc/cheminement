@@ -6,13 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
+import { MotifSearch } from "@/components/ui/MotifSearch";
 import { useTranslations, useLocale } from "next-intl";
 import { IProfile } from "@/models/Profile";
 import { profileAPI } from "@/lib/api-client";
-import {
-  APPROACHES_ET_THERAPIES,
-  APPROACHES_ET_THERAPIES_EN,
-} from "@/data/approaches";
+import { APPROACHES_ET_THERAPIES } from "@/data/approaches";
 import {
   CHILD_PROBLEMATICS,
   CHILD_PROBLEMATICS_EN,
@@ -457,22 +455,19 @@ export default function ProfileCompletionModal({
                   {t("step1.subtitle")}
                 </p>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-2">
-                {problematics.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => handleMultiSelect("problematics", item)}
-                    className={`rounded-lg px-4 py-3 text-sm font-light text-left transition-all ${
-                      formData.problematics.includes(item)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
+              <MotifSearch
+                multiSelect
+                maxSelections={50}
+                items={problematics}
+                value={formData.problematics}
+                onChange={(v) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    problematics: Array.isArray(v) ? v : v ? [v] : [],
+                  }))
+                }
+                placeholder={t("step1.searchPlaceholder")}
+              />
             </div>
           )}
 
@@ -490,26 +485,19 @@ export default function ProfileCompletionModal({
                   {t("step2.subtitle")}
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto p-2">
-                {therapeuticApproaches.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => handleMultiSelect("approaches", item)}
-                    className={`rounded-lg px-4 py-3 text-sm font-light text-left transition-all ${
-                      formData.approaches.includes(item)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {translateFromMap(
-                      item,
-                      APPROACHES_ET_THERAPIES_EN,
-                      locale,
-                    )}
-                  </button>
-                ))}
-              </div>
+              <MotifSearch
+                multiSelect
+                maxSelections={20}
+                items={[...therapeuticApproaches]}
+                value={formData.approaches}
+                onChange={(v) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    approaches: Array.isArray(v) ? v : v ? [v] : [],
+                  }))
+                }
+                placeholder={t("step2.searchPlaceholder")}
+              />
             </div>
           )}
 

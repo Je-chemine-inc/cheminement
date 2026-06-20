@@ -169,9 +169,10 @@ export async function POST(
     after(async () => {
       try {
         // Re-run jumelage. The matcher either re-proposes to the next eligible
-        // pro ("proposed"), or — once the 2-attempt cascade is exhausted — commits
-        // "awaiting_admin" and alerts admins itself (it no longer auto-broadcasts
-        // to the general pool). "skipped" means a concurrent admin action took over.
+        // pro ("proposed"), or — once the 2-attempt cascade is exhausted — drops
+        // the dossier into the general pool ("general") so any active pro can
+        // self-claim it, and alerts admins itself. "skipped" means a concurrent
+        // admin action took over.
         await routeAppointmentToProfessionals(id);
       } catch (err) {
         console.error("[refuse] re-route error:", err);

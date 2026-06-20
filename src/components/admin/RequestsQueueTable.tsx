@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Flag,
   Zap,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +71,12 @@ interface ServiceRequestRow {
   professionalId?: string | null;
   professionalName?: string | null;
   matchedAt?: string | null;
+  referral?: {
+    referrerName?: string;
+    referralReason?: string;
+    documentUrl?: string;
+    documentName?: string;
+  } | null;
 }
 
 /**
@@ -627,6 +634,20 @@ export default function RequestsQueueTable({
                           max={3}
                         />
                       </div>
+                    ) : null}
+                    {r.referral?.documentUrl ? (
+                      <a
+                        href={r.referral.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        title={r.referral.referralReason || undefined}
+                      >
+                        <FileText className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[180px]">
+                          {r.referral.documentName || t("referralDocument")}
+                        </span>
+                      </a>
                     ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">

@@ -59,6 +59,9 @@ export interface IReferralInfo {
   patientPhone?: string;
   patientEmail?: string;
   referralReason?: string;
+  /** Approaches/therapies the referrer would like for the patient (stored as
+   *  readable labels in the booking locale). Multi-select on the referral form. */
+  desiredApproaches?: string[];
   documentUrl?: string; // URL to uploaded prescription/referral PDF
   documentName?: string;
   uploadedAt?: Date;
@@ -341,6 +344,7 @@ const ReferralInfoSchema = new Schema<IReferralInfo>(
     patientPhone: String,
     patientEmail: String,
     referralReason: String,
+    desiredApproaches: [String],
     documentUrl: String,
     documentName: String,
     uploadedAt: Date,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Edit, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,24 @@ import { IMedicalProfile } from "@/models/MedicalProfile";
 import { medicalProfileAPI } from "@/lib/api-client";
 import { CHILD_DIAGNOSTICS } from "@/data/childDiagnostics";
 import { ADULT_DIAGNOSTICS } from "@/data/adultDiagnostics";
+import { MotifSearch } from "@/components/ui/MotifSearch";
+import {
+  APPROACHES_ET_THERAPIES,
+  APPROACHES_ET_THERAPIES_EN,
+} from "@/data/approaches";
 import { ClinicalAvailabilityGrid } from "@/components/ui/ClinicalAvailabilityGrid";
 import { migrateLegacyAvailabilitySlots } from "@/config/clinical-availability-grid";
+
+// Language codes the jumelage matcher compares against (Profile.languages stores
+// these same codes). Kept in sync with member/professional signup.
+const LANGUAGE_OPTIONS = [
+  "french",
+  "english",
+  "arabic",
+  "spanish",
+  "mandarin",
+  "other",
+] as const;
 
 interface MedicalProfileProps {
   profile?: IMedicalProfile;
@@ -470,6 +486,27 @@ export default function MedicalProfile({
           </div>
 
           <div className="space-y-2">
+            <Label>{tMp("step3.consultationMotifs")}</Label>
+            {medicalProfile.consultationMotifs &&
+            medicalProfile.consultationMotifs.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {medicalProfile.consultationMotifs.map((motif, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-light"
+                  >
+                    {motif}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                {tMv("empty.noneReported")}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label>{tMp("step3.issueDescription")}</Label>
             <p className="text-foreground leading-relaxed">
               {medicalProfile.issueDescription ||
@@ -826,7 +863,13 @@ export default function MedicalProfile({
           <div className="space-y-2">
             <Label>{tMp("step8.languagePreference")}</Label>
             <p className="text-foreground">
-              {medicalProfile.languagePreference || tMv("empty.notSpecified")}
+              {medicalProfile.languagePreference
+                ? (LANGUAGE_OPTIONS as readonly string[]).includes(
+                    medicalProfile.languagePreference,
+                  )
+                  ? tMp(`step8.languageOptions.${medicalProfile.languagePreference}`)
+                  : medicalProfile.languagePreference
+                : tMv("empty.notSpecified")}
             </p>
           </div>
 
@@ -875,6 +918,7 @@ function MedicalProfileModal({
   const tMp = useTranslations("Client.profileModal");
   const tProfile = useTranslations("Client.profile");
   const tMv = useTranslations("Client.medicalProfile");
+  const locale = useLocale();
 
   const normalizeCondition = (value: string): string =>
     value
@@ -930,33 +974,6 @@ function MedicalProfileModal({
     return key ? tMp(`step2.conditionLabels.${key}`) : value;
   };
 
-  const treatmentGoalsOptions = [
-    { key: "reduceAnxiety", value: "Reduce Anxiety" },
-    { key: "improveMood", value: "Improve Mood" },
-    { key: "betterSleep", value: "Better Sleep" },
-    { key: "increaseSelfEsteem", value: "Increase Self-Esteem" },
-    { key: "manageStress", value: "Manage Stress" },
-    { key: "improveRelationships", value: "Improve Relationships" },
-    { key: "overcomeTrauma", value: "Overcome Trauma" },
-    { key: "developCopingSkills", value: "Develop Coping Skills" },
-    { key: "addressAddiction", value: "Address Addiction" },
-    { key: "weightManagement", value: "Weight Management" },
-    { key: "other", value: "Other" },
-  ];
-
-  const therapyApproachOptions = [
-    { key: "cbt", value: "Cognitive Behavioral Therapy (CBT)" },
-    { key: "psychodynamicTherapy", value: "Psychodynamic Therapy" },
-    { key: "humanisticTherapy", value: "Humanistic Therapy" },
-    { key: "dbt", value: "Dialectical Behavior Therapy (DBT)" },
-    { key: "emdr", value: "EMDR" },
-    { key: "solutionFocusedTherapy", value: "Solution-Focused Therapy" },
-    { key: "mindfulnessBasedTherapy", value: "Mindfulness-Based Therapy" },
-    { key: "familySystemsTherapy", value: "Family Systems Therapy" },
-    { key: "act", value: "Acceptance and Commitment Therapy (ACT)" },
-    { key: "noPreference", value: "No Preference" },
-  ];
-
   const medicalConditionOptions = [
     { key: "diabetes", value: "Diabetes" },
     { key: "hypertension", value: "Hypertension" },
@@ -991,6 +1008,7 @@ function MedicalProfileModal({
   const [currentConcernsData, setCurrentConcernsData] = useState({
     primaryIssue: profile?.primaryIssue || "",
     secondaryIssues: profile?.secondaryIssues || [],
+    consultationMotifs: profile?.consultationMotifs || [],
     issueDescription: profile?.issueDescription || "",
     severity: profile?.severity || "",
     duration: profile?.duration || "",
@@ -1452,14 +1470,13 @@ function MedicalProfileModal({
                     {tMp("step3.primaryIssue")}{" "}
                     <span className="text-primary ml-1">*</span>
                   </Label>
-                  <Input
-                    id="primaryIssue"
-                    name="primaryIssue"
+                  <MotifSearch
+                    multiSelect={false}
                     value={currentConcernsData.primaryIssue}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setCurrentConcernsData((prev) => ({
                         ...prev,
-                        primaryIssue: e.target.value,
+                        primaryIssue: Array.isArray(v) ? v[0] ?? "" : v,
                       }))
                     }
                     placeholder={tMp("step3.primaryIssuePlaceholder")}
@@ -1473,50 +1490,39 @@ function MedicalProfileModal({
                   <p className="text-sm text-muted-foreground font-light mb-4">
                     {tMp("step3.secondaryIssuesDesc")}
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      { key: "anxiety", value: "Anxiety" },
-                      { key: "depression", value: "Depression" },
-                      { key: "stress", value: "Stress" },
-                      { key: "relationshipProblems", value: "Relationship Problems" },
-                      { key: "trauma", value: "Trauma" },
-                      { key: "selfEsteemIssues", value: "Self-Esteem Issues" },
-                      { key: "addiction", value: "Addiction" },
-                      { key: "grief", value: "Grief" },
-                      { key: "angerManagement", value: "Anger Management" },
-                      { key: "familyIssues", value: "Family Issues" },
-                      { key: "workSchoolProblems", value: "Work/School Problems" },
-                      { key: "other", value: "Other" },
-                    ].map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => {
-                          const current = currentConcernsData.secondaryIssues;
-                          if (current.includes(item.value)) {
-                            setCurrentConcernsData((prev) => ({
-                              ...prev,
-                              secondaryIssues: current.filter(
-                                (v) => v !== item.value,
-                              ),
-                            }));
-                          } else {
-                            setCurrentConcernsData((prev) => ({
-                              ...prev,
-                              secondaryIssues: [...current, item.value],
-                            }));
-                          }
-                        }}
-                        className={`rounded-lg px-4 py-3 text-sm font-light text-left transition-all ${
-                          currentConcernsData.secondaryIssues.includes(item.value)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/50 text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {tMp(`step3.secondaryIssueOptions.${item.key}`)}
-                      </button>
-                    ))}
-                  </div>
+                  <MotifSearch
+                    multiSelect
+                    maxSelections={5}
+                    value={currentConcernsData.secondaryIssues}
+                    onChange={(v) =>
+                      setCurrentConcernsData((prev) => ({
+                        ...prev,
+                        secondaryIssues: Array.isArray(v) ? v : v ? [v] : [],
+                      }))
+                    }
+                    placeholder={tMp("step3.secondaryIssuesPlaceholder")}
+                  />
+                </div>
+
+                <div>
+                  <Label className="font-light mb-3 text-base">
+                    {tMp("step3.consultationMotifs")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground font-light mb-4">
+                    {tMp("step3.consultationMotifsDesc")}
+                  </p>
+                  <MotifSearch
+                    multiSelect
+                    maxSelections={10}
+                    value={currentConcernsData.consultationMotifs}
+                    onChange={(v) =>
+                      setCurrentConcernsData((prev) => ({
+                        ...prev,
+                        consultationMotifs: Array.isArray(v) ? v : v ? [v] : [],
+                      }))
+                    }
+                    placeholder={tMp("step3.consultationMotifsPlaceholder")}
+                  />
                 </div>
 
                 <div>
@@ -1757,35 +1763,18 @@ function MedicalProfileModal({
                   <p className="text-sm text-muted-foreground font-light mb-4">
                     {tMp("step5.treatmentGoalsDesc")}
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {treatmentGoalsOptions.map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => {
-                          const current = goalsPreferencesData.treatmentGoals;
-                          if (current.includes(item.value)) {
-                            setGoalsPreferencesData((prev) => ({
-                              ...prev,
-                              treatmentGoals: current.filter((v) => v !== item.value),
-                            }));
-                          } else {
-                            setGoalsPreferencesData((prev) => ({
-                              ...prev,
-                              treatmentGoals: [...current, item.value],
-                            }));
-                          }
-                        }}
-                        className={`rounded-lg px-4 py-3 text-sm font-light text-left transition-all ${
-                          goalsPreferencesData.treatmentGoals.includes(item.value)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/50 text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {tMp(`step5.treatmentGoalOptions.${item.key}`)}
-                      </button>
-                    ))}
-                  </div>
+                  <MotifSearch
+                    multiSelect
+                    maxSelections={10}
+                    value={goalsPreferencesData.treatmentGoals}
+                    onChange={(v) =>
+                      setGoalsPreferencesData((prev) => ({
+                        ...prev,
+                        treatmentGoals: Array.isArray(v) ? v : v ? [v] : [],
+                      }))
+                    }
+                    placeholder={tMp("step5.treatmentGoalsPlaceholder")}
+                  />
                 </div>
 
                 <div>
@@ -1793,39 +1782,25 @@ function MedicalProfileModal({
                     {tMp("step5.therapyApproach")}
                   </Label>
                   <p className="text-sm text-muted-foreground font-light mb-4">
-                    Select preferred therapeutic approaches
+                    {tMp("step5.therapyApproachDesc")}
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {therapyApproachOptions.map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => {
-                          const current = goalsPreferencesData.therapyApproach;
-                          if (current.includes(item.value)) {
-                            setGoalsPreferencesData((prev) => ({
-                              ...prev,
-                              therapyApproach: current.filter(
-                                (v) => v !== item.value,
-                              ),
-                            }));
-                          } else {
-                            setGoalsPreferencesData((prev) => ({
-                              ...prev,
-                              therapyApproach: [...current, item.value],
-                            }));
-                          }
-                        }}
-                        className={`rounded-lg px-4 py-3 text-sm font-light text-left transition-all ${
-                          goalsPreferencesData.therapyApproach.includes(item.value)
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/50 text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {tMp(`step5.therapyApproachOptions.${item.key}`)}
-                      </button>
-                    ))}
-                  </div>
+                  <MotifSearch
+                    multiSelect
+                    maxSelections={3}
+                    value={goalsPreferencesData.therapyApproach}
+                    onChange={(v) =>
+                      setGoalsPreferencesData((prev) => ({
+                        ...prev,
+                        therapyApproach: Array.isArray(v) ? v : v ? [v] : [],
+                      }))
+                    }
+                    items={
+                      locale === "fr"
+                        ? [...APPROACHES_ET_THERAPIES]
+                        : Object.values(APPROACHES_ET_THERAPIES_EN)
+                    }
+                    placeholder={tMp("step5.therapyApproachPlaceholder")}
+                  />
                 </div>
 
                 <div>
@@ -2101,24 +2076,31 @@ function MedicalProfileModal({
                 </div>
 
                 <div>
-                  <Label
-                    htmlFor="languagePreference"
-                    className="font-light mb-3 text-base"
-                  >
+                  <Label className="font-light mb-3 text-base">
                     {tMp("step8.languagePreference")}
                   </Label>
-                  <Input
-                    id="languagePreference"
-                    name="languagePreference"
+                  <Select
                     value={matchingPreferencesData.languagePreference}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setMatchingPreferencesData((prev) => ({
                         ...prev,
-                        languagePreference: e.target.value,
+                        languagePreference: value,
                       }))
                     }
-                    placeholder={tMp("step8.languagePreferencePlaceholder")}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={tMp("step8.languagePreferencePlaceholder")}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGE_OPTIONS.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {tMp(`step8.languageOptions.${code}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

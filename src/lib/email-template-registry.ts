@@ -798,6 +798,98 @@ const serviceRequestOnboarding: EmailTemplateDefinition = {
 };
 
 // ---------------------------------------------------------------------------
+// Referral confirmation — NEW patient (no account yet → create one)
+// Sent to the PATIENT when a professional refers them (bookingFor="patient")
+// and the patient has no existing Je chemine account. CTA → member sign-up.
+// ---------------------------------------------------------------------------
+
+const referralNewPatient: EmailTemplateDefinition = {
+  key: "referralNewPatient",
+  labelFr: "Référence — nouveau patient (sans compte)",
+  labelEn: "Referral — new patient (no account)",
+  descriptionFr:
+    "Envoyé au PATIENT lorsqu'un professionnel le réfère et qu'il n'a pas encore de compte Je chemine. L'invite à créer son compte pour suivre sa demande. Le bouton est ajouté automatiquement.",
+  descriptionEn:
+    "Sent to the PATIENT when a professional refers them and they don't yet have a Je chemine account. Invites them to create an account to follow their request. The button is added automatically.",
+  placeholders: [
+    { key: "toName", labelFr: "Nom du patient", labelEn: "Patient name", sampleFr: "Camille", sampleEn: "Camille" },
+    { key: "referrerName", labelFr: "Nom du professionnel référent", labelEn: "Referring professional name", sampleFr: "Dr Tremblay", sampleEn: "Dr Tremblay" },
+    { key: "companyName", labelFr: "Nom de la plateforme", labelEn: "Platform name", sampleFr: "Je chemine", sampleEn: "Je chemine" },
+  ],
+  defaults: {
+    fr: {
+      subject: "Une demande de rendez-vous a été faite en votre nom — Je chemine",
+      title: "Vous avez été référé à Je chemine",
+      subtitle: "Créez votre compte pour suivre votre demande",
+      bodyHtml:
+        "<p>Bonjour {{toName}},</p>" +
+        "<p>Un professionnel{{#referrerName}} ({{referrerName}}){{/referrerName}} a soumis une demande de rendez-vous en votre nom sur {{companyName}}. Notre équipe recherche dès maintenant le professionnel qui correspond le mieux à votre situation.</p>" +
+        "<p><strong>Pour suivre votre demande</strong> et recevoir les prochaines étapes, créez votre compte de membre — cela ne prend que quelques minutes et nous aide à vous jumeler plus vite.</p>" +
+        "<p>Vous recevrez un courriel dès qu'un professionnel aura accepté votre demande.</p>" +
+        "<p>Chaleureusement,<br>L'équipe de {{companyName}}</p>",
+      ctaText: "Créer mon compte",
+    },
+    en: {
+      subject: "An appointment request was made on your behalf — Je chemine",
+      title: "You've been referred to Je chemine",
+      subtitle: "Create your account to follow your request",
+      bodyHtml:
+        "<p>Hello {{toName}},</p>" +
+        "<p>A professional{{#referrerName}} ({{referrerName}}){{/referrerName}} submitted an appointment request on your behalf on {{companyName}}. Our team is now looking for the professional who best fits your situation.</p>" +
+        "<p><strong>To follow your request</strong> and receive the next steps, create your member account — it only takes a few minutes and helps us match you faster.</p>" +
+        "<p>You'll receive an email as soon as a professional has accepted your request.</p>" +
+        "<p>Warmly,<br>The {{companyName}} team</p>",
+      ctaText: "Create my account",
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Referral confirmation — EXISTING member (already has an account → log in)
+// Sent to the PATIENT when a professional refers them and they already have a
+// real Je chemine account. CTA → their space (log in to track the request).
+// ---------------------------------------------------------------------------
+
+const referralExistingMember: EmailTemplateDefinition = {
+  key: "referralExistingMember",
+  labelFr: "Référence — membre existant (avec compte)",
+  labelEn: "Referral — existing member (has account)",
+  descriptionFr:
+    "Envoyé au PATIENT lorsqu'un professionnel le réfère et qu'il possède déjà un compte Je chemine. L'invite à se connecter à son espace pour suivre sa demande. Le bouton est ajouté automatiquement.",
+  descriptionEn:
+    "Sent to the PATIENT when a professional refers them and they already have a Je chemine account. Invites them to log in to their space to follow the request. The button is added automatically.",
+  placeholders: [
+    { key: "toName", labelFr: "Nom du patient", labelEn: "Patient name", sampleFr: "Camille", sampleEn: "Camille" },
+    { key: "referrerName", labelFr: "Nom du professionnel référent", labelEn: "Referring professional name", sampleFr: "Dr Tremblay", sampleEn: "Dr Tremblay" },
+    { key: "companyName", labelFr: "Nom de la plateforme", labelEn: "Platform name", sampleFr: "Je chemine", sampleEn: "Je chemine" },
+  ],
+  defaults: {
+    fr: {
+      subject: "Une demande de rendez-vous a été faite en votre nom — Je chemine",
+      title: "Une demande a été faite en votre nom",
+      subtitle: "Connectez-vous à votre espace pour la suivre",
+      bodyHtml:
+        "<p>Bonjour {{toName}},</p>" +
+        "<p>Un professionnel{{#referrerName}} ({{referrerName}}){{/referrerName}} a soumis une demande de rendez-vous en votre nom sur {{companyName}}. Notre équipe recherche dès maintenant le professionnel qui correspond le mieux à votre situation.</p>" +
+        "<p>Comme vous possédez déjà un compte, <strong>connectez-vous à votre espace</strong> pour suivre l'avancement de votre demande et confirmer les prochaines étapes dès qu'un professionnel l'aura acceptée.</p>" +
+        "<p>Chaleureusement,<br>L'équipe de {{companyName}}</p>",
+      ctaText: "Accéder à mon espace",
+    },
+    en: {
+      subject: "An appointment request was made on your behalf — Je chemine",
+      title: "A request was made on your behalf",
+      subtitle: "Log in to your space to follow it",
+      bodyHtml:
+        "<p>Hello {{toName}},</p>" +
+        "<p>A professional{{#referrerName}} ({{referrerName}}){{/referrerName}} submitted an appointment request on your behalf on {{companyName}}. Our team is now looking for the professional who best fits your situation.</p>" +
+        "<p>Since you already have an account, <strong>log in to your space</strong> to follow your request and confirm the next steps as soon as a professional has accepted it.</p>" +
+        "<p>Warmly,<br>The {{companyName}} team</p>",
+      ctaText: "Go to my space",
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Guest payment confirmation (invité — ajouter un moyen de paiement)
 // ---------------------------------------------------------------------------
 
@@ -1815,51 +1907,6 @@ const professionalNewRequest: EmailTemplateDefinition = {
 };
 
 // ---------------------------------------------------------------------------
-// Professional — general-pool request available (open to claim)
-// ---------------------------------------------------------------------------
-
-const generalPoolRequest: EmailTemplateDefinition = {
-  key: "generalPoolRequest",
-  labelFr: "Professionnel — demande disponible (file générale)",
-  labelEn: "Professional — request available (general pool)",
-  descriptionFr:
-    "Envoyé aux professionnels lorsqu'une nouvelle demande de service est disponible dans la file générale, ouverte à tout professionnel disponible. Le bouton « Voir les demandes » mène à la page Propositions du tableau de bord.",
-  descriptionEn:
-    "Sent to professionals when a new service request is available in the general pool, open to any available professional. The “View requests” button leads to the Proposals page of the dashboard.",
-  placeholders: [
-    {
-      key: "professionalName",
-      labelFr: "Nom du professionnel",
-      labelEn: "Professional name",
-      sampleFr: "Dr Camille Tremblay",
-      sampleEn: "Dr Camille Tremblay",
-    },
-  ],
-  defaults: {
-    fr: {
-      subject: "Nouvelle demande disponible (file générale) — Je chemine",
-      title: "Nouvelle demande disponible",
-      subtitle: "File générale — à prendre en charge",
-      bodyHtml:
-        "<p>Bonjour {{professionalName}},</p>" +
-        "<p>Une nouvelle demande de service est disponible dans la file générale et peut être prise en charge par tout professionnel disponible. Consultez-la dans votre tableau de bord pour l'accepter.</p>" +
-        "<p>Les demandes de la file générale sont attribuées au premier professionnel qui les accepte.</p>",
-      ctaText: "Voir les demandes",
-    },
-    en: {
-      subject: "New request available (general pool) — Je chemine",
-      title: "New request available",
-      subtitle: "General pool — open to claim",
-      bodyHtml:
-        "<p>Hello {{professionalName}},</p>" +
-        "<p>A new service request is available in the general pool and can be claimed by any available professional. Open your dashboard to review and accept it.</p>" +
-        "<p>General-pool requests go to the first professional who accepts them.</p>",
-      ctaText: "View requests",
-    },
-  },
-};
-
-// ---------------------------------------------------------------------------
 // Professional — account approved / activated
 // ---------------------------------------------------------------------------
 
@@ -2840,6 +2887,8 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   refundConfirmation,
   passwordReset,
   serviceRequestOnboarding,
+  referralNewPatient,
+  referralExistingMember,
   guestPaymentConfirmation,
   guestPaymentComplete,
   appointmentReminderGeneric,
@@ -2857,7 +2906,6 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   paymentGuarantee48hClient,
   paymentGuarantee48hPro,
   professionalNewRequest,
-  generalPoolRequest,
   professionalApproval,
   professionalRejection,
   emergencyProSla,

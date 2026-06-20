@@ -10,11 +10,13 @@ import {
   sendAppointmentConfirmation,
   sendProfessionalNotification,
   sendServiceRequestOnboardingEmail,
+  sendReferralConfirmationEmail,
   sendAdminNewServiceRequestAlert,
   sendCancellationNotification,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import { resolveServiceRequestRecipient } from "@/lib/service-request-recipient";
 import {
   linkGuardian,
   isMinor,
@@ -754,11 +756,15 @@ export async function POST(req: NextRequest) {
       );
     } else {
       // No professional assigned yet — send automatic acknowledgement.
-      // Recipient rules:
-      //   - self / patient        → the requester
+      // Recipient rules (see resolveServiceRequestRecipient):
+      //   - self                  → the requester
       //   - loved-one <14         → the requester (parent owns the account; legal
       //                              protection of the minor)
       //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
+      //   - patient referral       → the PATIENT (referralInfo.patientEmail), so a
+      //                              referring professional informs the patient and
+      //                              NOT themselves; falls back to the referrer when
+      //                              no patient email was provided (it is optional).
       const requester = await User.findById(session.user.id).select(
         "firstName lastName email language",
       );
@@ -768,30 +774,38 @@ export async function POST(req: NextRequest) {
         data.bookingFor === "loved-one" &&
         isUnder14({ dateOfBirth: data.lovedOneInfo?.dateOfBirth });
 
-      let toName: string | null = null;
-      let toEmail: string | null = null;
-
-      if (
-        data.bookingFor === "loved-one" &&
-        !lovedOneUnder14 &&
-        data.lovedOneInfo?.email
-      ) {
-        toName =
-          (data.lovedOneInfo.firstName as string | undefined) ||
-          `${requester?.firstName ?? ""} ${requester?.lastName ?? ""}`.trim() ||
-          "Client";
-        toEmail = data.lovedOneInfo.email as string;
-      } else if (requester?.email) {
-        toName =
-          `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() ||
-          "Client";
-        toEmail = requester.email;
-      }
+      const { toName, toEmail, recipientKind } =
+        resolveServiceRequestRecipient({
+          bookingFor: data.bookingFor,
+          referralInfo: data.referralInfo,
+          lovedOneInfo: data.lovedOneInfo,
+          lovedOneUnder14,
+          fallbackName: `${requester?.firstName ?? ""} ${
+            requester?.lastName ?? ""
+          }`.trim(),
+          fallbackEmail: requester?.email,
+        });
 
       if (toEmail && toName) {
-        const onboardingArgs = { toName, toEmail, locale: requesterLocale };
+        // A referred patient gets the account-aware referral email (log in vs
+        // sign up); everyone else gets the generic service-request onboarding.
+        const referrerName = data.referralInfo?.referrerName as
+          | string
+          | undefined;
         after(() =>
-          sendServiceRequestOnboardingEmail(onboardingArgs).catch((err) =>
+          (recipientKind === "patient"
+            ? sendReferralConfirmationEmail({
+                toName,
+                toEmail,
+                referrerName,
+                locale: requesterLocale,
+              })
+            : sendServiceRequestOnboardingEmail({
+                toName,
+                toEmail,
+                locale: requesterLocale,
+              })
+          ).catch((err) =>
             console.error("Error sending acknowledgement email:", err),
           ),
         );

@@ -10,6 +10,21 @@ function isRealAccount(u: IUser): boolean {
   return Boolean(u.password) && u.role !== "guest" && u.role !== "prospect";
 }
 
+/**
+ * Whether the given email belongs to an existing REAL (loginable) account —
+ * i.e. the person has actually signed up, not just a passwordless lead-capture
+ * shell from the booking funnel. Used to pick the right referral email (log in
+ * to an existing space vs. create an account). Returns the user when real.
+ */
+export async function findRealAccountByEmail(
+  email?: string | null,
+): Promise<IUser | null> {
+  const e = email?.toLowerCase().trim();
+  if (!e) return null;
+  const u = await User.findOne({ email: e });
+  return u && isRealAccount(u) ? u : null;
+}
+
 export type StrongMatch = { user: IUser; key: "email" | "phone" } | null;
 
 /**

@@ -69,8 +69,16 @@ export interface AppointmentResponse {
     patientFirstName?: string;
     patientLastName?: string;
     referrerName?: string;
+    referralReason?: string;
+    desiredApproaches?: string[];
+    documentUrl?: string;
+    documentName?: string;
   } | null;
   issueType?: string;
+  /** Selected motifs (1–3) from the booking form's `needs` field. */
+  needs?: string[];
+  /** Client's preferred-availability tokens (week_/weekend_ × period). */
+  preferredAvailability?: string[];
   notes?: string;
   cancelReason?: string;
   cancelledBy?: CancelledBy;

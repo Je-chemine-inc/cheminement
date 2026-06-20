@@ -85,6 +85,8 @@ interface ProposedAppointment {
   therapyType: "solo" | "couple" | "group";
   status: string;
   issueType?: string;
+  /** Selected motifs (1–3) from the booking form's `needs` field. */
+  needs?: string[];
   notes?: string;
   bookingFor: "self" | "patient" | "loved-one";
   lovedOneInfo?: LovedOneInfo;
@@ -137,6 +139,29 @@ export default function ProposalsPage() {
   const resolveMotifLabel = useMemo(
     () => buildMotifLabelResolver(motifs, locale),
     [motifs, locale],
+  );
+
+  // The "problématique / motif" shown in the request tables. The single
+  // `issueType` is often empty (it's only the first motif, and optional for
+  // referrals), so fall back to the full `needs` list, and for a referral use
+  // the referrer's free-text reason — otherwise the column showed "—".
+  const resolveRequestIssue = useCallback(
+    (appointment: ProposedAppointment): string => {
+      if (
+        appointment.bookingFor === "patient" &&
+        appointment.referralInfo?.referralReason?.trim()
+      ) {
+        return appointment.referralInfo.referralReason.trim();
+      }
+      if (appointment.needs && appointment.needs.length > 0) {
+        return appointment.needs.map((n) => resolveMotifLabel(n)).join(", ");
+      }
+      if (appointment.issueType) {
+        return resolveMotifLabel(appointment.issueType);
+      }
+      return t("notAvailable");
+    },
+    [resolveMotifLabel, t],
   );
   const [activeTab, setActiveTab] = useState<
     "proposed" | "general" | "awaiting"
@@ -896,9 +921,7 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType
-                            ? resolveMotifLabel(appointment.issueType)
-                            : t("notAvailable")}
+                          {resolveRequestIssue(appointment)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -1046,9 +1069,7 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType
-                            ? resolveMotifLabel(appointment.issueType)
-                            : t("notAvailable")}
+                          {resolveRequestIssue(appointment)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -1180,9 +1201,7 @@ export default function ProposalsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">
-                          {appointment.issueType
-                            ? resolveMotifLabel(appointment.issueType)
-                            : t("notAvailable")}
+                          {resolveRequestIssue(appointment)}
                         </span>
                       </TableCell>
                       <TableCell>

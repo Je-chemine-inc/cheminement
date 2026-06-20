@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import BasicInformation from "./BasicInformation";
 import MedicalProfile from "./MedicalProfile";
 import { appointmentsAPI } from "@/lib/api-client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AppointmentResponse } from "@/types/api";
 import { useLocale, useTranslations } from "next-intl";
+import { useMotifs, buildMotifLabelResolver } from "@/hooks/useMotifs";
+import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
 
 interface AppointmentDetailsModalProps {
   isOpen: boolean;
@@ -30,8 +32,38 @@ export default function AppointmentDetailsModal({
   const [meetingLink, setMeetingLink] = useState("");
   const [showMeetingLinkInput, setShowMeetingLinkInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { motifs } = useMotifs();
+  // Stored motifs are persisted in the locale the client booked in — normalize
+  // every displayed label back to the active locale.
+  const resolveMotifLabel = useMemo(
+    () => buildMotifLabelResolver(motifs, locale),
+    [motifs, locale],
+  );
 
   if (!isOpen || !appointment) return null;
+
+  // Problématique / motifs: prefer the full `needs` list, fall back to the
+  // single `issueType` (the table folds in the referral reason separately).
+  const motifsDisplay =
+    appointment.needs && appointment.needs.length > 0
+      ? appointment.needs.map((n) => resolveMotifLabel(n)).join(", ")
+      : appointment.issueType
+        ? resolveMotifLabel(appointment.issueType)
+        : t("notAvailable");
+
+  const therapyTypeLabel = appointment.therapyType
+    ? t(`therapyType.${appointment.therapyType}`)
+    : t("notAvailable");
+
+  const bookingForKey =
+    appointment.bookingFor === "loved-one"
+      ? "lovedOne"
+      : appointment.bookingFor === "patient"
+        ? "patient"
+        : "self";
+  const bookingForLabel = appointment.bookingFor
+    ? t(`bookingFor.${bookingForKey}`)
+    : null;
 
   const typeKeyMap: Record<string, string> = {
     video: "video",
@@ -179,6 +211,14 @@ export default function AppointmentDetailsModal({
                         {t("minutes", { count: appointment.duration })}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-light mb-1">
+                        {t("therapyTypeLabel")}
+                      </p>
+                      <p className="text-sm text-foreground font-light">
+                        {therapyTypeLabel}
+                      </p>
+                    </div>
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -194,9 +234,22 @@ export default function AppointmentDetailsModal({
                         {t("issueType")}
                       </p>
                       <p className="text-sm text-foreground font-light">
-                        {appointment.issueType || t("notAvailable")}
+                        {motifsDisplay}
                       </p>
                     </div>
+                    {bookingForLabel && (
+                      <div>
+                        <p className="text-xs text-muted-foreground font-light mb-1">
+                          {t("bookingForLabel")}
+                        </p>
+                        <p className="text-sm text-foreground font-light">
+                          {bookingForLabel}
+                          {appointment.bookingFor === "loved-one" &&
+                            appointment.lovedOneInfo?.firstName &&
+                            ` · ${appointment.lovedOneInfo.firstName}`}
+                        </p>
+                      </div>
+                    )}
                     {appointment.location && (
                       <div>
                         <p className="text-xs text-muted-foreground font-light mb-1">
@@ -209,6 +262,58 @@ export default function AppointmentDetailsModal({
                     )}
                   </div>
                 </div>
+                <div className="mt-6 pt-6 border-t border-border/40">
+                  <p className="text-xs text-muted-foreground font-light mb-2">
+                    {t("preferredAvailability")}
+                  </p>
+                  <AvailabilitySlots
+                    slots={appointment.preferredAvailability}
+                    emptyLabel={t("flexible")}
+                  />
+                </div>
+                {appointment.bookingFor === "patient" &&
+                  appointment.referralInfo &&
+                  (appointment.referralInfo.referrerName ||
+                    appointment.referralInfo.referralReason ||
+                    (appointment.referralInfo.desiredApproaches?.length ??
+                      0) > 0) && (
+                    <div className="mt-6 pt-6 border-t border-border/40 space-y-3">
+                      {appointment.referralInfo.referrerName && (
+                        <div>
+                          <p className="text-xs text-muted-foreground font-light mb-1">
+                            {t("referredBy")}
+                          </p>
+                          <p className="text-sm text-foreground font-light">
+                            {appointment.referralInfo.referrerName}
+                          </p>
+                        </div>
+                      )}
+                      {appointment.referralInfo.referralReason && (
+                        <div>
+                          <p className="text-xs text-muted-foreground font-light mb-1">
+                            {t("referralReason")}
+                          </p>
+                          <p className="text-sm text-foreground font-light leading-relaxed">
+                            {appointment.referralInfo.referralReason}
+                          </p>
+                        </div>
+                      )}
+                      {appointment.referralInfo.desiredApproaches &&
+                        appointment.referralInfo.desiredApproaches.length >
+                          0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground font-light mb-1">
+                              {t("desiredApproaches")}
+                            </p>
+                            <p className="text-sm text-foreground font-light leading-relaxed">
+                              {appointment.referralInfo.desiredApproaches.join(
+                                ", ",
+                              )}
+                            </p>
+                          </div>
+                        )}
+                    </div>
+                  )}
                 {appointment.notes && (
                   <div className="mt-6 pt-6 border-t border-border/40">
                     <p className="text-xs text-muted-foreground font-light mb-2">
@@ -231,6 +336,22 @@ export default function AppointmentDetailsModal({
                       className="text-sm text-primary font-light hover:underline"
                     >
                       {appointment.meetingLink}
+                    </a>
+                  </div>
+                )}
+                {appointment.referralInfo?.documentUrl && (
+                  <div className="mt-6 pt-6 border-t border-border/40">
+                    <p className="text-xs text-muted-foreground font-light mb-2">
+                      {t("referralDocument")}
+                    </p>
+                    <a
+                      href={appointment.referralInfo.documentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary font-light hover:underline break-all"
+                    >
+                      {appointment.referralInfo.documentName ||
+                        t("referralDocument")}
                     </a>
                   </div>
                 )}

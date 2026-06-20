@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
+import { triggerDueCascadeCron } from "@/lib/lazy-cron";
 
 /**
  * GET /api/appointments/proposed
@@ -24,6 +25,12 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
+
+    // Opportunistically advance the matching cascade (24h/12h proposal timeouts)
+    // off this professional's poll, so a lapsed proposal moves to the next pro /
+    // general pool without an external scheduler. Throttled + idempotent (see
+    // lazy-cron.ts); after() runs it post-response.
+    after(() => triggerDueCascadeCron());
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // Optional filter
