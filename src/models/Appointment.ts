@@ -34,6 +34,11 @@ export interface IPayment {
   transferDueAt?: Date;
   /** Code message Interac (unique par RDV, lié au pro). */
   interacReferenceCode?: string;
+  /** Nom du payeur Interac réel, saisi par l'admin lors de la réconciliation
+   *  (ex. virement reçu sous le nom d'un conjoint). */
+  interacPayerName?: string;
+  /** Note libre de réconciliation admin (référence bancaire, contexte…). */
+  interacReconciliationNote?: string;
 }
 
 // Loved one information for third-party bookings
@@ -250,6 +255,10 @@ export interface IAppointment extends Document {
   interacReminder24hSent?: boolean;
   /** Relance automatique Interac J+2 (48h après transferDueAt sans paiement). */
   interacReminder48hSent?: boolean;
+  /** Relance facture impayée H+12 (carte ou Interac), depuis sessionCompletedAt. */
+  paymentReminder12hSent?: boolean;
+  /** Relance facture impayée H+36 (carte ou Interac), depuis sessionCompletedAt. */
+  paymentReminder36hSent?: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -307,6 +316,8 @@ const PaymentSchema = new Schema<IPayment>(
     paymentTokenExpiry: Date,
     transferDueAt: Date,
     interacReferenceCode: { type: String, index: true },
+    interacPayerName: String,
+    interacReconciliationNote: String,
   },
   { _id: false },
 );
@@ -508,6 +519,8 @@ const AppointmentSchema = new Schema<IAppointment>(
 
     interacReminder24hSent: { type: Boolean, default: false },
     interacReminder48hSent: { type: Boolean, default: false },
+    paymentReminder12hSent: { type: Boolean, default: false },
+    paymentReminder36hSent: { type: Boolean, default: false },
 
     sessionActNature: { type: String, required: false },
     sessionActNatureOther: { type: String, required: false },

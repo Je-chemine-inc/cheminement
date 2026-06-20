@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
-import { triggerDueCascadeCron } from "@/lib/lazy-cron";
+import {
+  triggerDueCascadeCron,
+  triggerDuePaymentReminders,
+} from "@/lib/lazy-cron";
 
 /**
  * GET /api/appointments/proposed
@@ -31,6 +34,9 @@ export async function GET(req: NextRequest) {
     // general pool without an external scheduler. Throttled + idempotent (see
     // lazy-cron.ts); after() runs it post-response.
     after(() => triggerDueCascadeCron());
+    // Same opportunistic trigger for the post-session invoice dunning
+    // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
+    after(() => triggerDuePaymentReminders());
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // Optional filter

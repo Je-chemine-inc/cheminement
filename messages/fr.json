@@ -706,17 +706,35 @@
       "colReference": "Référence Interac",
       "validationLabel": "Dossier Valide",
       "approvedStatus": "Dossier Valide",
-      "receiptsTitle": "Reçus Interac — en attente de confirmation",
-      "receiptsDesc": "Les reçus pour virements Interac sont masqués au client tant que le virement n'est pas confirmé. Cochez « Payé » pour libérer le reçu.",
-      "receiptsEmpty": "Aucun reçu Interac en attente de confirmation.",
+      "receiptsTitle": "Réconciliation des paiements — virements en attente",
+      "receiptsDesc": "Associez un virement Interac reçu (même « orphelin » : sans numéro de facture ou sous un autre nom) à une séance impayée — recherchez par nom du payeur, professionnel ou date, puis confirmez. Le reçu est alors libéré au client.",
+      "receiptsEmpty": "Aucun paiement en attente de confirmation.",
       "errorLoadReceipts": "Échec du chargement des reçus",
       "errorMarkPaid": "Échec de la validation du paiement",
       "colSession": "Séance",
       "colAmount": "Montant",
       "colIssuedAt": "Émis le",
+      "colInvoice": "N° de facture",
       "markPaidBtn": "Marquer payé",
       "paidBadge": "Payé",
-      "confirmMarkPaid": "Marquer ce reçu Interac comme payé ? Le reçu deviendra visible au client."
+      "confirmMarkPaid": "Marquer ce reçu Interac comme payé ? Le reçu deviendra visible au client.",
+      "searchLabel": "Rechercher",
+      "searchPlaceholder": "Nom du payeur, courriel ou n° de facture…",
+      "filterProfessional": "Professionnel",
+      "allProfessionals": "Tous les professionnels",
+      "filterDate": "Date du rendez-vous",
+      "clearFilters": "Réinitialiser",
+      "noMatch": "Aucun résultat pour ces filtres.",
+      "payerLabel": "Payeur",
+      "reconcileBtn": "Associer & marquer payé",
+      "reconcileTitle": "Associer un virement Interac",
+      "reconcileDesc": "Confirmez le paiement de {client} ({amount} $ CAD — facture {invoice}). Indiquez le nom réel du payeur (utile si le virement provient d'un autre nom). Le reçu officiel sera ensuite envoyé au client.",
+      "payerNameLabel": "Nom du payeur Interac",
+      "payerNamePlaceholder": "Nom figurant sur le virement reçu",
+      "noteLabel": "Note de réconciliation (facultatif)",
+      "notePlaceholder": "Ex. : référence bancaire, virement reçu sous le nom du conjoint…",
+      "cancel": "Annuler",
+      "reconcileConfirm": "Confirmer le paiement"
     },
 
 
@@ -829,7 +847,9 @@
       "weekOf": "Semaine du",
       "slotActions": "Actions sur la plage horaire",
       "viewEdit": "Voir / modifier",
-      "generateManualInvoice": "Générer une facture/reçu manuel"
+      "generateManualInvoice": "Générer une facture/reçu manuel",
+      "createInvoice": "Générer une facture",
+      "recordPayout": "Enregistrer un versement"
     },
     "manualInvoice": {
       "title": "Générer une facture/reçu manuel",
@@ -851,6 +871,21 @@
       "validationError": "Sélectionnez un client et saisissez un montant valide.",
       "error": "Échec de l'opération. Veuillez réessayer.",
       "close": "Fermer"
+    },
+    "recordPayout": {
+      "title": "Enregistrer un versement",
+      "description": "Consignez un paiement effectué à {name} en dehors de la plateforme (Interac, virement bancaire). Il apparaîtra dans son historique des paiements.",
+      "amountLabel": "Montant versé (CAD)",
+      "amountPlaceholder": "0,00",
+      "referenceLabel": "Référence (facultatif)",
+      "referencePlaceholder": "Ex. : n° de confirmation Interac",
+      "notesLabel": "Note (facultatif)",
+      "notesPlaceholder": "Ex. : versement bihebdomadaire, ajustement…",
+      "hint": "Le paiement réel se fait hors plateforme ; cet enregistrement sert uniquement au suivi partagé avec le professionnel.",
+      "submit": "Enregistrer le versement",
+      "close": "Fermer",
+      "validationError": "Saisissez un montant valide.",
+      "error": "Échec de l'enregistrement. Veuillez réessayer."
     },
     "professionalDetail": {
       "loadError": "Impossible de charger le dossier professionnel.",
@@ -5021,6 +5056,10 @@
       "hide": "Masquer",
       "paymentStatusPaid": "Payé",
       "paymentStatusPending": "En attente",
+      "payoutReceived": "Versement reçu",
+      "payoutAmount": "Montant versé",
+      "payoutReference": "Référence",
+      "payoutNotes": "Note",
       "status": {
         "paid": "Payé",
         "pending": "En attente",

@@ -15,7 +15,15 @@ import { issueFiscalReceipt } from "@/lib/session-post-closure";
  * appointment-level button and the receipt-level button) funnel through here.
  * Idempotent.
  */
-export async function settleInteracPayment(appointmentId: string): Promise<{
+export async function settleInteracPayment(
+  appointmentId: string,
+  /**
+   * Optional reconciliation metadata captured by the admin when associating an
+   * Interac transfer (e.g. an "orphan" transfer received under a spouse's name).
+   * Stored on the appointment for audit even when the payment is already paid.
+   */
+  opts?: { payerName?: string; note?: string },
+): Promise<{
   found: boolean;
   alreadyPaid: boolean;
   payment: { status?: string; paidAt?: Date; method?: string } | null;
@@ -24,6 +32,9 @@ export async function settleInteracPayment(appointmentId: string): Promise<{
   const appointment = await Appointment.findById(appointmentId);
   if (!appointment) return { found: false, alreadyPaid: false, payment: null };
 
+  const payerName = opts?.payerName?.trim();
+  const note = opts?.note?.trim();
+
   const alreadyPaid = appointment.payment?.status === "paid";
   if (!alreadyPaid) {
     appointment.payment.status = "paid";
@@ -31,6 +42,11 @@ export async function settleInteracPayment(appointmentId: string): Promise<{
     if (!appointment.payment.method) {
       appointment.payment.method = "transfer";
     }
+  }
+  // Persist the reconciliation metadata whenever provided (even on a re-confirm).
+  if (payerName) appointment.payment.interacPayerName = payerName;
+  if (note) appointment.payment.interacReconciliationNote = note;
+  if (!alreadyPaid || payerName || note) {
     await appointment.save();
   }
 

@@ -4,7 +4,10 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
-import { triggerDueCascadeCron } from "@/lib/lazy-cron";
+import {
+  triggerDueCascadeCron,
+  triggerDuePaymentReminders,
+} from "@/lib/lazy-cron";
 
 /**
  * GET /api/admin/service-requests
@@ -37,6 +40,9 @@ export async function GET() {
     // progresses without an external scheduler. Throttled + idempotent — see
     // lazy-cron.ts. after() runs it post-response so it never slows the queue.
     after(() => triggerDueCascadeCron());
+    // Same opportunistic trigger for the post-session invoice dunning
+    // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
+    after(() => triggerDuePaymentReminders());
 
     // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
     // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the

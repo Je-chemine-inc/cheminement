@@ -706,17 +706,35 @@
       "colReference": "Interac Reference",
       "validationLabel": "Dossier Valide",
       "approvedStatus": "Dossier Valide",
-      "receiptsTitle": "Interac Receipts — Awaiting Confirmation",
-      "receiptsDesc": "Receipts for Interac transfers are hidden from the client until you mark the transfer as received. Tick \"Paid\" to release the receipt.",
-      "receiptsEmpty": "No Interac receipts awaiting confirmation.",
+      "receiptsTitle": "Payment reconciliation — pending transfers",
+      "receiptsDesc": "Match a received Interac transfer (even an \"orphan\" one — no invoice number or sent under a different name) to an unpaid session: search by payer name, professional or date, then confirm. The receipt is then released to the client.",
+      "receiptsEmpty": "No payments awaiting confirmation.",
       "errorLoadReceipts": "Failed to load receipts",
       "errorMarkPaid": "Failed to mark as paid",
       "colSession": "Session",
       "colAmount": "Amount",
       "colIssuedAt": "Issued",
+      "colInvoice": "Invoice no.",
       "markPaidBtn": "Mark as paid",
       "paidBadge": "Paid",
-      "confirmMarkPaid": "Mark this Interac receipt as paid? The receipt will become visible to the client."
+      "confirmMarkPaid": "Mark this Interac receipt as paid? The receipt will become visible to the client.",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Payer name, email or invoice no.…",
+      "filterProfessional": "Professional",
+      "allProfessionals": "All professionals",
+      "filterDate": "Appointment date",
+      "clearFilters": "Reset",
+      "noMatch": "No results for these filters.",
+      "payerLabel": "Payer",
+      "reconcileBtn": "Associate & mark paid",
+      "reconcileTitle": "Associate an Interac transfer",
+      "reconcileDesc": "Confirm payment for {client} (CAD ${amount} — invoice {invoice}). Enter the actual payer name (useful when the transfer came from a different name). The official receipt is then sent to the client.",
+      "payerNameLabel": "Interac payer name",
+      "payerNamePlaceholder": "Name on the received transfer",
+      "noteLabel": "Reconciliation note (optional)",
+      "notePlaceholder": "e.g. bank reference, transfer received under spouse's name…",
+      "cancel": "Cancel",
+      "reconcileConfirm": "Confirm payment"
     },
 
 
@@ -829,7 +847,9 @@
       "weekOf": "Week of",
       "slotActions": "Time-slot actions",
       "viewEdit": "View / edit",
-      "generateManualInvoice": "Generate manual invoice/receipt"
+      "generateManualInvoice": "Generate manual invoice/receipt",
+      "createInvoice": "Generate an invoice",
+      "recordPayout": "Record a payment"
     },
     "manualInvoice": {
       "title": "Generate manual invoice/receipt",
@@ -851,6 +871,21 @@
       "validationError": "Select a client and enter a valid amount.",
       "error": "The operation failed. Please try again.",
       "close": "Close"
+    },
+    "recordPayout": {
+      "title": "Record a payment",
+      "description": "Log a payment made to {name} outside the platform (Interac, bank transfer). It will appear in their payment history.",
+      "amountLabel": "Amount paid (CAD)",
+      "amountPlaceholder": "0.00",
+      "referenceLabel": "Reference (optional)",
+      "referencePlaceholder": "e.g. Interac confirmation no.",
+      "notesLabel": "Note (optional)",
+      "notesPlaceholder": "e.g. biweekly payout, adjustment…",
+      "hint": "The actual payment happens outside the platform; this record is only for tracking shared with the professional.",
+      "submit": "Record payment",
+      "close": "Close",
+      "validationError": "Enter a valid amount.",
+      "error": "Failed to record. Please try again."
     },
     "professionalDetail": {
       "loadError": "Failed to load professional record.",
@@ -5022,6 +5057,10 @@
       "hide": "Hide",
       "paymentStatusPaid": "Paid",
       "paymentStatusPending": "Pending",
+      "payoutReceived": "Payment received",
+      "payoutAmount": "Amount paid",
+      "payoutReference": "Reference",
+      "payoutNotes": "Note",
       "status": {
         "paid": "Paid",
         "pending": "Pending",

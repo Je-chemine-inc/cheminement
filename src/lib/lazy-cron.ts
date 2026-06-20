@@ -1,6 +1,7 @@
 import connectToDatabase from "@/lib/mongodb";
 import CronRun from "@/models/CronRun";
 import { runProposalTimeouts } from "@/lib/proposal-timeout";
+import { runPaymentReminders } from "@/lib/payment-reminders";
 
 /**
  * "Lazy cron": advance the matching cascade off normal authenticated traffic
@@ -48,5 +49,37 @@ export async function triggerDueCascadeCron(): Promise<void> {
     await runProposalTimeouts();
   } catch (err) {
     console.error("[lazy-cron] cascade trigger failed:", err);
+  }
+}
+
+// Post-session invoice dunning (H+12 / H+36 reminders, H+48 → overdue + alert).
+// The windows are coarse ("le lendemain matin"), so a 30-min lazy throttle off
+// dashboard traffic — plus the daily Vercel cron baseline — is plenty.
+const PAYMENT_REMINDERS_KEY = "payment-reminders";
+const PAYMENT_REMINDERS_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
+let lastPaymentLocalCheck = 0;
+
+export async function triggerDuePaymentReminders(): Promise<void> {
+  const now = Date.now();
+  if (now - lastPaymentLocalCheck < LOCAL_GUARD_MS) return;
+  lastPaymentLocalCheck = now;
+  try {
+    await connectToDatabase();
+    await CronRun.updateOne(
+      { key: PAYMENT_REMINDERS_KEY },
+      { $setOnInsert: { key: PAYMENT_REMINDERS_KEY, lastRunAt: new Date(0) } },
+      { upsert: true },
+    );
+    const claimed = await CronRun.findOneAndUpdate(
+      {
+        key: PAYMENT_REMINDERS_KEY,
+        lastRunAt: { $lt: new Date(now - PAYMENT_REMINDERS_THROTTLE_MS) },
+      },
+      { $set: { lastRunAt: new Date(now) } },
+    );
+    if (!claimed) return;
+    await runPaymentReminders();
+  } catch (err) {
+    console.error("[lazy-cron] payment reminders trigger failed:", err);
   }
 }

@@ -41,7 +41,12 @@ export async function POST(
       userId: session.user.id,
       isActive: true,
     });
-    if (!admin?.permissions?.manageUsers) {
+    // Mirror the queue's view/assign permission so an admin who can manage the
+    // matching queue can also schedule from it (was manageUsers-only → 403).
+    if (
+      !admin?.permissions?.manageUsers &&
+      !admin?.permissions?.managePatients
+    ) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 },

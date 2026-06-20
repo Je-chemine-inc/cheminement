@@ -7,7 +7,7 @@ import Admin from "@/models/Admin";
 import { settleInteracPayment } from "@/lib/payment-settlement";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -38,13 +38,24 @@ export async function POST(
       return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
     }
 
+    // Optional reconciliation metadata (payer name / note) captured by the admin
+    // when associating an Interac transfer — e.g. one received under a spouse's
+    // name or with a missing invoice number.
+    const body = (await req.json().catch(() => ({}))) as {
+      payerName?: string;
+      note?: string;
+    };
+
     if (receipt.status === "paid") {
       return NextResponse.json({ success: true, alreadyPaid: true });
     }
 
     // Flip BOTH the appointment payment and this receipt to paid (shared with
     // the appointment-level mark-paid button so the two never drift apart).
-    await settleInteracPayment(receipt.appointmentId.toString());
+    await settleInteracPayment(receipt.appointmentId.toString(), {
+      payerName: body.payerName,
+      note: body.note,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

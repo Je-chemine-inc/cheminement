@@ -44,11 +44,19 @@ export async function resolveBillingUrl(opts: {
    * would get the default (English) without this hint. Normalized to fr/en.
    */
   recipientLocale: string | undefined;
+  /**
+   * Force the tokenized `/pay?token=…` link even for active accounts. Used by
+   * the post-session payment request so the "pay now" CTA never lands on a
+   * login wall — many clients pay without ever having an account, and even
+   * account-holders shouldn't have to log in just to settle one invoice.
+   */
+  forceTokenLink?: boolean;
 }): Promise<string> {
-  const { userStatus, appointment, base, recipientLocale } = opts;
+  const { userStatus, appointment, base, recipientLocale, forceTokenLink } =
+    opts;
   const lang = `&lang=${recipientLocale === "en" ? "en" : "fr"}`;
 
-  if (userStatus === "active") {
+  if (userStatus === "active" && !forceTokenLink) {
     return `${base}/client/dashboard/billing?action=addPaymentMethod${lang}`;
   }
 

@@ -4,7 +4,6 @@ import Profile from "@/models/Profile";
 import ClientReceipt from "@/models/ClientReceipt";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import {
-  sendInteracTransferInstructionsEmail,
   sendFiscalReceiptEmail,
   sendSessionInvoiceEmail,
 } from "@/lib/notifications";
@@ -271,71 +270,67 @@ export async function runSessionClosureSideEffects(
   const dateLabel = buildDateLabel(appointment.date, appointment.time);
   const invoiceNumber = appointment.invoiceNumber as string;
   const base = appUrlBase();
+  // Always a no-login link: many clients pay without ever owning an account,
+  // and even account-holders shouldn't have to log in to settle one invoice.
   const payUrl = await resolveBillingUrl({
     userStatus: client.status,
     appointment,
     base,
     recipientLocale: clientLocale,
+    forceTokenLink: true,
   });
 
-  if (appointment.payment?.method === "transfer") {
-    const depositEmail = await getInteracDepositEmail();
-    const professionalName = `${professional.firstName ?? ""} ${
-      professional.lastName ?? ""
-    }`.trim();
-    await sendInteracTransferInstructionsEmail({
-      clientName: recipient.name,
-      clientEmail: recipient.email,
-      clientLegalName: `${client.firstName} ${client.lastName}`,
-      depositEmail,
-      amountCad: price,
-      interacReferenceCode: appointment.payment.interacReferenceCode || "",
-      professionalName,
-      appointmentDateLabel: dateLabel,
-      locale: clientLocale,
-    }).catch((err) =>
-      console.error("sendInteracTransferInstructionsEmail:", err),
-    );
+  const depositEmail = await getInteracDepositEmail();
+  const professionalName = `${professional.firstName ?? ""} ${
+    professional.lastName ?? ""
+  }`.trim();
+  const clientLegalName = `${client.firstName} ${client.lastName}`.trim();
 
-    // Internal, CLIENT-HIDDEN tracking row so the admin "transferts en attente"
-    // list (/api/admin/client-receipts/pending) shows this Interac payment to
-    // confirm. This is NOT an official receipt — no PDF/email goes to the
-    // client here; the receipt is issued only once the admin confirms payment.
-    await ClientReceipt.findOneAndUpdate(
-      { appointmentId: appointment._id },
-      {
-        $setOnInsert: {
-          clientId: client._id,
-          appointmentId: appointment._id,
-          issuedAt: new Date(),
-          amountCad: price,
-          invoiceNumber,
-          status: "pending_transfer",
-        },
+  // ONE unified payment request offering BOTH options — a credit-card button
+  // (no-login Stripe link) and Interac instructions (deposit email + the unique
+  // invoice number as the mandatory transfer note). No receipt is attached:
+  // the official receipt follows only once Stripe / the admin confirms payment.
+  await sendSessionInvoiceEmail({
+    clientEmail: recipient.email,
+    clientName: recipient.name,
+    amountCad: price,
+    invoiceNumber,
+    appointmentDateLabel: dateLabel,
+    payUrl,
+    depositEmail,
+    clientLegalName,
+    professionalName,
+    locale: clientLocale,
+  }).catch((err) => console.error("sendSessionInvoiceEmail:", err));
+
+  // Internal, CLIENT-HIDDEN tracking row so the admin reconciliation list shows
+  // every unpaid session that may receive an Interac transfer. This is NOT an
+  // official receipt — the receipt is issued only once payment is confirmed.
+  await ClientReceipt.findOneAndUpdate(
+    { appointmentId: appointment._id },
+    {
+      $setOnInsert: {
+        clientId: client._id,
+        appointmentId: appointment._id,
+        issuedAt: new Date(),
+        amountCad: price,
+        invoiceNumber,
+        status: "pending_transfer",
       },
-      { upsert: true },
-    ).catch((e: unknown) => {
-      const code = (e as { code?: number })?.code;
-      if (code !== 11000) console.error("ClientReceipt pending_transfer:", e);
-    });
-  } else {
-    await sendSessionInvoiceEmail({
-      clientEmail: recipient.email,
-      clientName: recipient.name,
-      amountCad: price,
-      invoiceNumber,
-      appointmentDateLabel: dateLabel,
-      payUrl,
-      locale: clientLocale,
-    }).catch((err) => console.error("sendSessionInvoiceEmail:", err));
-  }
+    },
+    { upsert: true },
+  ).catch((e: unknown) => {
+    const code = (e as { code?: number })?.code;
+    if (code !== 11000) console.error("ClientReceipt pending_transfer:", e);
+  });
 
-  // Companion SMS (best-effort). Sent to the account phone when present.
+  // Companion SMS (best-effort): same two options, short Interac block at the end.
   if (client.phone) {
     await sendSessionInvoiceSms(client.phone, {
       invoiceNumber,
       amountCad: price,
       payUrl,
+      depositEmail,
       lang: clientLocale,
     }).catch((err) => console.error("sendSessionInvoiceSms:", err));
   }

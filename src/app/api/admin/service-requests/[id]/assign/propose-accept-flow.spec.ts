@@ -199,7 +199,7 @@ beforeEach(() => {
 });
 
 describe("guest booking: admin propose → professional accept", () => {
-  it("admin assign proposes (no lock-in, no match email)", async () => {
+  it("admin assign locks the pro in directly (real match + jumelage email)", async () => {
     h.getServerSession.mockResolvedValueOnce({ user: { id: ADMIN_ID, role: "admin" } });
 
     const res = (await assignPOST(
@@ -209,18 +209,17 @@ describe("guest booking: admin propose → professional accept", () => {
 
     const appt = h.store.appointment;
     expect(res.status).toBe(200);
-    expect(appt.routingStatus).toBe("proposed");
-    expect(Array.isArray(appt.proposedTo)).toBe(true);
-    expect((appt.proposedTo as unknown[]).map(String)).toEqual([PRO_ID]);
-    // KEY: no professional locked in, still pending
-    expect(appt.professionalId == null).toBe(true);
+    // KEY: a manual admin pick is FINAL — the pro is locked in immediately
+    // (no propose/accept wait), exactly like the pro having accepted.
+    expect(appt.routingStatus).toBe("accepted");
+    expect(String(appt.professionalId)).toBe(PRO_ID);
+    // proposal bookkeeping cleared; status stays pending until the 1st RDV date
+    expect(appt.proposedTo).toBeUndefined();
     expect(appt.status).toBe("pending");
-    // KEY: the match/payment email must NOT fire at propose time
-    expect(h.notif.sendJumelageSuccessEmail).not.toHaveBeenCalled();
-    // the proposed pro IS notified to review/accept
+    // KEY: a direct assignment IS a jumelage → the client gets the match email
+    expect(h.notif.sendJumelageSuccessEmail).toHaveBeenCalledTimes(1);
+    // the assigned pro is notified
     expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
-    // first assignment is NOT a re-match → client gets no "match updated" email
-    expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
   });
 
   it("proposed professional accepts → MATCH only (pending, jumelage, no payment email)", async () => {
@@ -318,7 +317,7 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
   });
 
-  it("admin reassigns a stuck matched request to a different pro", async () => {
+  it("admin reassigns a stuck matched request directly to a different pro", async () => {
     // Arrange: matched to PRO, never scheduled, both reminder flags in play.
     Object.assign(h.store.appointment, {
       status: "pending",
@@ -345,20 +344,17 @@ describe("guest booking: admin propose → professional accept", () => {
     const appt = h.store.appointment;
     expect(res.status).toBe(200);
     expect(res.body.reassigned).toBe(true);
-    // KEY: handed to the new pro as a fresh proposal, old pro dropped
-    expect(appt.professionalId).toBeUndefined();
-    expect(appt.routingStatus).toBe("proposed");
-    expect((appt.proposedTo as unknown[]).map(String)).toEqual([NEW_PRO_ID]);
-    // reminder/escalation windows reset; matched timestamp cleared
+    // KEY: handed DIRECTLY to the new pro (locked in), old pro dropped
+    expect(String(appt.professionalId)).toBe(NEW_PRO_ID);
+    expect(appt.routingStatus).toBe("accepted");
+    expect(appt.proposedTo).toBeUndefined();
+    // reminder/escalation windows reset for the new pro's first-RDV window
     expect(appt.firstRdvReminderSent).toBe(false);
     expect(appt.firstRdvAdminEscalatedSent).toBe(false);
-    expect(appt.matchedAt).toBeUndefined();
-    // previous pro excluded from re-matching; new pro notified
+    // previous pro excluded from re-matching; new pro notified + client emailed
     expect((appt.refusedBy as unknown[]).map(String)).toContain(PRO_ID);
     expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
-    // §3.1: reassignment is SILENT to the client — no email until the new pro
-    // accepts (the jumelage confirmation). Only the new pro is notified.
-    expect(h.notif.sendMatchUpdatedEmail).not.toHaveBeenCalled();
+    expect(h.notif.sendJumelageSuccessEmail).toHaveBeenCalledTimes(1);
   });
 
   it("a professional CANNOT accept an awaiting_admin dossier (admin-only state)", async () => {

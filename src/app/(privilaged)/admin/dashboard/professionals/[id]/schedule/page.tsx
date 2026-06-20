@@ -15,6 +15,7 @@ import {
   Phone,
   User,
   Video,
+  Wallet,
 } from "lucide-react";
 import { appointmentsAPI } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import {
   ManualInvoiceModal,
   type ManualInvoiceContext,
 } from "@/components/billing/ManualInvoiceModal";
+import { RecordPayoutModal } from "@/components/billing/RecordPayoutModal";
 import type { AppointmentResponse } from "@/types/api";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -86,6 +88,10 @@ export default function AdminProfessionalSchedulePage({
   // existing appointment via the calendar action menu.
   const [manualInvoiceCtx, setManualInvoiceCtx] =
     useState<ManualInvoiceContext | null>(null);
+
+  // Record an external payment made to this pro (Interac/bank, outside the
+  // platform) — surfaces in the pro's "Historique des paiements".
+  const [payoutOpen, setPayoutOpen] = useState(false);
 
   const professionals: BookableProfessional[] = useMemo(
     () => [{ id, name: professionalName || id }],
@@ -335,16 +341,34 @@ export default function AdminProfessionalSchedulePage({
             {t("subtitle", { name: professionalName || "…" })}
           </p>
         </div>
-        <Button
-          className="gap-2"
-          onClick={() => {
-            setBookDefaults({});
-            setBookOpen(true);
-          }}
-        >
-          <CalendarPlus className="h-4 w-4" />
-          {t("bookAppointment")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setManualInvoiceCtx({})}
+          >
+            <FileText className="h-4 w-4" />
+            {t("createInvoice")}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setPayoutOpen(true)}
+          >
+            <Wallet className="h-4 w-4" />
+            {t("recordPayout")}
+          </Button>
+          <Button
+            className="gap-2"
+            onClick={() => {
+              setBookDefaults({});
+              setBookOpen(true);
+            }}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            {t("bookAppointment")}
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl bg-card p-6 border border-border/40">
@@ -570,6 +594,14 @@ export default function AdminProfessionalSchedulePage({
           setManualInvoiceCtx(null);
           fetchAppointments();
         }}
+      />
+
+      <RecordPayoutModal
+        open={payoutOpen}
+        onOpenChange={setPayoutOpen}
+        professionalId={id}
+        professionalName={professionalName}
+        onRecorded={() => setPayoutOpen(false)}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { migrateLegacyAvailabilitySlots } from "@/config/clinical-availability-g
 import {
   sendProfessionalNotification,
   sendAdminAppointmentMovedToGeneralAlert,
+  sendAdminJumelageProblemAlert,
 } from "@/lib/notifications";
 
 /**
@@ -1115,6 +1116,27 @@ export async function routeAppointmentToProfessionals(
     return { success: true, matches: topMatches, routingStatus: "proposed" };
   } catch (error) {
     console.error("Route appointment error:", error);
+    // §3.2: a jumelage tentative that ERRORS (vs. simply finding no eligible pro,
+    // which already routes to general + alerts) must ALSO alert the admin so the
+    // problem is tracked — otherwise the request sits "pending" with no proposal
+    // and no signal. Best-effort; never mask the original failure.
+    try {
+      const appt = await Appointment.findById(appointmentId)
+        .populate("clientId", "firstName lastName email")
+        .lean();
+      const c = appt?.clientId as
+        | { firstName?: string; lastName?: string; email?: string }
+        | null;
+      await sendAdminJumelageProblemAlert({
+        clientName:
+          `${c?.firstName ?? ""} ${c?.lastName ?? ""}`.trim() || "Client",
+        clientEmail: c?.email?.trim() || "—",
+        appointmentId,
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    } catch (alertErr) {
+      console.error("[routing] jumelage-problem alert failed:", alertErr);
+    }
     return { success: false, matches: [], routingStatus: "pending" };
   }
 }

@@ -96,6 +96,8 @@ export interface AppointmentResponse {
   nextAppointmentAt?: string;
   sessionCompletedAt?: string;
   fiscalReceiptIssuedAt?: string;
+  /** Fiscal invoice number (JC-YYYY-NNNNNN), assigned at session closure. */
+  invoiceNumber?: string;
   createdAt: string;
   updatedAt: string;
 }

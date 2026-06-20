@@ -42,13 +42,16 @@ export async function GET() {
             .lean<{ firstName?: string; lastName?: string; email?: string }>(),
           Appointment.findById(r.appointmentId)
             .select(
-              "date time payment.interacReferenceCode professionalId",
+              "date time payment.interacReferenceCode payment.interacPayerName professionalId",
             )
             .populate("professionalId", "firstName lastName")
             .lean<{
               date?: Date;
               time?: string;
-              payment?: { interacReferenceCode?: string | null };
+              payment?: {
+                interacReferenceCode?: string | null;
+                interacPayerName?: string | null;
+              };
               professionalId?: { firstName?: string; lastName?: string };
             }>(),
         ]);
@@ -70,6 +73,10 @@ export async function GET() {
           appointmentDate: apt?.date ? new Date(apt.date).toISOString() : null,
           appointmentTime: apt?.time ?? null,
           interacReference: apt?.payment?.interacReferenceCode ?? null,
+          // The unique invoice number the client is told to put in the transfer
+          // note — the primary reconciliation key.
+          invoiceNumber: r.invoiceNumber ?? null,
+          payerName: apt?.payment?.interacPayerName ?? null,
           amountCad: r.amountCad,
           issuedAt: r.issuedAt
             ? new Date(r.issuedAt).toISOString()

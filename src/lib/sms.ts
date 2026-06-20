@@ -76,6 +76,10 @@ export async function sendSessionInvoiceSms(
     invoiceNumber: string;
     amountCad: number;
     payUrl: string;
+    /** Interac deposit address — appended so the SMS offers both options. */
+    depositEmail?: string;
+    /** When set, prefix the SMS as a dunning reminder (1 = H+12, 2 = H+36). */
+    reminderNumber?: 1 | 2;
     lang?: "fr" | "en";
   },
 ): Promise<void> {
@@ -84,10 +88,22 @@ export async function sendSessionInvoiceSms(
     lang === "en"
       ? `CAD $${data.amountCad.toFixed(2)}`
       : `${data.amountCad.toFixed(2)} $`;
+  // Card link first, then the short Interac block (deposit email + the invoice
+  // number to put in the transfer note). No account is needed for either.
+  const interac = data.depositEmail
+    ? lang === "en"
+      ? ` Or Interac to ${data.depositEmail} (mandatory note: ${data.invoiceNumber}).`
+      : ` Ou Interac à ${data.depositEmail} (note obligatoire : ${data.invoiceNumber}).`
+    : "";
+  const lead = data.reminderNumber
+    ? lang === "en"
+      ? "Reminder — "
+      : "Rappel — "
+    : "";
   const body =
     lang === "en"
-      ? `Je chemine: invoice ${data.invoiceNumber} — ${amount} due for your session. Pay: ${data.payUrl}`
-      : `Je chemine : facture ${data.invoiceNumber} — ${amount} à régler pour votre séance. Payer : ${data.payUrl}`;
+      ? `${lead}Je chemine: invoice ${data.invoiceNumber} — ${amount} for your session. Pay by card: ${data.payUrl}${interac}`
+      : `${lead}Je chemine : facture ${data.invoiceNumber} — ${amount} pour votre séance. Payer par carte : ${data.payUrl}${interac}`;
   return sendSms(toPhone, body);
 }
 

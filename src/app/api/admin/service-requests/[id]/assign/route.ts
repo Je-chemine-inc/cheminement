@@ -7,8 +7,13 @@ import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import { sendProfessionalNotification } from "@/lib/notifications";
+import {
+  sendProfessionalNotification,
+  sendJumelageSuccessEmail,
+} from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
+import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 
 /**
  * Manually route a pending service-request to a specific professional.
@@ -36,7 +41,13 @@ export async function POST(
       userId: session.user.id,
       isActive: true,
     });
-    if (!admin?.permissions?.manageUsers) {
+    // The matching queue is patient/request management — accept either
+    // permission (mirrors the GET /service-requests guard) so an admin who can
+    // SEE the queue can also assign from it (was manageUsers-only → silent 403).
+    if (
+      !admin?.permissions?.manageUsers &&
+      !admin?.permissions?.managePatients
+    ) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
         { status: 403 },
@@ -141,24 +152,24 @@ export async function POST(
         { status: 404 },
       );
     }
-    // A request can be (re)assigned while still "pending" (no real date). If a
-    // pro already accepted it (matched) but never scheduled, the admin may
-    // reassign to a different pro. Once scheduled, reassignment goes through
+    // A request can be (re)assigned while still "pending" (no real date). Once a
+    // first date is set (status "scheduled") reassignment goes through
     // cancel/rebook instead — refuse here.
     const isReassignment = Boolean(appointment.professionalId);
-    if (isReassignment) {
-      if (appointment.status !== "pending") {
-        return NextResponse.json(
-          { error: "A scheduled appointment cannot be reassigned here" },
-          { status: 409 },
-        );
-      }
-      if (appointment.professionalId?.toString() === professionalId) {
-        return NextResponse.json(
-          { error: "Request is already assigned to this professional" },
-          { status: 409 },
-        );
-      }
+    if (appointment.status !== "pending") {
+      return NextResponse.json(
+        { error: "A scheduled appointment cannot be reassigned here" },
+        { status: 409 },
+      );
+    }
+    if (
+      isReassignment &&
+      appointment.professionalId?.toString() === professionalId
+    ) {
+      return NextResponse.json(
+        { error: "Request is already assigned to this professional" },
+        { status: 409 },
+      );
     }
 
     const pricing = await calculateAppointmentPricing(
@@ -166,73 +177,127 @@ export async function POST(
       appointment.therapyType,
     );
 
-    // Propose to the chosen professional (no lock-in). Overwrite proposedTo so
-    // this is a targeted proposal even if the request had been auto-routed to
-    // several pros earlier. The match/payment email is intentionally NOT sent
-    // here — it fires only once this pro accepts (status → "scheduled").
+    // DIRECT ASSIGNMENT (admin override). The admin's pick is final: lock the
+    // pro in immediately — exactly like the pro accepting — instead of merely
+    // proposing and waiting. Set professionalId + routingStatus "accepted",
+    // stamp matchedAt, refresh pricing to the chosen pro's rate, and clear the
+    // proposal bookkeeping. The pro then just confirms the first appointment
+    // date (schedule-first). (Auto-matching still PROPOSES so its 24h refusal
+    // cascade works; a manual admin pick is a deliberate, immediate match.)
+    const previousProId = appointment.professionalId;
+    const set: Record<string, unknown> = {
+      professionalId: new mongoose.Types.ObjectId(professionalId),
+      routingStatus: "accepted",
+      matchedAt: new Date(),
+      // Restart the urgent take-charge clock (reset its soft-SLA alert dedup).
+      takeChargeSlaAlertSent: false,
+      "payment.price": pricing.sessionPrice,
+      "payment.platformFee": pricing.platformFee,
+      "payment.professionalPayout": pricing.professionalPayout,
+    };
     const update: Record<string, unknown> = {
-      $set: {
-        routingStatus: "proposed",
-        proposedTo: [new mongoose.Types.ObjectId(professionalId)],
-        // Stamp the proposal time so the 48h no-response timeout can fire.
-        proposedAt: new Date(),
-        "payment.price": pricing.sessionPrice,
-        "payment.platformFee": pricing.platformFee,
-        "payment.professionalPayout": pricing.professionalPayout,
-      },
+      $set: set,
+      $unset: { proposedTo: "", proposedAt: "" },
     };
     if (isReassignment) {
-      const previousProId = appointment.professionalId;
-      // Hand off to a different pro: drop the current one, reset the matched
-      // timestamp + reminder/escalation flags (fresh window for the new pro),
-      // and exclude the previous pro from re-matching this request.
-      const set = update.$set as Record<string, unknown>;
+      // Hand off to a different pro: reset the first-RDV reminder/escalation
+      // flags (fresh window) and exclude the previous pro from re-matching.
       set.firstRdvReminderSent = false;
       set.firstRdvAdminEscalatedSent = false;
-      update.$unset = { professionalId: "", matchedAt: "" };
       if (previousProId) update.$addToSet = { refusedBy: previousProId };
     }
-    await Appointment.findByIdAndUpdate(id, update);
 
-    const client = appointment.clientId as unknown as {
+    // Atomic claim: assign only while STILL pending, so a manual assignment can
+    // never clobber a match a pro accepted (or the matcher committed) in the
+    // same instant.
+    const updated = await Appointment.findOneAndUpdate(
+      { _id: id, status: "pending" },
+      update,
+      { new: true },
+    ).populate("clientId", "firstName lastName email language role status");
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Request can no longer be assigned" },
+        { status: 409 },
+      );
+    }
+
+    const client = updated.clientId as unknown as {
+      _id?: { toString: () => string };
       firstName?: string;
       lastName?: string;
       email?: string;
       language?: string;
+      role?: string;
+      status?: string;
     } | null;
 
-    // §3.1: do NOT email the client on reassignment. Moving them to another pro
-    // (proposed, not yet accepted) stays SILENT — the client's only matching
-    // email is the jumelage confirmation once the NEW pro actually accepts.
-    // Admins still track the move in their dashboard.
+    const professionalName = `${professional.firstName ?? ""} ${
+      professional.lastName ?? ""
+    }`.trim();
 
-    // Notify the chosen professional that a request was routed to them so they
-    // can review and accept it. The request has no date/time yet (booking
-    // happens after acceptance), so the email carries assignment context only.
-    if (professional.email) {
-      const clientNameForPro =
-        `${client?.firstName ?? ""} ${client?.lastName ?? ""}`.trim() ||
-        "Client";
-      after(() =>
-        sendProfessionalNotification({
-          clientName: clientNameForPro,
-          clientEmail: client?.email ?? "",
-          professionalName: `${professional.firstName ?? ""} ${
-            professional.lastName ?? ""
-          }`.trim(),
-          professionalEmail: professional.email,
-          duration: appointment.duration || 60,
-          type: appointment.type as "video" | "in-person" | "phone" | "both",
-        }).catch((err) =>
-          console.error("[admin manual jumelage] pro notify error:", err),
-        ),
-      );
+    // Provision a guest/prospect account in the main flow (awaited) so the
+    // "Compléter mon compte" CTA in the jumelage email has a claim target —
+    // mirrors the pro→accept flow.
+    if (
+      client?._id &&
+      (client.role === "guest" || client.role === "prospect")
+    ) {
+      await provisionGuestAsClient(client._id.toString(), {
+        issueType: updated.issueType,
+        activate: false,
+      }).catch((e) => console.error("[admin assign] provision guest:", e));
     }
 
+    const recipient = resolveAppointmentRecipient(
+      { bookingFor: updated.bookingFor, lovedOneInfo: updated.lovedOneInfo },
+      {
+        firstName: client?.firstName ?? "",
+        lastName: client?.lastName ?? "",
+        email: client?.email ?? "",
+        language: client?.language,
+      },
+    );
+    const base =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
+    const isActiveClient =
+      client?.role === "client" && client?.status === "active";
+    const completeAccountUrl = isActiveClient
+      ? `${base}/client/dashboard/profile`
+      : `${base}/signup/member?email=${encodeURIComponent(recipient.email)}`;
+
+    // A manual assignment IS a real jumelage: email the CLIENT the match and
+    // notify the assigned professional (after the response so SMTP never blocks).
+    after(() => {
+      if (recipient.email) {
+        sendJumelageSuccessEmail({
+          clientName: recipient.name,
+          clientEmail: recipient.email,
+          professionalName,
+          locale: recipient.language,
+          completeAccountUrl,
+        }).catch((e) => console.error("[admin assign] jumelage email:", e));
+      }
+      if (professional.email) {
+        sendProfessionalNotification({
+          clientName:
+            `${client?.firstName ?? ""} ${client?.lastName ?? ""}`.trim() ||
+            "Client",
+          clientEmail: client?.email ?? "",
+          professionalName,
+          professionalEmail: professional.email,
+          duration: updated.duration || 60,
+          type: updated.type as "video" | "in-person" | "phone" | "both",
+        }).catch((e) => console.error("[admin assign] pro notify:", e));
+      }
+    });
+
     return NextResponse.json({
-      id: appointment._id.toString(),
-      proposedTo: professionalId,
-      routingStatus: "proposed",
+      id: updated._id.toString(),
+      professionalId,
+      routingStatus: "accepted",
       reassigned: isReassignment,
     });
   } catch (error) {

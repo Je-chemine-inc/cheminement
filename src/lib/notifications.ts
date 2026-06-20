@@ -4145,6 +4145,73 @@ export async function sendAdminInteracTrustRequestAlert(data: {
   }
 }
 
+/**
+ * Admin alert when a post-session invoice hits H+48 unpaid (after the two
+ * automatic reminders) and flips to "Paiement en retard" — human follow-up
+ * required. French (admin-facing). Reuses the admin-alert recipients + the
+ * admin_interac_trust_request category for logging.
+ */
+export async function sendAdminPaymentOverdueAlert(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  amountCad: number;
+  invoiceNumber: string;
+  appointmentId: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const emails = await getAdminAlertRecipients();
+  if (emails.length === 0) {
+    console.warn(
+      "[admin_payment_overdue] No admin emails — set ADMIN_ALERT_EMAIL or admin users.",
+    );
+    return;
+  }
+
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const reviewUrl = `${base}/admin/dashboard/payment-trust`;
+
+  const branding = await getBranding();
+
+  const html = buildEmailHtml({
+    title: "Paiement en retard — suivi requis",
+    subtitle: `Facture n° ${data.invoiceNumber}`,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro:
+      "Une facture est restée impayée 48 heures après la séance, malgré deux relances automatiques (courriel + SMS). Elle est passée au statut « Paiement en retard » et nécessite un suivi humain.",
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Professionnel", value: data.professionalName || "—" },
+      { label: "Montant", value: `${data.amountCad.toFixed(2)} $ CAD` },
+      { label: "Facture", value: data.invoiceNumber },
+    ],
+    button: { text: "Ouvrir la réconciliation des paiements", url: reviewUrl },
+    outro:
+      "Vérifiez si un virement Interac est arrivé (même sous un autre nom), puis associez le paiement et marquez la facture payée depuis l'écran de réconciliation — ou relancez le client.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Paiement en retard — action admin requise",
+    `Facture : ${data.invoiceNumber}`,
+    `Client : ${data.clientName} (${data.clientEmail})`,
+    `Professionnel : ${data.professionalName || "—"}`,
+    `Montant : ${data.amountCad.toFixed(2)} $ CAD`,
+    `Suivi : ${reviewUrl}`,
+  ]);
+
+  const subject = `Paiement en retard — facture ${data.invoiceNumber} (suivi requis)`;
+
+  for (const to of emails) {
+    await sendEmail({ to, subject, html, text }, "admin_interac_trust_request");
+  }
+}
+
 export async function sendInteracTransferInstructionsEmail(data: {
   clientName: string;
   clientEmail: string;
@@ -4550,31 +4617,100 @@ export async function sendSessionInvoiceEmail(data: {
   invoiceNumber: string;
   appointmentDateLabel: string;
   payUrl: string;
+  /** Interac deposit address (admin-configurable). */
+  depositEmail: string;
+  /** Client's legal name — for the Interac name-match guidance. */
+  clientLegalName: string;
+  /** Professional who delivered the session — for context + admin reconciliation. */
+  professionalName: string;
+  /** When set, frame the email as an automatic dunning reminder (1 = H+12, 2 = H+36). */
+  reminderNumber?: 1 | 2;
   locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const reminder = Boolean(data.reminderNumber);
   const amount =
     lang === "fr"
       ? `${data.amountCad.toFixed(2)} $ CAD`
       : `CAD $${data.amountCad.toFixed(2)}`;
 
+  // Short, copy-pasteable Interac block (the "code" = the unique invoice number,
+  // which the client must put in the transfer note so we can match the payment).
+  const shortFormat = (
+    lang === "fr"
+      ? [
+          "Virement Interac ⚡",
+          `📧 Courriel : ${data.depositEmail}`,
+          `💰 Montant : ${amount}`,
+          `📝 Note obligatoire : ${data.invoiceNumber}`,
+        ]
+      : [
+          "Interac e-Transfer ⚡",
+          `📧 Email: ${data.depositEmail}`,
+          `💰 Amount: ${amount}`,
+          `📝 Mandatory note: ${data.invoiceNumber}`,
+        ]
+  ).join("<br/>");
+
   const html = buildEmailHtml({
-    title: lang === "fr" ? "Paiement de votre séance" : "Payment for your session",
+    title: reminder
+      ? lang === "fr"
+        ? "Rappel — paiement de votre séance"
+        : "Reminder — payment for your session"
+      : lang === "fr"
+        ? "Paiement de votre séance"
+        : "Payment for your session",
     subtitle:
       lang === "fr"
         ? `Facture n° ${data.invoiceNumber}`
         : `Invoice no. ${data.invoiceNumber}`,
-    theme: "info",
+    theme: reminder ? "warning" : "info",
     greeting:
       lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
     intro:
       lang === "fr"
-        ? `Votre séance du ${data.appointmentDateLabel} est terminée. Montant à régler : ${amount} (facture n° ${data.invoiceNumber}). Réglez en quelques secondes par carte de crédit avec le bouton ci-dessous. Votre reçu officiel vous sera transmis dès la confirmation du paiement.`
-        : `Your session on ${data.appointmentDateLabel} is complete. Amount due: ${amount} (invoice no. ${data.invoiceNumber}). Pay in seconds by credit card using the button below. Your official receipt will be sent as soon as the payment is confirmed.`,
+        ? `${reminder ? "Rappel : votre facture est toujours impayée. " : ""}Votre séance du ${data.appointmentDateLabel} avec ${data.professionalName} est terminée. Montant à régler : ${amount} (facture n° ${data.invoiceNumber}). Choisissez votre mode de paiement : par carte de crédit (bouton ci-dessous) ou par virement Interac (instructions plus bas). Aucun compte n'est nécessaire. Votre reçu officiel vous sera transmis dès la confirmation du paiement.`
+        : `${reminder ? "Reminder: your invoice is still unpaid. " : ""}Your session on ${data.appointmentDateLabel} with ${data.professionalName} is complete. Amount due: ${amount} (invoice no. ${data.invoiceNumber}). Choose how to pay: by credit card (button below) or by Interac e-Transfer (instructions below). No account required. Your official receipt will be sent as soon as the payment is confirmed.`,
     button: {
-      text: lang === "fr" ? "Payer maintenant" : "Pay now",
+      text: lang === "fr" ? "Payer par carte de crédit" : "Pay by credit card",
       url: data.payUrl,
+    },
+    // Card CTA above the Interac instructions so the quickest option is first.
+    buttonAboveInfo: true,
+    details:
+      lang === "fr"
+        ? [
+            { label: "Virement Interac — 1. Envoyez à", value: data.depositEmail },
+            { label: "2. Montant", value: amount },
+            {
+              label: "3. Note obligatoire du virement",
+              value: data.invoiceNumber,
+            },
+            {
+              label: "4. Nom du compte bancaire",
+              value: `Idéalement identique à « ${data.clientLegalName} ». Si le virement provient d'un autre nom (ex. conjoint), inscrivez bien le numéro de facture ${data.invoiceNumber} dans la note pour que nous puissions associer votre paiement.`,
+            },
+          ]
+        : [
+            { label: "Interac e-Transfer — 1. Send to", value: data.depositEmail },
+            { label: "2. Amount", value: amount },
+            {
+              label: "3. Mandatory transfer note",
+              value: data.invoiceNumber,
+            },
+            {
+              label: "4. Bank account name",
+              value: `Ideally identical to "${data.clientLegalName}". If the transfer comes from another name (e.g. a spouse), be sure to add invoice number ${data.invoiceNumber} in the note so we can match your payment.`,
+            },
+          ],
+    infoBox: {
+      title:
+        lang === "fr"
+          ? "Format court (idéal mobile)"
+          : "Short format (mobile-friendly)",
+      content: shortFormat,
+      theme: "info",
     },
     outro:
       lang === "fr"
@@ -4585,22 +4721,45 @@ export async function sendSessionInvoiceEmail(data: {
   });
 
   const text = buildEmailText(
-    [
-      lang === "fr"
-        ? `Facture n° ${data.invoiceNumber}`
-        : `Invoice no. ${data.invoiceNumber}`,
-      lang === "fr" ? `Bonjour ${data.clientName},` : `Hello ${data.clientName},`,
-      lang === "fr"
-        ? `Montant à régler : ${amount} pour votre séance du ${data.appointmentDateLabel}.`
-        : `Amount due: ${amount} for your session on ${data.appointmentDateLabel}.`,
-      lang === "fr" ? "Payer maintenant :" : "Pay now:",
-      data.payUrl,
-    ],
+    lang === "fr"
+      ? [
+          `Facture n° ${data.invoiceNumber}`,
+          `Bonjour ${data.clientName},`,
+          `Votre séance du ${data.appointmentDateLabel} avec ${data.professionalName} est terminée. Montant à régler : ${amount}.`,
+          "Payer par carte de crédit (aucun compte requis) :",
+          data.payUrl,
+          "",
+          "Ou par virement Interac :",
+          `• Envoyez à : ${data.depositEmail}`,
+          `• Montant : ${amount}`,
+          `• Note obligatoire du virement : ${data.invoiceNumber}`,
+          `• Nom du compte : idéalement « ${data.clientLegalName} » (sinon, indiquez bien le numéro de facture dans la note).`,
+          "",
+          "Votre reçu officiel suivra dès la confirmation du paiement.",
+        ]
+      : [
+          `Invoice no. ${data.invoiceNumber}`,
+          `Hello ${data.clientName},`,
+          `Your session on ${data.appointmentDateLabel} with ${data.professionalName} is complete. Amount due: ${amount}.`,
+          "Pay by credit card (no account required):",
+          data.payUrl,
+          "",
+          "Or by Interac e-Transfer:",
+          `• Send to: ${data.depositEmail}`,
+          `• Amount: ${amount}`,
+          `• Mandatory transfer note: ${data.invoiceNumber}`,
+          `• Account name: ideally "${data.clientLegalName}" (otherwise add the invoice number in the note).`,
+          "",
+          "Your official receipt will follow once the payment is confirmed.",
+        ],
     lang,
   );
 
-  const subject =
-    lang === "fr"
+  const subject = reminder
+    ? lang === "fr"
+      ? `Rappel : facture ${data.invoiceNumber} impayée`
+      : `Reminder: invoice ${data.invoiceNumber} unpaid`
+    : lang === "fr"
       ? `Facture ${data.invoiceNumber} — paiement de votre séance`
       : `Invoice ${data.invoiceNumber} — payment for your session`;
 
@@ -5902,6 +6061,65 @@ export async function sendAdminAppointmentMovedToGeneralAlert(data: {
     ).catch((e) =>
       console.error("sendAdminAppointmentMovedToGeneralAlert:", e),
     );
+  }
+}
+
+/**
+ * §3.2: a jumelage attempt that ERRORS out (a technical failure in the matcher,
+ * as opposed to simply finding no eligible professional) must alert the admin so
+ * they can verify the dossier — otherwise the request sits "pending" with no
+ * proposal and no signal. French (admin-facing). Reuses the admin-alert
+ * recipients + the service_request_onboarding category for logging.
+ */
+export async function sendAdminJumelageProblemAlert(data: {
+  clientName: string;
+  clientEmail: string;
+  appointmentId: string;
+  reason: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) return;
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/service-requests`;
+
+  const html = buildEmailHtml({
+    title: "Problème de jumelage — vérification requise",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `Une tentative de jumelage automatique pour la demande de ${data.clientName} a échoué en raison d'un problème technique. La demande reste « en attente » dans « Demandes de service » et n'a été proposée à aucun professionnel — un suivi humain est requis.`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Courriel", value: data.clientEmail },
+      { label: "Problème", value: data.reason },
+      { label: "ID Rendez-vous", value: data.appointmentId },
+    ],
+    button: { text: "Ouvrir la demande", url: adminUrl },
+    outro:
+      "Vérifiez la demande (données manquantes ou incohérentes), puis relancez le « Jumelage automatique » ou assignez un professionnel manuellement.",
+    branding,
+  });
+
+  const text = buildEmailText([
+    "Problème de jumelage — vérification requise",
+    `Client : ${data.clientName} — ${data.clientEmail}`,
+    `Problème : ${data.reason}`,
+    `ID : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+
+  const subject = `Problème de jumelage — ${data.clientName} (vérification requise)`;
+
+  for (const to of adminEmails) {
+    await sendEmail(
+      { to, subject, html, text },
+      "service_request_onboarding",
+    ).catch((e) => console.error("sendAdminJumelageProblemAlert:", e));
   }
 }
 

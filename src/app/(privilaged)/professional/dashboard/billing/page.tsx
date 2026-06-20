@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import {
-  Download,
   Wallet,
   CheckCircle2,
   Clock,
@@ -132,34 +131,171 @@ export default function ProfessionalBillingPage() {
     });
   };
 
-  const handleDownloadReceipt = async (appointmentId: string) => {
-    try {
-      const response = await fetch(
-        `/api/payments/receipt?appointmentId=${appointmentId}`,
-      );
+  // Admin-recorded external payments (Interac/bank transfer) made to this pro.
+  // They live in the ledger as "debit" entries; surface them in the payment
+  // history so the pro can track what the platform has actually paid out.
+  const payoutEntries = (ledgerData?.entries ?? []).filter(
+    (e) => e.entryKind === "debit",
+  );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to download receipt");
-      }
+  type HistoryRow =
+    | { kind: "session"; key: string; sort: number; apt: AppointmentResponse }
+    | {
+        kind: "payout";
+        key: string;
+        sort: number;
+        entry: ProfessionalLedgerEntryResponse;
+      };
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${appointmentId.slice(-8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error("Error downloading receipt:", err);
-      alert(err instanceof Error ? err.message : "Failed to download receipt");
-    }
-  };
+  // Unified, date-descending "Historique des paiements": paid sessions (income)
+  // interleaved with payouts received (money the admin paid the pro).
+  const historyRows: HistoryRow[] = [
+    ...paidPayments.map((apt) => ({
+      kind: "session" as const,
+      key: apt._id,
+      sort: new Date(apt.payment.paidAt || apt.date).getTime(),
+      apt,
+    })),
+    ...payoutEntries.map((entry) => ({
+      kind: "payout" as const,
+      key: entry._id,
+      sort: new Date(entry.createdAt).getTime(),
+      entry,
+    })),
+  ].sort((a, b) => b.sort - a.sort);
 
-  const displayPayments =
-    activeTab === "receivables" ? receivablePayments : paidPayments;
+  const renderSessionCard = (apt: AppointmentResponse) => (
+    <div
+      key={apt._id}
+      className="rounded-3xl border border-border/20 bg-card/80 p-6 shadow-lg transition hover:shadow-xl"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-serif text-xl font-light text-foreground">
+                {t("session")} - {apt.clientId.firstName} {apt.clientId.lastName}
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatDate(apt.date)}
+              </p>
+            </div>
+            <span
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider ${getStatusColor(
+                apt.payment.status,
+              )}`}
+            >
+              {getStatusIcon(apt.payment.status)}
+              {isPaid(apt.payment.status)
+                ? t("paymentStatusPaid")
+                : t("paymentStatusPending")}
+            </span>
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid gap-4 rounded-2xl bg-muted/30 p-4 md:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {t("invoiceNumber")}
+              </p>
+              <p className="font-medium text-foreground">
+                {apt.invoiceNumber || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{t("earnings")}</p>
+              <p className="font-medium text-primary">
+                {apt.payment.professionalPayout.toFixed(2)} $
+              </p>
+            </div>
+            {apt.payment.paidAt && (
+              <div>
+                <p className="text-xs text-muted-foreground">{t("paidDate")}</p>
+                <p className="font-medium text-foreground">
+                  {formatDate(apt.payment.paidAt)}
+                </p>
+              </div>
+            )}
+            {apt.status === "cancelled" && apt.cancelReason && (
+              <div className="md:col-span-3">
+                <p className="text-xs text-muted-foreground">
+                  {t("cancelReason")}
+                </p>
+                <p className="font-medium text-foreground">
+                  {apt.cancelReason}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // A payout the admin recorded (e.g. an Interac transfer paid outside the
+  // platform). Shown as money received so the pro can reconcile it.
+  const renderPayoutCard = (entry: ProfessionalLedgerEntryResponse) => (
+    <div
+      key={entry._id}
+      className="rounded-3xl border border-primary/20 bg-primary/5 p-6 shadow-lg transition hover:shadow-xl"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-primary/10 p-2">
+                <Wallet className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-serif text-xl font-light text-foreground">
+                  {t("payoutReceived")}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatDate(entry.createdAt)}
+                </p>
+              </div>
+            </div>
+            <span className="flex items-center gap-2 rounded-full bg-green-500/15 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">
+              <CheckCircle2 className="h-4 w-4" />
+              {t("paymentStatusPaid")}
+            </span>
+          </div>
+
+          <div className="grid gap-4 rounded-2xl bg-muted/30 p-4 md:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {t("payoutAmount")}
+              </p>
+              <p className="font-medium text-primary">
+                {(entry.payoutAmountCad ?? 0).toFixed(2)} $
+              </p>
+            </div>
+            {entry.payoutReference && (
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  {t("payoutReference")}
+                </p>
+                <p className="font-medium text-foreground">
+                  {entry.payoutReference}
+                </p>
+              </div>
+            )}
+            {entry.payoutNotes && (
+              <div className="md:col-span-3">
+                <p className="text-xs text-muted-foreground">
+                  {t("payoutNotes")}
+                </p>
+                <p className="font-medium text-foreground">
+                  {entry.payoutNotes}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -404,107 +540,38 @@ export default function ProfessionalBillingPage() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {t("paymentHistory")} ({paidPayments.length})
+          {t("paymentHistory")} ({historyRows.length})
         </button>
       </div>
 
       {/* Payments List */}
-      {displayPayments.length === 0 ? (
+      {activeTab === "receivables" ? (
+        receivablePayments.length === 0 ? (
+          <div className="rounded-3xl border border-border/20 bg-card/80 p-12 text-center shadow-lg">
+            <DollarSign className="mx-auto h-16 w-16 text-muted-foreground/50" />
+            <h3 className="mt-4 font-serif text-xl text-foreground">
+              {t("noReceivables")}
+            </h3>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {receivablePayments.map((apt) => renderSessionCard(apt))}
+          </div>
+        )
+      ) : historyRows.length === 0 ? (
         <div className="rounded-3xl border border-border/20 bg-card/80 p-12 text-center shadow-lg">
           <DollarSign className="mx-auto h-16 w-16 text-muted-foreground/50" />
           <h3 className="mt-4 font-serif text-xl text-foreground">
-            {activeTab === "receivables"
-              ? t("noReceivables")
-              : t("noPaymentHistory")}
+            {t("noPaymentHistory")}
           </h3>
         </div>
       ) : (
         <div className="space-y-4">
-          {displayPayments.map((apt) => (
-            <div
-              key={apt._id}
-              className="rounded-3xl border border-border/20 bg-card/80 p-6 shadow-lg transition hover:shadow-xl"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-serif text-xl font-light text-foreground">
-                        {t("session")} - {apt.clientId.firstName}{" "}
-                        {apt.clientId.lastName}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {formatDate(apt.date)}
-                      </p>
-                    </div>
-                    <span
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider ${getStatusColor(
-                        apt.payment.status,
-                      )}`}
-                    >
-                      {getStatusIcon(apt.payment.status)}
-                      {isPaid(apt.payment.status)
-                        ? t("paymentStatusPaid")
-                        : t("paymentStatusPending")}
-                    </span>
-                  </div>
-
-                  {/* Details Grid */}
-                  <div className="grid gap-4 rounded-2xl bg-muted/30 p-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("invoiceNumber")}
-                      </p>
-                      <p className="font-medium text-foreground">{apt._id}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("earnings")}
-                      </p>
-                      <p className="font-medium text-primary">
-                        {apt.payment.professionalPayout.toFixed(2)} $
-                      </p>
-                    </div>
-                    {apt.payment.paidAt && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          {t("paidDate")}
-                        </p>
-                        <p className="font-medium text-foreground">
-                          {formatDate(apt.payment.paidAt)}
-                        </p>
-                      </div>
-                    )}
-                    {apt.status === "cancelled" && apt.cancelReason && (
-                      <div className="md:col-span-3">
-                        <p className="text-xs text-muted-foreground">
-                          {t("cancelReason")}
-                        </p>
-                        <p className="font-medium text-foreground">
-                          {apt.cancelReason}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  {apt.payment.status === "paid" && (
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        className="gap-2 rounded-full"
-                        onClick={() => handleDownloadReceipt(apt._id)}
-                      >
-                        <Download className="h-4 w-4" />
-                        {t("downloadInvoice")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+          {historyRows.map((row) =>
+            row.kind === "session"
+              ? renderSessionCard(row.apt)
+              : renderPayoutCard(row.entry),
+          )}
         </div>
       )}
     </div>

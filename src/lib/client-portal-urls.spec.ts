@@ -59,6 +59,20 @@ describe("resolveBillingUrl (H10)", () => {
     expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
+  it("active client with forceTokenLink → no-login /pay?token link (mints token)", async () => {
+    // Post-session payment requests must never land on a login wall — even
+    // account-holders get the tokenized guest link.
+    const url = await resolveBillingUrl({
+      userStatus: "active",
+      appointment: appt(),
+      base: "https://app.test",
+      recipientLocale: "fr",
+      forceTokenLink: true,
+    });
+    expect(url).toMatch(/^https:\/\/app\.test\/pay\?token=[a-f0-9]+&lang=fr$/);
+    expect(h.findByIdAndUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("undefined/unknown locale normalizes to fr", async () => {
     const url = await resolveBillingUrl({
       userStatus: "active",
