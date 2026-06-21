@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Mail, Info, Users, ClipboardList, Wallet, MessageSquare, Phone, MapPin } from "lucide-react";
+import { Mail, Info, Users, ClipboardList, Wallet, MessageSquare, Phone, MapPin, Zap } from "lucide-react";
 import { useTranslations } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import type { AnimationVariant } from "@/components/ui/ScrollReveal";
@@ -158,12 +158,20 @@ export default function ContactChannelsSection() {
                     </address>
                   </div>
                 </div>
-                <Button asChild variant="default" className="mt-4 w-full sm:w-auto">
-                  <Link href="/contact/formulaire">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    {t("formButton")}
-                  </Link>
-                </Button>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <Button asChild variant="default" className="w-full sm:w-auto">
+                    <Link href="/contact/formulaire">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      {t("formButton")}
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full sm:w-auto">
+                    <Link href="/emergency">
+                      <Zap className="h-4 w-4 mr-2" />
+                      {t("emergencyButton")}
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </header>
           </ScrollReveal>

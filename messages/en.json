@@ -3812,6 +3812,7 @@
       "phone": "Coming soon",
       "addressLabel": "Address",
       "formButton": "Fill out the contact form",
+      "emergencyButton": "Quick one-time consultation",
       "inquiries": {
         "services": {
           "title": "Services and Approaches",
