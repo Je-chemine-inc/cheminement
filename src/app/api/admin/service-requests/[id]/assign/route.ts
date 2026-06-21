@@ -278,6 +278,13 @@ export async function POST(
           professionalName,
           locale: recipient.language,
           completeAccountUrl,
+          // Active clients can add a payment method now (Interac/card); guests
+          // must claim their account first, so no auth-gated billing link.
+          addPaymentMethodUrl: isActiveClient
+            ? `${base}/client/dashboard/billing?action=addPaymentMethod&lang=${
+                recipient.language === "en" ? "en" : "fr"
+              }`
+            : undefined,
         }).catch((e) => console.error("[admin assign] jumelage email:", e));
       }
       if (professional.email) {

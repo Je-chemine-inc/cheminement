@@ -215,6 +215,14 @@ export async function POST(
         professionalName,
         locale: recipient.language,
         completeAccountUrl,
+        // Active clients can add a payment method now (Interac/card). Guests must
+        // claim their account first (completeAccountUrl above), so no billing
+        // deep-link for them — the dashboard is auth-gated.
+        addPaymentMethodUrl: isActiveClient
+          ? `${base}/client/dashboard/billing?action=addPaymentMethod&lang=${
+              recipient.language === "en" ? "en" : "fr"
+            }`
+          : undefined,
       };
       after(() =>
         sendJumelageSuccessEmail(jumelageArgs).catch((err) =>

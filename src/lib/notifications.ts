@@ -2243,6 +2243,13 @@ export async function sendPaymentInvitation(
     price: number;
     paymentUrl?: string;
     locale?: "fr" | "en";
+    /**
+     * "Complete my profile" deep-link. This 1st-RDV email already drives the
+     * payment method (primary button), so the secondary nudge here is the
+     * profile-completion half. Only sent by callers for active clients (the
+     * dashboard is auth-gated); guests are handled by their own flow.
+     */
+    completeProfileUrl?: string;
   },
 ): Promise<boolean> {
   const branding = await getBranding();
@@ -2252,6 +2259,22 @@ export async function sendPaymentInvitation(
   const formattedTime = formatTime(data.time, lang);
   const professionalName = formatProfessionalName(data.professionalName, lang);
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/client/dashboard/appointments`;
+
+  // Symmetric to the jumelage email: payment is already the primary CTA here,
+  // so this secondary button nudges the OTHER half — completing the profile —
+  // with the same "skip if already done" reassurance. Not part of the editable
+  // template, so no DB reseed; added to both editable and fallback branches.
+  const profileNudge = data.completeProfileUrl
+    ? {
+        preamble:
+          lang === "fr"
+            ? "Pensez aussi à compléter votre profil pour faciliter votre suivi avec votre professionnel. Si c'est déjà fait, ignorez simplement ce message."
+            : "Don't forget to complete your profile to help your professional support you. If it's already done, simply ignore this message.",
+        text:
+          lang === "fr" ? "Compléter mon profil" : "Complete my profile",
+        url: data.completeProfileUrl,
+      }
+    : undefined;
 
   const details: Array<{ label: string; value: string; isLink?: boolean }> =
     lang === "fr"
@@ -2302,6 +2325,7 @@ export async function sendPaymentInvitation(
       button: editable.ctaText
         ? { text: editable.ctaText, url: data.paymentUrl || dashboardUrl }
         : undefined,
+      secondaryButton: profileNudge,
       branding,
       lang,
     });
@@ -2311,6 +2335,9 @@ export async function sendPaymentInvitation(
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
         editable.ctaText
           ? `${editable.ctaText} : ${data.paymentUrl || dashboardUrl}`
+          : "",
+        profileNudge
+          ? `${profileNudge.preamble}\n${profileNudge.text} : ${profileNudge.url}`
           : "",
       ],
       lang,
@@ -2367,6 +2394,7 @@ export async function sendPaymentInvitation(
           text: lang === "fr" ? "Voir le rendez-vous" : "View appointment",
           url: dashboardUrl,
         },
+    secondaryButton: profileNudge,
     infoBox: {
       title:
         lang === "fr"
@@ -2400,6 +2428,9 @@ export async function sendPaymentInvitation(
           data.paymentUrl
             ? `Confirmer le paiement : ${data.paymentUrl}`
             : `Voir le rendez-vous : ${dashboardUrl}`,
+          profileNudge
+            ? `${profileNudge.preamble}\n${profileNudge.text} : ${profileNudge.url}`
+            : "",
         ]
       : [
           "Confirm your appointment (payment after the session)",
@@ -2414,6 +2445,9 @@ export async function sendPaymentInvitation(
           data.paymentUrl
             ? `Confirm payment: ${data.paymentUrl}`
             : `View appointment: ${dashboardUrl}`,
+          profileNudge
+            ? `${profileNudge.preamble}\n${profileNudge.text} : ${profileNudge.url}`
+            : "",
         ],
     lang,
   );
@@ -5361,9 +5395,37 @@ export async function sendJumelageSuccessEmail(data: {
   locale?: "fr" | "en";
   /** Link inviting the client to finish setting up their account (claim or complete profile). */
   completeAccountUrl?: string;
+  /**
+   * "Add a payment method" deep-link (Interac or card). Passed by callers ONLY
+   * for active clients — the dashboard billing page is auth-gated, so a
+   * guest/prospect (who must claim their account first via completeAccountUrl)
+   * gets no payment button. When present, renders a soft secondary CTA
+   * encouraging the client to add a payment method, with a "skip if already
+   * done" note. Optional on purpose: nothing is required at jumelage time.
+   */
+  addPaymentMethodUrl?: string;
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
+
+  // Soft, optional nudge (active clients only): complete your profile + add a
+  // payment method now to save time before the first appointment. Rendered as a
+  // secondary button in BOTH the editable and fallback branches — it is NOT part
+  // of the editable template (which carries only the primary "complete account"
+  // CTA), so it needs no DB reseed. Reaches the client the moment they're matched.
+  const paymentNudge = data.addPaymentMethodUrl
+    ? {
+        preamble:
+          lang === "fr"
+            ? "Pour gagner du temps avant votre premier rendez-vous, vous pouvez dès maintenant compléter votre profil et ajouter votre moyen de paiement (Interac ou carte de crédit). Si c'est déjà fait, ignorez simplement ce message."
+            : "To save time before your first appointment, you can already complete your profile and add your payment method (Interac or credit card). If it's already done, simply ignore this message.",
+        text:
+          lang === "fr"
+            ? "Ajouter un moyen de paiement"
+            : "Add a payment method",
+        url: data.addPaymentMethodUrl,
+      }
+    : undefined;
 
   // Admin-editable template; hardcoded block below is the fallback.
   // NOTE: jumelageSuccess is the one template that may have a PRE-EXISTING
@@ -5389,6 +5451,7 @@ export async function sendJumelageSuccessEmail(data: {
         data.completeAccountUrl && editable.ctaText
           ? { text: editable.ctaText, url: data.completeAccountUrl }
           : undefined,
+      secondaryButton: paymentNudge,
       branding,
       lang,
     });
@@ -5398,6 +5461,9 @@ export async function sendJumelageSuccessEmail(data: {
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
         data.completeAccountUrl && editable.ctaText
           ? `${editable.ctaText} : ${data.completeAccountUrl}`
+          : "",
+        paymentNudge
+          ? `${paymentNudge.preamble}\n${paymentNudge.text} : ${paymentNudge.url}`
           : "",
       ],
       lang,
@@ -5423,8 +5489,8 @@ export async function sendJumelageSuccessEmail(data: {
       : "Good news: a professional has accepted your request. They will reach out to you shortly to agree together on the date of your first appointment.";
   const infoContent =
     lang === "fr"
-      ? "Dès que la date de votre premier rendez-vous sera fixée avec votre professionnel, vous recevrez un courriel de confirmation. C'est à ce moment que vous pourrez configurer votre mode de paiement — rien n'est requis pour l'instant."
-      : "As soon as the date of your first appointment is set with your professional, you'll receive a confirmation email. That's when you'll set up your payment method — nothing is required for now.";
+      ? "Dès que la date de votre premier rendez-vous sera fixée avec votre professionnel, vous recevrez un courriel de confirmation avec les détails de paiement."
+      : "As soon as the date of your first appointment is set with your professional, you'll receive a confirmation email with the payment details.";
 
   const html = buildEmailHtml({
     title,
@@ -5447,6 +5513,7 @@ export async function sendJumelageSuccessEmail(data: {
           url: data.completeAccountUrl,
         }
       : undefined,
+    secondaryButton: paymentNudge,
     outro:
       lang === "fr"
         ? "Si vous avez des questions, contactez notre équipe depuis votre tableau de bord."
@@ -5467,6 +5534,9 @@ export async function sendJumelageSuccessEmail(data: {
         ? lang === "fr"
           ? `Compléter mon compte : ${data.completeAccountUrl}`
           : `Complete my account: ${data.completeAccountUrl}`
+        : "",
+      paymentNudge
+        ? `${paymentNudge.preamble}\n${paymentNudge.text} : ${paymentNudge.url}`
         : "",
     ],
     lang,

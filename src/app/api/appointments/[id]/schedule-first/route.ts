@@ -223,6 +223,10 @@ export async function POST(
           price: appointment.payment?.price ?? 0,
           paymentUrl: billingUrl,
           locale,
+          // This branch is active-clients only (isActiveClient above), so the
+          // auth-gated profile deep-link is safe. Payment is the primary CTA;
+          // this nudges the profile-completion half ("ignore if already done").
+          completeProfileUrl: `${base}/client/dashboard/profile`,
         };
         after(() =>
           sendPaymentInvitation(payInviteArgs).catch((err) =>
