@@ -2,7 +2,9 @@ import "server-only";
 import connectToDatabase from "@/lib/mongodb";
 import PlatformSettings, {
   DEFAULT_SOCIAL_LINKS,
+  DEFAULT_PARTNERS,
   type ISocialLinks,
+  type IPartner,
 } from "@/models/PlatformSettings";
 
 export type PlatformPhysicalAddress = {
@@ -108,4 +110,25 @@ export async function getSocialLinks(): Promise<ISocialLinks> {
     youtube: pick("youtube"),
     tiktok: pick("tiktok"),
   };
+}
+
+/**
+ * Admin-configured footer partner logos, rendered in the scrolling partners
+ * band. Falls back to DEFAULT_PARTNERS only when the field is ABSENT (legacy
+ * docs that predate the feature) — an admin-saved empty list is preserved as
+ * "show no partners". Entries without a logo are dropped so the band never
+ * renders a broken image.
+ */
+export async function getPartners(): Promise<IPartner[]> {
+  await connectToDatabase();
+  const settings = await PlatformSettings.findOne().select("partners").lean();
+  const raw = settings?.partners as IPartner[] | undefined;
+  const list = raw === undefined ? DEFAULT_PARTNERS : raw;
+  return list
+    .filter((p) => p && typeof p.logoUrl === "string" && p.logoUrl.trim())
+    .map((p) => ({
+      name: (p.name ?? "").trim(),
+      logoUrl: p.logoUrl.trim(),
+      linkUrl: (p.linkUrl ?? "").trim(),
+    }));
 }

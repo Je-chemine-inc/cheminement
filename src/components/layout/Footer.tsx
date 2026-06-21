@@ -5,7 +5,8 @@ import { Instagram, Linkedin, Facebook, Youtube } from "lucide-react";
 import { XLogoIcon } from "@/components/icons/XLogoIcon";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
 import { getLegalTitles } from "@/lib/legal-content";
-import { getSocialLinks } from "@/lib/platform-contact";
+import { getSocialLinks, getPartners } from "@/lib/platform-contact";
+import PartnersMarquee from "@/components/layout/PartnersMarquee";
 import type { LegalDocumentLocale } from "@/models/LegalDocument";
 
 export async function Footer() {
@@ -17,6 +18,8 @@ export async function Footer() {
   const legalTitles = await getLegalTitles(locale);
   // Admin-configurable footer social links; an empty URL hides that icon.
   const social = await getSocialLinks();
+  // Admin-configurable partner logos shown in the scrolling partners band.
+  const partners = await getPartners();
 
   return (
     <footer className="bg-primary text-primary-foreground pt-16 pb-8">
@@ -112,15 +115,7 @@ export async function Footer() {
               {t("partners")}
             </h4>
             <div className="space-y-4">
-              <div className="inline-flex rounded-lg bg-primary-foreground px-1.5 py-0 shadow-sm ring-1 ring-black/10">
-                <Image
-                  src="/logocln.png"
-                  alt="Clinique partenaire"
-                  width={240}
-                  height={96}
-                  className="h-24 w-auto object-contain"
-                />
-              </div>
+              <PartnersMarquee partners={partners} />
               <div className="flex flex-wrap gap-3">
                 {social.linkedin && (
                   <Link

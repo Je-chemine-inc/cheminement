@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import PlatformSettings, {
   getDefaultEmailSettings,
+  DEFAULT_PARTNERS,
 } from "@/models/PlatformSettings";
 import { authOptions } from "@/lib/auth";
 import { clearEmailSettingsCache } from "@/lib/notifications";
@@ -45,6 +46,11 @@ export async function GET() {
       settingsObj.emailSettings.templates = Object.fromEntries(
         settingsObj.emailSettings.templates,
       );
+    }
+    // Surface the effective partners list so the editor shows (and preserves)
+    // the seeded default instead of an empty list when none were saved yet.
+    if (settingsObj.partners === undefined) {
+      settingsObj.partners = DEFAULT_PARTNERS;
     }
 
     return NextResponse.json(settingsObj);
@@ -303,6 +309,62 @@ export async function PUT(req: NextRequest) {
           youtube: resolve("youtube"),
           tiktok: resolve("tiktok"),
         };
+      }
+
+      // Footer partner logos (scrolling band). An empty array is honored
+      // ("show none"); each kept entry needs a logo (uploaded image path or
+      // http(s) URL); the optional outbound link must be http(s). Fully-blank
+      // rows (a half-filled add form) are dropped rather than rejected.
+      if (data.partners !== undefined) {
+        if (!Array.isArray(data.partners)) {
+          return NextResponse.json(
+            { error: "partners must be an array" },
+            { status: 400 },
+          );
+        }
+        if (data.partners.length > 24) {
+          return NextResponse.json(
+            { error: "Too many partners (max 24)" },
+            { status: 400 },
+          );
+        }
+        const httpRe = /^https?:\/\/.+/i;
+        const logoRe = /^(\/|https?:\/\/).+/i;
+        const sanitized: { name: string; logoUrl: string; linkUrl: string }[] =
+          [];
+        for (const raw of data.partners as unknown[]) {
+          const p = (raw ?? {}) as {
+            name?: unknown;
+            logoUrl?: unknown;
+            linkUrl?: unknown;
+          };
+          const name = typeof p.name === "string" ? p.name.trim() : "";
+          const logoUrl =
+            typeof p.logoUrl === "string" ? p.logoUrl.trim() : "";
+          const linkUrl =
+            typeof p.linkUrl === "string" ? p.linkUrl.trim() : "";
+          if (!logoUrl && !name && !linkUrl) continue; // blank row
+          if (!logoRe.test(logoUrl)) {
+            return NextResponse.json(
+              {
+                error:
+                  "Each partner needs a logo (uploaded image or an http(s) URL)",
+              },
+              { status: 400 },
+            );
+          }
+          if (linkUrl && !httpRe.test(linkUrl)) {
+            return NextResponse.json(
+              {
+                error:
+                  "Partner link must start with http:// or https:// (or be empty)",
+              },
+              { status: 400 },
+            );
+          }
+          sanitized.push({ name, logoUrl, linkUrl });
+        }
+        settings.partners = sanitized;
       }
 
       // Handle email settings updates

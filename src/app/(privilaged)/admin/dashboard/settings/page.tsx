@@ -19,7 +19,14 @@ import {
   ChevronUp,
   Building2,
   Share2,
+  Handshake,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Image as ImageIcon,
 } from "lucide-react";
+import Image from "next/image";
 
 interface EmailTemplateConfig {
   enabled: boolean;
@@ -63,6 +70,12 @@ interface SocialLinks {
   linkedin: string;
   youtube: string;
   tiktok: string;
+}
+
+interface Partner {
+  name: string;
+  logoUrl: string;
+  linkUrl?: string;
 }
 
 // Brand names are proper nouns — not translated.
@@ -120,6 +133,7 @@ interface PlatformSettings {
   interacDepositEmail?: string;
   adminAlertEmail?: string;
   socialLinks?: SocialLinks;
+  partners?: Partner[];
   createdAt: string;
   updatedAt: string;
 }
@@ -244,6 +258,10 @@ export default function SettingsPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(["Bienvenue & Relances", "Authentification", "Rendez-vous"]),
   );
+  // Index of the partner row whose logo is currently uploading (null = none).
+  const [partnerUploadingIndex, setPartnerUploadingIndex] = useState<
+    number | null
+  >(null);
 
   const fetchSettings = async () => {
     try {
@@ -289,6 +307,7 @@ export default function SettingsPage() {
           interacDepositEmail: settings.interacDepositEmail,
           adminAlertEmail: settings.adminAlertEmail,
           socialLinks: settings.socialLinks,
+          partners: settings.partners,
         }),
       });
 
@@ -376,6 +395,79 @@ export default function SettingsPage() {
         },
       };
     });
+  };
+
+  // ---- Footer partners (scrolling band) ----
+  const addPartner = () => {
+    setSettings((prev) =>
+      prev
+        ? {
+            ...prev,
+            partners: [
+              ...(prev.partners ?? []),
+              { name: "", logoUrl: "", linkUrl: "" },
+            ],
+          }
+        : prev,
+    );
+  };
+
+  const updatePartner = (
+    index: number,
+    field: keyof Partner,
+    value: string,
+  ) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const next = [...(prev.partners ?? [])];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, partners: next };
+    });
+  };
+
+  const removePartner = (index: number) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const next = [...(prev.partners ?? [])];
+      next.splice(index, 1);
+      return { ...prev, partners: next };
+    });
+  };
+
+  const movePartner = (index: number, dir: -1 | 1) => {
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const next = [...(prev.partners ?? [])];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...prev, partners: next };
+    });
+  };
+
+  const uploadPartnerLogo = async (index: number, file: File) => {
+    try {
+      setPartnerUploadingIndex(index);
+      setError(null);
+      const form = new FormData();
+      form.append("file", file);
+      form.append("folder", "misc");
+      const res = await fetch("/api/admin/uploads", {
+        method: "POST",
+        body: form,
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Upload failed");
+      }
+      const { url } = await res.json();
+      updatePartner(index, "logoUrl", url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setPartnerUploadingIndex(null);
+    }
   };
 
   const updateEmailBranding = (field: string, value: string) => {
@@ -827,6 +919,144 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-muted-foreground mt-3">
             {t("socialLinksHelp")}
+          </p>
+        </div>
+
+        {/* Partners (footer scrolling band) Section */}
+        <div className="rounded-xl bg-card p-6 border border-border/40">
+          <div className="flex items-center gap-2 mb-2">
+            <Handshake className="h-5 w-5 text-primary" />
+            <h2 className="text-xl font-serif font-light text-foreground">
+              {t("partners")}
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">
+            {t("partnersDescription")}
+          </p>
+
+          <div className="space-y-4">
+            {(settings.partners ?? []).map((partner, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-border/40 bg-background p-4"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  {/* Logo preview + upload */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="relative flex h-16 w-32 items-center justify-center overflow-hidden rounded-md border border-border/40 bg-white">
+                      {partner.logoUrl ? (
+                        <Image
+                          src={partner.logoUrl}
+                          alt={partner.name || "Logo"}
+                          fill
+                          sizes="128px"
+                          unoptimized
+                          className="object-contain p-1"
+                        />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <label className="cursor-pointer text-xs font-medium text-primary hover:underline">
+                      {partnerUploadingIndex === index
+                        ? t("partnerUploading")
+                        : t("partnerLogoUpload")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadPartnerLogo(index, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Name + link */}
+                  <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-light text-muted-foreground mb-2">
+                        {t("partnerName")}
+                      </label>
+                      <input
+                        type="text"
+                        value={partner.name}
+                        onChange={(e) =>
+                          updatePartner(index, "name", e.target.value)
+                        }
+                        placeholder={t("partnerNamePlaceholder")}
+                        className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-light text-muted-foreground mb-2">
+                        {t("partnerLink")}
+                      </label>
+                      <input
+                        type="url"
+                        value={partner.linkUrl ?? ""}
+                        onChange={(e) =>
+                          updatePartner(index, "linkUrl", e.target.value)
+                        }
+                        placeholder={t("partnerLinkPlaceholder")}
+                        className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Reorder + remove */}
+                  <div className="flex gap-2 sm:flex-col">
+                    <button
+                      type="button"
+                      onClick={() => movePartner(index, -1)}
+                      disabled={index === 0}
+                      aria-label={t("partnerMoveUp")}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/40 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => movePartner(index, 1)}
+                      disabled={index === (settings.partners?.length ?? 0) - 1}
+                      aria-label={t("partnerMoveDown")}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/40 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePartner(index)}
+                      aria-label={t("partnerRemove")}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-destructive/40 text-destructive transition-colors hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {(settings.partners?.length ?? 0) === 0 && (
+              <p className="text-sm text-muted-foreground">
+                {t("partnersEmpty")}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={addPartner}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              <Plus className="h-4 w-4" />
+              {t("partnersAdd")}
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-4">
+            {t("partnersHelp")}
           </p>
         </div>
 

@@ -88,6 +88,30 @@ export interface ISocialLinks {
   tiktok: string;
 }
 
+/** Footer partner logo (admin-editable). Rendered in the scrolling partners band. */
+export interface IPartner {
+  /** Display/alt text — the partner's name. */
+  name: string;
+  /** Logo image URL (uploaded `/api/files/<id>` or a relative/absolute URL). */
+  logoUrl: string;
+  /** Optional outbound link to the partner's site. Empty ⇒ logo is not clickable. */
+  linkUrl?: string;
+}
+
+/**
+ * Seed partner so existing installs keep showing the current "Clinique Averroès"
+ * logo until an admin configures the list. Only used as the fallback in
+ * getPartners() when the `partners` field is ABSENT (an admin-saved empty list
+ * is preserved — i.e. "show no partners").
+ */
+export const DEFAULT_PARTNERS: IPartner[] = [
+  {
+    name: "Clinique Averroès de santé mentale",
+    logoUrl: "/logocln.png",
+    linkUrl: "",
+  },
+];
+
 /**
  * Current footer URLs, kept as defaults so existing installs keep showing the
  * same icons until an admin edits them. Also the fallback in getSocialLinks().
@@ -121,6 +145,8 @@ export interface IPlatformSettings extends Document {
   interacDepositEmail?: string;
   /** Footer social-media links (Facebook, X, Instagram, LinkedIn). */
   socialLinks: ISocialLinks;
+  /** Footer partner logos shown in the scrolling partners band (admin-editable). */
+  partners?: IPartner[];
   /**
    * Adresse(s) recevant les notifications/alertes admin de la plateforme (ex.
    * support@ ou un compte dédié). Si renseignée, elle REMPLACE l'envoi aux
@@ -352,6 +378,19 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       linkedin: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.linkedin },
       youtube: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.youtube },
       tiktok: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.tiktok },
+    },
+    // Footer partner logos (admin-editable; rendered in the scrolling band).
+    // Absent ⇒ getPartners() falls back to DEFAULT_PARTNERS; an empty array is
+    // honored as "show no partners".
+    partners: {
+      type: [
+        {
+          name: { type: String, trim: true, default: "" },
+          logoUrl: { type: String, trim: true, required: true },
+          linkUrl: { type: String, trim: true, default: "" },
+        },
+      ],
+      default: undefined,
     },
     platformContact: {
       physicalAddress: {
