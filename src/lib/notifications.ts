@@ -6537,8 +6537,8 @@ export async function sendAdminUnscheduledMatchEscalation(data: {
  * Soft-SLA reminder to the PROFESSIONAL for an URGENT "Consultation ponctuelle
  * rapide" request whose response deadline has lapsed. Two stages:
  *   - "accept":     offered but not accepted within 12h (commitment: accept ≤12h).
- *   - "takeCharge": accepted but 1st RDV not confirmed within 24h (commitment:
- *                   take charge ≤24h).
+ *   - "takeCharge": accepted but 1st RDV not confirmed within 12h (commitment:
+ *                   take charge ≤12h).
  * Soft enforcement: the request stays assigned — this is a nudge, not a re-route.
  */
 export async function sendEmergencyProSlaAlert(data: {
@@ -6570,8 +6570,8 @@ export async function sendEmergencyProSlaAlert(data: {
       ? `Une consultation ponctuelle rapide (urgente) de ${clientName} vous a été proposée et attend toujours votre réponse. L'engagement pour ces demandes est de les accepter dans un délai de 12 heures. Merci de l'accepter ou de la refuser dès que possible depuis vos propositions.`
       : `An urgent quick consultation from ${clientName} was proposed to you and is still awaiting your response. The commitment for these requests is to accept within 12 hours. Please accept or decline it as soon as possible from your proposals.`
     : lang === "fr"
-      ? `Vous avez accepté une consultation ponctuelle rapide (urgente) de ${clientName}, mais le 1er rendez-vous n'est pas encore confirmé. L'engagement pour ces demandes est de prendre en charge le dossier dans un délai de 24 heures. Merci de confirmer la date depuis l'onglet « À planifier ».`
-      : `You accepted an urgent quick consultation from ${clientName}, but the 1st appointment isn't confirmed yet. The commitment for these requests is to take charge within 24 hours. Please confirm the date from the "To Schedule" tab.`;
+      ? `Vous avez accepté une consultation ponctuelle rapide (urgente) de ${clientName}, mais le 1er rendez-vous n'est pas encore confirmé. L'engagement pour ces demandes est de prendre en charge le dossier dans un délai de 12 heures. Merci de confirmer la date depuis l'onglet « À planifier ».`
+      : `You accepted an urgent quick consultation from ${clientName}, but the 1st appointment isn't confirmed yet. The commitment for these requests is to take charge within 12 hours. Please confirm the date from the "To Schedule" tab.`;
   const buttonText = isAccept
     ? lang === "fr"
       ? "Voir la demande"
@@ -6643,8 +6643,8 @@ export async function sendEmergencyProSlaAlert(data: {
         ? "⚠ Urgence — demande à accepter (12 h)"
         : "⚠ Urgent — request to accept (12h)"
       : lang === "fr"
-        ? "⚠ Urgence — 1er RDV à confirmer (24 h)"
-        : "⚠ Urgent — 1st appointment to confirm (24h)",
+        ? "⚠ Urgence — 1er RDV à confirmer (12 h)"
+        : "⚠ Urgent — 1st appointment to confirm (12h)",
   );
 
   return sendEmail(
@@ -6657,7 +6657,7 @@ export async function sendEmergencyProSlaAlert(data: {
  * Alert admins that an URGENT "Consultation ponctuelle rapide" SLA deadline was
  * missed (the pro was already nudged via sendEmergencyProSlaAlert). The request
  * stays assigned; admins decide whether to reassign quickly. Stage mirrors the
- * pro alert ("accept" = 12h to accept, "takeCharge" = 24h to confirm 1st RDV).
+ * pro alert ("accept" = 12h to accept, "takeCharge" = 12h to confirm 1st RDV).
  */
 export async function sendAdminEmergencySlaBreachAlert(data: {
   stage: "accept" | "takeCharge";
@@ -6678,7 +6678,7 @@ export async function sendAdminEmergencySlaBreachAlert(data: {
     "http://localhost:3000";
   const adminUrl = `${base}/admin/dashboard/service-requests`;
   const isAccept = data.stage === "accept";
-  const stageLabel = isAccept ? "Acceptation (12 h)" : "Prise en charge (24 h)";
+  const stageLabel = isAccept ? "Acceptation (12 h)" : "Prise en charge (12 h)";
   const proName = data.professionalName?.trim() || "—";
 
   // Admin-editable template (subject/title/body/CTA); the hardcoded block below

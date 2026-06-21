@@ -10,7 +10,7 @@ const HOUR_MS = 60 * 60 * 1000;
 
 /**
  * Urgent ("Consultation ponctuelle rapide" / isEmergency) TAKE-CHARGE soft SLA:
- * a pro who ACCEPTED commits to confirm the 1st RDV within 24h. When that lapses,
+ * a pro who ACCEPTED commits to confirm the 1st RDV within 12h. When that lapses,
  * the daily cron below nudges the assigned pro AND alerts admins, but the request
  * STAYS assigned (no auto-reassign — the client chose soft for this stage).
  *
@@ -18,11 +18,11 @@ const HOUR_MS = 60 * 60 * 1000;
  * accepted within 24h (regular) / 12h (urgent) advances the cascade — handled by
  * the proposal timeout (see proposal-timeout.ts), not here.
  *
- * NOTE: Vercel Hobby allows DAILY crons only, so a 24h deadline is detected up to
- * ~24h late. The deadline is exact; only detection lags. The alert is one-shot
- * via takeChargeSlaAlertSent (reset on each acceptance).
+ * NOTE: Vercel Hobby allows DAILY crons only, so a 12h deadline is detected up to
+ * ~24h late (one daily-cron cycle). The deadline is exact; only detection lags.
+ * The alert is one-shot via takeChargeSlaAlertSent (reset on each acceptance).
  */
-export const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 24;
+export const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 12;
 
 type PopulatedUser = {
   firstName?: string;
@@ -37,7 +37,7 @@ function fullName(u: PopulatedUser): string {
 
 /**
  * Urgent matches where the pro ACCEPTED but hasn't confirmed the 1st RDV within
- * 24h. Nudges the assigned pro and alerts admins, then marks takeChargeSlaAlertSent
+ * 12h. Nudges the assigned pro and alerts admins, then marks takeChargeSlaAlertSent
  * (reset on each acceptance). The request STAYS assigned (soft enforcement).
  */
 export async function runEmergencyTakeChargeSlaAlerts(): Promise<{ alerted: number }> {

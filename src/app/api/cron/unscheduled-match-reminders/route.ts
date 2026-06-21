@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await runUnscheduledMatchReminders();
-    // Piggyback the urgent 24h-take-charge soft-SLA nudges on this daily run:
-    // urgent matches the pro accepted but never scheduled within 24h get a soft
+    // Piggyback the urgent 12h-take-charge soft-SLA nudges on this daily run:
+    // urgent matches the pro accepted but never scheduled within 12h get a soft
     // reminder to the pro + an alert to admins (request stays assigned).
     const emergencyTakeCharge = await runEmergencyTakeChargeSlaAlerts();
     return NextResponse.json({

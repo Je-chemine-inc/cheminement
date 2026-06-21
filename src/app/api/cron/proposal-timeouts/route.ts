@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     // The accept-stage deadline (24h regular / 12h urgent) is HARD: a lapsed
     // proposal advances the cascade exactly like a refusal (§3). No separate soft
-    // accept-alert — the take-charge 24h soft reminder lives on its own cron.
+    // accept-alert — the take-charge 12h soft reminder lives on its own cron.
     const result = await runProposalTimeouts();
     return NextResponse.json({ ok: true, ...result });
   } catch (e: unknown) {

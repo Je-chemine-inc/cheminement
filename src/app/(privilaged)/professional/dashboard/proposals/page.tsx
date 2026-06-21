@@ -95,11 +95,11 @@ interface ProposedAppointment {
   preferredAvailability?: string[];
   createdAt: string;
   /** Urgent "Consultation ponctuelle rapide" flag — drives the urgency badge
-   *  and the soft-SLA deadline hints (accept ≤12h / take charge ≤24h). */
+   *  and the soft-SLA deadline hints (accept ≤12h / take charge ≤12h). */
   isEmergency?: boolean;
   /** Proposal timestamp — accept-SLA deadline = proposedAt + 12h. */
   proposedAt?: string;
-  /** Acceptance timestamp — take-charge-SLA deadline = matchedAt + 24h. */
+  /** Acceptance timestamp — take-charge-SLA deadline = matchedAt + 12h. */
   matchedAt?: string;
 }
 
@@ -125,10 +125,10 @@ const POLL_INTERVAL_MS = 30_000;
 // Accept-deadline windows surfaced on the proposed rows (HARD — the proposal
 // auto-advances when it lapses; see proposal-timeout.ts): 24h for a regular
 // request, 12h for an urgent "Consultation ponctuelle rapide". Urgent rows also
-// show the take-charge soft SLA (confirm the 1st RDV within 24h of accepting).
+// show the take-charge soft SLA (confirm the 1st RDV within 12h of accepting).
 const REGULAR_ACCEPT_SLA_HOURS = 24;
 const EMERGENCY_ACCEPT_SLA_HOURS = 12;
-const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 24;
+const EMERGENCY_TAKE_CHARGE_SLA_HOURS = 12;
 
 export default function ProposalsPage() {
   const t = useTranslations("Professional.proposals");

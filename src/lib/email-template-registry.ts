@@ -2012,9 +2012,9 @@ const emergencyProSla: EmailTemplateDefinition = {
   labelFr: "Urgence — relance SLA professionnel",
   labelEn: "Emergency — professional SLA nudge",
   descriptionFr:
-    "Envoyé au professionnel pour rappeler l'engagement de service sur une consultation ponctuelle rapide (urgente). Deux variantes selon l'étape : « accepter » (la demande attend toujours une réponse, délai de 12 h) ou « prendre en charge » (acceptée mais 1er rendez-vous non confirmé, délai de 24 h). Le sujet, le titre, le texte et le bouton changent selon l'indicateur « Étape acceptation ». Bouton vers les propositions.",
+    "Envoyé au professionnel pour rappeler l'engagement de service sur une consultation ponctuelle rapide (urgente). Deux variantes selon l'étape : « accepter » (la demande attend toujours une réponse, délai de 12 h) ou « prendre en charge » (acceptée mais 1er rendez-vous non confirmé, délai de 12 h). Le sujet, le titre, le texte et le bouton changent selon l'indicateur « Étape acceptation ». Bouton vers les propositions.",
   descriptionEn:
-    "Sent to a professional to remind them of the service commitment on an urgent quick consultation. Two variants depending on the stage: \"accept\" (the request is still awaiting a response, 12-hour window) or \"take charge\" (accepted but the 1st appointment isn't confirmed, 24-hour window). The subject, title, body and button change based on the \"Accept stage\" flag. Button to the proposals.",
+    "Sent to a professional to remind them of the service commitment on an urgent quick consultation. Two variants depending on the stage: \"accept\" (the request is still awaiting a response, 12-hour window) or \"take charge\" (accepted but the 1st appointment isn't confirmed, 12-hour window). The subject, title, body and button change based on the \"Accept stage\" flag. Button to the proposals.",
   placeholders: [
     {
       key: "name",
@@ -2032,8 +2032,8 @@ const emergencyProSla: EmailTemplateDefinition = {
     },
     {
       key: "isAccept",
-      labelFr: "Étape acceptation (12 h) — laisser vide pour « prendre en charge » (24 h)",
-      labelEn: "Accept stage (12h) — leave empty for \"take charge\" (24h)",
+      labelFr: "Étape acceptation (12 h) — laisser vide pour « prendre en charge » (12 h)",
+      labelEn: "Accept stage (12h) — leave empty for \"take charge\" (12h)",
       sampleFr: "true",
       sampleEn: "true",
     },
@@ -2041,25 +2041,25 @@ const emergencyProSla: EmailTemplateDefinition = {
   defaults: {
     fr: {
       subject:
-        "{{#isAccept}}⚠ Urgence — demande à accepter (12 h){{/isAccept}}{{^isAccept}}⚠ Urgence — 1er RDV à confirmer (24 h){{/isAccept}}",
+        "{{#isAccept}}⚠ Urgence — demande à accepter (12 h){{/isAccept}}{{^isAccept}}⚠ Urgence — 1er RDV à confirmer (12 h){{/isAccept}}",
       title:
         "{{#isAccept}}Demande urgente en attente de votre réponse{{/isAccept}}{{^isAccept}}Consultation rapide à planifier{{/isAccept}}",
       bodyHtml:
         "<p>Bonjour {{name}},</p>" +
         "{{#isAccept}}<p>Une consultation ponctuelle rapide (urgente) de {{clientName}} vous a été proposée et attend toujours votre réponse. L'engagement pour ces demandes est de les accepter dans un délai de 12 heures. Merci de l'accepter ou de la refuser dès que possible depuis vos propositions.</p>{{/isAccept}}" +
-        "{{^isAccept}}<p>Vous avez accepté une consultation ponctuelle rapide (urgente) de {{clientName}}, mais le 1er rendez-vous n'est pas encore confirmé. L'engagement pour ces demandes est de prendre en charge le dossier dans un délai de 24 heures. Merci de confirmer la date depuis l'onglet « À planifier ».</p>{{/isAccept}}",
+        "{{^isAccept}}<p>Vous avez accepté une consultation ponctuelle rapide (urgente) de {{clientName}}, mais le 1er rendez-vous n'est pas encore confirmé. L'engagement pour ces demandes est de prendre en charge le dossier dans un délai de 12 heures. Merci de confirmer la date depuis l'onglet « À planifier ».</p>{{/isAccept}}",
       ctaText:
         "{{#isAccept}}Voir la demande{{/isAccept}}{{^isAccept}}Confirmer le 1er RDV{{/isAccept}}",
     },
     en: {
       subject:
-        "{{#isAccept}}⚠ Urgent — request to accept (12h){{/isAccept}}{{^isAccept}}⚠ Urgent — 1st appointment to confirm (24h){{/isAccept}}",
+        "{{#isAccept}}⚠ Urgent — request to accept (12h){{/isAccept}}{{^isAccept}}⚠ Urgent — 1st appointment to confirm (12h){{/isAccept}}",
       title:
         "{{#isAccept}}Urgent request awaiting your response{{/isAccept}}{{^isAccept}}Quick consultation to schedule{{/isAccept}}",
       bodyHtml:
         "<p>Hello {{name}},</p>" +
         "{{#isAccept}}<p>An urgent quick consultation from {{clientName}} was proposed to you and is still awaiting your response. The commitment for these requests is to accept within 12 hours. Please accept or decline it as soon as possible from your proposals.</p>{{/isAccept}}" +
-        "{{^isAccept}}<p>You accepted an urgent quick consultation from {{clientName}}, but the 1st appointment isn't confirmed yet. The commitment for these requests is to take charge within 24 hours. Please confirm the date from the \"To Schedule\" tab.</p>{{/isAccept}}",
+        "{{^isAccept}}<p>You accepted an urgent quick consultation from {{clientName}}, but the 1st appointment isn't confirmed yet. The commitment for these requests is to take charge within 12 hours. Please confirm the date from the \"To Schedule\" tab.</p>{{/isAccept}}",
       ctaText:
         "{{#isAccept}}View the request{{/isAccept}}{{^isAccept}}Confirm the 1st appointment{{/isAccept}}",
     },
@@ -2691,9 +2691,9 @@ const adminEmergencySlaBreach: EmailTemplateDefinition = {
   labelFr: "Admin — délai dépassé (consultation ponctuelle rapide)",
   labelEn: "Admin — SLA breach (quick one-off consultation)",
   descriptionFr:
-    "Alerte envoyée à l'administration lorsqu'un délai SLA d'une consultation ponctuelle rapide (urgente) est dépassé. L'étape (acceptation 12 h ou prise en charge 24 h) est fournie via {{stageLabel}}. Le bloc {{#proNamePresent}}…{{/proNamePresent}} n'apparaît que si un professionnel est associé. Le bouton « Voir les demandes » mène à la file des demandes de service.",
+    "Alerte envoyée à l'administration lorsqu'un délai SLA d'une consultation ponctuelle rapide (urgente) est dépassé. L'étape (acceptation 12 h ou prise en charge 12 h) est fournie via {{stageLabel}}. Le bloc {{#proNamePresent}}…{{/proNamePresent}} n'apparaît que si un professionnel est associé. Le bouton « Voir les demandes » mène à la file des demandes de service.",
   descriptionEn:
-    "Alert sent to administrators when an SLA deadline for a quick one-off (urgent) consultation is breached. The stage (acceptance 12h or take-charge 24h) is provided via {{stageLabel}}. The {{#proNamePresent}}…{{/proNamePresent}} block only appears when a professional is associated. The \"View requests\" button leads to the service-requests queue.",
+    "Alert sent to administrators when an SLA deadline for a quick one-off (urgent) consultation is breached. The stage (acceptance 12h or take-charge 12h) is provided via {{stageLabel}}. The {{#proNamePresent}}…{{/proNamePresent}} block only appears when a professional is associated. The \"View requests\" button leads to the service-requests queue.",
   placeholders: [
     {
       key: "stageLabel",

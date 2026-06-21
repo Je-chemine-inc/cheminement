@@ -123,7 +123,7 @@ export async function POST(
           professionalId: session.user.id,
           routingStatus: "accepted",
           matchedAt: new Date(),
-          // Start the urgent 24h take-charge clock fresh (reset its soft-SLA
+          // Start the urgent 12h take-charge clock fresh (reset its soft-SLA
           // alert dedup) so a re-accepted urgent request can alert again.
           takeChargeSlaAlertSent: false,
         },
