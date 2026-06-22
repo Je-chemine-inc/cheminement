@@ -6,6 +6,7 @@ import { AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { IProfile } from "@/models/Profile";
+import { isProfessionalProfileComplete } from "@/lib/professional-profile-complete";
 import { profileAPI } from "@/lib/api-client";
 import ProfileCompletionModal from "./ProfileCompletionModal";
 import ProfessionalTermsAcceptanceModal from "@/components/legal/ProfessionalTermsAcceptanceModal";
@@ -19,17 +20,10 @@ interface ProfessionalProfileProps {
   hideHeaderFields?: boolean;
 }
 
-const isProfileCompleted = (profile: IProfile | null): boolean => {
-  if (!profile) return false;
-  return !!(
-    profile.problematics?.length &&
-    profile.approaches?.length &&
-    profile.ageCategories?.length &&
-    profile.skills?.length &&
-    profile.yearsOfExperience &&
-    profile.bio
-  );
-};
+// Completeness rule lives in a tested pure helper. `skills` is intentionally
+// NOT required (it's "(Facultatif)" in the form) — see the helper's doc.
+const isProfileCompleted = (profile: IProfile | null): boolean =>
+  isProfessionalProfileComplete(profile);
 
 function translatePaymentAgreement(
   value: string,
