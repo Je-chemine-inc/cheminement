@@ -4669,24 +4669,6 @@ export async function sendSessionInvoiceEmail(data: {
       ? `${data.amountCad.toFixed(2)} $ CAD`
       : `CAD $${data.amountCad.toFixed(2)}`;
 
-  // Short, copy-pasteable Interac block (the "code" = the unique invoice number,
-  // which the client must put in the transfer note so we can match the payment).
-  const shortFormat = (
-    lang === "fr"
-      ? [
-          "Virement Interac ⚡",
-          `📧 Courriel : ${data.depositEmail}`,
-          `💰 Montant : ${amount}`,
-          `📝 Note obligatoire : ${data.invoiceNumber}`,
-        ]
-      : [
-          "Interac e-Transfer ⚡",
-          `📧 Email: ${data.depositEmail}`,
-          `💰 Amount: ${amount}`,
-          `📝 Mandatory note: ${data.invoiceNumber}`,
-        ]
-  ).join("<br/>");
-
   const html = buildEmailHtml({
     title: reminder
       ? lang === "fr"
@@ -4738,14 +4720,9 @@ export async function sendSessionInvoiceEmail(data: {
               value: `Ideally identical to "${data.clientLegalName}". If the transfer comes from another name (e.g. a spouse), be sure to add invoice number ${data.invoiceNumber} in the note so we can match your payment.`,
             },
           ],
-    infoBox: {
-      title:
-        lang === "fr"
-          ? "Format court (idéal mobile)"
-          : "Short format (mobile-friendly)",
-      content: shortFormat,
-      theme: "info",
-    },
+    // The short copy-pasteable Interac block ("Format court") was removed from
+    // this email — it duplicated the numbered instructions above. The mobile
+    // short format now lives only in the companion SMS (sendSessionInvoiceSms).
     outro:
       lang === "fr"
         ? "Merci,<br>L'équipe de Je chemine"
