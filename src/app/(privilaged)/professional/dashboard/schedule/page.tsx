@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   ChevronLeft,
   ChevronRight,
@@ -35,6 +35,7 @@ import { AppointmentResponse } from "@/types/api";
 
 export default function SchedulePage() {
   const t = useTranslations("Dashboard.scheduleCalendar");
+  const locale = useLocale();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"day" | "week" | "month">("week");
   const [showRequests, setShowRequests] = useState(false);
@@ -114,21 +115,24 @@ export default function SchedulePage() {
       .catch(() => {});
   }, []);
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Locale-aware date labels — render in the active language (FR/EN) instead of
+  // hardcoded English. Recreating the formatters per render is cheap.
+  const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const dowFmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  const fullDateFmt = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const monthYearFmt = new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+  });
+  // Short weekday labels indexed by getDay() (0 = Sunday). Sept 1 2024 is a
+  // Sunday, so the 7 days from it give Sun→Sat in the current locale.
+  const dayNames = Array.from({ length: 7 }, (_, i) =>
+    cap(dowFmt.format(new Date(2024, 8, 1 + i))),
+  );
 
   const navigateDate = (direction: "prev" | "next") => {
     const newDate = new Date(currentDate);
@@ -186,9 +190,7 @@ export default function SchedulePage() {
     return date.getMonth() === currentDate.getMonth();
   };
 
-  const formatDate = (date: Date) => {
-    return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  };
+  const formatDate = (date: Date) => fullDateFmt.format(date);
 
   // Color-code time slots based on time of day
   const getTimeSlotColor = (time: string) => {
@@ -340,7 +342,7 @@ export default function SchedulePage() {
       setSelectedAppointment(null);
     } catch (error) {
       console.error("Error updating meeting link:", error);
-      alert("Failed to update meeting link. Please try again.");
+      alert(t("alerts.updateLinkFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -348,7 +350,7 @@ export default function SchedulePage() {
 
   const handleStartSession = async (appointment: AppointmentResponse) => {
     if (appointment.type === "video" && !appointment.meetingLink) {
-      alert("Please add a meeting link before starting the session.");
+      alert(t("alerts.addLinkFirst"));
       handleAddMeetingLink(appointment);
       return;
     }
@@ -371,7 +373,7 @@ export default function SchedulePage() {
       }
     } catch (error) {
       console.error("Error starting session:", error);
-      alert("Failed to start session. Please try again.");
+      alert(t("alerts.startFailed"));
     }
   };
 
@@ -426,8 +428,7 @@ export default function SchedulePage() {
                 {view === "day" && formatDate(currentDate)}
                 {view === "week" &&
                   `${t("weekOf")} ${formatDate(getWeekDays()[0])}`}
-                {view === "month" &&
-                  `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+                {view === "month" && cap(monthYearFmt.format(currentDate))}
               </h2>
               <button
                 onClick={() => navigateDate("next")}
@@ -709,7 +710,7 @@ export default function SchedulePage() {
                                         className="px-4 py-2 bg-primary text-primary-foreground rounded-full font-light text-sm hover:scale-105 transition-transform"
                                       >
                                         {appointment.status === "ongoing"
-                                          ? "Join Session"
+                                          ? t("joinSession")
                                           : t("startSession")}
                                       </button>
                                       <button
@@ -718,7 +719,7 @@ export default function SchedulePage() {
                                           handleAddMeetingLink(appointment);
                                         }}
                                         className="p-2 rounded-full hover:bg-muted transition-colors"
-                                        title="Update Meeting Link"
+                                        title={t("meetingLink.titleUpdate")}
                                       >
                                         <LinkIcon className="h-4 w-4 text-primary" />
                                       </button>
@@ -732,7 +733,7 @@ export default function SchedulePage() {
                                       className="px-4 py-2 bg-muted text-foreground rounded-full font-light text-sm hover:bg-muted/80 transition-colors flex items-center gap-2"
                                     >
                                       <LinkIcon className="h-4 w-4" />
-                                      Add Link
+                                      {t("addLink")}
                                     </button>
                                   )}
                                 </>

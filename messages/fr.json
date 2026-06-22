@@ -3119,6 +3119,8 @@
       "totalSessions": "Total des séances",
       "pendingRequests": "Demandes en attente",
       "startSession": "Commencer la séance",
+      "joinSession": "Rejoindre la séance",
+      "addLink": "Ajouter un lien",
       "viewDetails": "Voir les détails",
       "new": "Nouveau",
       "weekOf": "Semaine du",
@@ -3143,6 +3145,11 @@
         "refunded": "Remboursé",
         "processing": "En traitement",
         "pending": "En attente"
+      },
+      "alerts": {
+        "addLinkFirst": "Veuillez ajouter un lien de réunion avant de commencer la séance.",
+        "updateLinkFailed": "Échec de la mise à jour du lien de réunion. Veuillez réessayer.",
+        "startFailed": "Échec du démarrage de la séance. Veuillez réessayer."
       }
     },
     "analytics": {

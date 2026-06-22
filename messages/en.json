@@ -3119,6 +3119,8 @@
       "totalSessions": "Total Sessions",
       "pendingRequests": "Pending Requests",
       "startSession": "Start Session",
+      "joinSession": "Join Session",
+      "addLink": "Add Link",
       "viewDetails": "View Details",
       "new": "New",
       "weekOf": "Week of",
@@ -3143,6 +3145,11 @@
         "refunded": "Refunded",
         "processing": "Processing",
         "pending": "Pending"
+      },
+      "alerts": {
+        "addLinkFirst": "Please add a meeting link before starting the session.",
+        "updateLinkFailed": "Failed to update meeting link. Please try again.",
+        "startFailed": "Failed to start session. Please try again."
       }
     },
     "analytics": {
