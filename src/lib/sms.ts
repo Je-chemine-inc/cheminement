@@ -87,13 +87,15 @@ export async function sendSessionInvoiceSms(
   const amount =
     lang === "en"
       ? `CAD $${data.amountCad.toFixed(2)}`
-      : `${data.amountCad.toFixed(2)} $`;
-  // Card link first, then the short Interac block (deposit email + the invoice
-  // number to put in the transfer note). No account is needed for either.
+      : `${data.amountCad.toFixed(2)} $ CAD`;
+  // Card link first, then the mobile "Format court" Interac block (moved here
+  // from the email): deposit email, amount, and the invoice number that MUST go
+  // in the transfer note so we can match the payment. No account is needed for
+  // either option. Only shown when a deposit email is available.
   const interac = data.depositEmail
     ? lang === "en"
-      ? ` Or Interac to ${data.depositEmail} (mandatory note: ${data.invoiceNumber}).`
-      : ` Ou Interac à ${data.depositEmail} (note obligatoire : ${data.invoiceNumber}).`
+      ? `\nInterac e-Transfer ⚡\n📧 Email: ${data.depositEmail}\n💰 Amount: ${amount}\n📝 Mandatory note: ${data.invoiceNumber}`
+      : `\nVirement Interac ⚡\n📧 Courriel : ${data.depositEmail}\n💰 Montant : ${amount}\n📝 Note obligatoire : ${data.invoiceNumber}`
     : "";
   const lead = data.reminderNumber
     ? lang === "en"
@@ -102,8 +104,8 @@ export async function sendSessionInvoiceSms(
     : "";
   const body =
     lang === "en"
-      ? `${lead}Je chemine: invoice ${data.invoiceNumber} — ${amount} for your session. Pay by card: ${data.payUrl}${interac}`
-      : `${lead}Je chemine : facture ${data.invoiceNumber} — ${amount} pour votre séance. Payer par carte : ${data.payUrl}${interac}`;
+      ? `${lead}Je chemine: invoice ${data.invoiceNumber} — ${amount} for your session.\n💳 Pay by card: ${data.payUrl}${interac}`
+      : `${lead}Je chemine : facture ${data.invoiceNumber} — ${amount} pour votre séance.\n💳 Payer par carte : ${data.payUrl}${interac}`;
   return sendSms(toPhone, body);
 }
 
