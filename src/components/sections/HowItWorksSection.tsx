@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, UserPlus, CalendarCheck, FileText, ShieldCheck, Globe, Lock, Fingerprint } from "lucide-react";
+import { ArrowRight, UserPlus, CalendarCheck, FileText, ShieldCheck, Globe, Lock, Fingerprint, Zap } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import type { AnimationVariant } from "@/components/ui/ScrollReveal";
@@ -151,13 +151,22 @@ export default function HowItWorksSection() {
         <ScrollReveal variant="bounce-in" delayMs={600} duration={700}>
           <div className="text-center mt-16 pb-16 border-b border-muted-foreground/10">
             <p className="text-muted-foreground mb-6">{t("cta.question")}</p>
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-3 bg-foreground text-primary-foreground px-8 py-4 rounded-full font-semibold hover:bg-primary transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group"
-            >
-              <span>{t("cta.button")}</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-3 bg-foreground text-primary-foreground px-8 py-4 rounded-full font-semibold hover:bg-primary transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 group"
+              >
+                <span>{t("cta.button")}</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="/emergency"
+                className="inline-flex items-center gap-2 border border-foreground/25 text-foreground px-8 py-4 rounded-full font-semibold hover:bg-foreground/5 transition-all duration-300"
+              >
+                <Zap className="w-5 h-5 text-primary" />
+                <span>{t("cta.emergencyButton")}</span>
+              </Link>
+            </div>
           </div>
         </ScrollReveal>
 

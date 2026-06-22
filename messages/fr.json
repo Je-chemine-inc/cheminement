@@ -1462,7 +1462,8 @@
     "subtitle": "Votre parcours vers une meilleure santé mentale en trois étapes simples",
     "cta": {
       "question": "Prêt à commencer votre parcours ?",
-      "button": "Commencez aujourd'hui"
+      "button": "Commencez aujourd'hui",
+      "emergencyButton": "Consultation ponctuelle rapide"
     },
     "trustIcons": {
       "bill25": "Conforme à la Loi 25 (Québec)",
@@ -3834,7 +3835,6 @@
       "phone": "À venir",
       "addressLabel": "Adresse",
       "formButton": "Remplissez le formulaire de contact",
-      "emergencyButton": "Consultation ponctuelle rapide",
       "inquiries": {
         "services": {
           "title": "Services et approches",

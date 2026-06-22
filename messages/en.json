@@ -1462,7 +1462,8 @@
     "subtitle": "Your journey to better mental health in three simple steps",
     "cta": {
       "question": "Ready to start your journey?",
-      "button": "Get Started Today"
+      "button": "Get Started Today",
+      "emergencyButton": "Quick one-time consultation"
     },
     "trustIcons": {
       "bill25": "Bill 25 Compliant (Quebec)",
@@ -3834,7 +3835,6 @@
       "phone": "Coming soon",
       "addressLabel": "Address",
       "formButton": "Fill out the contact form",
-      "emergencyButton": "Quick one-time consultation",
       "inquiries": {
         "services": {
           "title": "Services and Approaches",
