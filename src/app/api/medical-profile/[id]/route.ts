@@ -9,7 +9,7 @@ import {
   applyMedicalProfileContactMask,
 } from "@/lib/admin-rbac";
 import { logAdminClientAccess } from "@/lib/admin-access-log";
-import { PROFESSIONAL_CLIENT_APPOINTMENT_STATUSES } from "@/lib/professional-client-access";
+import { professionalCanAccessClient } from "@/lib/professional-client-access";
 
 export async function GET(
   req: NextRequest,
@@ -29,26 +29,18 @@ export async function GET(
 
     // Only allow admins to fetch other users' medical profiles, or users to fetch their own, or professionals to fetch clients they have appointments with
     if (session.user.role !== "admin" && session.user.id !== userId) {
-      if (session.user.role === "professional") {
-        // Check if professional has appointments with this client
-        const Appointment = (await import("@/models/Appointment")).default;
-        const hasAppointment = await Appointment.findOne({
-          professionalId: session.user.id,
-          clientId: userId,
-          status: { $in: Array.from(PROFESSIONAL_CLIENT_APPOINTMENT_STATUSES) },
-        });
-        if (!hasAppointment) {
-          return NextResponse.json(
-            {
-              error:
-                "Forbidden: You can only access medical profiles of clients you have appointments with",
-            },
-            { status: 403 },
-          );
-        }
-      } else {
+      // Professionals can view the medical profile of a client they have a link
+      // with — assigned, proposed (cascade), or in the general pool they can
+      // claim — so the request modal's "Informations médicales" tab resolves.
+      const allowed =
+        session.user.role === "professional" &&
+        (await professionalCanAccessClient(session.user.id, userId));
+      if (!allowed) {
         return NextResponse.json(
-          { error: "Forbidden: You can only access your own medical profile" },
+          {
+            error:
+              "Forbidden: You can only access medical profiles of clients you are linked to",
+          },
           { status: 403 },
         );
       }

@@ -13,7 +13,7 @@ import {
   sendProfessionalApprovalEmail,
   sendProfessionalRejectionEmail,
 } from "@/lib/notifications";
-import { PROFESSIONAL_CLIENT_APPOINTMENT_STATUSES } from "@/lib/professional-client-access";
+import { professionalCanAccessClient } from "@/lib/professional-client-access";
 
 export async function GET(
   req: NextRequest,
@@ -29,18 +29,12 @@ export async function GET(
 
     // Only admins can view other users' details, or professionals can view clients they have appointments with
     if (session.user.role !== "admin" && session.user.id !== id) {
-      if (session.user.role === "professional") {
-        // Check if professional has appointments with this client
-        const Appointment = (await import("@/models/Appointment")).default;
-        const hasAppointment = await Appointment.findOne({
-          professionalId: session.user.id,
-          clientId: id,
-          status: { $in: Array.from(PROFESSIONAL_CLIENT_APPOINTMENT_STATUSES) },
-        });
-        if (!hasAppointment) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-      } else {
+      // Professionals can view a client they have a link with — assigned,
+      // proposed (cascade), or sitting in the general pool they can claim.
+      const allowed =
+        session.user.role === "professional" &&
+        (await professionalCanAccessClient(session.user.id, id));
+      if (!allowed) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
