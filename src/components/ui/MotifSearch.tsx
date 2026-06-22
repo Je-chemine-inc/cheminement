@@ -5,6 +5,7 @@ import {
   buildMotifSearchRecords,
   useDebouncedSmartMotifSearch,
 } from "@/hooks/useMotifSearch";
+import { MOTIF_SEARCH_EXTRAS } from "@/config/motifSearch";
 import { useMotifs, pickMotifLabel } from "@/hooks/useMotifs";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,15 @@ export const MotifSearch = React.forwardRef<HTMLDivElement, MotifSearchProps>(
 
     const { searchItems, dynamicExtras } = useMemo(() => {
       if (customItems) {
-        return { searchItems: customItems, dynamicExtras: {} as Partial<Record<string, string>> };
+        // Apply the static synonym/acronym map (keyed by exact label) so that
+        // typing "TOC", "TDAH", "autisme", "EMDR"… finds the right problématique
+        // even in a custom list. Only matching labels get extras, so unrelated
+        // custom lists (e.g. therapy objectives) are unaffected. Previously this
+        // was `{}` → acronym/synonym search silently returned nothing.
+        return {
+          searchItems: customItems,
+          dynamicExtras: MOTIF_SEARCH_EXTRAS,
+        };
       }
       const items: string[] = [];
       const extras: Record<string, string> = {};
