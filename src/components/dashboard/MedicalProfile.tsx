@@ -460,7 +460,9 @@ export default function MedicalProfile({
           <div className="space-y-2">
             <Label>{tMp("step3.primaryIssue")}</Label>
             <p className="text-foreground">
-              {medicalProfile.primaryIssue || tMv("empty.notSpecified")}
+              {(medicalProfile.primaryIssues?.length
+                ? medicalProfile.primaryIssues.join(", ")
+                : medicalProfile.primaryIssue) || tMv("empty.notSpecified")}
             </p>
           </div>
 
@@ -1007,6 +1009,12 @@ function MedicalProfileModal({
 
   const [currentConcernsData, setCurrentConcernsData] = useState({
     primaryIssue: profile?.primaryIssue || "",
+    // Up to 3 primary concerns. Backfill from the legacy single primaryIssue.
+    primaryIssues: profile?.primaryIssues?.length
+      ? profile.primaryIssues
+      : profile?.primaryIssue
+        ? [profile.primaryIssue]
+        : [],
     secondaryIssues: profile?.secondaryIssues || [],
     consultationMotifs: profile?.consultationMotifs || [],
     issueDescription: profile?.issueDescription || "",
@@ -1471,14 +1479,19 @@ function MedicalProfileModal({
                     <span className="text-primary ml-1">*</span>
                   </Label>
                   <MotifSearch
-                    multiSelect={false}
-                    value={currentConcernsData.primaryIssue}
-                    onChange={(v) =>
+                    multiSelect
+                    maxSelections={3}
+                    value={currentConcernsData.primaryIssues}
+                    onChange={(v) => {
+                      const arr = Array.isArray(v) ? v : v ? [v] : [];
                       setCurrentConcernsData((prev) => ({
                         ...prev,
-                        primaryIssue: Array.isArray(v) ? v[0] ?? "" : v,
-                      }))
-                    }
+                        primaryIssues: arr,
+                        // Keep the legacy single field = first selection so the
+                        // matcher + all existing readers stay correct.
+                        primaryIssue: arr[0] ?? "",
+                      }));
+                    }}
                     placeholder={tMp("step3.primaryIssuePlaceholder")}
                   />
                 </div>

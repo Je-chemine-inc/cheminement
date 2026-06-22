@@ -202,7 +202,7 @@ export async function PUT(
       "childDateOfBirth", "childServiceType", "medicalConditions", "currentMedications",
       "allergies", "consultationMotifs", "substanceUse", "previousTherapy",
       "previousTherapyDetails", "psychiatricHospitalization", "currentTreatment",
-      "diagnosedConditions", "primaryIssue", "secondaryIssues", "issueDescription",
+      "diagnosedConditions", "primaryIssue", "primaryIssues", "secondaryIssues", "issueDescription",
       "severity", "duration", "triggeringSituation", "symptoms", "dailyLifeImpact",
       "sleepQuality", "appetiteChanges", "treatmentGoals", "therapyApproach",
       "concernsAboutTherapy", "availability", "modality", "location", "sessionFrequency",
@@ -229,6 +229,12 @@ export async function PUT(
           medicalProfileUpdates[key] = value;
         }
       }
+    }
+
+    // Keep legacy single `primaryIssue` = primaryIssues[0] (matcher + readers).
+    if (Array.isArray(medicalProfileUpdates.primaryIssues)) {
+      medicalProfileUpdates.primaryIssue =
+        medicalProfileUpdates.primaryIssues[0] ?? "";
     }
 
     if (

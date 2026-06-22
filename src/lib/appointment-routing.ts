@@ -1018,7 +1018,11 @@ export async function routeAppointmentToProfessionals(
         },
         medicalProfile
           ? {
-              primaryIssue: medicalProfile.primaryIssue,
+              // First of up to 3 primary concerns; legacy rows only have the
+              // single primaryIssue (the save paths keep them in sync anyway).
+              primaryIssue:
+                medicalProfile.primaryIssues?.[0] ||
+                medicalProfile.primaryIssue,
               secondaryIssues: medicalProfile.secondaryIssues,
               therapyApproach: medicalProfile.therapyApproach,
               languagePreference: medicalProfile.languagePreference,

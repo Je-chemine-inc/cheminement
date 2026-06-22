@@ -53,6 +53,12 @@ export async function PUT(req: NextRequest) {
 
     const data = await req.json();
 
+    // Keep the legacy single `primaryIssue` in sync with primaryIssues[0] so
+    // the matcher + all existing readers stay correct regardless of the client.
+    if (Array.isArray(data.primaryIssues)) {
+      data.primaryIssue = data.primaryIssues[0] ?? "";
+    }
+
     const medicalProfile = await MedicalProfile.findOneAndUpdate(
       { userId: session.user.id },
       { ...data, profileCompleted: true },

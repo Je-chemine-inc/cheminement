@@ -84,6 +84,7 @@ export async function anonymizeExpiredAccounts(): Promise<AnonymizationReport> {
             currentMedications: [],
             consultationMotifs: [],
             primaryIssue: ANONYMIZED_MARKER,
+            primaryIssues: [],
             secondaryIssues: [],
             issueDescription: "",
             symptoms: [],

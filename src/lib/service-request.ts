@@ -51,11 +51,22 @@ export async function ensurePendingServiceRequest(
         ? "both"
         : "video";
 
+  // Up to 3 primary concerns now (primaryIssues[]); fall back to the legacy
+  // single primaryIssue. They feed the matcher's per-need scoring, then any
+  // secondary issues fill remaining slots (cap 3 total).
+  const primaries = mp?.primaryIssues?.length
+    ? mp.primaryIssues
+    : mp?.primaryIssue
+      ? [mp.primaryIssue]
+      : [];
   const needs: string[] = [];
-  if (mp?.primaryIssue) needs.push(mp.primaryIssue);
+  for (const p of primaries) {
+    if (needs.length >= 3) break;
+    if (p && !needs.includes(p)) needs.push(p);
+  }
   for (const s of mp?.secondaryIssues ?? []) {
     if (needs.length >= 3) break;
-    if (s) needs.push(s);
+    if (s && !needs.includes(s)) needs.push(s);
   }
 
   const isChild =
@@ -86,7 +97,7 @@ export async function ensurePendingServiceRequest(
         }
       : undefined,
     needs,
-    issueType: mp?.primaryIssue || undefined,
+    issueType: primaries[0] || mp?.primaryIssue || undefined,
     preferredAvailability: Array.isArray(mp?.availability) ? mp?.availability : [],
     price: pricing.sessionPrice,
     platformFee: pricing.platformFee,

@@ -27,7 +27,10 @@ export interface IMedicalProfile extends Document {
   diagnosedConditions?: string[];
 
   // Current Concerns
+  /** Primary concern(s) — up to 3. `primaryIssue` is kept = primaryIssues[0]
+   * for backward compatibility with the matcher and all legacy readers. */
   primaryIssue?: string;
+  primaryIssues?: string[];
   secondaryIssues?: string[];
   issueDescription?: string;
   severity?: "mild" | "moderate" | "severe";
@@ -104,6 +107,7 @@ const MedicalProfileSchema = new Schema<IMedicalProfile>(
 
     // Current Concerns
     primaryIssue: String,
+    primaryIssues: [String],
     secondaryIssues: [String],
     issueDescription: String,
     severity: {
