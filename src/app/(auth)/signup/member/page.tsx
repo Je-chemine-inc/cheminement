@@ -102,6 +102,7 @@ interface FormData {
 
   // Current Concerns
   primaryIssue: string;
+  primaryIssues: string[];
   secondaryIssues: string[];
   issueDescription: string;
   severity: string;
@@ -327,6 +328,7 @@ export default function MemberSignupPage() {
     currentTreatment: "",
     diagnosedConditions: [],
     primaryIssue: "",
+    primaryIssues: [],
     secondaryIssues: [],
     issueDescription: "",
     severity: "",
@@ -662,7 +664,12 @@ export default function MemberSignupPage() {
           formData.diagnosedConditions.length > 0
             ? formData.diagnosedConditions
             : undefined,
-        primaryIssue: formData.primaryIssue || undefined,
+        primaryIssue:
+          formData.primaryIssues[0] || formData.primaryIssue || undefined,
+        primaryIssues:
+          formData.primaryIssues.length > 0
+            ? formData.primaryIssues
+            : undefined,
         secondaryIssues:
           formData.secondaryIssues.length > 0
             ? formData.secondaryIssues
@@ -1380,13 +1387,19 @@ export default function MemberSignupPage() {
           <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="primaryIssue">{t("profileModal.step3.primaryIssue")}</Label>
-              <Textarea
-                id="primaryIssue"
-                name="primaryIssue"
-                value={formData.primaryIssue}
-                onChange={handleChange}
+              <MotifSearch
+                multiSelect
+                maxSelections={3}
+                value={formData.primaryIssues}
+                onChange={(v) => {
+                  const arr = Array.isArray(v) ? v : v ? [v] : [];
+                  setFormData((prev) => ({
+                    ...prev,
+                    primaryIssues: arr,
+                    primaryIssue: arr[0] ?? "",
+                  }));
+                }}
                 placeholder={t("profileModal.step3.primaryIssuePlaceholder")}
-                className="min-h-[140px] w-full resize-y"
               />
             </div>
 
@@ -1886,14 +1899,17 @@ export default function MemberSignupPage() {
                     <span className="font-medium">{formData.phone}</span>
                   </div>
                 )}
-                {formData.primaryIssue && (
+                {(formData.primaryIssues.length > 0 ||
+                  formData.primaryIssue) && (
                   <div className="grid grid-cols-2 gap-2 pb-2 border-b">
                     <span className="text-muted-foreground">
                       {t("review.primaryConcern")}
                     </span>
                     <span className="font-medium">
-                      {formData.primaryIssue.substring(0, 100)}
-                      {formData.primaryIssue.length > 100 ? "..." : ""}
+                      {(formData.primaryIssues.length > 0
+                        ? formData.primaryIssues.join(", ")
+                        : formData.primaryIssue
+                      ).substring(0, 100)}
                     </span>
                   </div>
                 )}

@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       currentTreatment,
       diagnosedConditions,
       primaryIssue,
+      primaryIssues,
       secondaryIssues,
       issueDescription,
       severity,
@@ -94,6 +95,18 @@ export async function POST(req: NextRequest) {
       acceptPrivacyPolicy,
       provisionedByAdmin,
     } = await req.json();
+
+    // Up to 3 primary concerns; keep the legacy single `primaryIssue` =
+    // primaryIssues[0] so the matcher + all readers stay correct.
+    const normalizedPrimaryIssues: string[] = Array.isArray(primaryIssues)
+      ? primaryIssues.filter(
+          (x: unknown): x is string =>
+            typeof x === "string" && x.trim().length > 0,
+        )
+      : typeof primaryIssue === "string" && primaryIssue.trim()
+        ? [primaryIssue]
+        : [];
+    const normalizedPrimaryIssue = normalizedPrimaryIssues[0] || primaryIssue;
 
     // Validation
     if (!email || !password || !firstName || !lastName || !role) {
@@ -260,7 +273,8 @@ export async function POST(req: NextRequest) {
             psychiatricHospitalization,
             currentTreatment,
             diagnosedConditions,
-            primaryIssue,
+            primaryIssue: normalizedPrimaryIssue,
+            primaryIssues: normalizedPrimaryIssues,
             secondaryIssues,
             issueDescription,
             severity,
@@ -465,7 +479,8 @@ export async function POST(req: NextRequest) {
         currentTreatment: currentTreatment,
         diagnosedConditions: diagnosedConditions,
         // Current Concerns
-        primaryIssue: primaryIssue,
+        primaryIssue: normalizedPrimaryIssue,
+        primaryIssues: normalizedPrimaryIssues,
         secondaryIssues: secondaryIssues,
         issueDescription: issueDescription,
         severity: severity,

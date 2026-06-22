@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Stepper } from "@/components/ui/stepper";
+import { MotifSearch } from "@/components/ui/MotifSearch";
 import { useTranslations } from "next-intl";
 import { IMedicalProfile } from "@/models/MedicalProfile";
 import { medicalProfileAPI } from "@/lib/api-client";
@@ -38,6 +39,7 @@ export interface MedicalProfileData {
   currentTreatment: string;
   diagnosedConditions: string[];
   primaryIssue: string;
+  primaryIssues: string[];
   secondaryIssues: string[];
   issueDescription: string;
   severity: string;
@@ -125,6 +127,11 @@ export default function MedicalProfileCompletionModal({
     currentTreatment: profile?.currentTreatment || "",
     diagnosedConditions: profile?.diagnosedConditions || [],
     primaryIssue: profile?.primaryIssue || "",
+    primaryIssues: profile?.primaryIssues?.length
+      ? profile.primaryIssues
+      : profile?.primaryIssue
+        ? [profile.primaryIssue]
+        : [],
     secondaryIssues: profile?.secondaryIssues || [],
     issueDescription: profile?.issueDescription || "",
     severity: profile?.severity || "",
@@ -353,7 +360,7 @@ export default function MedicalProfileCompletionModal({
       case 1:
         return true; // Mental health history is optional
       case 2:
-        return formData.primaryIssue.trim() !== "";
+        return formData.primaryIssues.length > 0;
       case 3:
         return true; // Symptoms optional
       case 4:
@@ -697,11 +704,18 @@ export default function MedicalProfileCompletionModal({
                   {t("step3.primaryIssue")}
                   <span className="text-primary ml-1">*</span>
                 </Label>
-                <Input
-                  id="primaryIssue"
-                  name="primaryIssue"
-                  value={formData.primaryIssue}
-                  onChange={handleChange}
+                <MotifSearch
+                  multiSelect
+                  maxSelections={3}
+                  value={formData.primaryIssues}
+                  onChange={(v) => {
+                    const arr = Array.isArray(v) ? v : v ? [v] : [];
+                    setFormData((prev) => ({
+                      ...prev,
+                      primaryIssues: arr,
+                      primaryIssue: arr[0] ?? "",
+                    }));
+                  }}
                   placeholder={t("step3.primaryIssuePlaceholder")}
                 />
               </div>

@@ -172,6 +172,7 @@ export const authAPI = {
     currentTreatment?: string;
     diagnosedConditions?: string[];
     primaryIssue?: string;
+    primaryIssues?: string[];
     secondaryIssues?: string[];
     issueDescription?: string;
     severity?: string;
