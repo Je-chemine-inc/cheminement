@@ -2335,6 +2335,13 @@ export async function sendPaymentInvitation(
       }
     : undefined;
 
+  // Primary CTA → the payment-method choice (paymentUrl deep-links straight to
+  // "add a payment method"). Hardcoded so the label always names the payment
+  // step (not the vaguer "Ouvrir la facturation") and never reads like the
+  // profile-completion secondary button, regardless of the editable template.
+  const payCtaText =
+    lang === "fr" ? "Choisir mon mode de paiement" : "Choose my payment method";
+
   const details: Array<{ label: string; value: string; isLink?: boolean }> =
     lang === "fr"
       ? [
@@ -2381,9 +2388,10 @@ export async function sendPaymentInvitation(
       theme: "info",
       greeting: "",
       intro: editable.bodyHtml,
-      button: editable.ctaText
-        ? { text: editable.ctaText, url: data.paymentUrl || dashboardUrl }
-        : undefined,
+      button: {
+        text: payCtaText,
+        url: data.paymentUrl || dashboardUrl,
+      },
       secondaryButton: profileNudge,
       branding,
       lang,
@@ -2392,9 +2400,7 @@ export async function sendPaymentInvitation(
       [
         editable.title,
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
-        editable.ctaText
-          ? `${editable.ctaText} : ${data.paymentUrl || dashboardUrl}`
-          : "",
+        `${payCtaText} : ${data.paymentUrl || dashboardUrl}`,
         profileNudge
           ? `${profileNudge.preamble}\n${profileNudge.text} : ${profileNudge.url}`
           : "",
@@ -2443,10 +2449,7 @@ export async function sendPaymentInvitation(
     },
     button: data.paymentUrl
       ? {
-          text:
-            lang === "fr"
-              ? "Ouvrir la facturation et confirmer"
-              : "Open billing and confirm",
+          text: payCtaText,
           url: data.paymentUrl,
         }
       : {

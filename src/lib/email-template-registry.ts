@@ -605,7 +605,7 @@ const paymentInvitation: EmailTemplateDefinition = {
         "{{#meetingLinkOrLocation}}<br><strong>Lieu/Lien :</strong> {{meetingLinkOrLocation}}{{/meetingLinkOrLocation}}</p>" +
         "<p><strong>Montant dû : {{price}} $ {{currency}}</strong> (frais de séance — prélevés après la séance complétée)</p>" +
         "<p>Vous recevrez votre lien de réunion une fois votre moyen de paiement enregistré.</p>",
-      ctaText: "Ouvrir la facturation et confirmer",
+      ctaText: "Choisir mon mode de paiement",
     },
     en: {
       subject: "Your appointment is confirmed — next step",
@@ -621,7 +621,7 @@ const paymentInvitation: EmailTemplateDefinition = {
         "{{#meetingLinkOrLocation}}<br><strong>Location/Link:</strong> {{meetingLinkOrLocation}}{{/meetingLinkOrLocation}}</p>" +
         "<p><strong>Amount due: {{currency}} ${{price}}</strong> (session fee — charged after the session is completed)</p>" +
         "<p>You will receive your meeting link once your payment method is saved.</p>",
-      ctaText: "Open billing and confirm",
+      ctaText: "Choose my payment method",
     },
   },
 };
