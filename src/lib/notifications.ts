@@ -388,11 +388,24 @@ const createDetailRow = (
   value: string,
   isLink = false,
   branding?: IEmailBranding,
+  stacked = false,
 ): string => {
   const primaryColor = branding?.primaryColor || "#8B7355";
   const valueHtml = isLink
     ? `<a href="${value}" style="color: ${primaryColor};">${value.includes("Join") ? "Join Session" : value}</a>`
     : value;
+  // Stacked rows put the label on its own line above a full-width value —
+  // used for long explanatory values (e.g. the Interac account-name guidance)
+  // that look cramped squeezed into the right column of the flex layout. Inline
+  // display:block overrides the `.detail-row` flex so it survives Gmail too.
+  if (stacked) {
+    return `
+    <div class="detail-row" style="display: block;">
+      <span class="detail-label" style="display: block; margin-bottom: 4px;">${label}&nbsp;:</span>
+      <span class="detail-value" style="display: block;">${valueHtml}</span>
+    </div>
+  `;
+  }
   // " :" separator survives email clients that strip the flex layout (Gmail).
   // Non-breaking space keeps the colon glued to the label per French typography
   // and reads fine in English too.
@@ -405,12 +418,17 @@ const createDetailRow = (
 };
 
 const createDetailsSection = (
-  details: Array<{ label: string; value: string; isLink?: boolean }>,
+  details: Array<{
+    label: string;
+    value: string;
+    isLink?: boolean;
+    stacked?: boolean;
+  }>,
   borderColor = "#8B7355",
   branding?: IEmailBranding,
 ): string => {
   const rows = details
-    .map((d) => createDetailRow(d.label, d.value, d.isLink, branding))
+    .map((d) => createDetailRow(d.label, d.value, d.isLink, branding, d.stacked))
     .join("");
   return `<div class="details" style="border-left-color: ${borderColor};">${rows}</div>`;
 };
@@ -530,7 +548,12 @@ interface EmailTemplateOptions {
   theme?: EmailTheme;
   greeting: string;
   intro: string;
-  details?: Array<{ label: string; value: string; isLink?: boolean }>;
+  details?: Array<{
+    label: string;
+    value: string;
+    isLink?: boolean;
+    stacked?: boolean;
+  }>;
   detailsBorderColor?: string;
   price?: { amount: number; note: string; theme?: EmailTheme; currency?: string };
   infoBox?: { title: string; content: string; theme?: EmailTheme };
@@ -4706,6 +4729,7 @@ export async function sendSessionInvoiceEmail(data: {
             {
               label: "4. Nom du compte bancaire",
               value: `Idéalement identique à « ${data.clientLegalName} ». Si le virement provient d'un autre nom (ex. conjoint), inscrivez bien le numéro de facture ${data.invoiceNumber} dans la note pour que nous puissions associer votre paiement.`,
+              stacked: true,
             },
           ]
         : [
@@ -4718,6 +4742,7 @@ export async function sendSessionInvoiceEmail(data: {
             {
               label: "4. Bank account name",
               value: `Ideally identical to "${data.clientLegalName}". If the transfer comes from another name (e.g. a spouse), be sure to add invoice number ${data.invoiceNumber} in the note so we can match your payment.`,
+              stacked: true,
             },
           ],
     // The short copy-pasteable Interac block ("Format court") was removed from
