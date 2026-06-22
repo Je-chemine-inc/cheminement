@@ -51,6 +51,38 @@ export default function DashboardPage() {
   const [monthSessions, setMonthSessions] = useState<number | null>(null);
   const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
 
+  // Whether this pro's profile carries enough data to be auto-matched. Mirrors
+  // the server-side isProfileMatchEligible data check (completed OR has
+  // problématiques/spécialité). null = unknown (don't nag while loading); false
+  // = empty profile → nudge them to complete it or they'll never be proposed.
+  const [matchReady, setMatchReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile")
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.status === 404) {
+          setMatchReady(false);
+          return;
+        }
+        if (!res.ok) return; // unknown — leave null, show nothing
+        const p = await res.json();
+        const hasProblematics =
+          Array.isArray(p?.problematics) && p.problematics.length > 0;
+        const hasSpecialty =
+          typeof p?.specialty === "string" && p.specialty.trim().length > 0;
+        setMatchReady(
+          Boolean(p?.profileCompleted) || hasProblematics || hasSpecialty,
+        );
+      })
+      .catch(() => {
+        // Network failure: don't nag.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -139,6 +171,20 @@ export default function DashboardPage() {
         </h1>
         <p className="text-muted-foreground font-light mt-2">{t("subtitle")}</p>
       </div>
+
+      {matchReady === false && (
+        <a
+          href="/professional/dashboard/profile"
+          className="block rounded-xl border-l-4 border-primary bg-primary/5 px-5 py-4 transition-colors hover:bg-primary/10"
+        >
+          <p className="text-sm font-medium text-foreground">
+            {t("matchNudgeTitle")}
+          </p>
+          <p className="text-xs font-light text-muted-foreground mt-0.5">
+            {t("matchNudgeSub")}
+          </p>
+        </a>
+      )}
 
       {pendingProposalsCount > 0 && (
         <a

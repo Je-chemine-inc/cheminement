@@ -2513,6 +2513,8 @@
       "pendingProposalsAlertOne": "Vous avez une nouvelle demande de rendez-vous à traiter.",
       "pendingProposalsAlertMany": "Vous avez {count} nouvelles demandes de rendez-vous à traiter.",
       "pendingProposalsAlertSub": "Cliquez pour les consulter et y répondre.",
+      "matchNudgeTitle": "Complétez votre profil pour recevoir des demandes de jumelage",
+      "matchNudgeSub": "Ajoutez vos problématiques et votre spécialité — sans cela, le jumelage automatique ne peut pas vous proposer de clients.",
       "profileStatus": "Statut du profil",
       "pendingReview": "En attente d'examen",
       "quickActions": "Actions rapides",

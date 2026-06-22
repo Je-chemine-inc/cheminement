@@ -2512,6 +2512,8 @@
       "pendingProposalsAlertOne": "You have a new appointment request to review.",
       "pendingProposalsAlertMany": "You have {count} new appointment requests to review.",
       "pendingProposalsAlertSub": "Click to view and respond.",
+      "matchNudgeTitle": "Complete your profile to receive matching requests",
+      "matchNudgeSub": "Add your areas of focus and specialty — without them, automatic matching can't propose clients to you.",
       "profileStatus": "Profile Status",
       "pendingReview": "Pending Review",
       "quickActions": "Quick Actions",
