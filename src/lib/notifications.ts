@@ -1753,7 +1753,11 @@ export async function sendReferralConfirmationEmail(data: {
 }
 
 export async function sendGuestPaymentConfirmation(
-  data: GuestBookingEmailData,
+  data: GuestBookingEmailData & {
+    /** Claim/complete-account link. When set, the RDV confirmation also nudges
+     * the guest to finalize their account (parallel to the jumelage email). */
+    completeAccountUrl?: string;
+  },
 ): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
@@ -1763,6 +1767,21 @@ export async function sendGuestPaymentConfirmation(
   const professionalName = formatProfessionalName(data.professionalName, lang);
   const sessionType = formatSessionType(data.therapyType, lang);
   const appointmentType = formatAppointmentType(data.type, lang);
+
+  // Account-completion nudge (same intent as the jumelage email): encourage the
+  // guest to finalize their account to manage appointments + payments online.
+  // Hardcoded secondary button so it shows regardless of the editable template.
+  const accountNudge = data.completeAccountUrl
+    ? {
+        preamble:
+          lang === "fr"
+            ? "Pour suivre votre demande et gérer vos rendez-vous et paiements en ligne, complétez votre compte. Ignorez ce message si c'est déjà fait."
+            : "To track your request and manage your appointments and payments online, complete your account. Ignore this message if it's already done.",
+        text:
+          lang === "fr" ? "Compléter mon compte" : "Complete my account",
+        url: data.completeAccountUrl,
+      }
+    : undefined;
 
   const details =
     lang === "fr"
@@ -1806,6 +1825,7 @@ export async function sendGuestPaymentConfirmation(
         data.paymentLink && editable.ctaText
           ? { text: editable.ctaText, url: data.paymentLink }
           : undefined,
+      secondaryButton: accountNudge,
       branding,
       lang,
     });
@@ -1815,6 +1835,9 @@ export async function sendGuestPaymentConfirmation(
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
         data.paymentLink && editable.ctaText
           ? `${editable.ctaText} : ${data.paymentLink}`
+          : "",
+        accountNudge
+          ? `${accountNudge.preamble}\n${accountNudge.text} : ${accountNudge.url}`
           : "",
       ],
       lang,
@@ -1866,6 +1889,7 @@ export async function sendGuestPaymentConfirmation(
           url: data.paymentLink,
         }
       : undefined,
+    secondaryButton: accountNudge,
     infoBox: {
       title:
         lang === "fr"
@@ -1899,6 +1923,9 @@ export async function sendGuestPaymentConfirmation(
           `Durée : ${data.duration} minutes`,
           `Montant dû : ${data.price.toFixed(2)} $ ${currency}`,
           data.paymentLink ? `Confirmer le paiement : ${data.paymentLink}` : "",
+          accountNudge
+            ? `${accountNudge.preamble}\n${accountNudge.text} : ${accountNudge.url}`
+            : "",
         ]
       : [
           "Confirm your appointment (payment after the session)",
@@ -1913,6 +1940,9 @@ export async function sendGuestPaymentConfirmation(
           `Duration: ${data.duration} minutes`,
           `Amount due: ${data.price.toFixed(2)} ${currency}`,
           data.paymentLink ? `Confirm payment: ${data.paymentLink}` : "",
+          accountNudge
+            ? `${accountNudge.preamble}\n${accountNudge.text} : ${accountNudge.url}`
+            : "",
         ],
     lang,
   );

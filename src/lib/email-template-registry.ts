@@ -219,6 +219,7 @@ const jumelageSuccess: EmailTemplateDefinition = {
         "<p>Bonjour {{clientName}},</p>" +
         "<p>Bonne nouvelle : un professionnel a accepté votre demande. Il communiquera bientôt avec vous pour convenir ensemble de la date de votre premier rendez-vous.</p>" +
         "<p><strong>Prochaines étapes</strong><br>Dès que la date de votre premier rendez-vous sera fixée avec votre professionnel, vous recevrez un courriel de confirmation. C'est à ce moment que vous pourrez configurer votre mode de paiement — rien n'est requis pour l'instant.</p>" +
+        "<p>👉 En attendant, complétez votre compte pour suivre votre demande, échanger avec votre professionnel et gérer vos rendez-vous et paiements en ligne. Ignorez ce message si c'est déjà fait.</p>" +
         "<p>Si vous avez des questions, contactez notre équipe depuis votre tableau de bord.</p>",
       ctaText: "Compléter mon compte",
     },
@@ -231,6 +232,7 @@ const jumelageSuccess: EmailTemplateDefinition = {
         "<p>Dear {{clientName}},</p>" +
         "<p>Good news: a professional has accepted your request. They will reach out to you shortly to agree together on the date of your first appointment.</p>" +
         "<p><strong>What happens next</strong><br>As soon as the date of your first appointment is set with your professional, you'll receive a confirmation email. That's when you'll set up your payment method — nothing is required for now.</p>" +
+        "<p>👉 In the meantime, complete your account to track your request, message your professional, and manage your appointments and payments online. Ignore this message if it's already done.</p>" +
         "<p>If you have questions, contact our team from your dashboard.</p>",
       ctaText: "Complete my account",
     },
@@ -2985,14 +2987,41 @@ export async function ensureEmailTemplateSeeded(
   locale: EmailTemplateLocale,
 ): Promise<IEmailTemplate> {
   await connectToDatabase();
-  const existing = await EmailTemplate.findOne({ templateKey: key, locale });
-  if (existing) return existing;
 
   const def = getDefinition(key);
   if (!def) {
     throw new Error(`Unknown email template key "${key}"`);
   }
   const seed = def.defaults[locale];
+
+  const existing = await EmailTemplate.findOne({ templateKey: key, locale });
+  if (existing) {
+    // Self-heal: a row that was never customized by an admin (no updatedBy)
+    // should track the CURRENT registry default. Older installs seeded a row
+    // with a now-superseded default (e.g. the old payment-focused jumelage
+    // copy that read "Configurez votre paiement" instead of nudging the client
+    // to complete their account) and ensureEmailTemplateSeeded used
+    // $setOnInsert — so the stale row stuck forever. Refresh un-customized rows
+    // when their content has drifted; admin-edited rows (updatedBy set) are
+    // ALWAYS left untouched so we never clobber a deliberate customization.
+    if (!existing.updatedBy) {
+      const drifted =
+        existing.subject !== seed.subject ||
+        existing.title !== seed.title ||
+        (existing.subtitle ?? "") !== (seed.subtitle ?? "") ||
+        existing.bodyHtml !== seed.bodyHtml ||
+        (existing.ctaText ?? "") !== (seed.ctaText ?? "");
+      if (drifted) {
+        existing.subject = seed.subject;
+        existing.title = seed.title;
+        existing.subtitle = seed.subtitle;
+        existing.bodyHtml = seed.bodyHtml;
+        existing.ctaText = seed.ctaText;
+        await existing.save();
+      }
+    }
+    return existing;
+  }
 
   const doc = await EmailTemplate.findOneAndUpdate(
     { templateKey: key, locale },

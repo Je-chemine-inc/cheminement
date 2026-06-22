@@ -204,6 +204,11 @@ export async function POST(
           price: appointment.payment?.price ?? 0,
           paymentLink: billingUrl,
           locale,
+          // Nudge the guest to finalize their account (parallel to the jumelage
+          // email) — claim flow seeded with their email.
+          completeAccountUrl: `${base}/signup/member?email=${encodeURIComponent(
+            recipient.email,
+          )}`,
         };
         after(() =>
           sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
