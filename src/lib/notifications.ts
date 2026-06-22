@@ -5485,10 +5485,18 @@ export async function sendJumelageSuccessEmail(data: {
       theme: "success",
       greeting: "",
       intro: editable.bodyHtml,
-      button:
-        data.completeAccountUrl && editable.ctaText
-          ? { text: editable.ctaText, url: data.completeAccountUrl }
-          : undefined,
+      // The primary button goes to completeAccountUrl (account/profile
+      // completion), so its LABEL is hardcoded to match — NOT editable.ctaText,
+      // which a stale/admin-edited template left as a payment label ("Choisir
+      // mon mode de paiement"), making the button read backwards vs the payment
+      // secondary button. Label must always describe the code-fixed destination.
+      button: data.completeAccountUrl
+        ? {
+            text:
+              lang === "fr" ? "Compléter mon compte" : "Complete my account",
+            url: data.completeAccountUrl,
+          }
+        : undefined,
       secondaryButton: paymentNudge,
       branding,
       lang,
@@ -5497,8 +5505,10 @@ export async function sendJumelageSuccessEmail(data: {
       [
         editable.title,
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
-        data.completeAccountUrl && editable.ctaText
-          ? `${editable.ctaText} : ${data.completeAccountUrl}`
+        data.completeAccountUrl
+          ? lang === "fr"
+            ? `Compléter mon compte : ${data.completeAccountUrl}`
+            : `Complete my account: ${data.completeAccountUrl}`
           : "",
         paymentNudge
           ? `${paymentNudge.preamble}\n${paymentNudge.text} : ${paymentNudge.url}`
