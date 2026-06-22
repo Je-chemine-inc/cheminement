@@ -374,11 +374,17 @@ const createHeader = (
   branding?: IEmailBranding,
 ): string => {
   const colors = getThemeColors(theme, branding);
+  // Bulletproof banner: a SOLID background-color is mandatory because Yahoo,
+  // Outlook and mobile Gmail silently drop CSS gradients — without a fallback
+  // the banner went transparent and the white title/subtitle rendered
+  // white-on-white (invisible). The gradient stays as a progressive
+  // enhancement via background-image (so it doesn't reset background-color).
+  // `bgcolor` helps the oldest Outlook. Mirrors the createButton fix.
   return `
-    <div class="header" style="background: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+    <div class="header" bgcolor="${colors.primary}" style="background-color: ${colors.primary}; background-image: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); color: #ffffff; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
       ${branding?.logoUrl ? `<img src="${branding.logoUrl}" alt="${branding.companyName}" style="max-height: 40px; margin-bottom: 15px;">` : ""}
-      <h1 style="margin: 0; font-weight: 300; font-size: 28px;">${title}</h1>
-      ${subtitle ? `<p style="margin: 10px 0 0; opacity: 0.9; font-size: 16px;">${subtitle}</p>` : ""}
+      <h1 style="margin: 0; font-weight: 300; font-size: 28px; color: #ffffff;">${title}</h1>
+      ${subtitle ? `<p style="margin: 10px 0 0; opacity: 0.9; font-size: 16px; color: #ffffff;">${subtitle}</p>` : ""}
     </div>
   `;
 };
