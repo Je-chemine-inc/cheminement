@@ -5,6 +5,7 @@ import MedicalProfile from "@/models/MedicalProfile";
 import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+import { resolveMatchingConcerns } from "@/lib/matching-concerns";
 import {
   consolidatePhoneShells,
   findNameDuplicates,
@@ -51,23 +52,12 @@ export async function ensurePendingServiceRequest(
         ? "both"
         : "video";
 
-  // Up to 3 primary concerns now (primaryIssues[]); fall back to the legacy
-  // single primaryIssue. They feed the matcher's per-need scoring, then any
-  // secondary issues fill remaining slots (cap 3 total).
-  const primaries = mp?.primaryIssues?.length
-    ? mp.primaryIssues
-    : mp?.primaryIssue
-      ? [mp.primaryIssue]
-      : [];
-  const needs: string[] = [];
-  for (const p of primaries) {
-    if (needs.length >= 3) break;
-    if (p && !needs.includes(p)) needs.push(p);
-  }
-  for (const s of mp?.secondaryIssues ?? []) {
-    if (needs.length >= 3) break;
-    if (s && !needs.includes(s)) needs.push(s);
-  }
+  // Jumelage matches PRIMARILY on the Motifs de consultation, falling back to
+  // Problème principal + Problèmes secondaires (see resolveMatchingConcerns).
+  // The first concern is the matcher's main anchor; cap the request's needs at
+  // 3 (as the booking funnel does).
+  const concerns = resolveMatchingConcerns(mp);
+  const needs = concerns.slice(0, 3);
 
   const isChild =
     mp?.accountFor === "child" &&
@@ -97,7 +87,7 @@ export async function ensurePendingServiceRequest(
         }
       : undefined,
     needs,
-    issueType: primaries[0] || mp?.primaryIssue || undefined,
+    issueType: concerns[0] || mp?.primaryIssue || undefined,
     preferredAvailability: Array.isArray(mp?.availability) ? mp?.availability : [],
     price: pricing.sessionPrice,
     platformFee: pricing.platformFee,

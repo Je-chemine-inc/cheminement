@@ -8,6 +8,7 @@ import {
   sendAdminAppointmentMovedToGeneralAlert,
   sendAdminJumelageProblemAlert,
 } from "@/lib/notifications";
+import { resolveMatchingConcerns } from "@/lib/matching-concerns";
 
 /**
  * Calculate age from date of birth
@@ -1006,6 +1007,10 @@ export async function routeAppointmentToProfessionals(
     const MAX_TARGETED_ATTEMPTS = 2;
     const attemptsMade = appointment.cascadeAttempts ?? 0;
 
+    // The client's concern(s) the jumelage matches on — motifs de consultation
+    // first, else problème principal + secondaires. Same for every candidate.
+    const matchingConcerns = resolveMatchingConcerns(medicalProfile);
+
     const scored = genderFilteredProfiles.map((profile) => {
       const { score, reasons } = calculateRelevancyScore(
         profile,
@@ -1018,12 +1023,12 @@ export async function routeAppointmentToProfessionals(
         },
         medicalProfile
           ? {
-              // First of up to 3 primary concerns; legacy rows only have the
-              // single primaryIssue (the save paths keep them in sync anyway).
-              primaryIssue:
-                medicalProfile.primaryIssues?.[0] ||
-                medicalProfile.primaryIssue,
-              secondaryIssues: medicalProfile.secondaryIssues,
+              // Jumelage matches PRIMARILY on Motifs de consultation, falling
+              // back to Problème principal + Problèmes secondaires. The first
+              // resolved concern is the 100-pt exact-match anchor; the rest are
+              // scored as secondary. (resolveMatchingConcerns — single source.)
+              primaryIssue: matchingConcerns[0],
+              secondaryIssues: matchingConcerns.slice(1),
               therapyApproach: medicalProfile.therapyApproach,
               languagePreference: medicalProfile.languagePreference,
               preferredGender: medicalProfile.preferredGender,
