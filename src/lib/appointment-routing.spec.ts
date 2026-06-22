@@ -8,6 +8,7 @@ import {
   professionalCoversAvailabilitySlot,
   scoreAvailabilityMatch,
   selectCascadeCandidate,
+  isProfileMatchEligible,
 } from "./appointment-routing";
 
 describe("appointment-routing", () => {
@@ -34,6 +35,57 @@ describe("appointment-routing", () => {
     it("should return false for age >= 18", () => {
       expect(isChild(18)).toBe(false);
       expect(isChild(30)).toBe(false);
+    });
+  });
+
+  describe("isProfileMatchEligible", () => {
+    it("admits a formally completed profile", () => {
+      expect(isProfileMatchEligible({ profileCompleted: true })).toBe(true);
+    });
+
+    it("admits an active pro with matching data even if NOT completed (the bug)", () => {
+      // Regression: a rich profile that never ran the terms step
+      // (profileCompleted=false) must still be matchable.
+      expect(
+        isProfileMatchEligible({
+          profileCompleted: false,
+          problematics: ["Anxiété", "Dépression"],
+        }),
+      ).toBe(true);
+      expect(
+        isProfileMatchEligible({
+          profileCompleted: false,
+          specialty: "Psychologie clinique",
+        }),
+      ).toBe(true);
+    });
+
+    it("excludes a truly-empty, not-completed profile", () => {
+      expect(
+        isProfileMatchEligible({
+          profileCompleted: false,
+          problematics: [],
+          specialty: "",
+        }),
+      ).toBe(false);
+    });
+
+    it("excludes a pro not accepting new clients, even if completed", () => {
+      expect(
+        isProfileMatchEligible({
+          profileCompleted: true,
+          acceptingNewClients: false,
+        }),
+      ).toBe(false);
+    });
+
+    it("excludes a non-emergency-accepting pro for emergency requests only", () => {
+      const profile = {
+        profileCompleted: true,
+        acceptingEmergencyConsultations: false,
+      };
+      expect(isProfileMatchEligible(profile, { isEmergency: true })).toBe(false);
+      expect(isProfileMatchEligible(profile, { isEmergency: false })).toBe(true);
     });
   });
 

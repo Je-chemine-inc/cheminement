@@ -745,6 +745,46 @@ export function calculateRelevancyScore(
 }
 
 /**
+ * Whether a professional's profile is eligible to be AUTO-PROPOSED a request.
+ *
+ * History: this used to hard-require `profileCompleted === true`. But that flag
+ * only flips true when the pro accepts the professional TERMS (see
+ * /api/profile) — NOT when they fill their profile. So an active, admin-approved
+ * pro with a rich profile (problématiques, spécialité…) who hadn't run the terms
+ * step stayed `profileCompleted: false` and was invisible to auto-matching,
+ * starving the pool (the reported "jumelage automatique ne fonctionne pas").
+ *
+ * A pro is now eligible when they are accepting new clients AND either the
+ * profile is formally completed OR it carries real matching data
+ * (problématiques or spécialité). Truly-empty profiles are still excluded, and
+ * low-data pros simply score low. Pure + exported so it is unit-tested directly.
+ */
+export function isProfileMatchEligible(
+  profile: {
+    profileCompleted?: boolean;
+    acceptingNewClients?: boolean;
+    acceptingEmergencyConsultations?: boolean;
+    problematics?: string[];
+    specialty?: string;
+  },
+  opts: { isEmergency?: boolean } = {},
+): boolean {
+  // Accepting new clients? Explicit `false` opts out; undefined = accepting.
+  if (profile.acceptingNewClients === false) return false;
+  // Emergency ("Consultation ponctuelle rapide") requests only auto-push to
+  // pros who also accept urgent consultations (they can still self-claim from
+  // the general pool). Undefined = accepting.
+  if (opts.isEmergency && profile.acceptingEmergencyConsultations === false) {
+    return false;
+  }
+  const hasProblematics =
+    Array.isArray(profile.problematics) && profile.problematics.length > 0;
+  const hasSpecialty =
+    typeof profile.specialty === "string" && profile.specialty.trim().length > 0;
+  return profile.profileCompleted === true || hasProblematics || hasSpecialty;
+}
+
+/**
  * Route an appointment to relevant professionals based on matching criteria
  * Returns the list of matched professionals and updates the appointment
  */
@@ -829,22 +869,19 @@ export async function routeAppointmentToProfessionals(
       );
     };
 
-    // Get profiles for all professionals
-    const profileQuery: Record<string, unknown> = {
-      userId: { $in: professionalIds },
-      profileCompleted: true,
-      // Only pros currently accepting new clients are eligible for matching.
-      // `$ne: false` keeps legacy/undefined profiles in (default: accepting).
-      acceptingNewClients: { $ne: false },
-    };
-    // For "Consultation ponctuelle rapide" (isEmergency) requests, only auto-push
-    // to pros who ALSO accept urgent consultations. Pros who opted out are not
-    // proposed/emailed, but can still self-claim these from the general pool.
-    // `$ne: false` keeps legacy/undefined profiles in (default: accepting).
-    if (appointment.isEmergency) {
-      profileQuery.acceptingEmergencyConsultations = { $ne: false };
-    }
-    const profiles = await Profile.find(profileQuery);
+    // Get profiles for all active professionals, then keep the eligible ones.
+    // Eligibility is decided in JS by isProfileMatchEligible (pure + tested):
+    // accepting new clients (+ urgent for emergencies) AND a completed-or-data
+    // -bearing profile. Done in JS rather than a Mongo filter so the rule stays
+    // unit-testable and so a rich-but-not-"completed" profile is no longer
+    // wrongly excluded (the auto-match pool was being starved otherwise).
+    const profiles = (
+      await Profile.find({ userId: { $in: professionalIds } })
+    ).filter((profile) =>
+      isProfileMatchEligible(profile, {
+        isEmergency: appointment.isEmergency,
+      }),
+    );
 
     // Get client's medical profile for better matching
     let medicalProfile = null;
