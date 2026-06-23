@@ -84,6 +84,11 @@ export async function GET(req: NextRequest) {
       query.$or = [
         { clientId: { $in: userIds } },
         { professionalId: { $in: userIds } },
+        // The REAL invoice number + the Interac reference are stored fields, so
+        // searching by "numéro de facture" works again (the SES-xxxxxx id was
+        // derived from _id and not queryable).
+        { invoiceNumber: rx },
+        { "payment.interacReferenceCode": rx },
       ];
     }
 
@@ -131,6 +136,10 @@ export async function GET(req: NextRequest) {
       return {
         id: appointment._id.toString(),
         sessionId: `SES-${appointment._id.toString().slice(-6).toUpperCase()}`,
+        // The REAL invoice number issued at session closure (e.g. JC-2026-000004)
+        // — the SAME one shown in the client's payment email. The SES-xxxxxx id
+        // above is only a fallback for appointments with no invoice yet.
+        invoiceNumber: appointment.invoiceNumber ?? undefined,
         client: client
           ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
           : "—",

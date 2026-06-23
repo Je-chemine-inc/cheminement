@@ -26,6 +26,7 @@ type PaymentMethod = "all" | "card" | "transfer";
 interface Payment {
   id: string;
   sessionId: string;
+  invoiceNumber?: string;
   client: string;
   professional: string;
   date: string;
@@ -560,7 +561,7 @@ export default function AdminBillingPage() {
                     <div className="grid gap-4 rounded-2xl bg-muted/30 p-4 md:grid-cols-5">
                       <div>
                         <p className="text-xs text-muted-foreground">{t("invoiceNumber")}</p>
-                        <p className="font-medium text-foreground">{payment.sessionId}</p>
+                        <p className="font-medium text-foreground">{payment.invoiceNumber || payment.sessionId}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{t("clientPayment")}</p>
@@ -610,7 +611,12 @@ export default function AdminBillingPage() {
                           <p className="font-medium text-foreground">{formatDate(payment.transferDueAt)}</p>
                         </div>
                       )}
-                      {payment.interacReferenceCode && (
+                      {/* Show the legacy Interac code ONLY when there's no real
+                          invoice yet (pre-session guarantee). For a completed
+                          session the mandatory transfer note IS the invoice
+                          number shown above — surfacing INT-xxxx too would make
+                          the admin look for the wrong code when reconciling. */}
+                      {!payment.invoiceNumber && payment.interacReferenceCode && (
                         <div>
                           <p className="text-xs text-muted-foreground">{t("interacCode")}</p>
                           <p className="font-mono font-medium text-foreground">{payment.interacReferenceCode}</p>
