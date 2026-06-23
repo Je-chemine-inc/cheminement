@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 import {
   Download,
   Wallet,
@@ -181,7 +182,7 @@ export default function AdminBillingPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `receipt-${appointmentId.slice(-8)}.pdf`;
+      a.download = `${buildReceiptNumber(appointmentId)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

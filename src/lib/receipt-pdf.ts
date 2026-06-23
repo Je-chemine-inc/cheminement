@@ -2,6 +2,7 @@ import "server-only";
 import jsPDF from "jspdf";
 import { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
 import { formatCanadianPhone } from "@/lib/format-platform-contact";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 export { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
 
 export type ReceiptAudience = "client" | "professional" | "admin";
@@ -314,11 +315,7 @@ export function buildFiscalReceiptPdfBuffer(
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...grayColor);
-  doc.text(
-    `Reçu n° REC-${appointmentId.slice(-8).toUpperCase()}`,
-    MARGIN,
-    y,
-  );
+  doc.text(`Reçu n° ${buildReceiptNumber(appointmentId)}`, MARGIN, y);
   y += 6;
   if (input.invoiceNumber) {
     doc.text(`Facture n° ${input.invoiceNumber}`, MARGIN, y);

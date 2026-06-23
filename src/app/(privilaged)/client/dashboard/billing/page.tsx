@@ -32,6 +32,7 @@ import {
 } from "@/lib/api-client";
 import { AppointmentResponse } from "@/types/api";
 import { useLocaleFromQuery } from "@/lib/use-locale-from-query";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 
 interface PaymentMethod {
   id: string;
@@ -240,7 +241,7 @@ export default function ClientBillingPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `receipt-${appointmentId.slice(-8)}.pdf`;
+      a.download = `${buildReceiptNumber(appointmentId)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

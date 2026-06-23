@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Profile from "@/models/Profile";
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="receipt-${appointmentId.slice(-8)}.pdf"`,
+        "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${buildReceiptNumber(appointmentId)}.pdf"`,
         "Content-Length": pdfBuffer.length.toString(),
       },
     });

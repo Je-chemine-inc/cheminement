@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 import { useLocale, useTranslations } from "next-intl";
 import { GuestPaySetupFlow } from "@/components/payments";
 import { useLocaleFromQuery } from "@/lib/use-locale-from-query";
@@ -454,7 +455,7 @@ function GuestPaymentContent() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `receipt-${appointment.appointmentId}.pdf`;
+      a.download = `${buildReceiptNumber(appointment.appointmentId)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

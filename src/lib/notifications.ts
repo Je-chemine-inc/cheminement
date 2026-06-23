@@ -9,6 +9,7 @@ import {
   emailTransportStatus,
 } from "@/lib/email-transport";
 import connectToDatabase from "@/lib/mongodb";
+import { buildReceiptNumber } from "@/lib/receipt-number";
 import User from "@/models/User";
 import PlatformSettings, {
   type EmailNotificationType,
@@ -4890,10 +4891,8 @@ export async function sendFiscalReceiptEmail(data: {
         text,
         attachments: [
           {
-            filename:
-              lang === "fr"
-                ? `recu-${data.appointmentId.slice(-8)}.pdf`
-                : `receipt-${data.appointmentId.slice(-8)}.pdf`,
+            // Filename matches the receipt number on the PDF (e.g. REC-BDA8A524.pdf).
+            filename: `${buildReceiptNumber(data.appointmentId)}.pdf`,
             content: data.pdfBuffer,
             contentType: "application/pdf",
           },
@@ -5001,10 +5000,8 @@ export async function sendFiscalReceiptEmail(data: {
       text,
       attachments: [
         {
-          filename:
-            lang === "fr"
-              ? `recu-${data.appointmentId.slice(-8)}.pdf`
-              : `receipt-${data.appointmentId.slice(-8)}.pdf`,
+          // Filename matches the receipt number on the PDF (e.g. REC-BDA8A524.pdf).
+          filename: `${buildReceiptNumber(data.appointmentId)}.pdf`,
           content: data.pdfBuffer,
           contentType: "application/pdf",
         },
