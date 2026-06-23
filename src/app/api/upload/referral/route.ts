@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import StoredFile from "@/models/StoredFile";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { prepareAndScanUpload } from "@/lib/upload-pipeline";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -46,34 +47,33 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
+
+    const prepared = await prepareAndScanUpload(file, {
+      allowedTypes: ALLOWED_TYPES,
+      maxSize: MAX_FILE_SIZE,
+    });
+    if (!prepared.ok) {
       return NextResponse.json(
-        { error: "Invalid file type. Only PDF, JPEG, and PNG are allowed." },
-        { status: 400 },
-      );
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File size exceeds 10MB limit" },
-        { status: 400 },
+        { error: prepared.error },
+        { status: prepared.status },
       );
     }
 
     await connectToDatabase();
-    const buffer = Buffer.from(await file.arrayBuffer());
     const stored = await StoredFile.create({
-      fileName: file.name,
+      fileName: prepared.value.fileName,
       fileType: file.type,
       fileSize: file.size,
-      data: buffer,
+      data: prepared.value.buffer,
       kind: "referral",
       uploadedBy: session?.user?.id,
+      scanStatus: prepared.value.scanStatus,
     });
 
     return NextResponse.json({
       success: true,
       url: `/api/files/${stored._id.toString()}`,
-      fileName: file.name,
+      fileName: prepared.value.fileName,
       size: file.size,
       type: file.type,
     });

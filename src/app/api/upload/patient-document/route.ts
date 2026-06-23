@@ -6,6 +6,7 @@ import connectToDatabase from "@/lib/mongodb";
 import StoredFile from "@/models/StoredFile";
 import ClientDocument from "@/models/ClientDocument";
 import Appointment from "@/models/Appointment";
+import { prepareAndScanUpload } from "@/lib/upload-pipeline";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -50,18 +51,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Invalid file type. Only PDF, JPEG, and PNG are allowed." },
-        { status: 400 },
-      );
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File size exceeds 10MB limit" },
-        { status: 400 },
-      );
-    }
 
     if (session.user.role === "professional") {
       const hasRelationship = await Appointment.exists({
@@ -78,20 +67,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const prepared = await prepareAndScanUpload(file, {
+      allowedTypes: ALLOWED_TYPES,
+      maxSize: MAX_FILE_SIZE,
+    });
+    if (!prepared.ok) {
+      return NextResponse.json(
+        { error: prepared.error },
+        { status: prepared.status },
+      );
+    }
 
     const stored = await StoredFile.create({
-      fileName: file.name,
+      fileName: prepared.value.fileName,
       fileType: file.type,
       fileSize: file.size,
-      data: buffer,
+      data: prepared.value.buffer,
       kind: "patient-document",
       uploadedBy: session.user.id,
+      scanStatus: prepared.value.scanStatus,
     });
 
     const doc = await ClientDocument.create({
       clientId,
-      name: file.name,
+      name: prepared.value.fileName,
       fileUrl: `/api/files/${stored._id.toString()}`,
       fileType: file.type,
       fileSize: file.size,

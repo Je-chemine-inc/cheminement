@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
 import StoredFile from "@/models/StoredFile";
+import { prepareAndScanUpload } from "@/lib/upload-pipeline";
 
 const ALLOWED_FOLDERS = new Set(["content", "problematiques", "misc"]);
 const ALLOWED_MIME: Record<string, string> = {
@@ -56,10 +57,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (file.size > MAX_BYTES) {
+    // Confirm the bytes match the declared image type and scan for malware
+    // (content images are served PUBLICLY, so a disguised payload here is the
+    // highest-risk upload path).
+    const prepared = await prepareAndScanUpload(file, {
+      allowedTypes: Object.keys(ALLOWED_MIME),
+      maxSize: MAX_BYTES,
+    });
+    if (!prepared.ok) {
       return NextResponse.json(
-        { error: `File too large (max ${MAX_BYTES / 1024 / 1024} MB).` },
-        { status: 413 },
+        { error: prepared.error },
+        { status: prepared.status },
       );
     }
 
@@ -67,14 +75,14 @@ export async function POST(req: NextRequest) {
     // hosts with a read-only filesystem (Vercel) and survive redeploys. Served
     // publicly via /api/files/[id]. `folder` is kept for backward-compatible
     // bookkeeping only.
-    const bytes = Buffer.from(await file.arrayBuffer());
     const stored = await StoredFile.create({
-      fileName: file.name || `image.${ext}`,
+      fileName: prepared.value.fileName || `image.${ext}`,
       fileType: file.type,
       fileSize: file.size,
-      data: bytes,
+      data: prepared.value.buffer,
       kind: "content-image",
       uploadedBy: session.user.id,
+      scanStatus: prepared.value.scanStatus,
     });
 
     const url = `/api/files/${stored._id.toString()}`;
