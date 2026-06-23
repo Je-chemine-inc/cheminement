@@ -297,6 +297,7 @@ export async function POST(
           professionalEmail: professional.email,
           duration: updated.duration || 60,
           type: updated.type as "video" | "in-person" | "phone" | "both",
+          isEmergency: Boolean(updated.isEmergency),
         }).catch((e) => console.error("[admin assign] pro notify:", e));
       }
     });

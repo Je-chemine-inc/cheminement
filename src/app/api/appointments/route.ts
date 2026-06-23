@@ -742,6 +742,7 @@ export async function POST(req: NextRequest) {
           | "both",
         meetingLink: populatedAppointment.meetingLink,
         location: populatedAppointment.location,
+        isEmergency: Boolean(populatedAppointment.isEmergency),
       };
 
       // Send notifications without blocking the response. after() keeps the

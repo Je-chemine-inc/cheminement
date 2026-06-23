@@ -86,6 +86,12 @@ interface AppointmentEmailData extends BaseAppointmentData {
   professionalEmail: string;
   meetingLink?: string;
   location?: string;
+  /**
+   * True when the request is a "Consultation ponctuelle rapide" (emergency).
+   * The professional notification then flags it loudly and states the 12 h
+   * response window (the take-charge SLA for urgent requests).
+   */
+  isEmergency?: boolean;
 }
 
 interface GuestBookingEmailData extends BaseAppointmentData {
@@ -2562,6 +2568,18 @@ export async function sendProfessionalNotification(
   // resolves to the login page and then deep-links to the request after sign-in.
   const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
 
+  // "Consultation ponctuelle rapide" (emergency) requests must stand out and
+  // state the 12 h response window (the urgent take-charge SLA). We surface the
+  // urgency in BOTH render paths via a warning theme + a dedicated info box, so
+  // it shows even when an admin has customised the editable template body.
+  const isEmergency = Boolean(data.isEmergency);
+  const emergencyInfoBox = {
+    title: "⚠ Consultation ponctuelle rapide",
+    content:
+      "Cette demande est une consultation ponctuelle rapide (urgente). Merci d'y répondre dans un délai de 12 heures pour la prendre en charge ou la libérer.",
+    theme: "warning" as const,
+  };
+
   // Admin-editable template (subject/title/subtitle/body/CTA); the hardcoded
   // block below is the fallback if the DB row can't be loaded. Body is French.
   const editable = await loadEditableTemplate("professionalNewRequest", "fr", {
@@ -2571,14 +2589,17 @@ export async function sendProfessionalNotification(
     appointmentType,
     appointmentDate: formattedDate,
     appointmentTime: formattedTime,
+    // Lets a customised template optionally branch with {{#isEmergency}}…{{/isEmergency}}.
+    isEmergency: isEmergency ? "1" : "",
   });
   if (editable) {
     const html = buildEmailHtml({
       title: editable.title,
-      subtitle: editable.subtitle,
-      theme: "info",
+      subtitle: isEmergency ? "Réponse requise sous 12 heures" : editable.subtitle,
+      theme: isEmergency ? "warning" : "info",
       greeting: "",
       intro: editable.bodyHtml,
+      infoBox: isEmergency ? emergencyInfoBox : undefined,
       button: editable.ctaText
         ? { text: editable.ctaText, url: dashboardUrl }
         : undefined,
@@ -2588,24 +2609,41 @@ export async function sendProfessionalNotification(
     const text = buildEmailText(
       [
         editable.title,
+        isEmergency
+          ? "Consultation ponctuelle rapide (urgente) — réponse requise sous 12 heures."
+          : "",
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
         editable.ctaText ? `${editable.ctaText} : ${dashboardUrl}` : "",
       ],
       "fr",
     );
     return sendEmail(
-      { to: data.professionalEmail, subject: editable.subject, html, text },
+      {
+        to: data.professionalEmail,
+        subject: isEmergency
+          ? `⚠ URGENCE — ${editable.subject}`
+          : editable.subject,
+        html,
+        text,
+      },
       "appointment_professional_notification",
     );
   }
 
   const html = buildEmailHtml({
-    title: "Nouvelle demande de rendez-vous",
-    theme: "info",
+    title: isEmergency
+      ? "⚠ Consultation ponctuelle rapide"
+      : "Nouvelle demande de rendez-vous",
+    subtitle: isEmergency ? "Réponse requise sous 12 heures" : undefined,
+    theme: isEmergency ? "warning" : "info",
     greeting: `Bonjour ${professionalName},`,
-    intro:
-      "Vous avez reçu une nouvelle demande de rendez-vous. Veuillez consulter les détails ci-dessous.",
+    intro: isEmergency
+      ? "Vous avez reçu une <strong>consultation ponctuelle rapide</strong> (demande urgente). Merci d'y répondre dans un délai de <strong>12 heures</strong> pour la prendre en charge ou la libérer."
+      : "Vous avez reçu une nouvelle demande de rendez-vous. Veuillez consulter les détails ci-dessous.",
     details: [
+      ...(isEmergency
+        ? [{ label: "Priorité", value: "⚠ URGENCE — réponse sous 12 h" }]
+        : []),
       { label: "Client", value: data.clientName },
       { label: "Courriel", value: data.clientEmail },
       { label: "Type", value: appointmentType },
@@ -2619,9 +2657,14 @@ export async function sendProfessionalNotification(
   });
 
   const text = buildEmailText([
-    "Nouvelle demande de rendez-vous",
+    isEmergency
+      ? "⚠ Consultation ponctuelle rapide — réponse requise sous 12 h"
+      : "Nouvelle demande de rendez-vous",
     `Bonjour ${professionalName},`,
-    "Vous avez une nouvelle demande de rendez-vous.",
+    isEmergency
+      ? "Vous avez reçu une consultation ponctuelle rapide (urgente). Merci d'y répondre dans un délai de 12 heures."
+      : "Vous avez une nouvelle demande de rendez-vous.",
+    ...(isEmergency ? ["Priorité : URGENCE — réponse sous 12 h"] : []),
     "DÉTAILS DU CLIENT :",
     `Client : ${data.clientName}`,
     `Courriel : ${data.clientEmail}`,
@@ -2633,7 +2676,9 @@ export async function sendProfessionalNotification(
 
   const subject = await getSubject(
     "appointment_professional_notification",
-    "Nouvelle demande de rendez-vous — Je chemine",
+    isEmergency
+      ? "⚠ Consultation ponctuelle rapide (réponse sous 12 h) — Je chemine"
+      : "Nouvelle demande de rendez-vous — Je chemine",
   );
 
   return sendEmail(

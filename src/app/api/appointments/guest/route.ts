@@ -454,6 +454,7 @@ export async function POST(req: NextRequest) {
         time: appointmentData.time || "To be scheduled",
         duration: appointmentData.duration || 60,
         type: appointmentData.type,
+        isEmergency: Boolean(appointmentData.isEmergency),
       };
       // after() keeps the serverless function alive on Vercel until the SMTP
       // send completes; otherwise the container is killed before Gmail responds.
