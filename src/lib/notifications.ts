@@ -375,18 +375,25 @@ const createHeader = (
   branding?: IEmailBranding,
 ): string => {
   const colors = getThemeColors(theme, branding);
-  // Bulletproof banner: a SOLID background-color is mandatory because Yahoo,
-  // Outlook and mobile Gmail silently drop CSS gradients — without a fallback
-  // the banner went transparent and the white title/subtitle rendered
-  // white-on-white (invisible). The gradient stays as a progressive
-  // enhancement via background-image (so it doesn't reset background-color).
-  // `bgcolor` helps the oldest Outlook. Mirrors the createButton fix.
+  // Bulletproof banner. The SOLID fill must survive EVERY client: Yahoo, Outlook
+  // web and mobile Gmail silently drop CSS gradients, and Outlook *desktop* (the
+  // Word rendering engine) additionally ignores `background-color` on a <div> —
+  // only `bgcolor` on a <td> is honored there. Without this the white
+  // title/subtitle rendered white-on-white (invisible), which is exactly what
+  // surfaced in Yahoo. So we render the banner as a <table>/<td> carrying BOTH
+  // `bgcolor` and an inline `background-color`; the gradient stays as a
+  // progressive enhancement via `background-image` (kept separate so it doesn't
+  // reset the solid fill). class="header" preserves the responsive @media rules.
   return `
-    <div class="header" bgcolor="${colors.primary}" style="background-color: ${colors.primary}; background-image: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); color: #ffffff; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
-      ${branding?.logoUrl ? `<img src="${branding.logoUrl}" alt="${branding.companyName}" style="max-height: 40px; margin-bottom: 15px;">` : ""}
-      <h1 style="margin: 0; font-weight: 300; font-size: 28px; color: #ffffff;">${title}</h1>
-      ${subtitle ? `<p style="margin: 10px 0 0; opacity: 0.9; font-size: 16px; color: #ffffff;">${subtitle}</p>` : ""}
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%;">
+      <tr>
+        <td class="header" align="center" bgcolor="${colors.primary}" style="background-color: ${colors.primary}; background-image: linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%); color: #ffffff; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          ${branding?.logoUrl ? `<img src="${branding.logoUrl}" alt="${branding.companyName}" style="max-height: 40px; margin-bottom: 15px;">` : ""}
+          <h1 style="margin: 0; font-weight: 300; font-size: 28px; color: #ffffff;">${title}</h1>
+          ${subtitle ? `<p style="margin: 10px 0 0; opacity: 0.9; font-size: 16px; color: #ffffff;">${subtitle}</p>` : ""}
+        </td>
+      </tr>
+    </table>
   `;
 };
 
@@ -448,11 +455,23 @@ const createPriceSection = (
   branding?: IEmailBranding,
 ): string => {
   const colors = getThemeColors(theme, branding);
+  // Bulletproof price card (mirrors createHeader). The amount + note are white,
+  // so the colored fill MUST survive every client or it renders white-on-white —
+  // and this block carries the dollar amount on money emails (payment invitation,
+  // receipts), so an invisible fill hides the single most important line.
+  // Outlook desktop's Word engine drops background/background-color on a <div>
+  // (only `bgcolor` on a <td> is honored), so render as a <table>/<td bgcolor>
+  // with explicit #ffffff on the inner text. `opacity` is dropped (Word ignores
+  // it) — full white reads fine on the colored fill.
   return `
-    <div style="background: ${colors.primary}; color: white; padding: 15px 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-      <div style="font-size: 24px; font-weight: 600;">$${amount.toFixed(2)} ${currency}</div>
-      <div style="font-size: 12px; opacity: 0.9; margin-top: 5px;">${note}</div>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+      <tr>
+        <td align="center" bgcolor="${colors.primary}" style="background-color: ${colors.primary}; color: #ffffff; padding: 15px 20px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 24px; font-weight: 600; color: #ffffff;">$${amount.toFixed(2)} ${currency}</div>
+          <div style="font-size: 12px; color: #ffffff; margin-top: 5px;">${note}</div>
+        </td>
+      </tr>
+    </table>
   `;
 };
 
@@ -464,7 +483,7 @@ const createInfoBox = (
 ): string => {
   const colors = getThemeColors(theme, branding);
   return `
-    <div style="background: ${colors.bg}; border: 1px solid ${colors.primary}40; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
+    <div style="background: ${colors.bg}; border: 1px solid ${colors.primary}; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
       <h3 style="margin: 0 0 10px; color: ${colors.primary}; font-size: 16px;">${title}</h3>
       <p style="margin: 0; color: ${colors.text}; font-size: 14px;">${content}</p>
     </div>
