@@ -1067,6 +1067,8 @@
     "attemptsLabel": "Attempts: {n}",
     "refusedTwiceFlag": "Refused 2× — re-verify",
     "refusedTwiceHint": "Refused or ignored by 2 professionals. Re-check the request (missing or inaccurate info), and contact the client or other professionals before reassigning.",
+    "refusedRematchFlag": "Refused — re-matching",
+    "refusedRematchHint": "A professional declined this request. It was automatically returned here and offered to another professional. Use \"Automatic matching\" or assign manually if it isn't picked up.",
     "referralDocument": "Reference document",
     "filterAll": "All",
     "scheduleAction": "Set appointment",

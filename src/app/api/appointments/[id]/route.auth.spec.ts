@@ -18,6 +18,7 @@ const h = vi.hoisted(() => {
   const getServerSession = vi.fn();
   const canAccessAccount = vi.fn().mockResolvedValue(false);
   const findByIdAndUpdate = vi.fn();
+  const findOneAndUpdate = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
   const makeQuery = (result: unknown) => ({
     populate() {
@@ -27,7 +28,14 @@ const h = vi.hoisted(() => {
       return Promise.resolve(result).then(res, rej);
     },
   });
-  return { getServerSession, canAccessAccount, findByIdAndUpdate, store, makeQuery };
+  return {
+    getServerSession,
+    canAccessAccount,
+    findByIdAndUpdate,
+    findOneAndUpdate,
+    store,
+    makeQuery,
+  };
 });
 
 vi.mock("next/server", () => ({
@@ -50,6 +58,7 @@ vi.mock("@/models/Appointment", () => ({
   default: {
     findById: () => h.makeQuery(h.store.appointment),
     findByIdAndUpdate: h.findByIdAndUpdate,
+    findOneAndUpdate: h.findOneAndUpdate,
   },
 }));
 vi.mock("@/models/User", () => ({
@@ -61,7 +70,11 @@ vi.mock("@/lib/notifications", () => ({
   sendMeetingLinkNotification: vi.fn(),
   sendCancellationNotification: vi.fn().mockResolvedValue(true),
   sendRefundConfirmation: vi.fn(),
-  sendAdminRequestReturnedToQueueAlert: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/appointment-routing", () => ({
+  routeAppointmentToProfessionals: vi
+    .fn()
+    .mockResolvedValue({ success: true, matches: [], routingStatus: "general" }),
 }));
 vi.mock("@/lib/guardian-utils", () => ({
   resolveAppointmentRecipient: () => ({
@@ -79,10 +92,8 @@ vi.mock("@/lib/provision-guest-as-client", () => ({
 }));
 
 import { PATCH as apptPATCH } from "@/app/api/appointments/[id]/route";
-import {
-  sendCancellationNotification,
-  sendAdminRequestReturnedToQueueAlert,
-} from "@/lib/notifications";
+import { sendCancellationNotification } from "@/lib/notifications";
+import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 type Res = Promise<{ status: number; body: Record<string, unknown> }>;
 
@@ -102,6 +113,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.canAccessAccount.mockResolvedValue(false);
   h.findByIdAndUpdate.mockImplementation(() => h.makeQuery(h.store.appointment));
+  h.findOneAndUpdate.mockResolvedValue({ _id: APPT_ID, routingStatus: "pending" });
   h.store.appointment = {
     _id: APPT_ID,
     clientId: CLIENT_ID,
@@ -145,33 +157,49 @@ describe("PATCH /api/appointments/[id] — ownership guard", () => {
 
 describe("PATCH /api/appointments/[id] — professional refusing a demande", () => {
   beforeEach(() => {
-    // An UNASSIGNED, PENDING service request (a "demande"), proposed to a pro.
+    // An UNASSIGNED, PENDING service request (a "demande") PROPOSED to this pro.
     h.store.appointment = {
       _id: APPT_ID,
       clientId: CLIENT_ID,
       professionalId: null,
       status: "pending",
+      routingStatus: "proposed",
+      proposedTo: [{ toString: () => PRO_ID }],
       type: "video",
       payment: { status: "pending" },
       toObject: () => ({ _id: APPT_ID, status: "pending" }),
     };
   });
 
-  it("does NOT email the client; returns the demande to the admin queue + alerts admins", async () => {
+  it("a proposed pro: no client email; atomic refusal claim + re-run matching", async () => {
     const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
     expect(res.status).toBe(200);
 
-    // The update was rewritten: not a cancellation, but a return-to-queue.
-    const updateArg = h.findByIdAndUpdate.mock.calls[0][1] as Record<
-      string,
-      unknown
-    >;
-    expect(updateArg.status).toBeUndefined();
-    expect(updateArg.routingStatus).toBe("awaiting_admin");
-    expect(updateArg.$addToSet).toEqual({ refusedBy: PRO_ID });
+    // It is NOT a cancellation: handled by an atomic single-winner claim that
+    // records the refusal, advances the cascade, and clears the proposal.
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+    const [filter, update] = h.findOneAndUpdate.mock.calls[0] as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ];
+    expect(filter.routingStatus).toBe("proposed");
+    expect(filter.refusedBy).toEqual({ $ne: PRO_ID });
+    expect(update.$addToSet).toEqual({ refusedBy: PRO_ID });
+    expect(update.$inc).toEqual({ cascadeAttempts: 1 });
 
-    // Client stays silent; only the admin is alerted (the "drapeau").
+    // Client stays silent; the matcher attempts another jumelage.
     expect(sendCancellationNotification).not.toHaveBeenCalled();
-    expect(sendAdminRequestReturnedToQueueAlert).toHaveBeenCalledTimes(1);
+    expect(routeAppointmentToProfessionals).toHaveBeenCalledWith(APPT_ID);
+  });
+
+  it("rejects a pro cancelling a demande that was NOT proposed to them (403)", async () => {
+    // e.g. a general-pool row — must not be yanked out of the pool / cancelled.
+    h.store.appointment.routingStatus = "general";
+    h.store.appointment.proposedTo = [];
+    const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(res.status).toBe(403);
+    expect(h.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+    expect(routeAppointmentToProfessionals).not.toHaveBeenCalled();
   });
 });

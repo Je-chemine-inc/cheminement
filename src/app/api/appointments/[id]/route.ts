@@ -10,8 +10,8 @@ import {
   sendMeetingLinkNotification,
   sendCancellationNotification,
   sendRefundConfirmation,
-  sendAdminRequestReturnedToQueueAlert,
 } from "@/lib/notifications";
+import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import {
   resolveAppointmentRecipient,
   canAccessAccount,
@@ -243,24 +243,67 @@ export async function PATCH(
       }
     }
 
-    // A professional refusing an unassigned PENDING "demande de service" is NOT a
-    // cancellation, and the CLIENT must not be emailed about it (client feedback:
-    // a pro declining a request stays invisible to the client). Rewrite the
-    // update so the request RETURNS to the admin "Demande de service" queue
-    // (routingStatus "awaiting_admin") for manual reassignment, record the
-    // refusal, and clear the stale proposal. The normal cancel path — and its
-    // client cancellation email — never runs because status stays "pending".
-    // Admins are alerted right after the update (the requested "drapeau").
-    const proRefusedDemande =
+    // A professional setting an UNASSIGNED PENDING request to "cancelled" is only
+    // valid as a REFUSAL of a proposal made to them — it must NOT cancel the
+    // demande nor email the client (client feedback: a pro declining a request
+    // stays invisible to the client). We handle it exactly like the proposals-
+    // list /refuse route: record the refusal ATOMICALLY (single winner, so
+    // cascadeAttempts can't double-count on a double-submit / concurrent decline)
+    // and re-run jumelage to offer it to ANOTHER professional ("tenter un autre
+    // jumelage"), falling back to the general pool / admin queue if none fits —
+    // so it lands back in "Demandes de service", flagged. Emergency + regular
+    // alike. A general-pool / awaiting-admin row that was NOT proposed to this
+    // pro is rejected: a pro can't cancel a demande that isn't theirs.
+    if (
       data.status === "cancelled" &&
       oldAppointment.status === "pending" &&
       !oldAppointment.professionalId &&
-      session.user.role === "professional";
-    if (proRefusedDemande) {
-      delete data.status;
-      data.routingStatus = "awaiting_admin";
-      data.$addToSet = { refusedBy: session.user.id };
-      data.$unset = { proposedTo: "", proposedAt: "" };
+      session.user.role === "professional"
+    ) {
+      const wasProposedToThisPro =
+        oldAppointment.routingStatus === "proposed" &&
+        (oldAppointment.proposedTo ?? []).some(
+          (p: { toString: () => string }) => p.toString() === session.user.id,
+        );
+      if (!wasProposedToThisPro) {
+        return NextResponse.json(
+          { error: "You cannot cancel a request that was not proposed to you." },
+          { status: 403 },
+        );
+      }
+      // Single-winner claim (mirrors /refuse CASE 2): `refusedBy: {$ne}` makes the
+      // whole update idempotent, so a duplicate/concurrent decline can't land a
+      // second cascadeAttempts +1.
+      const claimed = await Appointment.findOneAndUpdate(
+        {
+          _id: id,
+          status: "pending",
+          routingStatus: "proposed",
+          refusedBy: { $ne: session.user.id },
+        },
+        {
+          $set: { routingStatus: "pending" },
+          $addToSet: { refusedBy: session.user.id },
+          $inc: { cascadeAttempts: 1 },
+          $unset: { proposedTo: "", proposedAt: "" },
+        },
+        { new: true },
+      );
+      if (claimed) {
+        // Re-route OUTSIDE the response; after() keeps the container alive for the
+        // matcher's own email fan-out. The client is never emailed here.
+        after(async () => {
+          try {
+            await routeAppointmentToProfessionals(id);
+          } catch (err) {
+            console.error("[refuse-demande] re-route failed:", err);
+          }
+        });
+      }
+      return NextResponse.json({
+        message: "Demande refusée",
+        rerouted: Boolean(claimed),
+      });
     }
 
     const appointment = await Appointment.findByIdAndUpdate(id, data, {
@@ -276,30 +319,6 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Appointment not found" },
         { status: 404 },
-      );
-    }
-
-    // A professional just refused a demande → notify admins only (no client
-    // email). The request is now flagged in their service-requests queue.
-    if (proRefusedDemande) {
-      const refusedClient = appointment.clientId as unknown as {
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-      } | null;
-      const refusedClientName =
-        `${refusedClient?.firstName ?? ""} ${refusedClient?.lastName ?? ""}`.trim() ||
-        "Client";
-      after(() =>
-        sendAdminRequestReturnedToQueueAlert({
-          clientName: refusedClientName,
-          clientEmail: refusedClient?.email ?? "",
-          motif: appointment.issueType || undefined,
-          appointmentId: appointment._id.toString(),
-          attempts: appointment.cascadeAttempts ?? 0,
-        }).catch((err) =>
-          console.error("[cancel] admin refusal alert failed:", err),
-        ),
       );
     }
 
@@ -515,9 +534,9 @@ export async function PATCH(
       // Only a confirmed, SCHEDULED appointment notifies the other party on
       // cancellation. A pending "demande de service" being cancelled (e.g. an
       // admin declining a request) must NOT email the client — the client is
-      // only told about real, booked appointments. (A professional refusing an
-      // unassigned demande is intercepted earlier and returned to the admin
-      // queue, so it never reaches this block at all.)
+      // only told about real, booked appointments. (A professional refusing a
+      // proposed demande is handled earlier as a refusal + re-route, returning
+      // before this block.)
       if (oldAppointment.status === "scheduled") {
         const cancelArgs = {
           clientName: cancelRecipient.name,

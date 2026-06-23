@@ -601,6 +601,20 @@ export default function RequestsQueueTable({
                           {t("returningClient")}
                         </span>
                       ) : null}
+                      {/* Refused once by a professional and being re-matched to
+                          another pro (below the 2× escalation). Keyed off the
+                          genuine-refusal counter (cascadeAttempts), NOT refusedBy
+                          — release/reassign also write refusedBy without a real
+                          refusal. Applies to both emergency and regular requests. */}
+                      {(r.cascadeAttempts ?? 0) === 1 ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                          title={t("refusedRematchHint")}
+                        >
+                          <Flag className="h-3 w-3" />
+                          {t("refusedRematchFlag")}
+                        </span>
+                      ) : null}
                       {/* §3.1: dossier refused/ignored by 2 pros (cascade
                           exhausted) — flag the admin to re-verify the request. */}
                       {typeof r.cascadeAttempts === "number" &&

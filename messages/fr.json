@@ -1067,6 +1067,8 @@
     "attemptsLabel": "Tentatives : {n}",
     "refusedTwiceFlag": "Refusé 2× — à revérifier",
     "refusedTwiceHint": "Refusé ou ignoré par 2 professionnels. Vérifiez la demande (informations manquantes ou inexactes) et contactez le client ou d'autres professionnels avant de réassigner.",
+    "refusedRematchFlag": "Refusée — nouveau jumelage",
+    "refusedRematchHint": "Un professionnel a refusé cette demande. Elle est revenue ici automatiquement et proposée à un autre professionnel. Utilisez « Jumelage automatique » ou assignez manuellement si personne ne la prend.",
     "referralDocument": "Document de référence",
     "filterAll": "Toutes",
     "scheduleAction": "Fixer un RDV",
