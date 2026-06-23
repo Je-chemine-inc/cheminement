@@ -4,8 +4,12 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
-import { sendInteracTransferInstructionsEmail } from "@/lib/notifications";
+import {
+  sendInteracTransferInstructionsEmail,
+  sendSessionInvoiceEmail,
+} from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 export async function POST(
   req: NextRequest,
@@ -72,19 +76,61 @@ export async function POST(
         })}${apt.time ? ` à ${apt.time}` : ""}`
       : "—";
 
-    const ok = await sendInteracTransferInstructionsEmail({
-      clientName: recipient.name,
-      clientEmail: recipient.email,
-      clientLegalName: `${client.firstName} ${client.lastName}`,
-      depositEmail,
-      amountCad: apt.payment.price,
-      interacReferenceCode: apt.payment.interacReferenceCode || "",
-      professionalName: pro
-        ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
-        : "—",
-      appointmentDateLabel: dateLabel,
-      locale: recipient.language,
-    });
+    const clientLegalName = `${client.firstName} ${client.lastName}`.trim();
+    const professionalName = pro
+      ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
+      : "—";
+
+    // Relancing MUST reuse the SAME reference the client already received — not
+    // mint a new one — or they end up with two different "mandatory note" codes
+    // for one payment and the orphan-transfer reconciliation can't match.
+    //
+    // For a completed session (it has an invoiceNumber), re-send the unified
+    // post-session payment email with that SAME invoice number — the canonical
+    // Interac note, also what the reconciliation searches on. Only the older
+    // pre-session guarantee flow (no invoice yet) keeps the Interac-instructions
+    // email, reusing its existing reference code.
+    let ok: boolean;
+    if (apt.invoiceNumber) {
+      const base =
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "http://localhost:3000";
+      const payUrl = await resolveBillingUrl({
+        userStatus: undefined,
+        appointment: apt as Parameters<
+          typeof resolveBillingUrl
+        >[0]["appointment"],
+        base,
+        recipientLocale: recipient.language,
+        forceTokenLink: true,
+      });
+      ok = await sendSessionInvoiceEmail({
+        clientEmail: recipient.email,
+        clientName: recipient.name,
+        amountCad: apt.payment.price,
+        invoiceNumber: apt.invoiceNumber,
+        appointmentDateLabel: dateLabel,
+        payUrl,
+        depositEmail,
+        clientLegalName,
+        professionalName,
+        reminderNumber: 1,
+        locale: recipient.language,
+      });
+    } else {
+      ok = await sendInteracTransferInstructionsEmail({
+        clientName: recipient.name,
+        clientEmail: recipient.email,
+        clientLegalName,
+        depositEmail,
+        amountCad: apt.payment.price,
+        interacReferenceCode: apt.payment.interacReferenceCode || "",
+        professionalName,
+        appointmentDateLabel: dateLabel,
+        locale: recipient.language,
+      });
+    }
 
     if (!ok) {
       return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
