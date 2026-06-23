@@ -74,6 +74,10 @@ export default function PatientDetailPage({
   const [professionals, setProfessionals] = useState<BookableProfessional[]>([]);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [paymentActionLoading, setPaymentActionLoading] = useState<string | null>(null);
+  // When arriving via the billing "Aperçu" deep-link (?appointment=<id>), scroll
+  // to that session row and highlight it briefly so the admin lands right on the
+  // rencontre they clicked.
+  const [highlightAptId, setHighlightAptId] = useState<string | null>(null);
 
   // Feedback states
   const [feedback, setFeedback] = useState<{type: "success" | "error", message: string} | null>(null);
@@ -185,6 +189,21 @@ export default function PatientDetailPage({
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Deep-link focus: once the sessions have loaded, scroll to and highlight the
+  // appointment named in ?appointment=<id> (set by the billing "Aperçu" button).
+  useEffect(() => {
+    if (appointments.length === 0) return;
+    const focusId = new URLSearchParams(window.location.search).get(
+      "appointment",
+    );
+    if (!focusId || !appointments.some((a) => a.id === focusId)) return;
+    setHighlightAptId(focusId);
+    const el = document.getElementById(`apt-${focusId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = setTimeout(() => setHighlightAptId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [appointments]);
 
   useEffect(() => {
     (async () => {
@@ -460,7 +479,15 @@ export default function PatientDetailPage({
                     paymentStatus !== "refunded" &&
                     paymentStatus !== "cancelled";
                   return (
-                    <TableRow key={apt.id}>
+                    <TableRow
+                      key={apt.id}
+                      id={`apt-${apt.id}`}
+                      className={
+                        highlightAptId === apt.id
+                          ? "bg-amber-50 ring-2 ring-amber-300 transition-colors"
+                          : undefined
+                      }
+                    >
                       <TableCell className="text-sm">
                         {apt.date ? new Date(apt.date).toLocaleDateString("fr-CA") : "—"}<br />
                         {apt.time || "—"} ({apt.duration}min)

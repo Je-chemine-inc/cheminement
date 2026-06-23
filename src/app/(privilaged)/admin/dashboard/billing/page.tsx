@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { buildReceiptNumber } from "@/lib/receipt-number";
 import {
   Download,
@@ -16,6 +17,7 @@ import {
   CreditCard,
   ArrowRightLeft,
   SlidersHorizontal,
+  Eye,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -28,6 +30,7 @@ interface Payment {
   id: string;
   sessionId: string;
   invoiceNumber?: string;
+  clientId?: string;
   client: string;
   professional: string;
   date: string;
@@ -64,6 +67,7 @@ interface BillingData {
 }
 
 export default function AdminBillingPage() {
+  const router = useRouter();
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -668,18 +672,30 @@ export default function AdminBillingPage() {
                           ? t("downloadInvoice")
                           : t("manualReceipt")}
                       </Button>
+                      {/* "Aperçu" opens the FULL meeting detail (the patient
+                          record focused on this appointment), not just the
+                          receipt PDF. Falls back to the receipt preview only if
+                          the transaction has no linked client record (e.g. an
+                          orphaned guest row). */}
                       <Button
                         variant="ghost"
                         className="gap-2 rounded-full"
                         size="sm"
-                        onClick={() =>
-                          window.open(
-                            `/api/payments/receipt?appointmentId=${payment.id}&inline=1`,
-                            "_blank",
-                            "noopener",
-                          )
-                        }
+                        onClick={() => {
+                          if (payment.clientId) {
+                            router.push(
+                              `/admin/dashboard/patients/${payment.clientId}?appointment=${payment.id}`,
+                            );
+                          } else {
+                            window.open(
+                              `/api/payments/receipt?appointmentId=${payment.id}&inline=1`,
+                              "_blank",
+                              "noopener",
+                            );
+                          }
+                        }}
                       >
+                        <Eye className="h-4 w-4" />
                         {t("previewReceipt")}
                       </Button>
 

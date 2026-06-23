@@ -105,6 +105,7 @@ export async function GET(req: NextRequest) {
 
     const payments = appointments.map((appointment) => {
       const client = appointment.clientId as {
+        _id?: { toString: () => string };
         firstName?: string;
         lastName?: string;
         email?: string;
@@ -140,6 +141,9 @@ export async function GET(req: NextRequest) {
         // — the SAME one shown in the client's payment email. The SES-xxxxxx id
         // above is only a fallback for appointments with no invoice yet.
         invoiceNumber: appointment.invoiceNumber ?? undefined,
+        // The client's user id — lets the admin UI deep-link "Aperçu" to the
+        // patient record focused on this appointment (the full meeting detail).
+        clientId: client?._id ? client._id.toString() : undefined,
         client: client
           ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
           : "—",
