@@ -59,8 +59,9 @@ vi.mock("@/lib/notifications", () => ({
   sendGuestPaymentConfirmation: vi.fn(),
   sendPaymentInvitation: vi.fn(),
   sendMeetingLinkNotification: vi.fn(),
-  sendCancellationNotification: vi.fn(),
+  sendCancellationNotification: vi.fn().mockResolvedValue(true),
   sendRefundConfirmation: vi.fn(),
+  sendAdminRequestReturnedToQueueAlert: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/guardian-utils", () => ({
   resolveAppointmentRecipient: () => ({
@@ -78,6 +79,10 @@ vi.mock("@/lib/provision-guest-as-client", () => ({
 }));
 
 import { PATCH as apptPATCH } from "@/app/api/appointments/[id]/route";
+import {
+  sendCancellationNotification,
+  sendAdminRequestReturnedToQueueAlert,
+} from "@/lib/notifications";
 
 type Res = Promise<{ status: number; body: Record<string, unknown> }>;
 
@@ -135,5 +140,38 @@ describe("PATCH /api/appointments/[id] — ownership guard", () => {
     const res = await callPatch({ notes: "from guardian" }, "client", OTHER_ID);
     expect(res.status).toBe(200);
     expect(h.findByIdAndUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PATCH /api/appointments/[id] — professional refusing a demande", () => {
+  beforeEach(() => {
+    // An UNASSIGNED, PENDING service request (a "demande"), proposed to a pro.
+    h.store.appointment = {
+      _id: APPT_ID,
+      clientId: CLIENT_ID,
+      professionalId: null,
+      status: "pending",
+      type: "video",
+      payment: { status: "pending" },
+      toObject: () => ({ _id: APPT_ID, status: "pending" }),
+    };
+  });
+
+  it("does NOT email the client; returns the demande to the admin queue + alerts admins", async () => {
+    const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(res.status).toBe(200);
+
+    // The update was rewritten: not a cancellation, but a return-to-queue.
+    const updateArg = h.findByIdAndUpdate.mock.calls[0][1] as Record<
+      string,
+      unknown
+    >;
+    expect(updateArg.status).toBeUndefined();
+    expect(updateArg.routingStatus).toBe("awaiting_admin");
+    expect(updateArg.$addToSet).toEqual({ refusedBy: PRO_ID });
+
+    // Client stays silent; only the admin is alerted (the "drapeau").
+    expect(sendCancellationNotification).not.toHaveBeenCalled();
+    expect(sendAdminRequestReturnedToQueueAlert).toHaveBeenCalledTimes(1);
   });
 });

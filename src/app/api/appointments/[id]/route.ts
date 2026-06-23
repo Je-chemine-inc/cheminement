@@ -10,6 +10,7 @@ import {
   sendMeetingLinkNotification,
   sendCancellationNotification,
   sendRefundConfirmation,
+  sendAdminRequestReturnedToQueueAlert,
 } from "@/lib/notifications";
 import {
   resolveAppointmentRecipient,
@@ -242,6 +243,26 @@ export async function PATCH(
       }
     }
 
+    // A professional refusing an unassigned PENDING "demande de service" is NOT a
+    // cancellation, and the CLIENT must not be emailed about it (client feedback:
+    // a pro declining a request stays invisible to the client). Rewrite the
+    // update so the request RETURNS to the admin "Demande de service" queue
+    // (routingStatus "awaiting_admin") for manual reassignment, record the
+    // refusal, and clear the stale proposal. The normal cancel path — and its
+    // client cancellation email — never runs because status stays "pending".
+    // Admins are alerted right after the update (the requested "drapeau").
+    const proRefusedDemande =
+      data.status === "cancelled" &&
+      oldAppointment.status === "pending" &&
+      !oldAppointment.professionalId &&
+      session.user.role === "professional";
+    if (proRefusedDemande) {
+      delete data.status;
+      data.routingStatus = "awaiting_admin";
+      data.$addToSet = { refusedBy: session.user.id };
+      data.$unset = { proposedTo: "", proposedAt: "" };
+    }
+
     const appointment = await Appointment.findByIdAndUpdate(id, data, {
       new: true,
     })
@@ -255,6 +276,30 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Appointment not found" },
         { status: 404 },
+      );
+    }
+
+    // A professional just refused a demande → notify admins only (no client
+    // email). The request is now flagged in their service-requests queue.
+    if (proRefusedDemande) {
+      const refusedClient = appointment.clientId as unknown as {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+      } | null;
+      const refusedClientName =
+        `${refusedClient?.firstName ?? ""} ${refusedClient?.lastName ?? ""}`.trim() ||
+        "Client";
+      after(() =>
+        sendAdminRequestReturnedToQueueAlert({
+          clientName: refusedClientName,
+          clientEmail: refusedClient?.email ?? "",
+          motif: appointment.issueType || undefined,
+          appointmentId: appointment._id.toString(),
+          attempts: appointment.cascadeAttempts ?? 0,
+        }).catch((err) =>
+          console.error("[cancel] admin refusal alert failed:", err),
+        ),
       );
     }
 
@@ -467,30 +512,33 @@ export async function PATCH(
         client,
       );
 
-      // Send cancellation notification
-      const cancelArgs = {
-        clientName: cancelRecipient.name,
-        clientEmail: cancelRecipient.email,
-        professionalName: professional
-          ? `${professional.firstName} ${professional.lastName}`
-          : undefined,
-        professionalEmail: professional?.email || "",
-        date: appointment.date?.toISOString(),
-        time: appointment.time,
-        duration: appointment.duration || 60,
-        type: appointment.type as
-          | "video"
-          | "in-person"
-          | "phone"
-          | "both",
-        cancelledBy: cancelledBy,
-        locale: cancelRecipient.language,
-      };
-      after(() =>
-        sendCancellationNotification(cancelArgs).catch((err) =>
-          console.error("Error sending cancellation notification:", err),
-        ),
-      );
+      // Only a confirmed, SCHEDULED appointment notifies the other party on
+      // cancellation. A pending "demande de service" being cancelled (e.g. an
+      // admin declining a request) must NOT email the client — the client is
+      // only told about real, booked appointments. (A professional refusing an
+      // unassigned demande is intercepted earlier and returned to the admin
+      // queue, so it never reaches this block at all.)
+      if (oldAppointment.status === "scheduled") {
+        const cancelArgs = {
+          clientName: cancelRecipient.name,
+          clientEmail: cancelRecipient.email,
+          professionalName: professional
+            ? `${professional.firstName} ${professional.lastName}`
+            : undefined,
+          professionalEmail: professional?.email || "",
+          date: appointment.date?.toISOString(),
+          time: appointment.time,
+          duration: appointment.duration || 60,
+          type: appointment.type as "video" | "in-person" | "phone" | "both",
+          cancelledBy: cancelledBy,
+          locale: cancelRecipient.language,
+        };
+        after(() =>
+          sendCancellationNotification(cancelArgs).catch((err) =>
+            console.error("Error sending cancellation notification:", err),
+          ),
+        );
+      }
 
       // Process automatic refund with fee calculation if appointment was paid
       if (
