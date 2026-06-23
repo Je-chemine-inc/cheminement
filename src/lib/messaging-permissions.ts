@@ -84,7 +84,21 @@ export async function getAllowedRecipientIds(
     const clientIds = (await Appointment.find({ professionalId: uid })
       .distinct("clientId")
       .lean()) as mongoose.Types.ObjectId[];
-    clientIds.forEach((id) => allowed.add(id.toString()));
+    // Only ACTIVE clients are messageable: drop clients who were deleted or
+    // deactivated (status !== "active") so a pro can't message — nor have in
+    // their recipient list — someone who no longer works with the platform.
+    // Mirrors the active-only filter applied to peer pros + admins below.
+    if (clientIds.length > 0) {
+      const activeClients = await User.find({
+        _id: { $in: clientIds },
+        status: "active",
+      })
+        .select("_id")
+        .lean();
+      activeClients.forEach((c) =>
+        allowed.add((c._id as mongoose.Types.ObjectId).toString()),
+      );
+    }
 
     // Peer-to-peer visibility gate: a hidden pro reaches no peers at all, and
     // any peer who is hidden is excluded from everyone else's allowed set.

@@ -57,6 +57,9 @@ export async function GET() {
         (id) => new mongoose.Types.ObjectId(id),
       ),
     },
+    // Defensive: never surface a deleted/deactivated recipient in the dropdown,
+    // even if an id slipped through the allowed set.
+    status: "active",
   })
     .select("firstName lastName role")
     .lean();
