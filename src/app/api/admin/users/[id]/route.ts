@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"; // Trivial change for HMR
+import { NextRequest, NextResponse, after } from "next/server"; // Trivial change for HMR
 import { getServerSession } from "next-auth";
+import { rematchWaitingDemandesForReenabledPro } from "@/lib/intake-rematch";
 import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Profile from "@/models/Profile";
@@ -194,7 +195,10 @@ export async function PUT(
       "languages", "yearsOfExperience", "certifications",
       "ageCategories", "diagnosedConditions", "skills", "availability",
       "sessionTypes", "modalities", "paymentAgreement", "paymentFrequency",
-      "pricing", "education", "profileCompleted"
+      "pricing", "education", "profileCompleted",
+      // Intake toggles — let an admin pause/resume a pro's auto-matching on their
+      // behalf (same effect as the pro's own profile switches).
+      "acceptingNewClients", "acceptingEmergencyConsultations",
     ];
     // Allowed medical profile fields
     const allowedMedicalProfileFields = [
@@ -260,14 +264,59 @@ export async function PUT(
     }
 
     // Update profile if there are profile fields
+    let reEnabledNewClients = false;
+    let reEnabledEmergency = false;
     if (Object.keys(profileUpdates).length > 0) {
-      await Profile.findOneAndUpdate(
+      const togglingIntake =
+        "acceptingNewClients" in profileUpdates ||
+        "acceptingEmergencyConsultations" in profileUpdates;
+      // Intake toggles must be strict booleans (eligibility keys off explicit false).
+      for (const k of [
+        "acceptingNewClients",
+        "acceptingEmergencyConsultations",
+      ] as const) {
+        if (k in profileUpdates) profileUpdates[k] = profileUpdates[k] === true;
+      }
+      const beforeProfile = togglingIntake
+        ? ((await Profile.findOne({ userId })
+            .select("acceptingNewClients acceptingEmergencyConsultations")
+            .lean()) as {
+            acceptingNewClients?: boolean;
+            acceptingEmergencyConsultations?: boolean;
+          } | null)
+        : null;
+      const afterProfile = await Profile.findOneAndUpdate(
         { userId: userId },
         { $set: profileUpdates },
         { new: true, upsert: true }
       );
+      if (togglingIntake && afterProfile) {
+        reEnabledNewClients =
+          beforeProfile?.acceptingNewClients === false &&
+          afterProfile.acceptingNewClients === true;
+        reEnabledEmergency =
+          beforeProfile?.acceptingEmergencyConsultations === false &&
+          afterProfile.acceptingEmergencyConsultations === true &&
+          afterProfile.acceptingNewClients !== false;
+      }
     }
-    
+
+    // Admin re-enabling a pro's intake unblocks the queue exactly like the pro
+    // doing it themselves: re-offer the demandes that piled up unmatched in the
+    // general pool while intake was OFF (keyed to the PRO's id, not the admin's).
+    if (
+      userToUpdate.role === "professional" &&
+      (reEnabledNewClients || reEnabledEmergency)
+    ) {
+      after(() =>
+        rematchWaitingDemandesForReenabledPro({
+          proUserId: userId,
+          reEnabledNewClients,
+          reEnabledEmergency,
+        }),
+      );
+    }
+
     // Update medical profile if there are medical profile fields
     if (Object.keys(medicalProfileUpdates).length > 0) {
       await MedicalProfile.findOneAndUpdate(

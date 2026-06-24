@@ -59,6 +59,8 @@ import { Badge } from "@/components/ui/badge";
 import { useTranslations, useLocale } from "next-intl";
 import ProfessionalProfile from "@/components/dashboard/ProfessionalProfile";
 import AvailabilitySchedule from "@/app/(privilaged)/professional/dashboard/profile/AvailabilitySchedule";
+import AcceptingNewClientsCard from "@/components/dashboard/AcceptingNewClientsCard";
+import AcceptingEmergencyConsultationsCard from "@/components/dashboard/AcceptingEmergencyConsultationsCard";
 import { IProfile } from "@/models/Profile";
 
 export default function ProfessionalDetailPage({
@@ -288,6 +290,21 @@ export default function ProfessionalDetailPage({
     }
   };
 
+  // Save a single profile patch on the pro's behalf via the admin endpoint
+  // (used by the intake toggles). The admin PUT returns { success: true }, so we
+  // merge locally to feed the card's optimistic state.
+  const adminProfileUpdate = async (
+    patch: Partial<IProfile>,
+  ): Promise<IProfile> => {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) throw new Error("Profile update failed");
+    return { ...(data?.profile ?? {}), ...patch } as IProfile;
+  };
+
   const handleForceValidate = async (skipEmail = false) => {
     setForceValidating(skipEmail ? "manual" : "email");
     try {
@@ -459,6 +476,23 @@ export default function ProfessionalDetailPage({
       {feedback && (
         <div className={`p-4 rounded-md text-sm border ${feedback.type === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
           {feedback.message}
+        </div>
+      )}
+
+      {/* Intake controls — let the admin pause/resume this pro's auto-matching on
+          their behalf. Re-enabling re-offers demandes that piled up while OFF. */}
+      {data?.profile && (
+        <div className="space-y-4">
+          <AcceptingNewClientsCard
+            profile={data.profile}
+            setProfile={(updated) => setData({ ...data, profile: updated })}
+            onUpdate={adminProfileUpdate}
+          />
+          <AcceptingEmergencyConsultationsCard
+            profile={data.profile}
+            setProfile={(updated) => setData({ ...data, profile: updated })}
+            onUpdate={adminProfileUpdate}
+          />
         </div>
       )}
 

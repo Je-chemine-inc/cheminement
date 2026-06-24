@@ -9,6 +9,11 @@ import { profileAPI } from "@/lib/api-client";
 interface AcceptingNewClientsCardProps {
   profile?: IProfile | null;
   setProfile?: (profile: IProfile) => void;
+  /**
+   * Override the save call. Defaults to the pro's own PUT /api/profile; an admin
+   * managing a pro passes a function that PUTs to the admin endpoint instead.
+   */
+  onUpdate?: (patch: Partial<IProfile>) => Promise<IProfile>;
 }
 
 /**
@@ -23,6 +28,7 @@ interface AcceptingNewClientsCardProps {
 export default function AcceptingNewClientsCard({
   profile,
   setProfile,
+  onUpdate,
 }: AcceptingNewClientsCardProps) {
   const t = useTranslations("Dashboard.profile");
 
@@ -44,9 +50,11 @@ export default function AcceptingNewClientsCard({
     setSaving(true);
     setError(false);
     try {
-      const updated = (await profileAPI.update({
-        acceptingNewClients: next,
-      })) as IProfile;
+      const updated = onUpdate
+        ? await onUpdate({ acceptingNewClients: next })
+        : ((await profileAPI.update({
+            acceptingNewClients: next,
+          })) as IProfile);
       if (setProfile && updated) setProfile(updated);
     } catch {
       setAccepting(!next); // revert on failure
