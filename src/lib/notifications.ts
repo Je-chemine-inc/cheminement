@@ -10,6 +10,7 @@ import {
 } from "@/lib/email-transport";
 import connectToDatabase from "@/lib/mongodb";
 import { buildReceiptNumber } from "@/lib/receipt-number";
+import { resolveProfessionalNotifeeParty } from "@/lib/guardian-utils";
 import User from "@/models/User";
 import PlatformSettings, {
   type EmailNotificationType,
@@ -92,6 +93,18 @@ interface AppointmentEmailData extends BaseAppointmentData {
    * response window (the take-charge SLA for urgent requests).
    */
   isEmergency?: boolean;
+  /**
+   * For loved-one ("proche") bookings: who the pro will actually treat. The
+   * professional notification names the LOVED ONE (not the requester) and uses
+   * the LSSSS-correct contact. clientName/clientEmail above stay the requester's.
+   */
+  bookingFor?: "self" | "patient" | "loved-one" | string;
+  lovedOneInfo?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    dateOfBirth?: Date | string;
+  } | null;
 }
 
 interface GuestBookingEmailData extends BaseAppointmentData {
@@ -2573,6 +2586,16 @@ export async function sendProfessionalNotification(
   // urgency in BOTH render paths via a warning theme + a dedicated info box, so
   // it shows even when an admin has customised the editable template body.
   const isEmergency = Boolean(data.isEmergency);
+  // For a loved-one ("proche") booking, the pro must see WHO they'll treat — the
+  // loved one — not the requester's name + personal email. resolveProfessional-
+  // NotifeeParty returns the loved one's name (always) + the LSSSS-correct
+  // contact; self/patient bookings return the requester unchanged.
+  const party = resolveProfessionalNotifeeParty({
+    bookingFor: data.bookingFor,
+    lovedOneInfo: data.lovedOneInfo,
+    requesterName: data.clientName,
+    requesterEmail: data.clientEmail,
+  });
   const emergencyInfoBox = {
     title: "⚠ Consultation ponctuelle rapide",
     content:
@@ -2584,8 +2607,8 @@ export async function sendProfessionalNotification(
   // block below is the fallback if the DB row can't be loaded. Body is French.
   const editable = await loadEditableTemplate("professionalNewRequest", "fr", {
     professionalName,
-    clientName: data.clientName,
-    clientEmail: data.clientEmail,
+    clientName: party.name,
+    clientEmail: party.email,
     appointmentType,
     appointmentDate: formattedDate,
     appointmentTime: formattedTime,
@@ -2644,8 +2667,8 @@ export async function sendProfessionalNotification(
       ...(isEmergency
         ? [{ label: "Priorité", value: "⚠ URGENCE — réponse sous 12 h" }]
         : []),
-      { label: "Client", value: data.clientName },
-      { label: "Courriel", value: data.clientEmail },
+      { label: "Client", value: party.name },
+      { label: "Courriel", value: party.email },
       { label: "Type", value: appointmentType },
       { label: "Date", value: formattedDate },
       { label: "Heure", value: formattedTime },
@@ -2666,8 +2689,8 @@ export async function sendProfessionalNotification(
       : "Vous avez une nouvelle demande de rendez-vous.",
     ...(isEmergency ? ["Priorité : URGENCE — réponse sous 12 h"] : []),
     "DÉTAILS DU CLIENT :",
-    `Client : ${data.clientName}`,
-    `Courriel : ${data.clientEmail}`,
+    `Client : ${party.name}`,
+    `Courriel : ${party.email}`,
     `Type : ${appointmentType}`,
     `Date : ${formattedDate}`,
     `Heure : ${formattedTime}`,

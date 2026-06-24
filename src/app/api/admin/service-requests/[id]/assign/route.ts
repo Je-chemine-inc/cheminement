@@ -298,6 +298,8 @@ export async function POST(
           duration: updated.duration || 60,
           type: updated.type as "video" | "in-person" | "phone" | "both",
           isEmergency: Boolean(updated.isEmergency),
+          bookingFor: updated.bookingFor,
+          lovedOneInfo: updated.lovedOneInfo,
         }).catch((e) => console.error("[admin assign] pro notify:", e));
       }
     });

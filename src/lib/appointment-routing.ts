@@ -1181,6 +1181,8 @@ export async function routeAppointmentToProfessionals(
             duration: populatedAppt?.duration ?? 60,
             type: apptType,
             isEmergency: Boolean(populatedAppt?.isEmergency),
+            bookingFor: populatedAppt?.bookingFor,
+            lovedOneInfo: populatedAppt?.lovedOneInfo,
           }).catch((err) =>
             console.error(
               `[routing] Failed to notify professional ${match.professionalId}:`,

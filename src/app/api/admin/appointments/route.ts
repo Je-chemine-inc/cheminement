@@ -195,6 +195,8 @@ export async function POST(req: NextRequest) {
       type: type as "video" | "in-person" | "phone" | "both",
       location: appointment.location,
       isEmergency: Boolean(appointment.isEmergency),
+      bookingFor: appointment.bookingFor,
+      lovedOneInfo: appointment.lovedOneInfo,
     };
     Promise.all([
       sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),

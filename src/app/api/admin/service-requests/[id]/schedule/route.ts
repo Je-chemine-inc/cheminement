@@ -215,6 +215,8 @@ export async function POST(
         type: resolvedType,
         location: appointment.location,
         isEmergency: Boolean(appointment.isEmergency),
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
       };
       after(() =>
         Promise.all([

@@ -196,6 +196,8 @@ export async function POST(req: NextRequest) {
         duration: finalDuration,
         type: type as "video" | "in-person" | "phone" | "both",
         isEmergency: Boolean(appointment.isEmergency),
+        bookingFor: appointment.bookingFor,
+        lovedOneInfo: appointment.lovedOneInfo,
       };
       after(() =>
         sendProfessionalNotification(notifArgs).catch((err) =>

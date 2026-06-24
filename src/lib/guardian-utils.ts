@@ -100,6 +100,38 @@ export function resolveAppointmentRecipient(
 }
 
 /**
+ * Who the PROFESSIONAL notification should name as the "client". The pro is being
+ * matched/assigned to the person they'll actually treat, so for a loved-one
+ * booking we show the LOVED ONE's name (always — even under 14) rather than the
+ * requester's. The contact email still follows LSSSS art. 14: the loved one's own
+ * email at 14+, otherwise the guardian/requester's. (Self/patient bookings just
+ * return the requester unchanged.)
+ */
+export function resolveProfessionalNotifeeParty(input: {
+  bookingFor?: string | null;
+  lovedOneInfo?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    dateOfBirth?: Date | string;
+  } | null;
+  requesterName: string;
+  requesterEmail: string;
+}): { name: string; email: string } {
+  const { bookingFor, lovedOneInfo, requesterName, requesterEmail } = input;
+  if (bookingFor !== "loved-one" || !lovedOneInfo) {
+    return { name: requesterName, email: requesterEmail };
+  }
+  const lovedOneName =
+    `${lovedOneInfo.firstName ?? ""} ${lovedOneInfo.lastName ?? ""}`.trim();
+  const email =
+    lovedOneInfo.email && !isUnder14({ dateOfBirth: lovedOneInfo.dateOfBirth })
+      ? lovedOneInfo.email
+      : requesterEmail;
+  return { name: lovedOneName || requesterName, email };
+}
+
+/**
  * Get guardian/account manager for a user
  */
 export async function getGuardian(
