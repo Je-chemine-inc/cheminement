@@ -6,6 +6,7 @@ import { usersAPI } from "@/lib/api-client";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CitySearch } from "@/components/ui/CitySearch";
 import {
   Select,
   SelectContent,
@@ -388,13 +389,10 @@ export default function BasicInformation({
                   <Label htmlFor="modal-location" className="font-light">
                     {t("location")} <span className="text-red-500">*</span>
                   </Label>
-                  <Input
+                  <CitySearch
                     id="modal-location"
-                    type="text"
                     value={modalData.location}
-                    onChange={(e) =>
-                      handleModalChange("location", e.target.value)
-                    }
+                    onChange={(v) => handleModalChange("location", v)}
                     placeholder={t("location")}
                   />
                 </div>

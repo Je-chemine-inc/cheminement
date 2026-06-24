@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { CitySearch } from "@/components/ui/CitySearch";
 import {
   Select,
   SelectContent,
@@ -976,11 +977,13 @@ export default function MemberSignupPage() {
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 {t("location")} / {t("postalCode")}
               </Label>
-              <Input
+              <CitySearch
                 id="location"
                 name="location"
                 value={formData.location}
-                onChange={handleChange}
+                onChange={(v) =>
+                  setFormData((prev) => ({ ...prev, location: v }))
+                }
                 placeholder={`${t("locationPlaceholder")} ou ${t("postalCodePlaceholder")}`}
               />
             </div>

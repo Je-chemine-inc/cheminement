@@ -9,6 +9,7 @@ import {
   sendAdminJumelageProblemAlert,
 } from "@/lib/notifications";
 import { resolveMatchingConcerns } from "@/lib/matching-concerns";
+import { locationProximityScore } from "@/lib/location-match";
 
 /**
  * Calculate age from date of birth
@@ -460,6 +461,10 @@ export function calculateRelevancyScore(
     preferredGender?: string;
   } | null,
   professionalGender?: string,
+  /** Client's city (home/location) — drives the in-person proximity bonus. */
+  clientLocation?: string | null,
+  /** Professional's city — compared against the client's for proximity. */
+  professionalLocation?: string | null,
 ): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -729,6 +734,27 @@ export function calculateRelevancyScore(
     reasons.push("Genre du professionnel correspondant à votre préférence");
   }
 
+  // 10. Location proximity — only relevant when the client may want to meet
+  // IN PERSON (type "in-person" or "both"; video/phone don't need proximity).
+  // A pro in the same city is preferred; same region is a softer signal. Soft
+  // bonus only (never a hard filter), and skipped when either location is empty
+  // or free text that doesn't resolve — so it can never empty the candidate pool
+  // and never overrides the problématique match (the 100-pt anchor).
+  if (
+    (appointment.type === "in-person" || appointment.type === "both") &&
+    clientLocation &&
+    professionalLocation
+  ) {
+    const proximity = locationProximityScore(clientLocation, professionalLocation);
+    if (proximity === "same_city") {
+      score += 20;
+      reasons.push("Professionnel dans votre ville (rencontres en personne)");
+    } else if (proximity === "same_region") {
+      score += 10;
+      reasons.push("Professionnel dans votre région (rencontres en personne)");
+    }
+  }
+
   // ===== BONUS POINTS =====
 
   // Profile completeness bonus
@@ -827,7 +853,7 @@ export async function routeAppointmentToProfessionals(
       await User.find({
         role: "professional",
         status: "active",
-      }).select("_id firstName lastName email language gender")
+      }).select("_id firstName lastName email language gender location")
     ).filter((p) => !refusedIds.has(String(p._id)));
 
     const professionalIds = professionals.map((p) => p._id);
@@ -837,6 +863,14 @@ export async function routeAppointmentToProfessionals(
       professionals.map((p) => [
         String(p._id),
         (p as { gender?: string }).gender,
+      ]),
+    );
+    // Professional city, keyed by id — feeds the in-person location proximity
+    // bonus in the relevancy score. (User.location decrypts on the non-lean doc.)
+    const locationById = new Map<string, string | undefined>(
+      professionals.map((p) => [
+        String(p._id),
+        (p as { location?: string }).location,
       ]),
     );
 
@@ -1035,6 +1069,8 @@ export async function routeAppointmentToProfessionals(
             }
           : null,
         genderById.get(String(profile.userId)),
+        clientUser?.location,
+        locationById.get(String(profile.userId)),
       );
       const avail = scoreAvailabilityMatch(
         appointment.preferredAvailability,

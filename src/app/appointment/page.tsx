@@ -42,6 +42,7 @@ import { apiClient, ApiClientError, medicalProfileAPI } from "@/lib/api-client";
 import { PhoneVerificationModal } from "@/components/appointments/PhoneVerificationModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
+import { CitySearch } from "@/components/ui/CitySearch";
 import { MotifSearch } from "@/components/ui/MotifSearch";
 import {
   APPROACHES_ET_THERAPIES,
@@ -1470,21 +1471,14 @@ export default function BookAppointmentPage() {
                       {tB("location")}{" "}
                       <span className="text-red-500">*</span>
                     </Label>
-                    <div className="relative">
-                      <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="location"
-                        value={guestInfo.location}
-                        onChange={(e) =>
-                          setGuestInfo({
-                            ...guestInfo,
-                            location: e.target.value,
-                          })
-                        }
-                        placeholder={tB("placeholderCity")}
-                        className="pl-10"
-                      />
-                    </div>
+                    <CitySearch
+                      id="location"
+                      value={guestInfo.location}
+                      onChange={(v) =>
+                        setGuestInfo({ ...guestInfo, location: v })
+                      }
+                      placeholder={tB("placeholderCity")}
+                    />
                   </div>
 
                   <div className="flex justify-between pt-4">
@@ -1616,21 +1610,17 @@ export default function BookAppointmentPage() {
                                 {tB("yourLocation")}{" "}
                                 <span className="text-red-500">*</span>
                               </Label>
-                              <div className="relative">
-                                <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  id="requesterLocation"
-                                  value={lovedOneInfo.requesterLocation}
-                                  onChange={(e) =>
-                                    setLovedOneInfo({
-                                      ...lovedOneInfo,
-                                      requesterLocation: e.target.value,
-                                    })
-                                  }
-                                  placeholder={tB("placeholderCity")}
-                                  className="pl-10"
-                                />
-                              </div>
+                              <CitySearch
+                                id="requesterLocation"
+                                value={lovedOneInfo.requesterLocation}
+                                onChange={(v) =>
+                                  setLovedOneInfo({
+                                    ...lovedOneInfo,
+                                    requesterLocation: v,
+                                  })
+                                }
+                                placeholder={tB("placeholderCity")}
+                              />
                             </div>
                           </div>
                           <div className="pt-4">
@@ -2542,21 +2532,14 @@ export default function BookAppointmentPage() {
                             {tB("location")}{" "}
                             <span className="text-red-500">*</span>
                           </Label>
-                          <div className="relative">
-                            <Home className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="guestLocation"
-                              value={guestInfo.location}
-                              onChange={(e) =>
-                                setGuestInfo({
-                                  ...guestInfo,
-                                  location: e.target.value,
-                                })
-                              }
-                              placeholder={tB("placeholderCity")}
-                              className="pl-10"
-                            />
-                          </div>
+                          <CitySearch
+                            id="guestLocation"
+                            value={guestInfo.location}
+                            onChange={(v) =>
+                              setGuestInfo({ ...guestInfo, location: v })
+                            }
+                            placeholder={tB("placeholderCity")}
+                          />
                         </div>
                       </div>
                     </>

@@ -25,6 +25,7 @@ import {
 } from "@/components/appointments/ProfessionalBookAppointmentModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CitySearch } from "@/components/ui/CitySearch";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -649,7 +650,13 @@ export default function PatientDetailPage({
               </div>
               <div className="space-y-2">
                 <Label>{t("location")}</Label>
-                <Input name="location" value={formData.location} onChange={handleChange} />
+                <CitySearch
+                  name="location"
+                  value={formData.location}
+                  onChange={(v) =>
+                    setFormData((prev) => ({ ...prev, location: v }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>Langue Préférée</Label>

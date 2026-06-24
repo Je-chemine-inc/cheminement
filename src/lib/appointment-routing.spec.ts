@@ -143,6 +143,49 @@ describe("appointment-routing", () => {
       // Base score for Anxiété + language bonus
       expect(score).toBeGreaterThan(100);
     });
+
+    it("adds a +20 same-city bonus for in-person preferences", () => {
+      const inPerson = { ...mockAppointment, type: "in-person" };
+      // Different region (Lanaudière vs Mauricie) → no location bonus.
+      const base = calculateRelevancyScore(
+        mockProfile,
+        inPerson,
+        null,
+        undefined,
+        "Terrebonne, QC",
+        "Trois-Rivières, QC",
+      ).score;
+      const sameCity = calculateRelevancyScore(
+        mockProfile,
+        inPerson,
+        null,
+        undefined,
+        "Terrebonne, QC",
+        "Terrebonne, QC",
+      ).score;
+      expect(sameCity).toBe(base + 20);
+    });
+
+    it("ignores location entirely for video sessions", () => {
+      const video = { ...mockAppointment, type: "video" };
+      const sameCity = calculateRelevancyScore(
+        mockProfile,
+        video,
+        null,
+        undefined,
+        "Terrebonne, QC",
+        "Terrebonne, QC",
+      ).score;
+      const farAway = calculateRelevancyScore(
+        mockProfile,
+        video,
+        null,
+        undefined,
+        "Terrebonne, QC",
+        "Vancouver, BC",
+      ).score;
+      expect(sameCity).toBe(farAway);
+    });
   });
 
   describe("professionalCoversAvailabilitySlot", () => {

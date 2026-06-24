@@ -61,6 +61,7 @@ import ProfessionalProfile from "@/components/dashboard/ProfessionalProfile";
 import AvailabilitySchedule from "@/app/(privilaged)/professional/dashboard/profile/AvailabilitySchedule";
 import AcceptingNewClientsCard from "@/components/dashboard/AcceptingNewClientsCard";
 import AcceptingEmergencyConsultationsCard from "@/components/dashboard/AcceptingEmergencyConsultationsCard";
+import { CitySearch } from "@/components/ui/CitySearch";
 import { IProfile } from "@/models/Profile";
 
 export default function ProfessionalDetailPage({
@@ -614,7 +615,13 @@ export default function ProfessionalDetailPage({
               </div>
               <div className="space-y-2">
                 <Label>{t("location")}</Label>
-                <Input name="location" value={formData.location} onChange={handleChange} />
+                <CitySearch
+                  name="location"
+                  value={formData.location}
+                  onChange={(v) =>
+                    setFormData((prev) => ({ ...prev, location: v }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>{t("accountStatus")}</Label>
