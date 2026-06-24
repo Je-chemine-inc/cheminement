@@ -72,6 +72,11 @@ export async function GET() {
         id: a._id.toString(),
         createdAt: a.createdAt,
         issueType: a.issueType,
+        // All selected motifs (1–3) + the referral's desired approaches —
+        // surfaced in the admin "Voir les détails" modal so the admin can decide
+        // whom to assign.
+        needs: a.needs ?? [],
+        desiredApproaches: a.referralInfo?.desiredApproaches ?? [],
         notes: a.notes,
         type: a.type,
         therapyType: a.therapyType,

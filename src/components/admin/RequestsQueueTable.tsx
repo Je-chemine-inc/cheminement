@@ -10,6 +10,7 @@ import {
   Flag,
   Zap,
   FileText,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +58,8 @@ interface ServiceRequestRow {
   id: string;
   createdAt: string;
   issueType?: string;
+  needs?: string[];
+  desiredApproaches?: string[];
   notes?: string;
   type: string;
   therapyType: string;
@@ -101,6 +104,25 @@ const STATUS_FILTER_ORDER = [
   "general",
   "refused",
 ];
+
+/** One labeled field in the "Voir les détails" modal; hidden when empty. */
+function DetailField({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-0.5 whitespace-pre-wrap">{value}</div>
+    </div>
+  );
+}
 
 export default function RequestsQueueTable({
   fetchUrl,
@@ -149,6 +171,11 @@ export default function RequestsQueueTable({
     null,
   );
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  // "Voir les détails" (eye) — read-only modal with the full request, so the
+  // admin can decide what to do and to whom to assign.
+  const [detailsTarget, setDetailsTarget] = useState<ServiceRequestRow | null>(
+    null,
+  );
 
   // "Fixer un rendez-vous" (§4) — direct in-place scheduling modal state.
   const [scheduleTarget, setScheduleTarget] =
@@ -694,6 +721,18 @@ export default function RequestsQueueTable({
                   <TableCell className="text-sm align-top">
                     <div className="flex flex-col gap-2 min-w-[260px]">
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDetailsTarget(r)}
+                          disabled={loading}
+                          className="whitespace-nowrap"
+                          title={t("viewDetailsHint")}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          {t("viewDetails")}
+                        </Button>
                         {r.bookingFor === "loved-one" && (
                           <>
                             <Button
@@ -1044,6 +1083,164 @@ export default function RequestsQueueTable({
               ) : (
                 t("scheduleSubmit")
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* "Voir les détails" — full read-only request, so the admin can decide
+          what to do and to whom to assign. */}
+      <Dialog
+        open={Boolean(detailsTarget)}
+        onOpenChange={(open) => !open && setDetailsTarget(null)}
+      >
+        <DialogContent className="flex max-h-[90dvh] max-w-2xl flex-col">
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{t("detailsTitle")}</DialogTitle>
+            <DialogDescription>{t("detailsDesc")}</DialogDescription>
+          </DialogHeader>
+          {detailsTarget && (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 text-sm">
+              {(detailsTarget.isEmergency ||
+                detailsTarget.isReturningClient ||
+                (detailsTarget.cascadeAttempts ?? 0) >= 1) && (
+                <div className="flex flex-wrap gap-2">
+                  {detailsTarget.isEmergency && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                      {t("emergency")}
+                    </span>
+                  )}
+                  {detailsTarget.isReturningClient && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                      {t("returningClient")}
+                    </span>
+                  )}
+                  {(detailsTarget.cascadeAttempts ?? 0) >= 1 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                      <Flag className="h-3 w-3" />
+                      {(detailsTarget.cascadeAttempts ?? 0) >= 2
+                        ? t("refusedTwiceFlag")
+                        : t("refusedRematchFlag")}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <DetailField
+                  label={t("created")}
+                  value={new Date(detailsTarget.createdAt).toLocaleString(
+                    locale,
+                  )}
+                />
+                <DetailField
+                  label={t("routing")}
+                  value={routingStatusLabel(detailsTarget.routingStatus).label}
+                />
+                <DetailField
+                  label={t("client")}
+                  value={detailsTarget.clientName}
+                />
+                <DetailField
+                  label={t("email")}
+                  value={
+                    detailsTarget.clientEmail !== "—"
+                      ? detailsTarget.clientEmail
+                      : undefined
+                  }
+                />
+                <DetailField
+                  label={t("bookingFor")}
+                  value={bookingForLabel(detailsTarget.bookingFor)}
+                />
+                <DetailField
+                  label={t("modality")}
+                  value={modalityLabel(detailsTarget.type)}
+                />
+                {detailsTarget.professionalName && (
+                  <DetailField
+                    label={t("assignedToLabel")}
+                    value={detailsTarget.professionalName}
+                  />
+                )}
+                {(detailsTarget.cascadeAttempts ?? 0) > 0 && (
+                  <DetailField
+                    label={t("attempts")}
+                    value={String(detailsTarget.cascadeAttempts)}
+                  />
+                )}
+              </div>
+
+              <DetailField
+                label={t("motif")}
+                value={
+                  detailsTarget.needs && detailsTarget.needs.length > 0
+                    ? detailsTarget.needs.map(resolveMotifLabel).join(", ")
+                    : detailsTarget.issueType
+                      ? resolveMotifLabel(detailsTarget.issueType)
+                      : undefined
+                }
+              />
+
+              {detailsTarget.desiredApproaches &&
+                detailsTarget.desiredApproaches.length > 0 && (
+                  <DetailField
+                    label={t("desiredApproaches")}
+                    value={detailsTarget.desiredApproaches.join(", ")}
+                  />
+                )}
+
+              {detailsTarget.preferredAvailability?.length ? (
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("preferredAvailability")}
+                  </div>
+                  <div className="mt-1">
+                    <AvailabilitySlots
+                      slots={detailsTarget.preferredAvailability}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              <DetailField label={t("notesLabel")} value={detailsTarget.notes} />
+
+              {detailsTarget.referral?.documentUrl && (
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("referralDocument")}
+                  </div>
+                  {detailsTarget.referral.referrerName && (
+                    <div className="mt-0.5">
+                      {detailsTarget.referral.referrerName}
+                    </div>
+                  )}
+                  {detailsTarget.referral.referralReason && (
+                    <div className="text-muted-foreground">
+                      {detailsTarget.referral.referralReason}
+                    </div>
+                  )}
+                  <a
+                    href={detailsTarget.referral.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    {detailsTarget.referral.documentName ??
+                      t("referralDocument")}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDetailsTarget(null)}
+            >
+              {t("close")}
             </Button>
           </DialogFooter>
         </DialogContent>
