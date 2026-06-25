@@ -3122,7 +3122,7 @@
     "scheduleCalendar": {
       "title": "Horaire",
       "subtitle": "Gérer vos séances et rendez-vous",
-      "addAppointment": "Prendre un rendez-vous",
+      "addAppointment": "Planifier un rendez-vous",
       "slotHint": "Cliquez sur une case libre pour planifier",
       "showSessions": "Afficher les séances",
       "showRequests": "Afficher les demandes",

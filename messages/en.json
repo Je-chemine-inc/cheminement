@@ -3122,7 +3122,7 @@
     "scheduleCalendar": {
       "title": "Schedule",
       "subtitle": "Manage your sessions and appointments",
-      "addAppointment": "Book appointment",
+      "addAppointment": "Schedule appointment",
       "slotHint": "Click an empty slot to book",
       "showSessions": "Show Sessions",
       "showRequests": "Show Requests",
