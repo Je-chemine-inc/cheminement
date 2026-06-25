@@ -134,6 +134,11 @@ export function AdminSidebar() {
           icon: Tags,
         },
         {
+          title: t("proCatalog"),
+          url: "/admin/dashboard/pro-catalog",
+          icon: Briefcase,
+        },
+        {
           title: t("faqs"),
           url: "/admin/dashboard/faqs",
           icon: HelpCircle,
