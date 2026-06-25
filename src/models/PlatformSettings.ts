@@ -41,6 +41,12 @@ export interface IEmailBranding {
   logoUrl?: string;
   companyName: string;
   footerText: string;
+  // Runtime-only (NOT stored on this subdoc): the email helper merges the
+  // platform's coordonnées (from PlatformSettings.platformContact) here so the
+  // shared email footer can show them on every email.
+  contactPhone?: string;
+  contactEmail?: string;
+  contactAddressLines?: string[];
 }
 
 export interface ISmtpConfig {

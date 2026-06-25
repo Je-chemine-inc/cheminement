@@ -11,6 +11,10 @@ import {
 import connectToDatabase from "@/lib/mongodb";
 import { buildReceiptNumber } from "@/lib/receipt-number";
 import { resolveProfessionalNotifeeParty } from "@/lib/guardian-utils";
+import {
+  formatCanadianPhone,
+  formatStandardAddressBlock,
+} from "@/lib/format-platform-contact";
 import User from "@/models/User";
 import PlatformSettings, {
   type EmailNotificationType,
@@ -565,10 +569,29 @@ const createFooter = (branding?: IEmailBranding, lang: "fr" | "en" = "fr"): stri
   // on phones the .footer-sep display:none rule hides the dot and the spaces
   // collapse harmlessly since each link becomes its own block.
   const sep = `&nbsp;<span class="footer-sep">&middot;</span>&nbsp;`;
+  // Platform coordonnées (admin-configured, merged onto branding by getBranding):
+  // the real postal address, phone and contact email, shown on every email.
+  const addressLines = branding?.contactAddressLines ?? [];
+  const contactBits = [
+    branding?.contactPhone,
+    branding?.contactEmail,
+  ].filter((s): s is string => Boolean(s && s.trim()));
+  // Plain "·" separator (NOT the footer-sep span, which the mobile @media rule
+  // hides for the stacked link row — that would merge phone and email on phones).
+  const coordonnees =
+    addressLines.length > 0 || contactBits.length > 0
+      ? `<p style="margin: 0 0 12px; color: #6b6b6b;">${[
+          ...addressLines,
+          contactBits.join(" &middot; "),
+        ]
+          .filter(Boolean)
+          .join("<br>")}</p>`
+      : "";
   return `
     <div class="footer">
       <p style="margin: 0 0 6px;">${footerText}</p>
       <p style="margin: 0 0 12px;">&copy; ${year} ${companyName}. ${allRights}</p>
+      ${coordonnees}
       <p style="margin: 0;"><a href="${url}" class="footer-link" style="color: ${primaryColor};">${visitSite}</a>${sep}<a href="mailto:${supportEmail}" class="footer-link" style="color: ${primaryColor};">${contactSupport}</a>${sep}<a href="${url}/terms" class="footer-link" style="color: ${primaryColor};">${termsLabel}</a></p>
     </div>
   `;
@@ -776,12 +799,33 @@ async function getCurrency(): Promise<string> {
   }
 }
 
-// Helper to get branding
+// Helper to get branding. Also merges the platform's coordonnées (phone, email,
+// address from PlatformSettings.platformContact) onto the branding object so the
+// shared email footer shows them on every email — no per-email-function change.
 async function getBranding(): Promise<IEmailBranding | undefined> {
   try {
     await connectToDatabase();
     const settings = await PlatformSettings.findOne().lean();
-    return settings?.emailSettings?.branding;
+    const branding = settings?.emailSettings?.branding;
+    if (!branding) return undefined;
+    const pc = settings?.platformContact;
+    // Only surface the address once a REAL street/city/postal code is set. The
+    // schema seeds country:"Canada" by default, which alone would otherwise
+    // render a lone "Canada" line in every email footer until an admin fills in
+    // a proper address.
+    const addr = pc?.physicalAddress;
+    const hasRealAddress = Boolean(
+      addr &&
+        (addr.street?.trim() || addr.city?.trim() || addr.postalCode?.trim()),
+    );
+    return {
+      ...branding,
+      contactPhone: pc?.phoneNumber ? formatCanadianPhone(pc.phoneNumber) : undefined,
+      contactEmail: pc?.supportEmail?.trim() || undefined,
+      contactAddressLines: hasRealAddress
+        ? formatStandardAddressBlock(addr, undefined)
+        : undefined,
+    };
   } catch {
     return undefined;
   }
