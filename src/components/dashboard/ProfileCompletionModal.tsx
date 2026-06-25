@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/ui/stepper";
 import { MotifSearch } from "@/components/ui/MotifSearch";
+import { ProfessionalCatalogPicker } from "@/components/appointments/ProfessionalCatalogPicker";
 import { useTranslations, useLocale } from "next-intl";
 import { IProfile } from "@/models/Profile";
 import { profileAPI } from "@/lib/api-client";
@@ -468,6 +469,22 @@ export default function ProfileCompletionModal({
                 }
                 placeholder={t("step1.searchPlaceholder")}
               />
+              {/* Admin-managed mandats + expertises (supplement) — same step as
+                  problématiques since both feed problematics[]. */}
+              <ProfessionalCatalogPicker
+                categories={["mandat", "expertise"]}
+                approaches={formData.approaches}
+                problematics={formData.problematics}
+                onToggleApproach={() => {}}
+                onToggleProblematic={(l) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    problematics: prev.problematics.includes(l)
+                      ? prev.problematics.filter((x) => x !== l)
+                      : [...prev.problematics, l],
+                  }))
+                }
+              />
             </div>
           )}
 
@@ -497,6 +514,21 @@ export default function ProfileCompletionModal({
                   }))
                 }
                 placeholder={t("step2.searchPlaceholder")}
+              />
+              {/* Admin-managed approches (supplement) — same step as approaches. */}
+              <ProfessionalCatalogPicker
+                categories={["approche"]}
+                approaches={formData.approaches}
+                problematics={formData.problematics}
+                onToggleApproach={(l) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    approaches: prev.approaches.includes(l)
+                      ? prev.approaches.filter((x) => x !== l)
+                      : [...prev.approaches, l],
+                  }))
+                }
+                onToggleProblematic={() => {}}
               />
             </div>
           )}

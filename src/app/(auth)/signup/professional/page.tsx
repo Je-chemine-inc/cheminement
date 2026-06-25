@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ProfessionalCatalogPicker } from "@/components/appointments/ProfessionalCatalogPicker";
 import {
   AuthContainer,
   AuthHeader,
@@ -1074,6 +1075,14 @@ export default function ProfessionalSignupPage() {
                   </p>
                 )}
               </div>
+
+              {/* Admin-managed mandats / approches / expertises (supplement). */}
+              <ProfessionalCatalogPicker
+                approaches={formData.approaches}
+                problematics={formData.problematics}
+                onToggleApproach={(l) => handleArrayChange("approaches", l)}
+                onToggleProblematic={(l) => handleArrayChange("problematics", l)}
+              />
             </div>
           );
         })();

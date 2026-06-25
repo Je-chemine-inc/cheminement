@@ -79,6 +79,12 @@
     "license": "Numéro de permis",
     "licensePlaceholder": "Numéro de permis professionnel"
   },
+  "ProCatalogPicker": {
+    "hint": "Options additionnelles proposées par l'administration.",
+    "mandat": "Mandats",
+    "approche": "Approches",
+    "expertise": "Expertises"
+  },
   "CalendarSync": {
     "button": "Synchroniser",
     "title": "Synchroniser mon calendrier",

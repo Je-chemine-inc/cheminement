@@ -79,6 +79,12 @@
     "license": "License Number",
     "licensePlaceholder": "Professional license number"
   },
+  "ProCatalogPicker": {
+    "hint": "Additional options provided by the administration.",
+    "mandat": "Mandates",
+    "approche": "Approaches",
+    "expertise": "Expertise"
+  },
   "CalendarSync": {
     "button": "Sync",
     "title": "Sync my calendar",
