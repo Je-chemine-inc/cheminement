@@ -539,32 +539,58 @@ export default function SchedulePage() {
                               className="absolute inset-0 z-0 w-full h-full hover:bg-primary/5 transition-colors"
                             />
                             {!showRequests &&
-                              dayAppointments.map((appointment) => (
-                                <button
-                                  type="button"
-                                  key={appointment._id}
-                                  draggable
-                                  onDragStart={() =>
-                                    setDraggingId(appointment._id)
-                                  }
-                                  onDragEnd={() => setDraggingId(null)}
-                                  onClick={() =>
-                                    handleAppointmentClick(appointment)
-                                  }
-                                  className={`relative z-10 w-full text-left border rounded p-2 mb-1 hover:brightness-95 transition-colors cursor-pointer ${getTimeSlotColor(appointment.time)}`}
-                                >
-                                  <div className="flex items-center gap-1 text-xs font-light">
-                                    {getTypeIcon(appointment.type)}
-                                    <span className="text-foreground ml-1">
-                                      {appointment.clientId.firstName}{" "}
-                                      {appointment.clientId.lastName}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground font-light mt-1">
-                                    {appointment.time} ({appointment.duration}m)
-                                  </div>
-                                </button>
-                              ))}
+                              dayAppointments.map((appointment, aptIdx) => {
+                                // Span the block over its duration: each hour row
+                                // is 61px tall (60px cell + 1px grid gap), so a
+                                // 90-min RDV covers ~1.5 rows and a 120-min one
+                                // ~2 rows. Absolutely positioned (z-20) over the
+                                // hour cells below; the start cell holds no
+                                // in-flow content so every row stays exactly 60px.
+                                const spanHeight = Math.max(
+                                  24,
+                                  Math.round((appointment.duration / 60) * 61) -
+                                    4,
+                                );
+                                // Side-by-side split if two RDV share a start hour
+                                // (rare double-booking) so neither is hidden.
+                                const count = dayAppointments.length;
+                                const multi = count > 1;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={appointment._id}
+                                    draggable
+                                    onDragStart={() =>
+                                      setDraggingId(appointment._id)
+                                    }
+                                    onDragEnd={() => setDraggingId(null)}
+                                    onClick={() =>
+                                      handleAppointmentClick(appointment)
+                                    }
+                                    style={{
+                                      height: `${spanHeight}px`,
+                                      left: multi
+                                        ? `calc(${(100 / count) * aptIdx}% + 2px)`
+                                        : undefined,
+                                      width: multi
+                                        ? `calc(${100 / count}% - 3px)`
+                                        : undefined,
+                                    }}
+                                    className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-2 hover:brightness-95 transition-colors cursor-pointer ${multi ? "" : "left-1 right-1"} ${getTimeSlotColor(appointment.time)}`}
+                                  >
+                                    <div className="flex items-center gap-1 text-xs font-light">
+                                      {getTypeIcon(appointment.type)}
+                                      <span className="text-foreground ml-1">
+                                        {appointment.clientId.firstName}{" "}
+                                        {appointment.clientId.lastName}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground font-light mt-1">
+                                      {appointment.time} ({appointment.duration}m)
+                                    </div>
+                                  </button>
+                                );
+                              })}
                           </div>
                         );
                       })}

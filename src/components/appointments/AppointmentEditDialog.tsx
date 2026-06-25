@@ -30,6 +30,17 @@ const TYPE_OPTIONS = ["video", "in-person", "phone"] as const;
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
+// 15-minute start-time slots (06:00–23:00). A controlled <Select> replaces the
+// native <input type="time">, whose clock dialog mis-behaves / gets clipped on
+// some browsers ("l'horloge se dérègle"). Mirrors ProfessionalBookAppointmentModal.
+const BASE_TIME_OPTIONS: string[] = (() => {
+  const slots: string[] = [];
+  for (let minutes = 6 * 60; minutes <= 23 * 60; minutes += 15) {
+    slots.push(`${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`);
+  }
+  return slots;
+})();
+
 /**
  * Shared appointment edit / reschedule / cancel dialog used by both the admin
  * per-professional calendar and the professional's own agenda. Mount it with a
@@ -65,6 +76,15 @@ export function AppointmentEditDialog({
 
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(appointment.time ?? "");
+  // Keep an off-grid existing time (e.g. "09:13") selectable so the Select can
+  // still display the appointment's current value.
+  const timeOptions = useMemo(
+    () =>
+      time && !BASE_TIME_OPTIONS.includes(time)
+        ? [...BASE_TIME_OPTIONS, time].sort()
+        : BASE_TIME_OPTIONS,
+    [time],
+  );
   const [duration, setDuration] = useState(appointment.duration || 50);
   const [type, setType] = useState<(typeof TYPE_OPTIONS)[number]>(
     (TYPE_OPTIONS as readonly string[]).includes(appointment.type)
@@ -166,11 +186,18 @@ export function AppointmentEditDialog({
             </div>
             <div className="space-y-2">
               <Label>{t("timeLabel")}</Label>
-              <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+              <Select value={time} onValueChange={setTime}>
+                <SelectTrigger>
+                  <SelectValue placeholder="--:--" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {timeOptions.map((slot) => (
+                    <SelectItem key={slot} value={slot}>
+                      {slot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
