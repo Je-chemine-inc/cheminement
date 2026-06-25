@@ -42,6 +42,14 @@ vi.mock("@/models/Appointment", () => ({
 vi.mock("@/lib/interac-deposit-email", () => ({
   getInteracDepositEmail: vi.fn().mockResolvedValue("deposit@x.ca"),
 }));
+vi.mock("@/lib/platform-contact", () => ({
+  getPlatformContactInfo: vi.fn().mockResolvedValue({
+    phoneNumber: "(450) 634-5569",
+    supportEmail: "support@jechemine.ca",
+    companyName: "Je chemine",
+    physicalAddress: {},
+  }),
+}));
 vi.mock("@/lib/guardian-utils", () => ({
   resolveAppointmentRecipient: vi.fn(() => ({
     name: "Alex Roy",

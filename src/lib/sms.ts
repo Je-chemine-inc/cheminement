@@ -78,6 +78,9 @@ export async function sendSessionInvoiceSms(
     payUrl: string;
     /** Interac deposit address — appended so the SMS offers both options. */
     depositEmail?: string;
+    /** Platform contact (admin-configured) appended at the bottom of the SMS. */
+    supportEmail?: string;
+    supportPhone?: string;
     /** When set, prefix the SMS as a dunning reminder (1 = H+12, 2 = H+36). */
     reminderNumber?: 1 | 2;
     lang?: "fr" | "en";
@@ -102,10 +105,21 @@ export async function sendSessionInvoiceSms(
       ? "Reminder — "
       : "Rappel — "
     : "";
+  // Platform "coordonnées" at the bottom so the client can reach support about
+  // the invoice — phone first (tappable on mobile), then email. Only the
+  // admin-configured parts that exist are shown.
+  const contactParts = [data.supportPhone, data.supportEmail].filter(
+    (s): s is string => Boolean(s && s.trim()),
+  );
+  const contact = contactParts.length
+    ? lang === "en"
+      ? `\n\nℹ Questions? ${contactParts.join(" · ")}`
+      : `\n\nℹ Des questions ? ${contactParts.join(" · ")}`
+    : "";
   const body =
     lang === "en"
-      ? `${lead}Je chemine: invoice ${data.invoiceNumber} — ${amount} for your session.\n💳 Pay by card: ${data.payUrl}${interac}`
-      : `${lead}Je chemine : facture ${data.invoiceNumber} — ${amount} pour votre séance.\n💳 Payer par carte : ${data.payUrl}${interac}`;
+      ? `${lead}Je chemine: invoice ${data.invoiceNumber} — ${amount} for your session.\n💳 Pay by card: ${data.payUrl}${interac}${contact}`
+      : `${lead}Je chemine : facture ${data.invoiceNumber} — ${amount} pour votre séance.\n💳 Payer par carte : ${data.payUrl}${interac}${contact}`;
   return sendSms(toPhone, body);
 }
 

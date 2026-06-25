@@ -1,6 +1,7 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
+import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import {
@@ -54,6 +55,7 @@ export async function runPaymentReminders(): Promise<{
   await connectToDatabase();
   const now = Date.now();
   const depositEmail = await getInteracDepositEmail();
+  const platformContact = await getPlatformContactInfo();
   const base = appUrlBase();
 
   let firstReminders = 0;
@@ -153,6 +155,8 @@ export async function runPaymentReminders(): Promise<{
           amountCad,
           payUrl,
           depositEmail,
+          supportEmail: platformContact.supportEmail,
+          supportPhone: platformContact.phoneNumber,
           reminderNumber: n,
           lang: recipient.language,
         }).catch((err) => console.error("payment reminder sms:", err));

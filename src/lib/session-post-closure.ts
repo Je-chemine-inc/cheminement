@@ -281,6 +281,7 @@ export async function runSessionClosureSideEffects(
   });
 
   const depositEmail = await getInteracDepositEmail();
+  const platformContact = await getPlatformContactInfo();
   const professionalName = `${professional.firstName ?? ""} ${
     professional.lastName ?? ""
   }`.trim();
@@ -331,6 +332,8 @@ export async function runSessionClosureSideEffects(
       amountCad: price,
       payUrl,
       depositEmail,
+      supportEmail: platformContact.supportEmail,
+      supportPhone: platformContact.phoneNumber,
       lang: clientLocale,
     }).catch((err) => console.error("sendSessionInvoiceSms:", err));
   }
