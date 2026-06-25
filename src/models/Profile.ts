@@ -82,6 +82,13 @@ export interface IProfile extends Document {
    * accepter les demandes urgentes (et inversement).
    */
   acceptingEmergencyConsultations?: boolean;
+  /**
+   * Secret token for the read-only iCal subscription feed of this pro's
+   * appointments (calendar sync). Generated on demand; rotating it invalidates
+   * the old subscription URL. Consumed by GET /api/calendar/[token] without a
+   * session (calendar apps can't authenticate).
+   */
+  calendarFeedToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -181,6 +188,8 @@ const ProfileSchema = new Schema<IProfile>(
     payoutChequeName: { type: String, trim: true },
     // Accepte les consultations ponctuelles rapides (demandes urgentes). Défaut: true.
     acceptingEmergencyConsultations: { type: Boolean, default: true },
+    // Jeton secret du flux iCal (abonnement calendrier en lecture seule).
+    calendarFeedToken: { type: String, trim: true },
   },
   {
     timestamps: true,
@@ -189,6 +198,11 @@ const ProfileSchema = new Schema<IProfile>(
 
 ProfileSchema.index({ specialty: 1 });
 ProfileSchema.index({ problematics: 1 });
+// Look up the feed by its secret token (sparse: most profiles have none).
+ProfileSchema.index(
+  { calendarFeedToken: 1 },
+  { unique: true, sparse: true },
+);
 
 const Profile: Model<IProfile> =
   mongoose.models.Profile || mongoose.model<IProfile>("Profile", ProfileSchema);

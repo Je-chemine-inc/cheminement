@@ -79,6 +79,27 @@
     "license": "License Number",
     "licensePlaceholder": "Professional license number"
   },
+  "CalendarSync": {
+    "button": "Sync",
+    "title": "Sync my calendar",
+    "description": "Show your Je chemine appointments in Google Calendar, Apple Calendar or Outlook. The subscription updates automatically.",
+    "enable": "Enable sync",
+    "enabling": "Enabling…",
+    "urlLabel": "Subscription link (private)",
+    "copy": "Copy",
+    "openInCalendar": "Open in my calendar",
+    "instructionsTitle": "How to subscribe",
+    "instructionsGoogle": "Google Calendar: 'Other calendars' → 'Subscribe to calendar' → paste the link.",
+    "instructionsApple": "Apple Calendar: 'File' → 'New Calendar Subscription' → paste the link.",
+    "instructionsOutlook": "Outlook: 'Add calendar' → 'Subscribe from web' → paste the link.",
+    "privacyNote": "For your privacy, appointments don't show the client's name or the meeting link in the external calendar — only the time and type. Open Je chemine for details. This link grants access to your schedule: keep it secret like a password and regenerate it if exposed.",
+    "regenerate": "Regenerate link",
+    "regenerating": "Regenerating…",
+    "regenerateConfirm": "Regenerate the link? The old one will stop working and you'll need to update it in your calendar.",
+    "regenerateConfirmYes": "Regenerate",
+    "regenerateConfirmNo": "Cancel",
+    "loadError": "Couldn't load the sync link."
+  },
   "AppointmentEditDialog": {
     "editTitle": "Edit appointment",
     "dateLabel": "Date",

@@ -31,6 +31,7 @@ import {
   type BookableClient,
 } from "@/components/appointments/ProfessionalBookAppointmentModal";
 import { AppointmentEditDialog } from "@/components/appointments/AppointmentEditDialog";
+import { CalendarSyncDialog } from "@/components/appointments/CalendarSyncDialog";
 import { AppointmentResponse } from "@/types/api";
 
 export default function SchedulePage() {
@@ -402,6 +403,7 @@ export default function SchedulePage() {
               <Filter className="h-4 w-4" />
               {showRequests ? t("showSessions") : t("showRequests")}
             </button>
+            <CalendarSyncDialog />
             <Button
               className="gap-2"
               onClick={() => {

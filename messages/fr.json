@@ -79,6 +79,27 @@
     "license": "Numéro de permis",
     "licensePlaceholder": "Numéro de permis professionnel"
   },
+  "CalendarSync": {
+    "button": "Synchroniser",
+    "title": "Synchroniser mon calendrier",
+    "description": "Affichez vos rendez-vous Je chemine dans Google Agenda, Apple Calendrier ou Outlook. L'abonnement se met à jour automatiquement.",
+    "enable": "Activer la synchronisation",
+    "enabling": "Activation…",
+    "urlLabel": "Lien d'abonnement (privé)",
+    "copy": "Copier",
+    "openInCalendar": "Ouvrir dans mon calendrier",
+    "instructionsTitle": "Comment s'abonner",
+    "instructionsGoogle": "Google Agenda : « Autres agendas » → « S'abonner à un agenda » → collez le lien.",
+    "instructionsApple": "Apple Calendrier : « Fichier » → « Nouvel abonnement de calendrier » → collez le lien.",
+    "instructionsOutlook": "Outlook : « Ajouter un calendrier » → « S'abonner à partir du Web » → collez le lien.",
+    "privacyNote": "Pour votre confidentialité, les rendez-vous n'affichent pas le nom du client ni le lien de la rencontre dans le calendrier externe — uniquement l'heure et le type. Ouvrez Je chemine pour les détails. Ce lien donne accès à votre horaire : gardez-le secret comme un mot de passe et régénérez-le s'il est exposé.",
+    "regenerate": "Régénérer le lien",
+    "regenerating": "Régénération…",
+    "regenerateConfirm": "Régénérer le lien ? L'ancien cessera de fonctionner et vous devrez le mettre à jour dans votre calendrier.",
+    "regenerateConfirmYes": "Régénérer",
+    "regenerateConfirmNo": "Annuler",
+    "loadError": "Impossible de charger le lien de synchronisation."
+  },
   "AppointmentEditDialog": {
     "editTitle": "Modifier le rendez-vous",
     "dateLabel": "Date",
