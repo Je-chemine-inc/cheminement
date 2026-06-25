@@ -4,12 +4,33 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
 
+const SITE_URL = "https://www.jechemine.ca";
+const SITE_TITLE = "Je chemine - Soins en santé mentale";
+const SITE_DESCRIPTION =
+  "Plateforme de santé mentale du Québec : jumelage avec des professionnels qualifiés, prise de rendez-vous et accompagnement bilingue, en personne ou en ligne.";
+
 export const metadata: Metadata = {
-  title: "Je chemine - Soins en santé mentale",
-  description:
-    "Your journey to better health and wellness with our comprehensive space featuring mental health support, primary care, and employee assistance programs.",
+  // Resolves relative URLs (incl. the auto-generated og:image) to absolute, which
+  // social/link-preview scrapers require.
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   icons: {
     icon: "/favicon.png",
+  },
+  // og:image / twitter:image are auto-injected from src/app/opengraph-image.tsx.
+  openGraph: {
+    type: "website",
+    siteName: "Je chemine",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: "fr_CA",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
