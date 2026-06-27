@@ -2,6 +2,7 @@ import connectToDatabase from "@/lib/mongodb";
 import CronRun from "@/models/CronRun";
 import { runProposalTimeouts } from "@/lib/proposal-timeout";
 import { runPaymentReminders } from "@/lib/payment-reminders";
+import { runAppointmentReminders } from "@/lib/appointment-reminders";
 
 /**
  * "Lazy cron": advance the matching cascade off normal authenticated traffic
@@ -81,5 +82,39 @@ export async function triggerDuePaymentReminders(): Promise<void> {
     await runPaymentReminders();
   } catch (err) {
     console.error("[lazy-cron] payment reminders trigger failed:", err);
+  }
+}
+
+// Pre-appointment reminders (H-72 with cancel/reschedule, H-48 without). On
+// Vercel Hobby the daily /api/cron/appointment-reminders is unreliable (only 2
+// of the 5 declared crons actually run), so drive it off dashboard traffic too.
+// The windows are 24h/48h wide and the job dedupes via per-appointment flags, so
+// a ~30-min lazy cadence catches every appointment exactly once.
+const APPOINTMENT_REMINDERS_KEY = "appointment-reminders";
+const APPOINTMENT_REMINDERS_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
+let lastAppointmentLocalCheck = 0;
+
+export async function triggerDueAppointmentReminders(): Promise<void> {
+  const now = Date.now();
+  if (now - lastAppointmentLocalCheck < LOCAL_GUARD_MS) return;
+  lastAppointmentLocalCheck = now;
+  try {
+    await connectToDatabase();
+    await CronRun.updateOne(
+      { key: APPOINTMENT_REMINDERS_KEY },
+      { $setOnInsert: { key: APPOINTMENT_REMINDERS_KEY, lastRunAt: new Date(0) } },
+      { upsert: true },
+    );
+    const claimed = await CronRun.findOneAndUpdate(
+      {
+        key: APPOINTMENT_REMINDERS_KEY,
+        lastRunAt: { $lt: new Date(now - APPOINTMENT_REMINDERS_THROTTLE_MS) },
+      },
+      { $set: { lastRunAt: new Date(now) } },
+    );
+    if (!claimed) return;
+    await runAppointmentReminders();
+  } catch (err) {
+    console.error("[lazy-cron] appointment reminders trigger failed:", err);
   }
 }
