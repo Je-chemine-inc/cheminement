@@ -36,6 +36,7 @@ import {
   type ManualInvoiceContext,
 } from "@/components/billing/ManualInvoiceModal";
 import { RecordPayoutModal } from "@/components/billing/RecordPayoutModal";
+import { appointmentStatusColor } from "@/lib/appointment-colors";
 import type { AppointmentResponse } from "@/types/api";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -246,16 +247,6 @@ export default function AdminProfessionalSchedulePage({
     }
   };
 
-  const aptColor = (a: AppointmentResponse) => {
-    if (a.status === "pending")
-      return "bg-amber-50 border-amber-200 text-amber-900";
-    if (a.status === "completed")
-      return "bg-slate-50 border-slate-200 text-slate-700";
-    if (a.status === "ongoing")
-      return "bg-violet-50 border-violet-200 text-violet-900";
-    return "bg-sky-50 border-sky-200 text-sky-900";
-  };
-
   const openBookForSlot = (date: Date, hour?: number) => {
     setBookDefaults({
       date: localDateKey(date),
@@ -281,7 +272,7 @@ export default function AdminProfessionalSchedulePage({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className={`w-full text-left border rounded p-1.5 mb-1 hover:brightness-95 transition ${aptColor(a)}`}
+          className={`w-full text-left border rounded p-1.5 mb-1 hover:brightness-95 transition ${appointmentStatusColor(a.status)}`}
         >
           <div className="flex items-center gap-1 text-xs font-medium">
             {typeIcon(a.type)}
@@ -333,7 +324,7 @@ export default function AdminProfessionalSchedulePage({
               left: multi ? `calc(${(100 / count) * idx}% + 2px)` : undefined,
               width: multi ? `calc(${100 / count}% - 3px)` : undefined,
             }}
-            className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-1.5 hover:brightness-95 transition ${multi ? "" : "left-1 right-1"} ${aptColor(a)}`}
+            className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-1.5 hover:brightness-95 transition ${multi ? "" : "left-1 right-1"} ${appointmentStatusColor(a.status)}`}
           >
             <div className="flex items-center gap-1 text-xs font-medium">
               {typeIcon(a.type)}

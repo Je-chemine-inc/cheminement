@@ -32,6 +32,7 @@ import {
 } from "@/components/appointments/ProfessionalBookAppointmentModal";
 import { AppointmentEditDialog } from "@/components/appointments/AppointmentEditDialog";
 import { CalendarSyncDialog } from "@/components/appointments/CalendarSyncDialog";
+import { appointmentStatusColor } from "@/lib/appointment-colors";
 import { AppointmentResponse } from "@/types/api";
 
 export default function SchedulePage() {
@@ -192,34 +193,6 @@ export default function SchedulePage() {
   };
 
   const formatDate = (date: Date) => fullDateFmt.format(date);
-
-  // Color-code time slots based on time of day
-  const getTimeSlotColor = (time: string) => {
-    const hour = parseInt(time.split(":")[0], 10);
-
-    // Early morning
-    if (hour >= 6 && hour < 10) {
-      return "bg-emerald-50/80 border-emerald-200 text-emerald-900";
-    }
-
-    // Late morning / midday
-    if (hour >= 10 && hour < 14) {
-      return "bg-sky-50/80 border-sky-200 text-sky-900";
-    }
-
-    // Afternoon
-    if (hour >= 14 && hour < 18) {
-      return "bg-amber-50/80 border-amber-200 text-amber-900";
-    }
-
-    // Evening
-    if (hour >= 18 && hour < 22) {
-      return "bg-violet-50/80 border-violet-200 text-violet-900";
-    }
-
-    // Night / fallback
-    return "bg-slate-50/80 border-slate-200 text-slate-900";
-  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -578,7 +551,7 @@ export default function SchedulePage() {
                                         ? `calc(${100 / count}% - 3px)`
                                         : undefined,
                                     }}
-                                    className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-2 hover:brightness-95 transition-colors cursor-pointer ${multi ? "" : "left-1 right-1"} ${getTimeSlotColor(appointment.time)}`}
+                                    className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-2 hover:brightness-95 transition-colors cursor-pointer ${multi ? "" : "left-1 right-1"} ${appointmentStatusColor(appointment.status)}`}
                                   >
                                     <div className="flex items-center gap-1 text-xs font-light">
                                       {getTypeIcon(appointment.type)}
@@ -651,7 +624,7 @@ export default function SchedulePage() {
                             type="button"
                             key={appointment._id}
                             onClick={() => handleAppointmentClick(appointment)}
-                            className={`w-full text-left rounded px-2 py-1 text-xs font-light truncate border cursor-pointer hover:brightness-95 ${getTimeSlotColor(appointment.time)}`}
+                            className={`w-full text-left rounded px-2 py-1 text-xs font-light truncate border cursor-pointer hover:brightness-95 ${appointmentStatusColor(appointment.status)}`}
                           >
                             {appointment.time} {appointment.clientId.firstName}{" "}
                             {appointment.clientId.lastName}
@@ -706,7 +679,7 @@ export default function SchedulePage() {
                             type="button"
                             key={appointment._id}
                             onClick={() => handleAppointmentClick(appointment)}
-                            className={`w-full text-left border rounded-lg p-3 hover:brightness-95 transition-colors cursor-pointer ${getTimeSlotColor(appointment.time)}`}
+                            className={`w-full text-left border rounded-lg p-3 hover:brightness-95 transition-colors cursor-pointer ${appointmentStatusColor(appointment.status)}`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
