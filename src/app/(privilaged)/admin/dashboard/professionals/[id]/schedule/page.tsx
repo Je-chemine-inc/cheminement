@@ -309,6 +309,57 @@ export default function AdminProfessionalSchedulePage({
     </DropdownMenu>
   );
 
+  // Week-view chip: absolutely positioned and sized to the appointment's
+  // DURATION so a 90/120-min RDV covers ~1.5/2 rows — matching the pro's own
+  // agenda (each hour row is 61px = 60px cell + 1px grid gap). Two RDV sharing a
+  // start hour split side-by-side. Keeps the admin status colour + action menu.
+  const renderWeekAptChip = (
+    a: AppointmentResponse,
+    idx: number,
+    count: number,
+  ) => {
+    const spanHeight = Math.max(
+      24,
+      Math.round(((a.duration ?? 60) / 60) * 61) - 4,
+    );
+    const multi = count > 1;
+    return (
+      <DropdownMenu key={a._id}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            style={{
+              height: `${spanHeight}px`,
+              left: multi ? `calc(${(100 / count) * idx}% + 2px)` : undefined,
+              width: multi ? `calc(${100 / count}% - 3px)` : undefined,
+            }}
+            className={`absolute top-1 z-20 overflow-hidden text-left border rounded p-1.5 hover:brightness-95 transition ${multi ? "" : "left-1 right-1"} ${aptColor(a)}`}
+          >
+            <div className="flex items-center gap-1 text-xs font-medium">
+              {typeIcon(a.type)}
+              <span className="truncate">
+                {a.clientId?.firstName} {a.clientId?.lastName}
+              </span>
+            </div>
+            <div className="text-[11px] opacity-80">
+              {a.time} · {a.duration}m
+            </div>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onClick={() => setEditApt(a)}>
+            <Edit className="h-4 w-4" />
+            {t("viewEdit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openManualInvoiceForApt(a)}>
+            <FileText className="h-4 w-4" />
+            {t("generateManualInvoice")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   // Empty slot → action menu (book OR generate a manual invoice).
   const renderSlotMenuItems = (date: Date, hour?: number) => (
     <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
@@ -454,15 +505,15 @@ export default function AdminProfessionalSchedulePage({
                       return (
                         <div
                           key={`${idx}-${hour}`}
-                          className="bg-card p-1.5 min-h-[60px] flex flex-col"
+                          className="bg-card p-1.5 min-h-[60px] relative group"
                         >
-                          {slot.map((a) => renderAptChip(a))}
+                          {/* Empty-slot booking/invoice target, behind the chips. */}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
                                 aria-label={t("slotActions")}
-                                className="flex-1 min-h-[20px] rounded hover:bg-primary/5 transition group relative"
+                                className="absolute inset-0 z-0 w-full h-full rounded hover:bg-primary/5 transition"
                               >
                                 {slot.length === 0 && (
                                   <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 absolute top-0.5 right-0.5 transition" />
@@ -471,6 +522,10 @@ export default function AdminProfessionalSchedulePage({
                             </DropdownMenuTrigger>
                             {renderSlotMenuItems(day, hour)}
                           </DropdownMenu>
+                          {/* Duration-spanning appointment blocks (z-20). */}
+                          {slot.map((a, i) =>
+                            renderWeekAptChip(a, i, slot.length),
+                          )}
                         </div>
                       );
                     })}
