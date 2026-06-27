@@ -1,0 +1,74 @@
+# Hourly trigger for ALL time-sensitive cron endpoints.
+#
+# WHY: Vercel Hobby runs at most TWO cron jobs (and only once per day). This
+# project declares FIVE crons in vercel.json, so Vercel silently runs only 2 of
+# them — the other 3 (including /api/cron/appointment-reminders, which sends the
+# H-72 "with cancellation" + H-48 appointment reminders) never fire. GitHub
+# Actions runs hourly and pings the SAME CRON_SECRET-protected endpoints, so all
+# five run reliably (~1h granularity). The jobs are idempotent (atomic claims /
+# dedup flags), so running them here AND from Vercel's 2 daily crons is safe.
+#
+# SETUP (one-time):
+#   1. Add a repo Actions secret CRON_SECRET equal to the Vercel env CRON_SECRET:
+#        gh secret set CRON_SECRET          (paste the value when prompted)
+#      or GitHub → Settings → Secrets and variables → Actions → New secret.
+#   2. (Optional) Override the target host with a repo VARIABLE CRON_BASE_URL.
+#      Default is the production domain below. Target the host that serves the API
+#      WITHOUT a redirect — the apex jechemine.ca 307-redirects to www, and a
+#      cross-host redirect DROPS the Authorization header. Use www.jechemine.ca.
+#
+# NOTES:
+#   - Scheduled workflows run ONLY from the default branch (main) — must be on
+#     main to activate.
+#   - GitHub may delay/skip a scheduled run under load; that's fine — the next
+#     hourly run catches it (idempotent jobs, 24h-wide reminder windows).
+name: cron-sla
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly (UTC)
+  workflow_dispatch: {} # manual trigger for testing
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cron-sla
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ vars.CRON_BASE_URL || 'https://www.jechemine.ca' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Guard — secret present
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repo secret is not set. Add it with the same value as the Vercel env CRON_SECRET."
+            exit 1
+          fi
+
+      - name: Trigger all time-sensitive cron endpoints
+        run: |
+          set -u
+          fail=0
+          for path in \
+            proposal-timeouts \
+            unscheduled-match-reminders \
+            appointment-reminders \
+            payment-guarantee-reminders \
+            interac-reminders
+          do
+            echo "→ /api/cron/$path"
+            if curl -fsS --retry 2 --max-time 60 -X GET \
+                 "$BASE_URL/api/cron/$path" \
+                 -H "Authorization: Bearer $CRON_SECRET"; then
+              echo "  ✓"
+            else
+              echo "::warning::cron $path failed"
+              fail=1
+            fi
+          done
+          exit $fail
