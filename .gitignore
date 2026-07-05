@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+# vitest transient config-transpile artifacts
+vitest.config.*.timestamp-*.mjs
 
 # next.js
 /.next/
