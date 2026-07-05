@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
@@ -198,11 +198,18 @@ export async function POST(req: NextRequest) {
       bookingFor: appointment.bookingFor,
       lovedOneInfo: appointment.lovedOneInfo,
     };
-    Promise.all([
-      sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),
-      sendProfessionalNotification(emailData),
-    ]).catch((err) =>
-      console.error("[admin booking] notification error:", err),
+    // after() keeps the serverless function alive on Vercel until the SMTP
+    // sends complete; a bare fire-and-forget Promise.all is killed when the
+    // response returns (~250ms) before Gmail SMTP (1-2s) finishes, so the
+    // client never receives the confirmation for the newly-booked slot. Mirrors
+    // the professional booking route + every other notification call site.
+    after(() =>
+      Promise.all([
+        sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),
+        sendProfessionalNotification(emailData),
+      ]).catch((err) =>
+        console.error("[admin booking] notification error:", err),
+      ),
     );
 
     return NextResponse.json(

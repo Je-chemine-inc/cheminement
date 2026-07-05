@@ -416,7 +416,10 @@
       "mcp__vercel__list_projects",
       "mcp__vercel__get_runtime_logs",
       "mcp__vercel__get_project",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(node build-eicar-pdf.cjs)",
+      "Bash(rm -f build-eicar-pdf.cjs)",
+      "mcp__vercel__list_deployments"
     ],
     "additionalDirectories": [
       "c:\\Users\\merie\\.claude\\projects\\c--Users-merie-cheminement\\memory",
