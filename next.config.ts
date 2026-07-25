@@ -70,9 +70,6 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    // Self-hosted (WHC) build has no sharp optimizer — serve images unoptimized.
-    // Vercel builds keep optimization (STANDALONE_BUILD is unset there).
-    unoptimized: process.env.STANDALONE_BUILD === "1",
     remotePatterns: [
       {
         protocol: "https",

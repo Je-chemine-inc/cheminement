@@ -83,7 +83,14 @@ jobs:
           # have a public/ dir — copying the dir itself would nest it one level).
           mkdir -p deploy/public
           cp -r public/. deploy/public/
-          echo "public entries: $(ls deploy/public | wc -l)"
+          # Add sharp (image optimizer) via an ISOLATED npm install, then copy the
+          # linux-x64 binaries into the bundle. Installing inside deploy/ fails
+          # because npm chokes on the pnpm-traced node_modules.
+          mkdir -p /tmp/sharp && ( cd /tmp/sharp && npm init -y >/dev/null 2>&1 && npm install --no-audit --no-fund sharp@0.34.5 )
+          mkdir -p deploy/node_modules
+          cp -r /tmp/sharp/node_modules/sharp deploy/node_modules/
+          cp -r /tmp/sharp/node_modules/@img deploy/node_modules/
+          echo "public: $(ls deploy/public | wc -l); sharp: $([ -d deploy/node_modules/sharp ] && echo yes); @img: $(ls deploy/node_modules/@img 2>/dev/null | tr '\n' ' ')"
           tar -czf deploy.tar.gz -C deploy .
           ls -lh deploy.tar.gz
 
