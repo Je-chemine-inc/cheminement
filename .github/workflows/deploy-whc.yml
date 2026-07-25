@@ -1,0 +1,67 @@
+name: Deploy to WHC (Canada)
+
+# Manual trigger only for now (staging). At cutover we can add a push trigger.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-whc
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (standalone)
+        env:
+          CI: "true"
+          STANDALONE_BUILD: "1"
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        run: pnpm build
+
+      - name: Assemble standalone bundle
+        run: |
+          set -e
+          mkdir -p deploy
+          cp -r .next/standalone/. deploy/
+          mkdir -p deploy/.next
+          cp -r .next/static deploy/.next/static
+          if [ -d public ]; then cp -r public deploy/public; fi
+          tar -czf deploy.tar.gz -C deploy .
+          ls -lh deploy.tar.gz
+
+      - name: Deploy to WHC server
+        env:
+          WHC_SSH_KEY: ${{ secrets.WHC_SSH_KEY }}
+          WHC_HOST: ${{ secrets.WHC_HOST }}
+          WHC_PORT: ${{ secrets.WHC_PORT }}
+          WHC_USER: ${{ secrets.WHC_USER }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          printf '%s\n' "$WHC_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$WHC_PORT" "$WHC_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          scp -i ~/.ssh/deploy_key -P "$WHC_PORT" -o StrictHostKeyChecking=accept-new \
+            deploy.tar.gz "$WHC_USER@$WHC_HOST:/root/deploy.tar.gz"
+          ssh -i ~/.ssh/deploy_key -p "$WHC_PORT" -o StrictHostKeyChecking=accept-new \
+            "$WHC_USER@$WHC_HOST" 'bash -s' < scripts/whc-activate.sh
