@@ -1,7 +1,11 @@
 name: Deploy to WHC (Canada)
 
-# Manual trigger only for now (staging). At cutover we can add a push trigger.
+# CI/CD: push to main auto-deploys; PRs are validated (test+build) but not deployed.
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +33,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Test (gate — a failing test blocks the deploy)
+        run: pnpm test
 
       - name: Build (standalone)
         env:
@@ -77,6 +84,8 @@ jobs:
           ls -lh deploy.tar.gz
 
       - name: Deploy to WHC server
+        # Only deploy on push to main / manual run — PRs validate (test+build) but never deploy.
+        if: github.event_name != 'pull_request'
         env:
           WHC_SSH_KEY: ${{ secrets.WHC_SSH_KEY }}
           WHC_HOST: ${{ secrets.WHC_HOST }}
