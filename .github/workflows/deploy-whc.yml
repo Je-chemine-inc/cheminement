@@ -34,8 +34,35 @@ jobs:
         env:
           CI: "true"
           STANDALONE_BUILD: "1"
+          # Public values are baked into the client bundle — must be real:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          # Server-only values: the build never connects, it only needs them DEFINED
+          # (valid formats to satisfy SDK constructors). Real values live in
+          # /root/jechemine.env on the server, loaded at runtime via --env-file.
+          MONGODB_URI: "mongodb://127.0.0.1:27017/build"
+          NEXTAUTH_SECRET: "build_time_placeholder_secret_0123456789abcdef"
+          NEXTAUTH_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          STRIPE_SECRET_KEY: "sk_test_build0000000000000000000000"
+          STRIPE_WEBHOOK_SECRET: "whsec_build0000000000000000000000"
+          STRIPE_CONNECT_CLIENT_ID: "ca_build0000000000000000000000"
+          TWILIO_ACCOUNT_SID: "AC00000000000000000000000000000000"
+          TWILIO_AUTH_TOKEN: "00000000000000000000000000000000"
+          TWILIO_FROM_NUMBER: "+15550000000"
+          SMTP_HOST: "smtp.example.com"
+          SMTP_PORT: "587"
+          SMTP_USER: "build@example.com"
+          SMTP_PASS: "placeholder"
+          MAIL_FROM: "build@example.com"
+          MAIL_FROM_NAME: "Build"
+          SUPPORT_EMAIL: "support@example.com"
+          INTERAC_DEPOSIT_EMAIL: "deposit@example.com"
+          ADMIN_ALERT_EMAIL: "admin@example.com"
+          CLOUDMERSIVE_API_KEY: "placeholder"
+          CRON_SECRET: "build_placeholder"
+          PLATFORM_FEE_PERCENTAGE: "10"
+          DEFAULT_CURRENCY: "cad"
+          SMS_DRY_RUN: "true"
         run: pnpm build
 
       - name: Assemble standalone bundle
