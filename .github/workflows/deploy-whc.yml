@@ -83,9 +83,7 @@ jobs:
           # have a public/ dir — copying the dir itself would nest it one level).
           mkdir -p deploy/public
           cp -r public/. deploy/public/
-          # Ensure sharp (native image optimizer for next/image) is present + resolvable.
-          ( cd deploy && npm install --no-save --no-package-lock --no-audit --no-fund sharp@0.34.5 )
-          echo "public entries: $(ls deploy/public | wc -l); sharp: $([ -d deploy/node_modules/sharp ] && echo yes || echo no)"
+          echo "public entries: $(ls deploy/public | wc -l)"
           tar -czf deploy.tar.gz -C deploy .
           ls -lh deploy.tar.gz
 
