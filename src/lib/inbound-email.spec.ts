@@ -8,6 +8,7 @@ import {
   parseReferenceIds,
   htmlToText,
   normalizeInboundEmail,
+  isAutomatedEmail,
   type RawInboundEmail,
 } from "./inbound-email";
 
@@ -98,5 +99,49 @@ describe("normalizeInboundEmail", () => {
   it("never stores an empty body (schema requires one)", () => {
     const n = normalizeInboundEmail({ ...base, text: "", html: "" })!;
     expect(n.message).toBe("Re: votre demande"); // falls back to subject
+  });
+});
+
+describe("isAutomatedEmail", () => {
+  const human: RawInboundEmail = {
+    messageId: "<x@m>",
+    from: { name: "Jean", email: "jean@example.com" },
+    subject: "Bonjour",
+    text: "une vraie question",
+  };
+
+  it("does NOT filter a genuine client email", () => {
+    expect(isAutomatedEmail(human)).toBe(false);
+  });
+
+  it("filters delivery bounces by sender (mailer-daemon / postmaster)", () => {
+    expect(
+      isAutomatedEmail({ ...human, from: { email: "mailer-daemon@se3.web-dns1.com" } }),
+    ).toBe(true);
+    expect(
+      isAutomatedEmail({ ...human, from: { email: "postmaster@example.com" } }),
+    ).toBe(true);
+  });
+
+  it("filters auto-replies via the Auto-Submitted header (RFC 3834)", () => {
+    expect(isAutomatedEmail({ ...human, autoSubmitted: "auto-replied" })).toBe(true);
+    expect(isAutomatedEmail({ ...human, autoSubmitted: "auto-generated" })).toBe(true);
+    // "no" means a real human message — must NOT be filtered.
+    expect(isAutomatedEmail({ ...human, autoSubmitted: "no" })).toBe(false);
+  });
+
+  it("filters an empty return-path envelope and DSN reports", () => {
+    expect(isAutomatedEmail({ ...human, returnPath: "<>" })).toBe(true);
+    expect(
+      isAutomatedEmail({
+        ...human,
+        contentType: "multipart/report; report-type=delivery-status; boundary=abc",
+      }),
+    ).toBe(true);
+  });
+
+  it("filters Precedence: auto_reply but keeps a normal return-path", () => {
+    expect(isAutomatedEmail({ ...human, precedence: "auto_reply" })).toBe(true);
+    expect(isAutomatedEmail({ ...human, returnPath: "<jean@example.com>" })).toBe(false);
   });
 });

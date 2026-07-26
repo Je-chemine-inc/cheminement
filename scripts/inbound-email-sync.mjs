@@ -57,6 +57,27 @@ try {
       try {
         const parsed = await simpleParser(msg.source);
         const fromAddr = parsed.from?.value?.[0];
+
+        // Raw header value (for simple string headers) + full Content-Type with
+        // params — these let the ingestion route detect bounces / auto-replies.
+        const rawHeader = (key) => {
+          const line = (parsed.headerLines || []).find((h) => h.key === key);
+          return line
+            ? line.line.replace(new RegExp("^" + key + ":\\s*", "i"), "").trim()
+            : undefined;
+        };
+        const ctObj = parsed.headers?.get("content-type");
+        const contentType = ctObj
+          ? typeof ctObj === "string"
+            ? ctObj
+            : [
+                ctObj.value,
+                ...Object.entries(ctObj.params || {}).map(
+                  ([k, v]) => `${k}=${v}`,
+                ),
+              ].join("; ")
+          : undefined;
+
         emails.push({
           messageId: parsed.messageId || "",
           inReplyTo: parsed.inReplyTo || undefined,
@@ -67,6 +88,10 @@ try {
           text: parsed.text || undefined,
           html: typeof parsed.html === "string" ? parsed.html : undefined,
           date: parsed.date ? parsed.date.toISOString() : undefined,
+          autoSubmitted: rawHeader("auto-submitted"),
+          contentType,
+          returnPath: rawHeader("return-path"),
+          precedence: rawHeader("precedence"),
         });
       } catch (e) {
         console.error("[inbound-email-sync] parse error:", e?.message || e);

@@ -5,6 +5,7 @@ import User from "@/models/User";
 import {
   normalizeInboundEmail,
   parseReferenceIds,
+  isAutomatedEmail,
   type RawInboundEmail,
 } from "@/lib/inbound-email";
 
@@ -48,8 +49,16 @@ export async function POST(req: NextRequest) {
 
     let created = 0;
     let skipped = 0;
+    let filtered = 0;
 
     for (const raw of emails) {
+      // Drop machine-generated mail (bounces / auto-replies) — keep the panel
+      // to real people. The app already logs sends, so delivery info isn't lost.
+      if (isAutomatedEmail(raw)) {
+        filtered++;
+        continue;
+      }
+
       const n = normalizeInboundEmail(raw);
       if (!n) {
         skipped++;
@@ -109,7 +118,13 @@ export async function POST(req: NextRequest) {
       created++;
     }
 
-    return NextResponse.json({ ok: true, created, skipped, total: emails.length });
+    return NextResponse.json({
+      ok: true,
+      created,
+      skipped,
+      filtered,
+      total: emails.length,
+    });
   } catch (e: unknown) {
     console.error("[inbound-email] ingestion failed:", e);
     return NextResponse.json(

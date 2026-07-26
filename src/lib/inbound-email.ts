@@ -27,6 +27,45 @@ export interface RawInboundEmail {
   html?: string;
   /** ISO date string of the original message. */
   date?: string;
+  // ----- Signals used to detect automated mail (bounces / auto-replies) -----
+  /** RFC 3834 Auto-Submitted header value ("auto-replied", "auto-generated", …). */
+  autoSubmitted?: string;
+  /** Full Content-Type header incl. params (to spot delivery-status reports). */
+  contentType?: string;
+  /** Return-Path header — "<>" is the classic bounce envelope. */
+  returnPath?: string;
+  /** Precedence header ("auto_reply", "bulk", …). */
+  precedence?: string;
+}
+
+const AUTOMATED_SENDER_RE = /(^|<)(mailer-daemon|mail-daemon|postmaster)@/i;
+
+/**
+ * True when a message is machine-generated — a delivery bounce (DSN) or an
+ * auto-reply (out-of-office) — rather than a real person writing to support.
+ * We skip these so the Réception panel shows people, not notifications. Uses
+ * only high-confidence signals so genuine client mail is never dropped.
+ */
+export function isAutomatedEmail(raw: RawInboundEmail): boolean {
+  const from = (raw.from?.email ?? "").trim().toLowerCase();
+  if (AUTOMATED_SENDER_RE.test(from)) return true;
+
+  // RFC 3834: any value other than "no" marks auto-generated / auto-replied mail.
+  const autoSubmitted = (raw.autoSubmitted ?? "").trim().toLowerCase();
+  if (autoSubmitted && autoSubmitted !== "no") return true;
+
+  // Empty return-path envelope = bounce.
+  if ((raw.returnPath ?? "").trim() === "<>") return true;
+
+  // Standard Delivery Status Notification format.
+  const ct = (raw.contentType ?? "").toLowerCase();
+  if (ct.includes("multipart/report") && ct.includes("delivery-status")) {
+    return true;
+  }
+
+  if ((raw.precedence ?? "").trim().toLowerCase() === "auto_reply") return true;
+
+  return false;
 }
 
 export interface NormalizedInboundEmail {
