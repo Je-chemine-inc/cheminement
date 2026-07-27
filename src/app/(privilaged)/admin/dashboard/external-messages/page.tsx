@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import {
   Inbox,
@@ -376,37 +382,38 @@ export default function AdminExternalMessagesPage() {
 
       {activeTab === "inbox" ? (
         <>
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="space-y-2.5 rounded-xl border border-border/40 bg-card/50 p-4">
             {!showingOutbound ? (
               <>
-                <FilterChip
-                  active={filterSource === "all"}
-                  onClick={() => setFilterSource("all")}
-                  label={t("filterAllSources")}
-                />
-                <FilterChip
-                  active={filterSource === "contact"}
-                  onClick={() => setFilterSource("contact")}
-                  label={t("sourceContact")}
-                />
-                <FilterChip
-                  active={filterSource === "school-manager"}
-                  onClick={() => setFilterSource("school-manager")}
-                  label={t("sourceSchool")}
-                />
-                <FilterChip
-                  active={filterSource === "enterprise"}
-                  onClick={() => setFilterSource("enterprise")}
-                  label={t("sourceEnterprise")}
-                />
-                <FilterChip
-                  active={filterSource === "email"}
-                  onClick={() => setFilterSource("email")}
-                  label={t("sourceEmail")}
-                />
+                <FilterRow label={t("filterSourceLabel")}>
+                  <FilterChip
+                    active={filterSource === "all"}
+                    onClick={() => setFilterSource("all")}
+                    label={t("filterAllSources")}
+                  />
+                  <FilterChip
+                    active={filterSource === "contact"}
+                    onClick={() => setFilterSource("contact")}
+                    label={t("sourceContact")}
+                  />
+                  <FilterChip
+                    active={filterSource === "school-manager"}
+                    onClick={() => setFilterSource("school-manager")}
+                    label={t("sourceSchool")}
+                  />
+                  <FilterChip
+                    active={filterSource === "enterprise"}
+                    onClick={() => setFilterSource("enterprise")}
+                    label={t("sourceEnterprise")}
+                  />
+                  <FilterChip
+                    active={filterSource === "email"}
+                    onClick={() => setFilterSource("email")}
+                    label={t("sourceEmail")}
+                  />
+                </FilterRow>
                 {filterSource === "email" && mailboxes.length > 0 ? (
-                  <>
-                    <span className="mx-1 h-5 w-px bg-border/60" />
+                  <FilterRow label={t("filterMailboxLabel")}>
                     <FilterChip
                       active={filterMailbox === "all"}
                       onClick={() => setFilterMailbox("all")}
@@ -420,46 +427,51 @@ export default function AdminExternalMessagesPage() {
                         label={mailboxLabel(mb)}
                       />
                     ))}
-                  </>
+                  </FilterRow>
                 ) : null}
-                <span className="mx-1 h-5 w-px bg-border/60" />
               </>
             ) : null}
-            <FilterChip
-              active={filterStatus === "all"}
-              onClick={() => setFilterStatus("all")}
-              label={t("filterAllStatuses")}
-            />
-            <FilterChip
-              active={filterStatus === "new"}
-              onClick={() => setFilterStatus("new")}
-              label={t("statusNew")}
-            />
-            <FilterChip
-              active={filterStatus === "read"}
-              onClick={() => setFilterStatus("read")}
-              label={t("statusRead")}
-            />
-            <FilterChip
-              active={filterStatus === "archived"}
-              onClick={() => setFilterStatus("archived")}
-              label={t("statusArchived")}
-            />
-            <FilterChip
-              active={filterStatus === "sent"}
-              onClick={() => {
-                setFilterStatus("sent");
-                setFilterSource("all");
-                setSelectedId(null);
-                setDetail(null);
-              }}
-              label={t("statusSent")}
-            />
-            <span className="ml-auto text-xs text-muted-foreground">
-              {showingOutbound
-                ? t("countSummarySent", { total: counts.total })
-                : t("countSummary", { total: counts.total, unread: counts.new })}
-            </span>
+            <FilterRow label={t("filterStatusLabel")}>
+              <FilterChip
+                active={filterStatus === "all"}
+                onClick={() => setFilterStatus("all")}
+                label={t("filterAllStatuses")}
+              />
+              <FilterChip
+                active={filterStatus === "new"}
+                onClick={() => setFilterStatus("new")}
+                label={t("statusNew")}
+              />
+              <FilterChip
+                active={filterStatus === "read"}
+                onClick={() => setFilterStatus("read")}
+                label={t("statusRead")}
+              />
+              <FilterChip
+                active={filterStatus === "archived"}
+                onClick={() => setFilterStatus("archived")}
+                label={t("statusArchived")}
+              />
+              <span className="mx-1 h-5 w-px bg-border/60" />
+              <FilterChip
+                active={filterStatus === "sent"}
+                onClick={() => {
+                  setFilterStatus("sent");
+                  setFilterSource("all");
+                  setSelectedId(null);
+                  setDetail(null);
+                }}
+                label={t("statusSent")}
+              />
+              <span className="ml-auto text-xs text-muted-foreground">
+                {showingOutbound
+                  ? t("countSummarySent", { total: counts.total })
+                  : t("countSummary", {
+                      total: counts.total,
+                      unread: counts.new,
+                    })}
+              </span>
+            </FilterRow>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -517,6 +529,12 @@ export default function AdminExternalMessagesPage() {
                                 <span className="text-xs text-muted-foreground">
                                   · {sourceLabelFor(row.source)}
                                 </span>
+                                {row.source === "email" &&
+                                row.metadata?.mailbox ? (
+                                  <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-600 dark:text-indigo-400">
+                                    {mailboxLabel(row.metadata.mailbox)}
+                                  </span>
+                                ) : null}
                                 {row.status === "new" &&
                                 row.direction !== "outbound" ? (
                                   <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
@@ -915,6 +933,24 @@ function FilterChip({
     >
       {label}
     </button>
+  );
+}
+
+/** A labeled row of filter chips — groups one filter dimension (source, mailbox, status). */
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+        {label}
+      </span>
+      {children}
+    </div>
   );
 }
 

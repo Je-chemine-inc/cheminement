@@ -40,17 +40,24 @@ export interface RawInboundEmail {
   precedence?: string;
 }
 
-const AUTOMATED_SENDER_RE = /(^|<)(mailer-daemon|mail-daemon|postmaster)@/i;
+const AUTOMATED_SENDER_RE =
+  /(^|<)(mailer-daemon|mail-daemon|postmaster|cpanel)@/i;
 
 /**
- * True when a message is machine-generated — a delivery bounce (DSN) or an
- * auto-reply (out-of-office) — rather than a real person writing to support.
- * We skip these so the Réception panel shows people, not notifications. Uses
- * only high-confidence signals so genuine client mail is never dropped.
+ * True when a message is machine-generated — a delivery bounce (DSN), an
+ * auto-reply (out-of-office), a DMARC/TLS aggregate report, or a server/cPanel
+ * notification — rather than a real person writing to support. We skip these so
+ * the Réception panel shows people, not notifications. Uses only high-confidence
+ * signals so genuine client mail is never dropped.
  */
 export function isAutomatedEmail(raw: RawInboundEmail): boolean {
   const from = (raw.from?.email ?? "").trim().toLowerCase();
   if (AUTOMATED_SENDER_RE.test(from)) return true;
+
+  // DMARC / TLS aggregate + forensic reports — pure machine reports.
+  if (/dmarc|tlsrpt/i.test(from)) return true;
+  const subject = (raw.subject ?? "").trim().toLowerCase();
+  if (/^report domain:|^report-id:|aggregate report/.test(subject)) return true;
 
   // RFC 3834: any value other than "no" marks auto-generated / auto-replied mail.
   const autoSubmitted = (raw.autoSubmitted ?? "").trim().toLowerCase();

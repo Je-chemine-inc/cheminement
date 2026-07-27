@@ -152,4 +152,23 @@ describe("isAutomatedEmail", () => {
     expect(isAutomatedEmail({ ...human, precedence: "auto_reply" })).toBe(true);
     expect(isAutomatedEmail({ ...human, returnPath: "<jean@example.com>" })).toBe(false);
   });
+
+  it("filters DMARC/TLS aggregate reports (by sender or subject)", () => {
+    expect(
+      isAutomatedEmail({ ...human, from: { email: "noreply-dmarc-support@google.com" } }),
+    ).toBe(true);
+    expect(
+      isAutomatedEmail({
+        ...human,
+        from: { email: "noreply@yahoo.fr" },
+        subject: "Report Domain: jechemine.ca Submitter: yahoo.fr Report-ID: 123",
+      }),
+    ).toBe(true);
+  });
+
+  it("filters cPanel/server system notifications", () => {
+    expect(
+      isAutomatedEmail({ ...human, from: { email: "cpanel@jechemine.ca" } }),
+    ).toBe(true);
+  });
 });
