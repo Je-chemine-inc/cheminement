@@ -418,24 +418,27 @@ export default function AdminExternalMessagesPage() {
                     onClick={() => setFilterSource("enterprise")}
                     label={t("sourceEnterprise")}
                   />
-                  <FilterChip
-                    active={filterSource === "email"}
-                    onClick={() => setFilterSource("email")}
-                    label={t("sourceEmail")}
-                  />
                 </FilterRow>
-                {filterSource === "email" && mailboxes.length > 0 ? (
+                {mailboxes.length > 0 ? (
                   <FilterRow label={t("filterMailboxLabel")}>
                     <FilterChip
-                      active={filterMailbox === "all"}
-                      onClick={() => setFilterMailbox("all")}
+                      active={filterSource === "email" && filterMailbox === "all"}
+                      onClick={() => {
+                        setFilterSource("email");
+                        setFilterMailbox("all");
+                      }}
                       label={t("filterAllMailboxes")}
                     />
                     {mailboxes.map((mb) => (
                       <FilterChip
                         key={mb}
-                        active={filterMailbox === mb}
-                        onClick={() => setFilterMailbox(mb)}
+                        active={
+                          filterSource === "email" && filterMailbox === mb
+                        }
+                        onClick={() => {
+                          setFilterSource("email");
+                          setFilterMailbox(mb);
+                        }}
                         label={mailboxLabel(mb)}
                       />
                     ))}
