@@ -29,6 +29,7 @@ import {
 } from "@/lib/email-template-registry";
 import type { EmailTemplateKey } from "@/models/EmailTemplate";
 import { findRealAccountByEmail } from "@/lib/account-dedup";
+import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 
 /**
  * Loads an admin-editable email template + renders {{placeholder}} tokens.
@@ -725,6 +726,30 @@ const buildEmailText = (sections: string[], lang: "fr" | "en" = "fr"): string =>
 // Email Sender
 // =============================================================================
 
+/**
+ * Payment-category emails reply to the dedicated payment inbox (paiement@…, the
+ * Interac deposit address) instead of support@, so client payment questions land
+ * with whoever handles money — not the general support queue.
+ */
+const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
+  "interac_transfer_instructions",
+  "interac_payment_reminder",
+  "payment_invitation",
+  "payment_failed",
+  "payment_refund",
+  "fiscal_receipt",
+  "guest_payment_confirmation",
+  "guest_payment_complete",
+  "payment_guarantee_day1_reminder",
+  "payment_guarantee_day2_reminder",
+  "payment_guarantee_48h_client",
+]);
+
+/** True when replies to this email type should route to the payment inbox. */
+export function isPaymentEmailType(t: EmailNotificationType): boolean {
+  return PAYMENT_EMAIL_TYPES.has(t);
+}
+
 const sendEmail = async (
   data: EmailData,
   emailType: EmailNotificationType,
@@ -755,12 +780,19 @@ const sendEmail = async (
       return true;
     }
 
+    // Payment emails: send replies to the dedicated payment inbox; all other
+    // emails keep the default (replies fall back to the From/support address).
+    const replyTo = isPaymentEmailType(emailType)
+      ? await getInteracDepositEmail()
+      : undefined;
+
     const result = await transportSendMail({
       from: resolveFromAddress(
         undefined,
         settings.branding?.companyName ?? undefined,
       ),
       to: data.to,
+      replyTo,
       subject: data.subject,
       html: data.html,
       text: data.text,
