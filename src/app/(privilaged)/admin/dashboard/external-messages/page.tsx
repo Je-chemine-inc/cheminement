@@ -68,6 +68,9 @@ export default function AdminExternalMessagesPage() {
   const [rows, setRows] = useState<MessageRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterSource, setFilterSource] = useState<Source | "all">("all");
+  // Secondary filter for the email source: which mailbox (e.g. support@ vs
+  // paiement@). "all" shows every inbox. Applied client-side on metadata.mailbox.
+  const [filterMailbox, setFilterMailbox] = useState<string>("all");
   // "sent" is a virtual status that flips the query to direction=outbound.
   const [filterStatus, setFilterStatus] = useState<Status | "all" | "sent">(
     "all",
@@ -201,13 +204,44 @@ export default function AdminExternalMessagesPage() {
     }
   };
 
-  const counts = useMemo(() => {
-    if (!rows) return { new: 0, total: 0 };
-    return {
-      new: rows.filter((r) => r.status === "new").length,
-      total: rows.length,
-    };
+  // Distinct mailboxes present among the loaded email rows (e.g. support@,
+  // paiement@) — drives the secondary mailbox filter chips.
+  const mailboxes = useMemo(() => {
+    if (!rows) return [] as string[];
+    return Array.from(
+      new Set(
+        rows
+          .filter((r) => r.source === "email" && r.metadata?.mailbox)
+          .map((r) => r.metadata!.mailbox as string),
+      ),
+    ).sort();
   }, [rows]);
+
+  // Client-side mailbox narrowing (metadata.mailbox is already in each row).
+  const visibleRows = useMemo(() => {
+    if (!rows) return rows;
+    if (filterMailbox === "all") return rows;
+    return rows.filter((r) => r.metadata?.mailbox === filterMailbox);
+  }, [rows, filterMailbox]);
+
+  // Label a mailbox by its local part, capitalized (support@… → "Support").
+  const mailboxLabel = (addr: string) => {
+    const local = (addr.split("@")[0] || addr).trim();
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  };
+
+  // Mailbox filter only applies to the email source — reset it when leaving.
+  useEffect(() => {
+    if (filterSource !== "email") setFilterMailbox("all");
+  }, [filterSource]);
+
+  const counts = useMemo(() => {
+    if (!visibleRows) return { new: 0, total: 0 };
+    return {
+      new: visibleRows.filter((r) => r.status === "new").length,
+      total: visibleRows.length,
+    };
+  }, [visibleRows]);
 
   const resetComposer = () => {
     setCompTo("");
@@ -370,6 +404,24 @@ export default function AdminExternalMessagesPage() {
                   onClick={() => setFilterSource("email")}
                   label={t("sourceEmail")}
                 />
+                {filterSource === "email" && mailboxes.length > 0 ? (
+                  <>
+                    <span className="mx-1 h-5 w-px bg-border/60" />
+                    <FilterChip
+                      active={filterMailbox === "all"}
+                      onClick={() => setFilterMailbox("all")}
+                      label={t("filterAllMailboxes")}
+                    />
+                    {mailboxes.map((mb) => (
+                      <FilterChip
+                        key={mb}
+                        active={filterMailbox === mb}
+                        onClick={() => setFilterMailbox(mb)}
+                        label={mailboxLabel(mb)}
+                      />
+                    ))}
+                  </>
+                ) : null}
                 <span className="mx-1 h-5 w-px bg-border/60" />
               </>
             ) : null}
@@ -412,11 +464,11 @@ export default function AdminExternalMessagesPage() {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
             <div className="rounded-xl border border-border/40 bg-card overflow-hidden">
-              {!rows ? (
+              {!visibleRows ? (
                 <div className="flex items-center justify-center py-16 text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
-              ) : rows.length === 0 ? (
+              ) : visibleRows.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
                   <Inbox className="h-8 w-8" />
                   <p className="text-sm">
@@ -425,7 +477,7 @@ export default function AdminExternalMessagesPage() {
                 </div>
               ) : (
                 <ul className="divide-y divide-border/40 max-h-[70vh] overflow-y-auto">
-                  {rows.map((row) => {
+                  {visibleRows.map((row) => {
                     const meta = SOURCE_META[row.source] ?? SOURCE_META.contact;
                     const Icon = meta.icon;
                     const isSelected = row.id === selectedId;
