@@ -100,6 +100,14 @@ describe("normalizeInboundEmail", () => {
     const n = normalizeInboundEmail({ ...base, text: "", html: "" })!;
     expect(n.message).toBe("Re: votre demande"); // falls back to subject
   });
+
+  it("records which mailbox the message arrived in", () => {
+    const n = normalizeInboundEmail({
+      ...base,
+      mailbox: "paiement@jechemine.ca",
+    })!;
+    expect(n.metadata.mailbox).toBe("paiement@jechemine.ca");
+  });
 });
 
 describe("isAutomatedEmail", () => {

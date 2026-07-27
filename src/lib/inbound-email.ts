@@ -27,6 +27,8 @@ export interface RawInboundEmail {
   html?: string;
   /** ISO date string of the original message. */
   date?: string;
+  /** Which platform mailbox this arrived in (e.g. support@ vs paiement@). */
+  mailbox?: string;
   // ----- Signals used to detect automated mail (bounces / auto-replies) -----
   /** RFC 3834 Auto-Submitted header value ("auto-replied", "auto-generated", …). */
   autoSubmitted?: string;
@@ -163,6 +165,7 @@ export function normalizeInboundEmail(
   const metadata: Record<string, string> = {};
   if (raw.to?.trim()) metadata.to = raw.to.trim().slice(0, 500);
   if (raw.date?.trim()) metadata.date = raw.date.trim().slice(0, 60);
+  if (raw.mailbox?.trim()) metadata.mailbox = raw.mailbox.trim().slice(0, 200);
 
   return {
     messageId,
