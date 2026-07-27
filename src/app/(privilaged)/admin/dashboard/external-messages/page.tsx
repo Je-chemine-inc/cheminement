@@ -77,6 +77,9 @@ export default function AdminExternalMessagesPage() {
   // Secondary filter for the email source: which mailbox (e.g. support@ vs
   // paiement@). "all" shows every inbox. Applied client-side on metadata.mailbox.
   const [filterMailbox, setFilterMailbox] = useState<string>("all");
+  // Configured inboxes (support@, paiement@, …) so both filter chips always show,
+  // even a box with no mail yet. Fetched once on mount.
+  const [configuredMailboxes, setConfiguredMailboxes] = useState<string[]>([]);
   // "sent" is a virtual status that flips the query to direction=outbound.
   const [filterStatus, setFilterStatus] = useState<Status | "all" | "sent">(
     "all",
@@ -210,18 +213,27 @@ export default function AdminExternalMessagesPage() {
     }
   };
 
-  // Distinct mailboxes present among the loaded email rows (e.g. support@,
-  // paiement@) — drives the secondary mailbox filter chips.
+  // Load the configured inboxes once so both mailboxes always have a chip.
+  useEffect(() => {
+    fetch("/api/admin/external-messages/mailboxes", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { mailboxes: [] }))
+      .then((d) =>
+        setConfiguredMailboxes(Array.isArray(d.mailboxes) ? d.mailboxes : []),
+      )
+      .catch(() => {});
+  }, []);
+
+  // Mailboxes to offer as filter chips: the configured inboxes UNION any extra
+  // ones that actually appear in the loaded email rows.
   const mailboxes = useMemo(() => {
-    if (!rows) return [] as string[];
-    return Array.from(
-      new Set(
-        rows
-          .filter((r) => r.source === "email" && r.metadata?.mailbox)
-          .map((r) => r.metadata!.mailbox as string),
-      ),
-    ).sort();
-  }, [rows]);
+    const set = new Set<string>(configuredMailboxes);
+    if (rows) {
+      rows
+        .filter((r) => r.source === "email" && r.metadata?.mailbox)
+        .forEach((r) => set.add(r.metadata!.mailbox as string));
+    }
+    return Array.from(set).sort();
+  }, [rows, configuredMailboxes]);
 
   // Client-side mailbox narrowing (metadata.mailbox is already in each row).
   const visibleRows = useMemo(() => {
