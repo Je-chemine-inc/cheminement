@@ -104,7 +104,11 @@ export function resolveAppointmentManageUrl(opts: {
 
   if (userStatus === "active") {
     if (action === "reschedule") {
-      return `${base}/appointment?for=self`;
+      // Route through login so the client accesses their account first, then
+      // lands on the booking funnel to request a new appointment.
+      return `${base}/login?callbackUrl=${encodeURIComponent(
+        "/appointment?for=self",
+      )}`;
     }
     return `${base}/client/dashboard/appointments?id=${encodeURIComponent(
       appointmentId,

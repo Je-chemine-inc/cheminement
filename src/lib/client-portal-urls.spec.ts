@@ -13,7 +13,10 @@ vi.mock("@/models/Appointment", () => ({
   default: { findByIdAndUpdate: h.findByIdAndUpdate },
 }));
 
-import { resolveBillingUrl } from "@/lib/client-portal-urls";
+import {
+  resolveBillingUrl,
+  resolveAppointmentManageUrl,
+} from "@/lib/client-portal-urls";
 
 const appt = (payment?: {
   paymentToken?: string;
@@ -81,5 +84,45 @@ describe("resolveBillingUrl (H10)", () => {
       recipientLocale: undefined,
     });
     expect(url).toContain("&lang=fr");
+  });
+});
+
+describe("resolveAppointmentManageUrl", () => {
+  const base = "https://www.jechemine.ca";
+
+  it("routes an active client's reschedule through /login then the booking funnel", () => {
+    const url = resolveAppointmentManageUrl({
+      userStatus: "active",
+      recipientEmail: "c@example.com",
+      appointmentId: "abc123",
+      action: "reschedule",
+      base,
+    });
+    expect(url).toBe(
+      "https://www.jechemine.ca/login?callbackUrl=%2Fappointment%3Ffor%3Dself",
+    );
+  });
+
+  it("keeps cancel on the client dashboard for an active client", () => {
+    const url = resolveAppointmentManageUrl({
+      userStatus: "active",
+      recipientEmail: "c@example.com",
+      appointmentId: "abc123",
+      action: "cancel",
+      base,
+    });
+    expect(url).toContain("/client/dashboard/appointments?id=abc123");
+    expect(url).toContain("action=cancel");
+  });
+
+  it("sends an unclaimed account to signup (no password to log in with)", () => {
+    const url = resolveAppointmentManageUrl({
+      userStatus: undefined,
+      recipientEmail: "c@example.com",
+      appointmentId: "abc123",
+      action: "reschedule",
+      base,
+    });
+    expect(url).toContain("/signup/member?email=c%40example.com");
   });
 });
