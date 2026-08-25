@@ -31,3 +31,36 @@ export function isProfessionalProfileComplete(
     profile.bio
   );
 }
+
+type TermsGateProfile =
+  | {
+      problematics?: unknown[];
+      approaches?: unknown[];
+      ageCategories?: unknown[];
+      yearsOfExperience?: unknown;
+      bio?: unknown;
+      professionalTermsAcceptedAt?: unknown;
+    }
+  | null
+  | undefined;
+
+/**
+ * Whether the professional-terms consent gate should block editing.
+ *
+ * It applies ONLY when a professional edits their OWN profile (self view — no
+ * `userId`) that is complete but not yet consented. An admin editing ANOTHER
+ * professional's profile (`userId` set) is never gated: the admin isn't the
+ * party consenting, and blocking them trapped the admin (the accept call would
+ * target the admin's own account and never mark the pro's terms accepted).
+ */
+export function professionalTermsGateApplies(
+  userId: string | undefined,
+  profile: TermsGateProfile,
+): boolean {
+  if (userId) return false;
+  if (!profile) return false;
+  return (
+    isProfessionalProfileComplete(profile) &&
+    !profile.professionalTermsAcceptedAt
+  );
+}

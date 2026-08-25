@@ -42,3 +42,38 @@ describe("isProfessionalProfileComplete", () => {
     expect(isProfessionalProfileComplete(null)).toBe(false);
   });
 });
+
+import { professionalTermsGateApplies } from "./professional-profile-complete";
+
+describe("professionalTermsGateApplies", () => {
+  const complete = {
+    problematics: ["a"],
+    approaches: ["b"],
+    ageCategories: ["c"],
+    yearsOfExperience: 5,
+    bio: "x",
+  };
+
+  it("gates a pro editing their OWN complete, un-consented profile", () => {
+    expect(professionalTermsGateApplies(undefined, complete)).toBe(true);
+  });
+
+  it("does NOT gate an admin editing another pro (userId set)", () => {
+    expect(professionalTermsGateApplies("6a8dc1a5f79e69f86a8c9126", complete)).toBe(
+      false,
+    );
+  });
+
+  it("does NOT gate once terms are accepted", () => {
+    expect(
+      professionalTermsGateApplies(undefined, {
+        ...complete,
+        professionalTermsAcceptedAt: new Date(),
+      }),
+    ).toBe(false);
+  });
+
+  it("does NOT gate an incomplete profile", () => {
+    expect(professionalTermsGateApplies(undefined, { bio: "x" })).toBe(false);
+  });
+});

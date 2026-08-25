@@ -6,7 +6,10 @@ import { AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { IProfile } from "@/models/Profile";
-import { isProfessionalProfileComplete } from "@/lib/professional-profile-complete";
+import {
+  isProfessionalProfileComplete,
+  professionalTermsGateApplies,
+} from "@/lib/professional-profile-complete";
 import { profileAPI } from "@/lib/api-client";
 import ProfileCompletionModal from "./ProfileCompletionModal";
 import ProfessionalTermsAcceptanceModal from "@/components/legal/ProfessionalTermsAcceptanceModal";
@@ -147,10 +150,12 @@ export default function ProfessionalProfile({
     [setProfile],
   );
 
-  const needsTermsAcceptance =
-    !!professionalProfile &&
-    isProfileCompleted(professionalProfile) &&
-    !professionalProfile.professionalTermsAcceptedAt;
+  // Self-view (pro) only — an admin editing another pro (`userId` set) is never
+  // gated. See professionalTermsGateApplies for the full rationale.
+  const needsTermsAcceptance = professionalTermsGateApplies(
+    userId,
+    professionalProfile,
+  );
 
   useEffect(() => {
     if (isEditable && needsTermsAcceptance && !isModalOpen) {
