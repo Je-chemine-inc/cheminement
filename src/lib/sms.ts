@@ -9,11 +9,17 @@
  * "00213…" → "+213…".  Sinon "+" est simplement préfixé aux chiffres.
  * Le formulaire d'inscription doit demander l'indicatif complet (ex. +213XXXXXXXXX).
  */
-function toE164(phone: string): string {
+export function toE164(phone: string): string {
   const trimmed = phone.trim();
   if (trimmed.startsWith("+")) return trimmed;
   const digits = trimmed.replace(/\D/g, "");
   if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  // North American Numbering Plan: a bare 10-digit number (no country code) is
+  // Canadian/US → prefix +1 (e.g. 4385550189 → +14385550189). An 11-digit
+  // number starting with 1 already carries the country code. Without this, a
+  // 10-digit Québec number became "+438…" and Twilio rejected it (SMS 2FA fail).
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return `+${digits}`;
 }
 
