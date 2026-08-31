@@ -16,3 +16,7 @@ The operating documentation for **Je chemine**. Start at [../AGENTS.md](../AGENT
 - [product/prd.md](product/prd.md) — the reverse-engineered PRD (problem, goals/non-goals, users, scope, metrics, open questions, decision log).
 - [product/overview.md](product/overview.md) — plain-language description of what the product does today, for a new teammate.
 - [product/critical-user-journeys.md](product/critical-user-journeys.md) — the journeys that must never break, with code locations and test coverage.
+
+## Operations (production infra)
+- [ops/HANDOFF.md](ops/HANDOFF.md) — **start here to operate production**: how to reach the WHC VPS, CI/CD & deploys, DNS/email, the Imunify WAF gotcha, cron + app watchdog, lessons learned, pending items, and a command reference. The portable knowledge bridge for a new machine/session (no secrets — those live on the box).
+- [ops/whc-migration-runbook.md](ops/whc-migration-runbook.md) — the step-by-step Vercel + Atlas → WHC migration runbook.

@@ -39,6 +39,7 @@ The entry point for every AI (and human) session in this repo. Read it once, in 
 | Working on a user-facing flow | [docs/product/critical-user-journeys.md](docs/product/critical-user-journeys.md) |
 | Needing product intent / scope / why | [docs/product/prd.md](docs/product/prd.md) + [docs/product/overview.md](docs/product/overview.md) |
 | Recording an architectural decision | [docs/architecture/decisions/](docs/architecture/decisions/) |
+| **Operating production / deploying / new machine or session** | [docs/ops/HANDOFF.md](docs/ops/HANDOFF.md) (VPS access, CI/CD, DNS/email, live gotchas) + [docs/ops/whc-migration-runbook.md](docs/ops/whc-migration-runbook.md) |
 
 ## 5. Architecture as it is (honest)
 
