@@ -3,96 +3,126 @@ import Profile from "@/models/Profile";
 import { roundMoney } from "@/lib/session-closure";
 
 export interface PricingResult {
+  /** What the client is charged. */
   sessionPrice: number;
+  /** What the platform keeps: always `sessionPrice - professionalPayout`. */
   platformFee: number;
+  /** What the professional receives. */
   professionalPayout: number;
   currency: string;
+  /** Whether a per-professional rate drove the split, or the platform fallback did. */
   source: "professional" | "platform";
+  /**
+   * True when the configured professional rate exceeded the client price and
+   * was capped so the platform does not pay out more than it collected. Signals
+   * misconfiguration — surface it to an admin rather than ignoring it.
+   */
+  rateClamped: boolean;
+}
+
+/** Map a therapy type onto the legacy single-number pricing key. */
+const LEGACY_PRICING_KEY = {
+  solo: "individualSession",
+  couple: "coupleSession",
+  group: "groupSession",
+} as const;
+
+/** Used only when no PlatformSettings row exists at all. */
+const HARDCODED_DEFAULT_PRICING = { solo: 120, couple: 150, group: 80 } as const;
+
+/**
+ * A stored `0` means "unset", never "free" / "pays nothing" — the legacy schema
+ * wrote 0 into therapy types a professional had not configured, and migrating
+ * that literally would set real payouts to zero.
+ */
+function configured(value: number | undefined | null): number | undefined {
+  return typeof value === "number" && value > 0 ? value : undefined;
 }
 
 /**
- * Calculate pricing for an appointment based on therapy type
- * Uses professional's pricing if available, otherwise falls back to platform defaults
+ * Work out what the client pays, what the professional receives, and what the
+ * platform keeps for one appointment.
+ *
+ * The model: the **client price** is set by the platform (per professional when
+ * an admin configures one, otherwise the platform default), the professional
+ * receives their **negotiated rate**, and the platform keeps the spread between
+ * them. `platformFee` is always derived as `sessionPrice - professionalPayout`,
+ * so `sessionPrice === platformFee + professionalPayout` holds by construction
+ * whatever the rounding.
+ *
+ * Resolution order per therapy type:
+ *  1. `profile.rates[type]` — admin-configured client price and/or pro rate.
+ *  2. `profile.pricing[...]` — the legacy single number, read as the pro's rate.
+ *  3. Platform default price, split by `platformFeePercentage`.
+ *
+ * Before this, the professional's own number was what the *client* was charged
+ * and the platform took a percentage of it — so the platform tarif in Paramètres
+ * never applied to any professional who had set a rate.
  */
 export async function calculateAppointmentPricing(
   profileId: string | null,
   therapyType: "solo" | "couple" | "group",
 ): Promise<PricingResult> {
-  // Get professional's profile (if profileId is provided)
   const profile = profileId
     ? await Profile.findOne({ userId: profileId })
     : null;
 
-  let sessionPrice = 0;
-  let source: "professional" | "platform" = "platform";
-
-  // Check if professional has custom pricing for this therapy type
-  if (profile?.pricing) {
-    switch (therapyType) {
-      case "solo":
-        sessionPrice = profile.pricing.individualSession || 0;
-        break;
-      case "couple":
-        sessionPrice = profile.pricing.coupleSession || 0;
-        break;
-      case "group":
-        sessionPrice = profile.pricing.groupSession || 0;
-        break;
-    }
-
-    if (sessionPrice > 0) {
-      source = "professional";
-    }
+  let platformSettings = await PlatformSettings.findOne();
+  if (!platformSettings) {
+    platformSettings = new PlatformSettings({
+      defaultPricing: { ...HARDCODED_DEFAULT_PRICING },
+      platformFeePercentage: 10,
+      currency: "CAD",
+    });
+    await platformSettings.save();
   }
 
-  // If professional doesn't have pricing set, use platform defaults
-  if (!sessionPrice) {
-    let platformSettings = await PlatformSettings.findOne();
+  const currency = platformSettings.currency || "CAD";
+  const platformFeePercentage = platformSettings.platformFeePercentage ?? 10;
+  const defaultPrice =
+    configured(platformSettings.defaultPricing?.[therapyType]) ??
+    HARDCODED_DEFAULT_PRICING[therapyType];
 
-    // If no settings exist, create default settings
-    if (!platformSettings) {
-      platformSettings = new PlatformSettings({
-        defaultPricing: {
-          solo: 120,
-          couple: 150,
-          group: 80,
-        },
-        platformFeePercentage: 10,
-        currency: "CAD",
-      });
-      await platformSettings.save();
-    }
+  const adminRate = profile?.rates?.[therapyType];
+  const legacyRate = configured(
+    profile?.pricing?.[LEGACY_PRICING_KEY[therapyType]],
+  );
 
-    switch (therapyType) {
-      case "solo":
-        sessionPrice = platformSettings.defaultPricing.solo;
-        break;
-      case "couple":
-        sessionPrice = platformSettings.defaultPricing.couple;
-        break;
-      case "group":
-        sessionPrice = platformSettings.defaultPricing.group;
-        break;
-      default:
-        sessionPrice = 120; // Fallback
-    }
+  // The professional's rate: admin-configured wins, else the legacy number.
+  const professionalRate = configured(adminRate?.professionalRate) ?? legacyRate;
+  // The client price: admin-configured per-professional price, else the
+  // platform default for this therapy type.
+  const sessionPrice = configured(adminRate?.clientPrice) ?? defaultPrice;
+
+  // No per-professional rate at all → platform default split by percentage.
+  if (professionalRate === undefined) {
+    const platformFee = roundMoney((sessionPrice * platformFeePercentage) / 100);
+    return {
+      sessionPrice,
+      platformFee,
+      professionalPayout: roundMoney(sessionPrice - platformFee),
+      currency,
+      source: "platform",
+      rateClamped: false,
+    };
   }
 
-  // Get platform fee percentage
-  const platformSettings = await PlatformSettings.findOne();
-  const platformFeePercentage = platformSettings?.platformFeePercentage || 10;
-  const currency = platformSettings?.currency || "CAD";
-
-  // Calculate platform fee and professional payout
-  const platformFee = Math.round((sessionPrice * platformFeePercentage) / 100);
-  const professionalPayout = sessionPrice - platformFee;
+  // Never pay out more than was collected. A rate above the client price is a
+  // misconfiguration (the pro's self-serve form can still produce one until the
+  // admin editor replaces it); cap it at a zero spread and flag it rather than
+  // letting the platform owe money it never took.
+  const rateClamped = professionalRate > sessionPrice;
+  const professionalPayout = roundMoney(
+    rateClamped ? sessionPrice : professionalRate,
+  );
 
   return {
     sessionPrice,
-    platformFee,
+    platformFee: roundMoney(sessionPrice - professionalPayout),
     professionalPayout,
     currency,
-    source,
+    source: "professional",
+    rateClamped,
   };
 }
 
@@ -126,7 +156,15 @@ export async function splitPriceByPlatformFee(price: number): Promise<{
 }
 
 /**
- * Get all pricing for a professional (all therapy types)
+ * Get all pricing for a professional (all therapy types).
+ *
+ * @deprecated Currently **unused** (no callers as of 2026-08-31) and not updated
+ * for the client-price / professional-rate model: it returns the legacy single
+ * number, which is now the professional's *rate*, in a shape that reads like a
+ * client price. Do not call it — use {@link calculateAppointmentPricing}, which
+ * resolves `rates` then the legacy field and returns an explicit split. Kept
+ * only so this change stays scoped; delete it or rewrite it against `rates`
+ * when the admin pricing editor lands (spec 001 step 6).
  */
 export async function getProfessionalPricing(profileId: string) {
   const profile = await Profile.findOne({ userId: profileId });

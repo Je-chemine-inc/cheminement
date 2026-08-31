@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+/** One therapy type's admin-configured pricing. */
+export interface ProfessionalRate {
+  /** What the client is charged. */
+  clientPrice?: number;
+  /** What the professional receives. The platform keeps `clientPrice - professionalRate`. */
+  professionalRate?: number;
+}
+
 export interface IProfile extends Document {
   userId: mongoose.Types.ObjectId;
   problematics?: string[];
@@ -29,10 +37,29 @@ export interface IProfile extends Document {
   modalities?: string[];
   paymentAgreement?: string;
   paymentFrequency?: string;
+  /**
+   * LEGACY (pre-2026-08-31). A single number per therapy type. Under the old
+   * model this was what the **client was charged**; under the current model it
+   * is read as the **professional's rate** (what they receive) — see spec 001
+   * Q1. Still written by the professional's own profile form until the admin
+   * pricing editor replaces it. `rates` takes precedence when present.
+   * A value of `0` means **unset**, never "pays nothing".
+   */
   pricing?: {
     individualSession: number;
     coupleSession: number;
     groupSession: number;
+  };
+  /**
+   * Admin-configured pricing per therapy type: what the client pays and what
+   * the professional receives. The platform keeps the spread between them.
+   * Both sides are stored explicitly — a percentage is a UI affordance only,
+   * so money never drifts through repeated rounding.
+   */
+  rates?: {
+    solo?: ProfessionalRate;
+    couple?: ProfessionalRate;
+    group?: ProfessionalRate;
   };
   education?: {
     degree: string;
@@ -158,10 +185,18 @@ const ProfileSchema = new Schema<IProfile>(
     modalities: [String],
     paymentAgreement: String,
     paymentFrequency: String,
+    // LEGACY single-number pricing — read as the professional's rate. See the
+    // interface above and spec 001.
     pricing: {
       individualSession: Number,
       coupleSession: Number,
       groupSession: Number,
+    },
+    // Admin-configured client price / professional rate per therapy type.
+    rates: {
+      solo: { clientPrice: Number, professionalRate: Number },
+      couple: { clientPrice: Number, professionalRate: Number },
+      group: { clientPrice: Number, professionalRate: Number },
     },
     education: [
       {
