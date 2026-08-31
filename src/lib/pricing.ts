@@ -1,5 +1,6 @@
 import PlatformSettings from "@/models/PlatformSettings";
 import Profile from "@/models/Profile";
+import { roundMoney } from "@/lib/session-closure";
 
 export interface PricingResult {
   sessionPrice: number;
@@ -93,6 +94,35 @@ export async function calculateAppointmentPricing(
     currency,
     source,
   };
+}
+
+/**
+ * Split an admin-supplied price into (platform fee, professional payout) using
+ * the percentage an admin actually configures in Paramètres.
+ *
+ * Use this instead of the old `calculatePlatformFee` / `calculateProfessionalPayout`
+ * helpers, which read `process.env.PLATFORM_FEE_PERCENTAGE`. Those disagreed with
+ * `PlatformSettings.platformFeePercentage` (env 10 vs db 11 in production), so a
+ * price split at booking was silently re-split at a different rate later — the
+ * admin's configured percentage was discarded exactly when money moved.
+ * There must be exactly one source of truth for the split.
+ *
+ * `professionalPayout` is derived as `price − platformFee` so that
+ * `price === platformFee + professionalPayout` holds by construction, whatever
+ * the rounding.
+ */
+export async function splitPriceByPlatformFee(price: number): Promise<{
+  platformFee: number;
+  professionalPayout: number;
+  platformFeePercentage: number;
+}> {
+  const platformSettings = await PlatformSettings.findOne();
+  const platformFeePercentage = platformSettings?.platformFeePercentage ?? 10;
+
+  const platformFee = roundMoney((price * platformFeePercentage) / 100);
+  const professionalPayout = roundMoney(price - platformFee);
+
+  return { platformFee, professionalPayout, platformFeePercentage };
 }
 
 /**

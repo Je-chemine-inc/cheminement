@@ -10,22 +10,20 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 });
 
-// Platform fee percentage (10%)
-export const PLATFORM_FEE_PERCENTAGE =
-  parseInt(process.env.PLATFORM_FEE_PERCENTAGE || "10") / 100;
-
 // Default currency
 export const DEFAULT_CURRENCY = process.env.DEFAULT_CURRENCY || "CAD";
 
-// Helper function to calculate platform fee
-export function calculatePlatformFee(amount: number): number {
-  return Math.round(amount * PLATFORM_FEE_PERCENTAGE);
-}
-
-// Helper function to calculate professional payout
-export function calculateProfessionalPayout(amount: number): number {
-  return amount - calculatePlatformFee(amount);
-}
+// REMOVED (2026-08-31): PLATFORM_FEE_PERCENTAGE, calculatePlatformFee and
+// calculateProfessionalPayout.
+//
+// They read `process.env.PLATFORM_FEE_PERCENTAGE` while booking used
+// `PlatformSettings.platformFeePercentage`. In production those were 10 and 11,
+// so a split agreed at booking was silently re-derived at a different rate when
+// the client was charged — the admin's configured percentage was discarded
+// exactly when money moved.
+//
+// The single source of truth is now `splitPriceByPlatformFee` in @/lib/pricing.
+// Do not reintroduce an env-based fee: it will disagree with the database again.
 
 // Convert amount to cents for Stripe (Stripe uses smallest currency unit)
 export function toCents(amount: number): number {

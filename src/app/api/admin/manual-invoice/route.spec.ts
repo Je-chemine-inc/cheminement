@@ -21,7 +21,8 @@ const h = vi.hoisted(() => {
   const store: {
     admin: Record<string, unknown> | null;
     existingApt: Record<string, unknown> | null;
-  } = { admin: null, existingApt: null };
+    settings: Record<string, unknown> | null;
+  } = { admin: null, existingApt: null, settings: null };
   return {
     getServerSession,
     userFindById,
@@ -69,9 +70,15 @@ vi.mock("@/models/Appointment", () => {
     h.aptFindById(...a);
   return { default: Appointment };
 });
-vi.mock("@/lib/stripe", () => ({
-  calculatePlatformFee: (p: number) => p * 0.2,
-  calculateProfessionalPayout: (p: number) => p * 0.8,
+// The split now comes from PlatformSettings (the value an admin configures),
+// not from the PLATFORM_FEE_PERCENTAGE env var. This spec previously mocked
+// the old lib/stripe helpers at a flat 20/80, which meant it could never have
+// caught the env-vs-database disagreement that was live in production.
+vi.mock("@/models/PlatformSettings", () => ({
+  default: { findOne: () => Promise.resolve(h.store.settings) },
+}));
+vi.mock("@/models/Profile", () => ({
+  default: { findOne: () => Promise.resolve(null) },
 }));
 vi.mock("@/lib/session-post-closure", () => ({
   runSessionClosureSideEffects: h.runSideEffects,
@@ -90,6 +97,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.store.admin = null; // no granular record → allowed for a session admin
   h.store.existingApt = null;
+  h.store.settings = { platformFeePercentage: 11 };
   h.saved.length = 0;
   h.userFindById.mockResolvedValue({ role: "client" });
   h.userFindOne.mockResolvedValue({ _id: PRO, role: "professional", firstName: "Sam", lastName: "Pro" });
@@ -152,5 +160,50 @@ describe("POST /api/admin/manual-invoice", () => {
     const res = await call({ ...base, appointmentId: APT, action: "paid" });
     expect(res.status).toBe(409);
     expect(h.runSideEffects).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression: the split came from `process.env.PLATFORM_FEE_PERCENTAGE` (10)
+ * while an admin configures `PlatformSettings.platformFeePercentage` (11), so
+ * the configured value was discarded. One source of truth — the database.
+ */
+describe("POST /api/admin/manual-invoice — fee split", () => {
+  const paymentOf = (i = 0) =>
+    h.saved[i].payment as Record<string, number | string>;
+
+  it("splits using the admin-configured percentage", async () => {
+    h.store.settings = { platformFeePercentage: 11 };
+
+    await call({ ...base, amount: 175, action: "request" });
+
+    const p = paymentOf();
+    expect(p.price).toBe(175);
+    // KEY: 11% of 175 = 19.25 — not the env's 10% (17.5), and not the
+    // flat 20% this spec used to mock.
+    expect(p.platformFee).toBe(19.25);
+    expect(p.professionalPayout).toBe(155.75);
+  });
+
+  it("follows a change to the configured percentage", async () => {
+    h.store.settings = { platformFeePercentage: 20 };
+
+    await call({ ...base, amount: 175, action: "request" });
+
+    const p = paymentOf();
+    expect(p.platformFee).toBe(35);
+    expect(p.professionalPayout).toBe(140);
+  });
+
+  it("holds price === platformFee + professionalPayout", async () => {
+    h.store.settings = { platformFeePercentage: 13 };
+
+    await call({ ...base, amount: 99.99, action: "paid" });
+
+    const p = paymentOf();
+    expect(Number(p.platformFee) + Number(p.professionalPayout)).toBeCloseTo(
+      Number(p.price),
+      10,
+    );
   });
 });

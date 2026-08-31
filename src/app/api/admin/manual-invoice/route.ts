@@ -6,10 +6,7 @@ import User from "@/models/User";
 import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
-import {
-  calculatePlatformFee,
-  calculateProfessionalPayout,
-} from "@/lib/stripe";
+import { splitPriceByPlatformFee } from "@/lib/pricing";
 import {
   roundMoney,
   SESSION_ACT_NATURE_VALUES,
@@ -123,8 +120,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const platformFee = calculatePlatformFee(price);
-    const professionalPayout = calculateProfessionalPayout(price);
+    // Split from PlatformSettings.platformFeePercentage — the value an admin
+    // configures — not the PLATFORM_FEE_PERCENTAGE env var the old helpers read.
+    const { platformFee, professionalPayout } =
+      await splitPriceByPlatformFee(price);
     const now = new Date();
     const cleanTime = time?.trim() || "12:00";
     const paid = action === "paid";
