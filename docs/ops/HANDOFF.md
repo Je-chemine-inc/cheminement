@@ -41,7 +41,7 @@ The box is an **oversubscribed LXC container** — `uptime` load is the *host-wi
 ## 3. Infrastructure map
 
 - **OS/host**: AlmaLinux 9, **LXC container** (`lxdnode3`), cPanel/WHM. LXC ⇒ **no swap**, Docker/Coolify won't run. Treat as a managed bridge box.
-- **Resources**: 8 GB RAM (upgrade applied), **4 cores** (the 6-core half of the paid upgrade is still NOT provisioned — WHC ticket pending). 100 GB disk.
+- **Resources**: 8 GB RAM, **6 cores** (`nproc` confirmed 6 on 2026-08-31 — the paid upgrade *has* now been provisioned; this doc previously said 4 and pending). 100 GB disk (~18 GB used).
 - **App runtime**: Next.js 16 **standalone** build. systemd service **`jechemine`**:
   `ExecStart=/usr/bin/node --env-file=/root/jechemine.env /root/app/server.js`, `HOSTNAME=127.0.0.1 PORT=3000`, `WorkingDirectory=/root/app`, `Restart=on-failure`.
 - **Web**: **Apache (httpd)** owns 80/443, reverse-proxies the domain → `127.0.0.1:3000` (mod_proxy). AutoSSL/Let's Encrypt certs. Non-standard inbound ports (e.g. 3000) are NOT reachable externally — everything goes through Apache.
@@ -105,6 +105,22 @@ imunify360-agent rules update-shared-disabled-rules
 | `40 * * * *` | unscheduled-match-reminders |
 | `*/5 * * * *` | inbound-email-sync (support@ + paiement@ → Réception) |
 | `*/3 * * * *` | **app watchdog** — `/root/jechemine/healthcheck.sh` restarts `jechemine` if it stops responding |
+| `15 7 * * *` | **MongoDB backup** — `/root/jechemine/backup-mongo.sh` (see below) |
+
+**Database backups** (added 2026-08-31 — there were none before): `/root/jechemine/backup-mongo.sh`
+writes one gzipped archive per night to `/root/backups/mongo/`, validates it by parsing it back with
+`mongorestore --dryRun` (an unvalidated dump is not a backup), then prunes to the newest **30**.
+Logs one line per run to `/var/log/jechemine-backup.log`. Archives are ~12 MB each (~360 MB at full
+retention, against 78 GB free). Directory is `0700`, archives `0600` — **they contain client PHI**.
+
+⚠ **cPanel's account backups do NOT cover MongoDB.** They back up the cPanel account; the dataset
+lives under `/var/lib/mongo` as root. This script is the only database backup.
+
+⚠ **Two known gaps** — see §9:
+1. **Backups sit on the same box they protect.** A box loss loses both. There is no off-site copy.
+2. **No full restore rehearsal has been done.** The app's Mongo user is scoped to the `jechemine`
+   database, so restoring into a scratch copy fails with `not authorized`. `--dryRun` proves the
+   archive is complete and parseable, which is not the same as proving a restore.
 
 **Why the watchdog exists**: the Node app can **hang** (100% CPU, still "active" so systemd's `Restart=on-failure` won't fire) → site down. The watchdog curls `:3000` (3×20s) and restarts on failure; logs to `/var/log/jechemine-watchdog.log`. Cron auth uses `CRON_SECRET` (env) — if reminders/crons return `{"error":"Unauthorized"}`, the secret is empty/mismatched in `/root/jechemine.env`.
 
@@ -126,7 +142,9 @@ imunify360-agent rules update-shared-disabled-rules
 
 ## 9. Pending / open items
 
-- **6-core CPU upgrade** — paid but not provisioned (still 4 cores). WHC support ticket.
+- ~~**6-core CPU upgrade**~~ — **done**, `nproc` reports 6 (verified 2026-08-31). Close the WHC ticket if still open.
+- **Backups are on the same box they protect** — `/root/backups/mongo/` lives on the VPS. A box loss takes the backups with it, and cPanel's account backups do not cover `/var/lib/mongo` or `/root`. Needs an off-site copy (rsync/S3-compatible target in Canada for Loi 25, or a scheduled pull to another machine). **Highest-value open ops item.**
+- **No full restore rehearsal** — the app's Mongo user is scoped to the `jechemine` database, so restoring an archive into a scratch database fails `not authorized`. `--dryRun` validates the archive parses completely, which is weaker than a real restore. Needs a Mongo admin credential (or a throwaway mongod on another port) to rehearse properly. Do this before relying on the backup in anger.
 - **Email deliverability** — confirm whether welcome emails land in Gmail Promotions vs Primary (last live test sent; awaiting which-tab confirmation); improve Primary placement if needed.
 - **Admin-alert PHI** — a few admin-alert emails put client name + motif in the body/subject; strip to a deep-link (Loi 25).
 - **Field encryption** — enable `FIELD_ENCRYPTION_KEY` + backfill (§8).
