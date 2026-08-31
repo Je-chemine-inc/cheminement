@@ -2527,6 +2527,20 @@
   },
   "Dashboard": {
     "adminPricing": {
+      "reprice": {
+        "title": "Appliquer aux rendez-vous à venir",
+        "description": "Ces rendez-vous non payés utilisent encore l’ancien tarif. Sélectionnez ceux à mettre à jour — rien n’est appliqué automatiquement.",
+        "change": "{from} $ → {to} $ (professionnel {payout} $, plateforme {fee} $)",
+        "apply": "Appliquer à {count} rendez-vous",
+        "applying": "Application…",
+        "applied": "{count} rendez-vous mis à jour.",
+        "appliedWithSkips": "{count} rendez-vous mis à jour, {skipped} ignoré(s) (paiement déjà réglé).",
+        "applyFailed": "Impossible d’appliquer le nouveau tarif.",
+        "loading": "Vérification des rendez-vous à venir…",
+        "loadFailed": "Impossible de charger les rendez-vous à venir.",
+        "noneUnpaid": "Aucun rendez-vous non payé à venir pour ce professionnel.",
+        "allUpToDate": "Tous les rendez-vous à venir utilisent déjà ce tarif."
+      },
       "title": "Tarification (administrateur)",
       "description": "Le client paie le tarif de la plateforme; le professionnel reçoit son tarif négocié. La plateforme conserve la différence.",
       "clientPrice": "Prix client ($)",

@@ -2526,6 +2526,20 @@
   },
   "Dashboard": {
     "adminPricing": {
+      "reprice": {
+        "title": "Apply to upcoming appointments",
+        "description": "These unpaid appointments still use the old rate. Select the ones to update — nothing is applied automatically.",
+        "change": "${from} → ${to} (professional ${payout}, platform ${fee})",
+        "apply": "Apply to {count} appointment(s)",
+        "applying": "Applying…",
+        "applied": "{count} appointment(s) updated.",
+        "appliedWithSkips": "{count} appointment(s) updated, {skipped} skipped (payment already settled).",
+        "applyFailed": "Could not apply the new rate.",
+        "loading": "Checking upcoming appointments…",
+        "loadFailed": "Could not load upcoming appointments.",
+        "noneUnpaid": "No unpaid upcoming appointments for this professional.",
+        "allUpToDate": "All upcoming appointments already use this rate."
+      },
       "title": "Pricing (admin)",
       "description": "The client pays the platform price; the professional receives their negotiated rate. The platform keeps the difference.",
       "clientPrice": "Client price ($)",

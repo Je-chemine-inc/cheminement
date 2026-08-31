@@ -11,6 +11,7 @@ import {
   THERAPY_TYPES,
   type TherapyType,
 } from "@/lib/professional-pricing";
+import RepriceUnpaidAppointments from "./RepriceUnpaidAppointments";
 
 /**
  * Admin-only editor for one professional's pricing.
@@ -64,6 +65,9 @@ export default function AdminProfessionalPricing({
   const [rates, setRates] = useState<RatesState>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Bumped after a successful save so the re-price list re-reads what the new
+  // rates would mean for this professional's unpaid upcoming appointments.
+  const [repriceReloadKey, setRepriceReloadKey] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"success" | "error">("success");
 
@@ -147,6 +151,7 @@ export default function AdminProfessionalPricing({
       setMessageType("success");
       setMessage(t("saved"));
       await load();
+      setRepriceReloadKey((k) => k + 1);
     } catch {
       setMessageType("error");
       setMessage(t("saveFailed"));
@@ -303,6 +308,10 @@ export default function AdminProfessionalPricing({
           {t("reset")}
         </Button>
       </div>
+
+      {/* AC-25: offer the new price to this professional's unpaid upcoming
+          appointments. Explicit and opt-in — a pricing change never cascades. */}
+      <RepriceUnpaidAppointments userId={userId} reloadKey={repriceReloadKey} />
     </div>
   );
 }
