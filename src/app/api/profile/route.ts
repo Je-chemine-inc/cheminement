@@ -7,6 +7,10 @@ import { authOptions } from "@/lib/auth";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 import { sendProfessionalProfileCompletedEmail } from "@/lib/notifications";
 import { rematchWaitingDemandesForReenabledPro } from "@/lib/intake-rematch";
+import {
+  PROFILE_SELF_WRITABLE,
+  pickWritable,
+} from "@/lib/profile-writable-fields";
 
 export async function GET() {
   try {
@@ -55,7 +59,15 @@ export async function PUT(req: NextRequest) {
     const existing = await Profile.findOne({ userId: session.user.id });
     const now = new Date();
 
-    const update: Record<string, unknown> = { ...data };
+    // Only allowlisted fields may be set from the request body. Spreading the
+    // whole body here let a professional forge fields this route owns —
+    // profileCompleted, the terms-acceptance stamp, the secret
+    // calendarFeedToken, and userId (which would re-point the profile at
+    // another account). See src/lib/profile-writable-fields.ts.
+    const update: Record<string, unknown> = pickWritable(
+      data,
+      PROFILE_SELF_WRITABLE,
+    );
 
     // Defense-in-depth: privacy toggles must always be stored as strict booleans
     // (the messaging visibility gate keys off an explicit `false`).

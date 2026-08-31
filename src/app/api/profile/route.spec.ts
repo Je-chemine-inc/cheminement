@@ -197,3 +197,96 @@ describe("PUT /api/profile — re-match on intake re-enable", () => {
     expect(h.route).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Regression: PUT /api/profile built its update as `{ ...body }`, so every key
+ * in the request body reached findOneAndUpdate verbatim. A professional could
+ * forge fields this route owns — including `userId`, which would have
+ * re-pointed the profile at another account.
+ */
+describe("PUT /api/profile — only allowlisted fields reach the update", () => {
+  const updateArg = () =>
+    h.profileFindOneAndUpdate.mock.calls[0][1] as Record<string, unknown>;
+
+  beforeEach(() => {
+    h.profileFindOne.mockResolvedValue({ profileCompleted: true });
+    h.profileFindOneAndUpdate.mockResolvedValue({ profileCompleted: true });
+  });
+
+  it("writes legitimate fields through unchanged", async () => {
+    await callPut({ bio: "Nouvelle bio", specialty: "psychologue" });
+
+    expect(updateArg()).toMatchObject({
+      bio: "Nouvelle bio",
+      specialty: "psychologue",
+    });
+  });
+
+  it("never lets the body re-point the profile at another user", async () => {
+    await callPut({ bio: "ok", userId: "ffffffffffffffffffffffff" });
+
+    // KEY: the filter pins the profile to the session user; the update must
+    // not carry a userId that would move it.
+    expect(updateArg()).not.toHaveProperty("userId");
+    const filter = h.profileFindOneAndUpdate.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(filter).toMatchObject({ userId: USER_ID });
+  });
+
+  it("drops forged terms-acceptance from the body", async () => {
+    // Terms already accepted on the stored profile, so the route's own logic
+    // sets profileCompleted — proving it still works while the body's forged
+    // values are ignored.
+    h.profileFindOne.mockResolvedValue({
+      profileCompleted: true,
+      professionalTermsAcceptedAt: new Date("2026-01-01"),
+    });
+
+    await callPut({
+      bio: "ok",
+      professionalTermsAcceptedAt: new Date(0),
+      professionalTermsVersion: "forged",
+    });
+
+    const update = updateArg();
+    expect(update.profileCompleted).toBe(true);
+    // KEY: the forged values never reach the update.
+    expect(update.professionalTermsVersion).toBeUndefined();
+    expect(update.professionalTermsAcceptedAt).toBeUndefined();
+  });
+
+  it("does not let the body forge profileCompleted when terms are unaccepted", async () => {
+    h.profileFindOne.mockResolvedValue({ profileCompleted: false });
+
+    await callPut({ bio: "ok", profileCompleted: true });
+
+    // Terms were never accepted, so the route must not mark the profile
+    // complete — and the body cannot do it either.
+    expect(updateArg().profileCompleted).toBeUndefined();
+  });
+
+  it("still stamps terms from LEGAL_VERSIONS when the flag is sent", async () => {
+    await callPut({ acceptProfessionalTerms: true });
+
+    const update = updateArg();
+    expect(update.professionalTermsVersion).toBe("1");
+    expect(update.professionalTermsAcceptedAt).toBeInstanceOf(Date);
+  });
+
+  it("drops the server-generated calendar feed token", async () => {
+    await callPut({ bio: "ok", calendarFeedToken: "stolen-token" });
+
+    expect(updateArg()).not.toHaveProperty("calendarFeedToken");
+  });
+
+  it("still coerces the privacy toggles to strict booleans", async () => {
+    await callPut({ visibleToProfessionals: "yes", profileVisible: true });
+
+    const update = updateArg();
+    // The messaging visibility gate keys off an explicit `false`.
+    expect(update.visibleToProfessionals).toBe(false);
+    expect(update.profileVisible).toBe(true);
+  });
+});
