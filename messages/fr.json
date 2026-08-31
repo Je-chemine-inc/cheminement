@@ -2526,6 +2526,34 @@
     }
   },
   "Dashboard": {
+    "adminPricing": {
+      "title": "Tarification (administrateur)",
+      "description": "Le client paie le tarif de la plateforme; le professionnel reçoit son tarif négocié. La plateforme conserve la différence.",
+      "clientPrice": "Prix client ($)",
+      "professionalRate": "Tarif du professionnel ($)",
+      "spreadPercentage": "Marge plateforme (%)",
+      "spreadSummary": "La plateforme conserve {amount} $ ({percentage} %).",
+      "spreadZero": "⚠ Marge nulle : la plateforme ne perçoit rien pour ce type de séance.",
+      "spreadNegative": "⚠ Marge négative : le tarif du professionnel dépasse le prix client. Enregistrement impossible.",
+      "spreadUnset": "Tarif non défini — le tarif par défaut de la plateforme s’applique.",
+      "usingDefault": "Défaut : {amount} $",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "reset": "Réinitialiser",
+      "saved": "Tarification enregistrée.",
+      "loading": "Chargement de la tarification…",
+      "loadFailed": "Impossible de charger la tarification.",
+      "saveFailed": "Impossible d’enregistrer la tarification.",
+      "types": {
+        "individualSession": "Séance individuelle",
+        "coupleSession": "Séance de couple",
+        "groupSession": "Séance de groupe"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "Le tarif du professionnel ne peut pas dépasser le prix client.",
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "Le prix client doit être supérieur à zéro."
+      }
+    },
     "sidebar": {
       "logo": "Logo",
       "favicon": "favicon",
@@ -3035,6 +3063,7 @@
         "sessionTypes": "Types de séances offertes",
         "modalities": "Modalités",
         "pricing": "Tarification (par heure / séance)",
+        "pricingAdminManaged": "Vos tarifs sont gérés par l’administration de la plateforme. Contactez-nous pour demander un changement.",
         "individualSession": "Séance Individuelle (CAD)",
         "coupleSession": "Séance Couple (CAD)",
         "groupSession": "Séance Groupe (CAD)",

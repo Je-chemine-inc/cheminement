@@ -13,6 +13,7 @@ import {
 import { profileAPI } from "@/lib/api-client";
 import ProfileCompletionModal from "./ProfileCompletionModal";
 import ProfessionalTermsAcceptanceModal from "@/components/legal/ProfessionalTermsAcceptanceModal";
+import AdminProfessionalPricing from "./AdminProfessionalPricing";
 
 interface ProfessionalProfileProps {
   profile?: IProfile;
@@ -531,6 +532,11 @@ export default function ProfessionalProfile({
           </div>
         </div>
       </div>
+
+      {/* Admin-only pricing editor. `userId` set === an admin is viewing another
+          professional; a pro never sees this, and PUT /api/profile drops
+          pricing/rates so this route is the only way to change them. */}
+      {userId && <AdminProfessionalPricing userId={userId} />}
 
       {/* Pricing & Payment */}
       <div className="rounded-xl bg-card p-6">

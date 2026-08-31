@@ -40,12 +40,11 @@ export const PROFILE_SELF_WRITABLE = [
   "modalities",
   "paymentAgreement",
   "paymentFrequency",
-  // NOTE: `pricing` is self-writable **today** because a professional sets
-  // their own rate under the current pricing model. Spec 001 moves pricing
-  // under admin control; removing it from this list is what makes the
-  // propose/approve flow enforceable rather than decorative.
-  // See specs/001-per-professional-pricing/plan.md step 6.
-  "pricing",
+  // NOTE: `pricing` and `rates` are deliberately ABSENT. Pricing is
+  // admin-controlled — see PATCH /api/admin/professionals/[id]/pricing. Without
+  // this omission a professional could set their own rate with a crafted
+  // `PUT /api/profile`, which would make admin-controlled pricing decorative
+  // rather than enforced. Do not add them back.
   "education",
   "visibleToProfessionals",
   "profileVisible",

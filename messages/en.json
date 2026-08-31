@@ -2525,6 +2525,34 @@
     }
   },
   "Dashboard": {
+    "adminPricing": {
+      "title": "Pricing (admin)",
+      "description": "The client pays the platform price; the professional receives their negotiated rate. The platform keeps the difference.",
+      "clientPrice": "Client price ($)",
+      "professionalRate": "Professional rate ($)",
+      "spreadPercentage": "Platform margin (%)",
+      "spreadSummary": "The platform keeps ${amount} ({percentage}%).",
+      "spreadZero": "⚠ Zero margin: the platform earns nothing on this session type.",
+      "spreadNegative": "⚠ Negative margin: the professional rate exceeds the client price. This cannot be saved.",
+      "spreadUnset": "Not set — the platform default price applies.",
+      "usingDefault": "Default: ${amount}",
+      "save": "Save",
+      "saving": "Saving…",
+      "reset": "Reset",
+      "saved": "Pricing saved.",
+      "loading": "Loading pricing…",
+      "loadFailed": "Could not load pricing.",
+      "saveFailed": "Could not save pricing.",
+      "types": {
+        "individualSession": "Individual session",
+        "coupleSession": "Couple session",
+        "groupSession": "Group session"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "The professional rate cannot exceed the client price.",
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "The client price must be greater than zero."
+      }
+    },
     "sidebar": {
       "logo": "Logo",
       "favicon": "favicon",
@@ -3035,6 +3063,7 @@
         "sessionTypes": "Session Types Offered",
         "modalities": "Modalities",
         "pricing": "Pricing (per hour / session)",
+        "pricingAdminManaged": "Your rates are managed by the platform administration. Contact us to request a change.",
         "individualSession": "Individual Session (CAD)",
         "coupleSession": "Couple Session (CAD)",
         "groupSession": "Group Session (CAD)",

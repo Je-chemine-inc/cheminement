@@ -88,13 +88,26 @@ describe("PROFILE_SELF_WRITABLE — fields a professional must NOT be able to fo
     expect(out).toEqual({ bio: "legitimate change" });
   });
 
-  it("still allows pricing today (spec 001 step 6 removes it)", () => {
-    // Guards the behaviour-preserving promise of this change: the allowlist
-    // must not silently alter what a professional can legitimately set today.
+  it.each(["pricing", "rates"])(
+    "%s is not self-writable — pricing is admin-controlled",
+    (field) => {
+      expect(PROFILE_SELF_WRITABLE).not.toContain(field);
+    },
+  );
+
+  it("drops a professional's attempt to set their own rate", () => {
+    // Without this the admin pricing editor would be decorative: a professional
+    // could raise their own payout with a crafted PUT /api/profile, bypassing
+    // PATCH /api/admin/professionals/[id]/pricing entirely.
     const out = pickWritable(
-      { pricing: { individualSession: 160 } },
+      {
+        bio: "legitimate change",
+        pricing: { individualSession: 300 },
+        rates: { solo: { professionalRate: 300, clientPrice: 300 } },
+      },
       PROFILE_SELF_WRITABLE,
     );
-    expect(out).toEqual({ pricing: { individualSession: 160 } });
+
+    expect(out).toEqual({ bio: "legitimate change" });
   });
 });

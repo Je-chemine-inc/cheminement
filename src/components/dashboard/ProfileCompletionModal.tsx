@@ -915,33 +915,29 @@ export default function ProfileCompletionModal({
                   </div>
                 </div>
 
-                {/* Pricing */}
+                {/* Pricing — READ-ONLY. Rates are set by an admin; `pricing` is
+                    no longer in the PUT /api/profile allowlist, so an editable
+                    field here would silently discard what the pro typed. Shown
+                    (disabled) rather than hidden so a pro can still see their
+                    rate and knows who to ask. Spec 001 step 8 turns this into a
+                    proposal an admin approves. */}
                 <div className="mt-8 space-y-4">
                   <Label>{t("step5.pricing")}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("step5.pricingAdminManaged")}
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-2">
-                        <Label className="text-xs font-semibold uppercase text-primary/70">{t("step5.individualSession")}</Label>
-                        <Input 
-                            type="number" 
-                            value={formData.pricing.individualSession}
-                            onChange={(e) => setFormData({...formData, pricing: {...formData.pricing, individualSession: parseFloat(e.target.value) || 0}})}
-                        />
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-2">
+                        <Label className="text-xs font-semibold uppercase text-muted-foreground">{t("step5.individualSession")}</Label>
+                        <Input type="number" value={formData.pricing.individualSession} readOnly disabled />
                     </div>
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-2">
-                        <Label className="text-xs font-semibold uppercase text-primary/70">{t("step5.coupleSession")}</Label>
-                        <Input 
-                            type="number" 
-                            value={formData.pricing.coupleSession}
-                            onChange={(e) => setFormData({...formData, pricing: {...formData.pricing, coupleSession: parseFloat(e.target.value) || 0}})}
-                        />
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-2">
+                        <Label className="text-xs font-semibold uppercase text-muted-foreground">{t("step5.coupleSession")}</Label>
+                        <Input type="number" value={formData.pricing.coupleSession} readOnly disabled />
                     </div>
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-2">
-                        <Label className="text-xs font-semibold uppercase text-primary/70">{t("step5.groupSession")}</Label>
-                        <Input 
-                            type="number" 
-                            value={formData.pricing.groupSession}
-                            onChange={(e) => setFormData({...formData, pricing: {...formData.pricing, groupSession: parseFloat(e.target.value) || 0}})}
-                        />
+                    <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-2">
+                        <Label className="text-xs font-semibold uppercase text-muted-foreground">{t("step5.groupSession")}</Label>
+                        <Input type="number" value={formData.pricing.groupSession} readOnly disabled />
                     </div>
                   </div>
                 </div>
