@@ -13,10 +13,6 @@ import {
   type SessionActNature,
   type SessionOutcome,
 } from "@/lib/session-closure";
-import {
-  calculatePlatformFee,
-  calculateProfessionalPayout,
-} from "@/lib/stripe";
 import User from "@/models/User";
 import { chargeSavedPaymentMethodAfterSession } from "@/lib/stripe-off-session-charge";
 import { buildInteracReferenceCode } from "@/lib/interac-reference";
@@ -180,8 +176,18 @@ export async function POST(
 
     if (!paymentLocked) {
       price = roundMoney(listPrice * fraction);
-      platformFee = calculatePlatformFee(price);
-      professionalPayout = calculateProfessionalPayout(price);
+      // Preserve the split agreed at booking (or set by an admin re-price):
+      // the professional keeps their share, the platform keeps the spread.
+      // Re-deriving the fee from a percentage here silently overrode an
+      // admin-configured split — and did it from PLATFORM_FEE_PERCENTAGE (env)
+      // while booking used PlatformSettings.platformFeePercentage (db), so the
+      // two disagreed and the charge used the wrong one.
+      const storedPrice = roundMoney(apt.payment.price ?? 0);
+      const storedPayout = roundMoney(apt.payment.professionalPayout ?? 0);
+      const payoutRatio = storedPrice > 0 ? storedPayout / storedPrice : 0;
+      professionalPayout = roundMoney(price * payoutRatio);
+      // Derived last so `price === platformFee + professionalPayout` always holds.
+      platformFee = roundMoney(price - professionalPayout);
       if (price <= 0) {
         paymentStatus = "cancelled";
       } else {

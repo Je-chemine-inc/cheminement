@@ -160,3 +160,112 @@ describe("complete-session atomic closure claim (C2)", () => {
     );
   });
 });
+
+/**
+ * Regression: closure must PRESERVE the split that was agreed at booking (or
+ * set by an admin re-price), not re-derive it from a percentage.
+ *
+ * The bug: closure called calculatePlatformFee/calculateProfessionalPayout,
+ * which read PLATFORM_FEE_PERCENTAGE from the ENV (10) — disagreeing with
+ * PlatformSettings.platformFeePercentage (11) used at booking. An appointment
+ * priced 175 / fee 25 / payout 150 was silently rebilled as 175 / 18 / 157 at
+ * the exact moment the client was charged, so the platform lost its margin and
+ * the receipt recorded the wrong split.
+ */
+const callCloseWith = (outcome: string) =>
+  completePOST(
+    {
+      json: async () => ({
+        sessionOutcome: outcome,
+        sessionActNature: "individual_psychotherapy",
+      }),
+    } as never,
+    { params: Promise.resolve({ id: APPT_ID }) },
+  ) as unknown as Promise<{ status: number; body: Record<string, unknown> }>;
+
+const paymentAfterClose = () =>
+  h.store.appointment.payment as Record<string, number | string>;
+
+describe("complete-session preserves the stored fee split", () => {
+  beforeEach(() => {
+    // Admin-priced: client pays 175, pro keeps 150, platform keeps the 25 spread.
+    // Deliberately NOT a 10% split, so a percentage recomputation is visible.
+    h.store.appointment.payment = {
+      method: "card",
+      price: 175,
+      platformFee: 25,
+      professionalPayout: 150,
+      status: "pending",
+      stripePaymentMethodId: "enc_pm",
+    };
+  });
+
+  it("keeps the agreed 175/25/150 split on a completed session", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWith("completed");
+
+    const p = paymentAfterClose();
+    expect(p.price).toBe(175);
+    // KEY: 25, not Math.round(175 * 0.10) = 18
+    expect(p.platformFee).toBe(25);
+    // KEY: 150, not 175 - 18 = 157
+    expect(p.professionalPayout).toBe(150);
+  });
+
+  it("charges the client the stored price, not a recomputed one", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWith("completed");
+
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    const [args] = h.charge.mock.calls[0] as [{ amountCad: number }];
+    expect(args.amountCad).toBe(175);
+  });
+
+  it("holds price === platformFee + professionalPayout after closure", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWith("completed");
+
+    const p = paymentAfterClose();
+    expect(Number(p.price)).toBe(
+      Number(p.platformFee) + Number(p.professionalPayout),
+    );
+  });
+
+  it("zeroes both sides on a free 48h-plus cancellation (fraction 0)", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWith("cancelled_48h_plus");
+
+    const p = paymentAfterClose();
+    expect(p.price).toBe(0);
+    expect(p.platformFee).toBe(0);
+    expect(p.professionalPayout).toBe(0);
+    expect(p.status).toBe("cancelled");
+    // KEY: nothing is charged when the fraction is 0
+    expect(h.charge).not.toHaveBeenCalled();
+  });
+
+  it("does not touch an already-paid appointment", async () => {
+    h.store.appointment.payment = {
+      method: "card",
+      price: 175,
+      platformFee: 25,
+      professionalPayout: 150,
+      status: "paid",
+      stripePaymentMethodId: "enc_pm",
+    };
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWith("completed");
+
+    const p = paymentAfterClose();
+    expect(p.price).toBe(175);
+    expect(p.platformFee).toBe(25);
+    expect(p.professionalPayout).toBe(150);
+    expect(p.status).toBe("paid");
+    expect(h.charge).not.toHaveBeenCalled();
+  });
+});
