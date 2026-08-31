@@ -17,6 +17,7 @@ import {
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { parseAppointmentDate } from "@/lib/appointment-date";
 import { resolveServiceRequestRecipient } from "@/lib/service-request-recipient";
+import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import {
   linkGuardian,
   isMinor,
@@ -106,17 +107,11 @@ export async function GET(req: NextRequest) {
 
     // Hide client gross + platform fee from professionals (commercial confidentiality + accounting clarity)
     if (session.user.role === "professional") {
-      const redacted = appointments.map((apt) => {
-        const obj = apt.toObject();
-        if (obj.payment) {
-          const p = obj.payment as unknown as Record<string, unknown>;
-          delete p.price;
-          delete p.platformFee;
-          delete p.listPrice;
-        }
-        return obj;
-      });
-      return NextResponse.json(redacted);
+      return NextResponse.json(
+        redactPaymentForProfessionalAll(
+          appointments.map((apt) => apt.toObject()),
+        ),
+      );
     }
 
     return NextResponse.json(appointments);

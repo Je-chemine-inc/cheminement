@@ -21,6 +21,7 @@ import { voidReceiptForRefund } from "@/lib/payment-settlement";
 
 import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
+import { redactPaymentForProfessional } from "@/lib/redact-payment";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -83,14 +84,9 @@ export async function GET(
     }
 
     if (session.user.role === "professional") {
-      const obj = appointment.toObject();
-      if (obj.payment) {
-        const p = obj.payment as unknown as Record<string, unknown>;
-        delete p.price;
-        delete p.platformFee;
-        delete p.listPrice;
-      }
-      return NextResponse.json(obj);
+      return NextResponse.json(
+        redactPaymentForProfessional(appointment.toObject()),
+      );
     }
 
     return NextResponse.json(appointment);
@@ -658,14 +654,9 @@ export async function PATCH(
     }
 
     if (session.user.role === "professional") {
-      const obj = appointment.toObject();
-      if (obj.payment) {
-        const p = obj.payment as unknown as Record<string, unknown>;
-        delete p.price;
-        delete p.platformFee;
-        delete p.listPrice;
-      }
-      return NextResponse.json(obj);
+      return NextResponse.json(
+        redactPaymentForProfessional(appointment.toObject()),
+      );
     }
 
     return NextResponse.json(appointment);
