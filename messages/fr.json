@@ -1094,6 +1094,9 @@
     "maxReached": "Maximum {max} sélections"
   },
   "AdminServiceRequests": {
+    "referredByPro": "Référé par {name}",
+    "noPatientEmail": "Aucun courriel — voir le référent",
+    "noPatientEmailHint": "Le patient n'a pas fourni de courriel (champ facultatif du formulaire de référence). Contactez le professionnel référent.",
     "title": "Nouveaux clients",
     "subtitle": "Demandes entrantes — statut : Nouveau prospect. Aucun professionnel assigné.",
     "empty": "Aucune demande pour le moment.",

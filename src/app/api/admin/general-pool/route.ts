@@ -4,6 +4,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
+import { resolveServiceRequestParties } from "@/lib/service-request-parties";
 
 /**
  * GET /api/admin/general-pool
@@ -53,7 +54,15 @@ export async function GET() {
         firstName?: string;
         lastName?: string;
         email?: string;
+        phone?: string;
       } | null;
+      // Same rule as the service-requests queue: on a referral the account is
+      // the referring professional, so resolve the patient explicitly.
+      const parties = resolveServiceRequestParties({
+        bookingFor: a.bookingFor,
+        referralInfo: a.referralInfo,
+        account: client,
+      });
       const pro = a.professionalId as unknown as {
         _id?: { toString: () => string };
         firstName?: string;
@@ -72,24 +81,26 @@ export async function GET() {
         isReturningClient: Boolean(a.isReturningClient),
         isEmergency: Boolean(a.isEmergency),
         preferredAvailability: a.preferredAvailability,
-        clientName: client
-          ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
-          : "—",
-        clientEmail: client?.email ?? "—",
+        clientName: parties.clientName,
+        clientEmail: parties.clientEmail ?? "—",
+        clientPhone: parties.clientPhone,
+        referrer: parties.referrer,
+        isReferredPatient: parties.isReferredPatient,
+        patientEmailMissing: parties.patientEmailMissing,
         professionalId: pro?._id ? pro._id.toString() : null,
         professionalName: pro
           ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
           : null,
         matchedAt: a.matchedAt ?? null,
-        // Referral attachment (doctor-initiated bookingFor="patient" requests):
-        // surface the uploaded reference document so admins can open it from the
-        // pool. Minimal projection — no patient phone/email leaks here.
-        referral: a.referralInfo?.documentUrl
+        // Referral details (doctor-initiated bookingFor="patient" requests).
+        // Previously gated on documentUrl, so a referral without an uploaded
+        // document surfaced nothing — the referrer and reason matter regardless.
+        referral: a.referralInfo?.referrerName
           ? {
               referrerName: a.referralInfo.referrerName,
               referralReason: a.referralInfo.referralReason,
-              documentUrl: a.referralInfo.documentUrl,
-              documentName: a.referralInfo.documentName,
+              documentUrl: a.referralInfo.documentUrl ?? null,
+              documentName: a.referralInfo.documentName ?? null,
             }
           : null,
       };

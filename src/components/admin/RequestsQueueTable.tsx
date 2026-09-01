@@ -71,6 +71,19 @@ interface ServiceRequestRow {
   preferredAvailability?: string[];
   clientName: string;
   clientEmail: string;
+  clientPhone?: string | null;
+  /** True when clientName is the REFERRED PATIENT, not the account holder. */
+  isReferredPatient?: boolean;
+  /** The referral form leaves the patient's email optional. */
+  patientEmailMissing?: boolean;
+  /** Who referred this patient (professional/doctor referrals only). */
+  referrer?: {
+    name: string;
+    type?: string | null;
+    license?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   professionalId?: string | null;
   professionalName?: string | null;
   matchedAt?: string | null;
@@ -655,9 +668,34 @@ export default function RequestsQueueTable({
                         </span>
                       ) : null}
                     </div>
+                    {/* On a professional referral the account belongs to the
+                        referring doctor — the name above is the PATIENT, so name
+                        the referrer explicitly rather than losing them. */}
+                    {r.isReferredPatient && r.referrer ? (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {t("referredByPro", { name: r.referrer.name })}
+                        {r.referrer.email ? ` · ${r.referrer.email}` : ""}
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm">
-                    {r.clientEmail}
+                    {r.patientEmailMissing ? (
+                      <span
+                        className="text-muted-foreground italic"
+                        title={t("noPatientEmailHint")}
+                      >
+                        {t("noPatientEmail")}
+                      </span>
+                    ) : (
+                      <>
+                        <span>{r.clientEmail}</span>
+                        {r.clientPhone ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {r.clientPhone}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </TableCell>
                   <TableCell
                     className="max-w-[240px] text-sm align-top"

@@ -9,6 +9,7 @@ import {
   triggerDuePaymentReminders,
   triggerDueAppointmentReminders,
 } from "@/lib/lazy-cron";
+import { resolveServiceRequestParties } from "@/lib/service-request-parties";
 
 /**
  * GET /api/admin/service-requests
@@ -66,7 +67,16 @@ export async function GET() {
         firstName?: string;
         lastName?: string;
         email?: string;
+        phone?: string;
       } | null;
+      // For a doctor's referral the ACCOUNT is the referrer — the patient the
+      // request is for lives in referralInfo. Resolve both so the queue shows
+      // the patient as the client and still lets an admin reach the referrer.
+      const parties = resolveServiceRequestParties({
+        bookingFor: a.bookingFor,
+        referralInfo: a.referralInfo,
+        account: client,
+      });
       const pro = a.professionalId as unknown as {
         _id?: { toString: () => string };
         firstName?: string;
@@ -90,10 +100,15 @@ export async function GET() {
         isReturningClient: Boolean(a.isReturningClient),
         isEmergency: Boolean(a.isEmergency),
         preferredAvailability: a.preferredAvailability,
-        clientName: client
-          ? `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim()
-          : "—",
-        clientEmail: client?.email ?? "—",
+        clientName: parties.clientName,
+        clientEmail: parties.clientEmail ?? "—",
+        clientPhone: parties.clientPhone,
+        // Who referred this patient, when the request came from a professional.
+        referrer: parties.referrer,
+        isReferredPatient: parties.isReferredPatient,
+        // The referral form leaves the patient's email optional; the UI says
+        // "contact the referrer" instead of showing a bare dash.
+        patientEmailMissing: parties.patientEmailMissing,
         professionalId: pro?._id ? pro._id.toString() : null,
         professionalName: pro
           ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
@@ -102,12 +117,15 @@ export async function GET() {
         // Referral attachment (doctor-initiated bookingFor="patient" requests):
         // surface the uploaded reference document so admins can open it from the
         // queue. Minimal projection — no patient phone/email leaks here.
-        referral: a.referralInfo?.documentUrl
+        // Previously gated on documentUrl, so a referral WITHOUT an uploaded
+        // document surfaced nothing at all. The referrer and the reason matter
+        // whether or not a PDF was attached.
+        referral: a.referralInfo?.referrerName
           ? {
               referrerName: a.referralInfo.referrerName,
               referralReason: a.referralInfo.referralReason,
-              documentUrl: a.referralInfo.documentUrl,
-              documentName: a.referralInfo.documentName,
+              documentUrl: a.referralInfo.documentUrl ?? null,
+              documentName: a.referralInfo.documentName ?? null,
             }
           : null,
       };

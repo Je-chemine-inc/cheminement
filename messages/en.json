@@ -1094,6 +1094,9 @@
     "maxReached": "Maximum {max} selections"
   },
   "AdminServiceRequests": {
+    "referredByPro": "Referred by {name}",
+    "noPatientEmail": "No email — see referrer",
+    "noPatientEmailHint": "The patient did not provide an email (optional on the referral form). Contact the referring professional.",
     "title": "New clients",
     "subtitle": "Incoming requests — status: Nouveau prospect. No professional assigned yet.",
     "empty": "No requests at this time.",
