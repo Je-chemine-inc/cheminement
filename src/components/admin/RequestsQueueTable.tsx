@@ -688,9 +688,17 @@ export default function RequestsQueueTable({
                       </span>
                     ) : (
                       <>
-                        <span>{r.clientEmail}</span>
+                        {/* The cell truncates at 200px, so expose the full
+                            address on hover — an admin needs to be able to read
+                            and copy it, which is the point of this column. */}
+                        <span className="block truncate" title={r.clientEmail}>
+                          {r.clientEmail}
+                        </span>
                         {r.clientPhone ? (
-                          <span className="block text-xs text-muted-foreground">
+                          <span
+                            className="block text-xs text-muted-foreground"
+                            title={r.clientPhone}
+                          >
                             {r.clientPhone}
                           </span>
                         ) : null}
