@@ -14,6 +14,7 @@ import { profileAPI } from "@/lib/api-client";
 import ProfileCompletionModal from "./ProfileCompletionModal";
 import ProfessionalTermsAcceptanceModal from "@/components/legal/ProfessionalTermsAcceptanceModal";
 import AdminProfessionalPricing from "./AdminProfessionalPricing";
+import RateProposalForm from "./RateProposalForm";
 
 interface ProfessionalProfileProps {
   profile?: IProfile;
@@ -537,6 +538,10 @@ export default function ProfessionalProfile({
           professional; a pro never sees this, and PUT /api/profile drops
           pricing/rates so this route is the only way to change them. */}
       {userId && <AdminProfessionalPricing userId={userId} />}
+
+      {/* Self-view only: a professional cannot change their own rate, but can
+          ask. Submitting changes nothing until an admin accepts. */}
+      {!userId && <RateProposalForm />}
 
       {/* Pricing & Payment */}
       <div className="rounded-xl bg-card p-6">

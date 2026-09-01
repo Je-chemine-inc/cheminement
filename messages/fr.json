@@ -2526,6 +2526,64 @@
     }
   },
   "Dashboard": {
+    "rateProposal": {
+      "title": "Demander un changement de tarif",
+      "description": "Vos tarifs sont fixés par l’administration. Vous pouvez demander un changement — votre tarif actuel reste en vigueur jusqu’à ce qu’un administrateur accepte.",
+      "therapyType": "Type de séance",
+      "proposedRate": "Tarif demandé ($)",
+      "note": "Note (facultatif)",
+      "notePlaceholder": "Justification de votre demande",
+      "submit": "Envoyer la demande",
+      "submitting": "Envoi…",
+      "submitted": "Demande envoyée. Un administrateur l’examinera.",
+      "submitFailed": "Impossible d’envoyer la demande.",
+      "loading": "Chargement…",
+      "loadFailed": "Impossible de charger vos demandes.",
+      "pendingTitle": "Demandes en attente",
+      "pendingRow": "{type} — {rate} $ (en attente)",
+      "historyTitle": "Décisions récentes",
+      "types": {
+        "individualSession": "Séance individuelle",
+        "coupleSession": "Séance de couple",
+        "groupSession": "Séance de groupe"
+      },
+      "status": {
+        "accepted": "Acceptée",
+        "rejected": "Refusée"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "Le tarif demandé dépasse le prix payé par le client. Choisissez un montant inférieur.",
+        "ALREADY_PENDING": "Vous avez déjà une demande en attente pour ce type de séance.",
+        "INVALID_RATE": "Montant invalide."
+      }
+    },
+    "adminRateProposals": {
+      "title": "Demandes de tarif",
+      "description": "Demandes de changement de tarif des professionnels. Accepter n’affecte que les nouveaux rendez-vous : les rendez-vous déjà pris conservent leur tarif.",
+      "loading": "Chargement des demandes…",
+      "loadFailed": "Impossible de charger les demandes.",
+      "empty": "Aucune demande en attente.",
+      "rateChange": "{from} $ → {to} $",
+      "spreadAfter": "Prix client {clientPrice} $ — la plateforme conserverait {amount} $ ({percentage} %).",
+      "spreadZeroWarning": "⚠ Prix client {clientPrice} $ — la plateforme ne conserverait rien.",
+      "spreadUnknown": "Prix client inconnu pour ce type de séance.",
+      "decisionNote": "Note de décision (facultatif)",
+      "decisionNotePlaceholder": "Visible par le professionnel",
+      "accept": "Accepter",
+      "reject": "Refuser",
+      "accepted": "Demande acceptée. Le nouveau tarif s’applique aux prochains rendez-vous.",
+      "rejected": "Demande refusée.",
+      "decisionFailed": "Impossible d’enregistrer la décision.",
+      "types": {
+        "individualSession": "Séance individuelle",
+        "coupleSession": "Séance de couple",
+        "groupSession": "Séance de groupe"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "Le tarif demandé dépasse maintenant le prix client. Ajustez le prix client avant d’accepter.",
+        "NOT_PENDING": "Cette demande a déjà été traitée."
+      }
+    },
     "adminPricing": {
       "reprice": {
         "title": "Appliquer aux rendez-vous à venir",

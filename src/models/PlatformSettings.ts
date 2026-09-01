@@ -28,7 +28,10 @@ export type EmailNotificationType =
   | "payment_guarantee_48h_client"
   | "payment_guarantee_48h_professional"
   | "fiscal_receipt"
-  | "interac_payment_reminder";
+  | "interac_payment_reminder"
+  // Professional rate-change requests (spec 001 AC-22).
+  | "rate_proposal_submitted"
+  | "rate_proposal_decision";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -278,6 +281,14 @@ const defaultEmailTemplates: Record<
   interac_payment_reminder: {
     enabled: true,
     subject: "Rappel paiement Interac — Je chemine",
+  },
+  rate_proposal_submitted: {
+    enabled: true,
+    subject: "Demande de changement de tarif — Je chemine",
+  },
+  rate_proposal_decision: {
+    enabled: true,
+    subject: "Votre demande de tarif — Je chemine",
   },
 };
 

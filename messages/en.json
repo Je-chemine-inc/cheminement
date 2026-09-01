@@ -2525,6 +2525,64 @@
     }
   },
   "Dashboard": {
+    "rateProposal": {
+      "title": "Request a rate change",
+      "description": "Your rates are set by the administration. You can request a change — your current rate stays in effect until an admin accepts.",
+      "therapyType": "Session type",
+      "proposedRate": "Requested rate ($)",
+      "note": "Note (optional)",
+      "notePlaceholder": "Why you are requesting this",
+      "submit": "Send request",
+      "submitting": "Sending…",
+      "submitted": "Request sent. An admin will review it.",
+      "submitFailed": "Could not send the request.",
+      "loading": "Loading…",
+      "loadFailed": "Could not load your requests.",
+      "pendingTitle": "Pending requests",
+      "pendingRow": "{type} — ${rate} (pending)",
+      "historyTitle": "Recent decisions",
+      "types": {
+        "individualSession": "Individual session",
+        "coupleSession": "Couple session",
+        "groupSession": "Group session"
+      },
+      "status": {
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "The requested rate exceeds what the client pays. Choose a lower amount.",
+        "ALREADY_PENDING": "You already have a pending request for this session type.",
+        "INVALID_RATE": "Invalid amount."
+      }
+    },
+    "adminRateProposals": {
+      "title": "Rate requests",
+      "description": "Professional rate-change requests. Accepting affects new appointments only — already-booked appointments keep their rate.",
+      "loading": "Loading requests…",
+      "loadFailed": "Could not load requests.",
+      "empty": "No pending requests.",
+      "rateChange": "${from} → ${to}",
+      "spreadAfter": "Client price ${clientPrice} — the platform would keep ${amount} ({percentage}%).",
+      "spreadZeroWarning": "⚠ Client price ${clientPrice} — the platform would keep nothing.",
+      "spreadUnknown": "Client price unknown for this session type.",
+      "decisionNote": "Decision note (optional)",
+      "decisionNotePlaceholder": "Visible to the professional",
+      "accept": "Accept",
+      "reject": "Reject",
+      "accepted": "Request accepted. The new rate applies to future appointments.",
+      "rejected": "Request rejected.",
+      "decisionFailed": "Could not save the decision.",
+      "types": {
+        "individualSession": "Individual session",
+        "coupleSession": "Couple session",
+        "groupSession": "Group session"
+      },
+      "errors": {
+        "RATE_EXCEEDS_CLIENT_PRICE": "The requested rate now exceeds the client price. Adjust the client price before accepting.",
+        "NOT_PENDING": "This request has already been handled."
+      }
+    },
     "adminPricing": {
       "reprice": {
         "title": "Apply to upcoming appointments",

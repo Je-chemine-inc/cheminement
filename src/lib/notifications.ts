@@ -7217,3 +7217,170 @@ export async function sendAppointmentTakenNotification(data: {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Professional rate-change proposals (spec 001 AC-22)
+// ---------------------------------------------------------------------------
+
+/**
+ * Alert admins that a professional has requested a rate change.
+ *
+ * Body is French, like the other admin alerts — the admin mailbox is FR.
+ * No PHI: a professional's name and their own rate, nothing about a client.
+ */
+export async function sendRateProposalSubmittedAlert(data: {
+  professionalName: string;
+  therapyTypeLabel: string;
+  currentRate?: number;
+  proposedRate: number;
+  note?: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const emails = await getAdminAlertRecipients();
+  if (emails.length === 0) {
+    console.warn(
+      "[rate_proposal_submitted] No admin emails — set ADMIN_ALERT_EMAIL or admin users.",
+    );
+    return;
+  }
+
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const reviewUrl = `${base}/admin/dashboard/rate-proposals`;
+  const branding = await getBranding();
+
+  const current =
+    typeof data.currentRate === "number" ? `${data.currentRate} $` : "non défini";
+
+  const html = buildEmailHtml({
+    title: "Demande de changement de tarif",
+    subtitle: `${data.professionalName} — ${data.therapyTypeLabel}`,
+    theme: "info",
+    greeting: "",
+    intro: `${data.professionalName} demande un changement de tarif pour une ${data.therapyTypeLabel.toLowerCase()}.`,
+    infoBox: {
+      title: "Détail de la demande",
+      content: `Tarif actuel : ${current}\nTarif demandé : ${data.proposedRate} $${
+        data.note ? `\n\nNote du professionnel : ${data.note}` : ""
+      }`,
+      theme: "info",
+    },
+    button: { text: "Examiner la demande", url: reviewUrl },
+    outro:
+      "Le tarif actuel reste en vigueur tant que la demande n'est pas acceptée. Accepter n'affecte que les nouveaux rendez-vous : les rendez-vous déjà pris conservent leur tarif jusqu'à une modification explicite.",
+    branding,
+    lang: "fr",
+  });
+
+  const text = buildEmailText(
+    [
+      "Demande de changement de tarif",
+      `${data.professionalName} — ${data.therapyTypeLabel}`,
+      `Tarif actuel : ${current}`,
+      `Tarif demandé : ${data.proposedRate} $`,
+      data.note ? `Note : ${data.note}` : "",
+      `Examiner : ${reviewUrl}`,
+    ],
+    "fr",
+  );
+
+  for (const to of emails) {
+    await sendEmail(
+      { to, subject: `Demande de tarif — ${data.professionalName}`, html, text },
+      "rate_proposal_submitted",
+    );
+  }
+}
+
+/**
+ * Tell a professional their rate request was accepted or rejected.
+ *
+ * `lang` is threaded from the professional's own `language` so the decision
+ * arrives in the language they use (FR-first, bilingual lockstep).
+ */
+export async function sendRateProposalDecisionEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  therapyTypeLabel: string;
+  proposedRate: number;
+  accepted: boolean;
+  decisionNote?: string;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const dashboardUrl = `${base}/professional/dashboard/profile`;
+
+  const fr = {
+    acceptedTitle: "Votre nouveau tarif est en vigueur",
+    rejectedTitle: "Votre demande de tarif n'a pas été retenue",
+    acceptedIntro: `Bonne nouvelle — votre demande de tarif de ${data.proposedRate} $ pour une ${data.therapyTypeLabel.toLowerCase()} a été acceptée.`,
+    rejectedIntro: `Votre demande de tarif de ${data.proposedRate} $ pour une ${data.therapyTypeLabel.toLowerCase()} n'a pas été retenue.`,
+    appliesTo:
+      "Ce tarif s'applique aux nouveaux rendez-vous. Les rendez-vous déjà planifiés conservent le tarif convenu au moment de la réservation.",
+    noteLabel: "Note de l'administration",
+    cta: "Voir mon profil",
+    outro: "Merci,\nL'équipe de Je chemine",
+  };
+  const en = {
+    acceptedTitle: "Your new rate is in effect",
+    rejectedTitle: "Your rate request was not approved",
+    acceptedIntro: `Good news — your rate request of $${data.proposedRate} for a ${data.therapyTypeLabel.toLowerCase()} has been accepted.`,
+    rejectedIntro: `Your rate request of $${data.proposedRate} for a ${data.therapyTypeLabel.toLowerCase()} was not approved.`,
+    appliesTo:
+      "This rate applies to new appointments. Already-scheduled appointments keep the rate agreed at booking.",
+    noteLabel: "Note from the administration",
+    cta: "View my profile",
+    outro: "Thank you,\nThe Je chemine team",
+  };
+  const c = lang === "en" ? en : fr;
+
+  const title = data.accepted ? c.acceptedTitle : c.rejectedTitle;
+  const intro = data.accepted ? c.acceptedIntro : c.rejectedIntro;
+
+  const html = buildEmailHtml({
+    title,
+    subtitle: data.therapyTypeLabel,
+    theme: data.accepted ? "success" : "warning",
+    greeting:
+      lang === "en"
+        ? `Hello ${data.professionalName},`
+        : `Bonjour ${data.professionalName},`,
+    intro,
+    ...(data.decisionNote
+      ? {
+          infoBox: {
+            title: c.noteLabel,
+            content: data.decisionNote,
+            theme: "info" as const,
+          },
+        }
+      : {}),
+    button: { text: c.cta, url: dashboardUrl },
+    outro: data.accepted ? `${c.appliesTo}\n\n${c.outro}` : c.outro,
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    [
+      title,
+      intro,
+      data.decisionNote ? `${c.noteLabel} : ${data.decisionNote}` : "",
+      data.accepted ? c.appliesTo : "",
+      `${c.cta} : ${dashboardUrl}`,
+    ],
+    lang,
+  );
+
+  return sendEmail(
+    { to: data.professionalEmail, subject: title, html, text },
+    "rate_proposal_decision",
+  );
+}
