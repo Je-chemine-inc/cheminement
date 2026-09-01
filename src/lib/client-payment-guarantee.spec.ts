@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   clientLacksPaymentGuaranteeForAppointment,
   clientOwesUncollectedFee,
+  SETTLED_PAYMENT_STATUSES,
 } from "./client-payment-guarantee";
 
 type GuaranteeUser = Parameters<
@@ -111,5 +112,69 @@ describe("clientOwesUncollectedFee (M15: post-meeting collection gate)", () => {
         payment: { stripePaymentMethodId: "pm_1", status: "pending" },
       }),
     ).toBe(false);
+  });
+});
+
+/**
+ * Regression: an ACSS/PAD charge confirms asynchronously — complete-session
+ * records it as "processing" and the payment_intent.succeeded webhook flips it
+ * to "paid" later. In between the client HAS paid and the money is in flight,
+ * but neither gate excluded "processing", so they were dunned for a payment
+ * they had already made. Same for a partial refund, which implies payment.
+ */
+describe("settled statuses must never be dunned", () => {
+  it.each([...SETTLED_PAYMENT_STATUSES])(
+    "clientLacksPaymentGuaranteeForAppointment is false for %s",
+    (status) => {
+      expect(
+        clientLacksPaymentGuaranteeForAppointment({ payment: { status } }, null),
+      ).toBe(false);
+    },
+  );
+
+  it.each([...SETTLED_PAYMENT_STATUSES])(
+    "clientOwesUncollectedFee is false for %s",
+    (status) => {
+      expect(clientOwesUncollectedFee({ payment: { status } })).toBe(false);
+    },
+  );
+
+  it("includes processing — an ACSS charge already in flight", () => {
+    expect(SETTLED_PAYMENT_STATUSES).toContain("processing");
+    expect(
+      clientLacksPaymentGuaranteeForAppointment(
+        { payment: { status: "processing" } },
+        null,
+      ),
+    ).toBe(false);
+    expect(clientOwesUncollectedFee({ payment: { status: "processing" } })).toBe(
+      false,
+    );
+  });
+
+  it("includes partially_refunded — a partial refund implies payment was made", () => {
+    expect(SETTLED_PAYMENT_STATUSES).toContain("partially_refunded");
+    expect(
+      clientOwesUncollectedFee({ payment: { status: "partially_refunded" } }),
+    ).toBe(false);
+  });
+
+  it("does NOT include overdue — an overdue invoice is genuinely unpaid", () => {
+    expect(SETTLED_PAYMENT_STATUSES).not.toContain("overdue");
+    expect(clientOwesUncollectedFee({ payment: { status: "overdue" } })).toBe(
+      true,
+    );
+    expect(
+      clientLacksPaymentGuaranteeForAppointment(
+        { payment: { status: "overdue" } },
+        null,
+      ),
+    ).toBe(true);
+  });
+
+  it("still duns a genuinely pending payment", () => {
+    expect(clientOwesUncollectedFee({ payment: { status: "pending" } })).toBe(
+      true,
+    );
   });
 });

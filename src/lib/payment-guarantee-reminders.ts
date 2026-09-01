@@ -5,6 +5,7 @@ import { getAppointmentStartAt } from "@/lib/appointment-start";
 import {
   clientLacksPaymentGuaranteeForAppointment,
   clientOwesUncollectedFee,
+  SETTLED_PAYMENT_STATUSES,
 } from "@/lib/client-payment-guarantee";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
@@ -262,7 +263,9 @@ export async function runPaymentGuaranteeReminders(
   const postMeetingCandidates = await Appointment.find({
     status: { $in: ["completed", "no-show"] },
     postMeetingPaymentReminderSent: { $ne: true },
-    "payment.status": { $nin: ["paid", "refunded", "cancelled"] },
+    // Same settled set as the in-memory gates, so the query and the guard can
+    // never disagree — notably "processing" (an ACSS charge already in flight).
+    "payment.status": { $nin: [...SETTLED_PAYMENT_STATUSES] },
     date: { $gte: postMeetingFloor },
   })
     .populate("clientId", "firstName lastName email language")
