@@ -1,5 +1,6 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
+import ClientReceipt from "@/models/ClientReceipt";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
@@ -77,6 +78,32 @@ export async function runPaymentReminders(): Promise<{
     .populate("professionalId", "firstName lastName")
     .limit(300);
 
+  // Belt-and-braces: an invoice is represented BOTH by Appointment.payment and
+  // by its ClientReceipt row. Dunning has always keyed off the appointment
+  // alone, so if the two ever drift — a partial write, a manual DB edit, or a
+  // new admin path that touches only the receipt — we would keep chasing an
+  // invoice already marked paid. Treat a settled RECEIPT as settled too.
+  //
+  // Deliberately does NOT write back: the receipt is not authoritative over
+  // the appointment for money state. This suppresses the reminder (the
+  // client-visible harm) and logs the drift so an admin can reconcile it.
+  const settledReceiptAppointmentIds = new Set<string>();
+  if (candidates.length > 0) {
+    const settledReceipts = await ClientReceipt.find({
+      appointmentId: { $in: candidates.map((a) => a._id) },
+      status: { $in: ["paid", "refunded"] },
+    })
+      .select("appointmentId status invoiceNumber")
+      .lean();
+    for (const r of settledReceipts) {
+      settledReceiptAppointmentIds.add(String(r.appointmentId));
+      console.warn(
+        `[payment-reminders] receipt ${r.invoiceNumber ?? r._id} is "${r.status}" ` +
+          `but its appointment is still unpaid — suppressing the reminder; reconcile this.`,
+      );
+    }
+  }
+
   for (const apt of candidates) {
     const client = apt.clientId as unknown as {
       firstName: string;
@@ -89,6 +116,9 @@ export async function runPaymentReminders(): Promise<{
     if (!client?.email || !apt.sessionCompletedAt || !apt.invoiceNumber) {
       continue;
     }
+
+    // The invoice was marked paid on its receipt — stop dunning it.
+    if (settledReceiptAppointmentIds.has(String(apt._id))) continue;
 
     // Quebec LSSSS art. 14: for adult loved-one bookings, route the reminder to
     // the beneficiary; minors (< 14) still go through the requester/guardian.

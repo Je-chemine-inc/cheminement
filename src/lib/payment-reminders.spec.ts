@@ -5,7 +5,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const h = vi.hoisted(() => {
-  const store: { candidates: Record<string, unknown>[] } = { candidates: [] };
+  const store: {
+    candidates: Record<string, unknown>[];
+    settledReceipts: Record<string, unknown>[];
+  } = { candidates: [], settledReceipts: [] };
   const findByIdAndUpdate = vi.fn().mockResolvedValue(null);
   const sendSessionInvoiceEmail = vi.fn().mockResolvedValue(true);
   const sendSessionInvoiceSms = vi.fn().mockResolvedValue(undefined);
@@ -37,6 +40,16 @@ vi.mock("@/models/Appointment", () => ({
       },
     }),
     findByIdAndUpdate: h.findByIdAndUpdate,
+  },
+}));
+vi.mock("@/models/ClientReceipt", () => ({
+  default: {
+    find: () => ({
+      select() {
+        return this;
+      },
+      lean: () => Promise.resolve(h.store.settledReceipts),
+    }),
   },
 }));
 vi.mock("@/lib/interac-deposit-email", () => ({
@@ -98,6 +111,7 @@ function makeApt(ageHours: number, overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   h.store.candidates = [];
+  h.store.settledReceipts = [];
 });
 
 describe("runPaymentReminders — dunning schedule", () => {
@@ -154,5 +168,65 @@ describe("runPaymentReminders — dunning schedule", () => {
       secondReminders: 0,
       markedOverdue: 0,
     });
+  });
+});
+
+
+/**
+ * Reported by the product owner: reminders kept arriving for an invoice the
+ * team had marked paid. An invoice lives in TWO places — Appointment.payment
+ * and its ClientReceipt row — and dunning only ever consulted the first, so a
+ * drift between them would keep chasing a settled invoice.
+ */
+describe("runPaymentReminders — a settled receipt stops the dunning", () => {
+  it("sends nothing when the invoice's receipt is marked paid", async () => {
+    h.store.candidates = [makeApt(13)];
+    h.store.settledReceipts = [
+      { appointmentId: "apt1", status: "paid", invoiceNumber: "JC-2026-000001" },
+    ];
+
+    const res = await runPaymentReminders();
+
+    expect(h.sendSessionInvoiceEmail).not.toHaveBeenCalled();
+    expect(h.sendSessionInvoiceSms).not.toHaveBeenCalled();
+    expect(res.firstReminders).toBe(0);
+  });
+
+  it("also stops for a refunded receipt", async () => {
+    h.store.candidates = [makeApt(37, { paymentReminder12hSent: true })];
+    h.store.settledReceipts = [
+      { appointmentId: "apt1", status: "refunded", invoiceNumber: "JC-2026-000001" },
+    ];
+
+    const res = await runPaymentReminders();
+
+    expect(h.sendSessionInvoiceEmail).not.toHaveBeenCalled();
+    expect(res.secondReminders).toBe(0);
+  });
+
+  it("still duns when no receipt is settled (unchanged behaviour)", async () => {
+    h.store.candidates = [makeApt(13)];
+    h.store.settledReceipts = [];
+
+    const res = await runPaymentReminders();
+
+    expect(h.sendSessionInvoiceEmail).toHaveBeenCalledTimes(1);
+    expect(res.firstReminders).toBe(1);
+  });
+
+  it("only suppresses the matching appointment, not the whole batch", async () => {
+    h.store.candidates = [
+      makeApt(13),
+      makeApt(13, { _id: { toString: () => "apt2" }, invoiceNumber: "JC-2026-000002" }),
+    ];
+    h.store.settledReceipts = [
+      { appointmentId: "apt1", status: "paid", invoiceNumber: "JC-2026-000001" },
+    ];
+
+    const res = await runPaymentReminders();
+
+    // apt2 is genuinely unpaid and must still be chased.
+    expect(h.sendSessionInvoiceEmail).toHaveBeenCalledTimes(1);
+    expect(res.firstReminders).toBe(1);
   });
 });
