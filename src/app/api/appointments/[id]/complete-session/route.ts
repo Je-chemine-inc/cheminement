@@ -17,6 +17,8 @@ import User from "@/models/User";
 import { chargeSavedPaymentMethodAfterSession } from "@/lib/stripe-off-session-charge";
 import { buildInteracReferenceCode } from "@/lib/interac-reference";
 import { runSessionClosureSideEffects } from "@/lib/session-post-closure";
+import { getAppointmentStartAt } from "@/lib/appointment-start";
+import { sessionClosureWindow } from "@/lib/session-closure-window";
 
 function parseNextAppointmentAt(
   dateStr: string | undefined,
@@ -134,6 +136,24 @@ export async function POST(
     if (apt.sessionCompletedAt) {
       return NextResponse.json(
         { error: "Session has already been closed" },
+        { status: 400 },
+      );
+    }
+
+    // A session cannot be closed before it has (nearly) started. Closing is
+    // what issues the invoice, creates the receipt and starts the dunning
+    // clock, so closing a FUTURE session bills a client for a session they
+    // have not attended — exactly what produced JC-2026-000014: a 9 September
+    // session closed on 31 August, then chased through the whole reminder
+    // cascade while the client had in fact paid everything she owed.
+    // See lib/session-closure-window.ts.
+    if (!sessionClosureWindow(getAppointmentStartAt(apt)).closable) {
+      return NextResponse.json(
+        {
+          error:
+            "This session has not started yet, so it cannot be closed. Check the date on the appointment.",
+          code: "SESSION_NOT_STARTED",
+        },
         { status: 400 },
       );
     }

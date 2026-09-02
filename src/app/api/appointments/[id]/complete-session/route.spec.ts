@@ -125,6 +125,49 @@ beforeEach(() => {
   });
 });
 
+/**
+ * Regression (JC-2026-000014): a session dated 9 September was closed as
+ * "completed" on 31 August. Closing issues the invoice and starts the dunning
+ * clock, so the client was billed $175 and chased through the whole reminder
+ * cascade for a session she had not attended — while the session she HAD
+ * attended was separately invoiced and paid. Closing must be refused before
+ * anything is claimed or charged.
+ */
+describe("a future session cannot be closed", () => {
+  const NINE_DAYS_MS = 9 * 24 * 60 * 60 * 1000;
+
+  it("refuses to close a session dated days from now, and charges nothing", async () => {
+    h.store.appointment.scheduledStartAt = new Date(Date.now() + NINE_DAYS_MS);
+
+    const res = await callClose();
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("SESSION_NOT_STARTED");
+    // KEY: refused BEFORE the atomic claim, so nothing is billed or stamped.
+    expect(h.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(h.sideEffects).not.toHaveBeenCalled();
+    expect(h.store.appointment.sessionCompletedAt).toBeUndefined();
+  });
+
+  it("still closes a session that has already happened", async () => {
+    h.store.appointment.scheduledStartAt = new Date(Date.now() - 60 * 60 * 1000);
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callClose();
+
+    expect(res.status).toBe(200);
+    expect(h.charge).toHaveBeenCalledTimes(1);
+  });
+
+  it("still closes an appointment with no date yet (manual invoicing)", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callClose();
+
+    expect(res.status).toBe(200);
+  });
+});
 describe("complete-session atomic closure claim (C2)", () => {
   it("loser of a concurrent close gets 400 and never charges the card", async () => {
     // Another request already claimed the closure → our claim returns null.
