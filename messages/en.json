@@ -908,6 +908,7 @@
       "ongoing": "In progress"
     },
     "professionalSchedule": {
+      "deletedClient": "Deleted client",
       "back": "Back to profile",
       "heading": "Schedule",
       "subtitle": "View and manage {name}'s appointments",

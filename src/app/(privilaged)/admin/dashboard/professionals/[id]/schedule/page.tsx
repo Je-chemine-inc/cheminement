@@ -18,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { appointmentsAPI } from "@/lib/api-client";
+import { clientDisplayName } from "@/lib/appointment-client-name";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -277,7 +278,7 @@ export default function AdminProfessionalSchedulePage({
           <div className="flex items-center gap-1 text-xs font-medium">
             {typeIcon(a.type)}
             <span className="truncate">
-              {a.clientId?.firstName} {a.clientId?.lastName}
+              {clientDisplayName(a.clientId, t("deletedClient"))}
             </span>
           </div>
           {!compact && (
@@ -329,7 +330,7 @@ export default function AdminProfessionalSchedulePage({
             <div className="flex items-center gap-1 text-xs font-medium">
               {typeIcon(a.type)}
               <span className="truncate">
-                {a.clientId?.firstName} {a.clientId?.lastName}
+                {clientDisplayName(a.clientId, t("deletedClient"))}
               </span>
             </div>
             <div className="text-[11px] opacity-80">

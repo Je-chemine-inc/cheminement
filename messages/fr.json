@@ -908,6 +908,7 @@
       "ongoing": "En cours"
     },
     "professionalSchedule": {
+      "deletedClient": "Client supprimé",
       "back": "Retour au profil",
       "heading": "Agenda",
       "subtitle": "Consultez et gérez les rendez-vous de {name}",
