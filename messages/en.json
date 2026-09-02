@@ -2876,6 +2876,7 @@
       }
     },
     "sessions": {
+      "deletedClient": "Deleted client",
       "title": "Sessions",
       "subtitle": "View and manage your client sessions",
       "upcomingTitle": "Upcoming Sessions",
@@ -5346,6 +5347,7 @@
         "scheduleFailed": "Failed to accept and schedule appointment"
       },
       "modal": {
+        "deletedClient": "Deleted client",
         "tabs": {
           "appointmentDetails": "Appointment Details",
           "basicInfo": "Basic Info",

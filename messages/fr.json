@@ -2876,6 +2876,7 @@
       }
     },
     "sessions": {
+      "deletedClient": "Client supprimé",
       "title": "Séances",
       "subtitle": "Visualisez et gérez vos séances avec les clients",
       "upcomingTitle": "Séances à venir",
@@ -5345,6 +5346,7 @@
         "scheduleFailed": "Impossible d'accepter et de planifier le rendez-vous"
       },
       "modal": {
+        "deletedClient": "Client supprimé",
         "tabs": {
           "appointmentDetails": "Détails du rendez-vous",
           "basicInfo": "Informations de base",

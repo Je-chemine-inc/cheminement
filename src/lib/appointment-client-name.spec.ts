@@ -5,7 +5,7 @@
  * browser, because the cause was the data rather than the cache.
  */
 import { describe, it, expect } from "vitest";
-import { clientDisplayName } from "./appointment-client-name";
+import { clientDisplayName, clientInitials } from "./appointment-client-name";
 
 const FALLBACK = "Client supprimé";
 
@@ -52,5 +52,27 @@ describe("clientDisplayName", () => {
         clientDisplayName(s as unknown as { firstName?: string }, FALLBACK),
       ).not.toThrow();
     }
+  });
+});
+
+describe("clientInitials", () => {
+  it("returns both initials, uppercased", () => {
+    expect(clientInitials({ firstName: "marie", lastName: "tremblay" })).toBe("MT");
+  });
+
+  it("does not throw on a deleted client — the .charAt(0) crash", () => {
+    expect(clientInitials(null)).toBe("?");
+    expect(clientInitials(undefined)).toBe("?");
+  });
+
+  it("handles a partial or empty name", () => {
+    expect(clientInitials({ firstName: "Marie" })).toBe("M");
+    expect(clientInitials({ lastName: "Tremblay" })).toBe("T");
+    expect(clientInitials({ firstName: "", lastName: "" })).toBe("?");
+    expect(clientInitials({ firstName: "   " })).toBe("?");
+  });
+
+  it("accepts a custom fallback", () => {
+    expect(clientInitials(null, "—")).toBe("—");
   });
 });

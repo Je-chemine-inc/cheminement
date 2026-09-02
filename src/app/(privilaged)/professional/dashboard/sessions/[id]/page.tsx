@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/card";
 import { AppointmentResponse } from "@/types/api";
 import { appointmentsAPI } from "@/lib/api-client";
+import { clientDisplayName, clientInitials } from "@/lib/appointment-client-name";
 import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
 import { useTranslations } from "next-intl";
 import { EndSessionDialog } from "@/components/appointments/EndSessionDialog";
@@ -438,13 +439,11 @@ export default function SessionDetailsPage() {
             <CardContent>
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-serif">
-                  {appointment.clientId.firstName.charAt(0)}
-                  {appointment.clientId.lastName.charAt(0)}
+                  {clientInitials(appointment.clientId)}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-medium text-foreground">
-                    {appointment.clientId.firstName}{" "}
-                    {appointment.clientId.lastName}
+                    {clientDisplayName(appointment.clientId, t("deletedClient"))}
                   </h3>
                   {(() => {
                     const beneficiary = getAppointmentBeneficiary(appointment);
@@ -458,9 +457,9 @@ export default function SessionDetailsPage() {
                     ) : null;
                   })()}
                   <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    <p>{appointment.clientId.email}</p>
-                    {appointment.clientId.phone && (
-                      <p>{appointment.clientId.phone}</p>
+                    <p>{appointment.clientId?.email ?? "—"}</p>
+                    {appointment.clientId?.phone && (
+                      <p>{appointment.clientId?.phone}</p>
                     )}
                   </div>
                 </div>

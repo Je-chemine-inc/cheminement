@@ -43,6 +43,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { appointmentsAPI } from "@/lib/api-client";
+import { clientDisplayName } from "@/lib/appointment-client-name";
 import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
 
 interface ApiAppointment {
@@ -157,8 +158,8 @@ export default function SessionsPage() {
 
             return {
               id: appointment._id,
-              clientName: `${appointment.clientId.firstName} ${appointment.clientId.lastName}`,
-              clientId: appointment.clientId._id,
+              clientName: clientDisplayName(appointment.clientId, t("deletedClient")),
+              clientId: appointment.clientId?._id,
               date: new Date(appointment.date),
               time: appointment.time,
               duration: appointment.duration,
@@ -182,7 +183,8 @@ export default function SessionsPage() {
     };
 
     fetchSessions();
-  }, []);
+    // `t` is used for the deleted-client fallback label inside the mapper.
+  }, [t]);
 
   // Categorize sessions
   const todaysSessions = useMemo(() => {

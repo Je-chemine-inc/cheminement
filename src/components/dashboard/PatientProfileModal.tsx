@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import BasicInformation from "./BasicInformation";
 import MedicalProfile from "./MedicalProfile";
 import { appointmentsAPI } from "@/lib/api-client";
+import { clientDisplayName, clientInitials } from "@/lib/appointment-client-name";
 import { useMemo, useState } from "react";
 import { AppointmentResponse } from "@/types/api";
 import { useLocale, useTranslations } from "next-intl";
@@ -134,11 +135,11 @@ export default function AppointmentDetailsModal({
         <div className="sticky top-0 z-10 bg-background border-b border-border/40 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-serif">
-              {appointment.clientId.firstName.charAt(0)}
+              {clientInitials(appointment.clientId)}
             </div>
             <div>
               <h2 className="text-2xl font-serif font-light text-foreground">
-                {appointment.clientId.firstName} {appointment.clientId.lastName}
+                {clientDisplayName(appointment.clientId, t("deletedClient"))}
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 {getTypeBadge(appointment.type)}

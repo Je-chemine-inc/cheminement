@@ -31,3 +31,22 @@ export function clientDisplayName(
   // A populated doc with no usable name is as unhelpful as a missing one.
   return name || fallback;
 }
+
+/**
+ * Initials for an avatar bubble, safe when the client record is gone.
+ *
+ * The crash sites used `client.firstName.charAt(0)` directly, which throws on
+ * both a null client AND a client whose name fields are empty.
+ */
+export function clientInitials(
+  client:
+    | { firstName?: string | null; lastName?: string | null }
+    | null
+    | undefined,
+  fallback = "?",
+): string {
+  const first = typeof client?.firstName === "string" ? client.firstName.trim() : "";
+  const last = typeof client?.lastName === "string" ? client.lastName.trim() : "";
+  const initials = `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+  return initials || fallback;
+}
