@@ -1369,6 +1369,7 @@
     "contactPhone": "Téléphone de contact",
     "contactEmail": "Courriel de contact",
     "patientContactInfo": "Coordonnées du patient",
+    "patientEmailHint": "La confirmation de la demande et la demande de paiement seront envoyées au patient à cette adresse.",
     "optional": "(optionnel)",
     "reasonReferralLabel": "Motif(s) de la référence",
     "reasonReferralPlaceholder": "Précisions ou notes additionnelles sur la référence…",
@@ -5297,6 +5298,7 @@
       "allIssues": "Toutes les problématiques",
       "bookingForLabel": "Réservation pour",
       "allTypes": "Tous les types",
+      "referredBy": "Référé par {name}",
       "bookingFor": {
         "self": "Pour soi",
         "patient": "Référence patient",

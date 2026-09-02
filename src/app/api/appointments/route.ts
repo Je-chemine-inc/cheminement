@@ -17,6 +17,12 @@ import {
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { parseAppointmentDate } from "@/lib/appointment-date";
 import { resolveServiceRequestRecipient } from "@/lib/service-request-recipient";
+import {
+  backfillReferrerContact,
+  findOrCreateReferralPatient,
+  isValidEmail,
+  resolveReferralPatientIdentity,
+} from "@/lib/referral-patient-account";
 import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import {
   linkGuardian,
@@ -271,15 +277,44 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // REQUIRED — see lib/referral-patient-account.ts. The patient's email is
+      // the unique key of the account registered for them just below, and the
+      // only address that reaches the patient rather than the referrer.
       const patientEmail = referral.patientEmail?.trim();
-      if (patientEmail) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(patientEmail)) {
-          return NextResponse.json(
-            { error: "Invalid patient email format" },
-            { status: 400 },
-          );
-        }
+      if (!patientEmail) {
+        return NextResponse.json(
+          { error: "Referred patient's email is required" },
+          { status: 400 },
+        );
+      }
+      if (!isValidEmail(patientEmail)) {
+        return NextResponse.json(
+          { error: "Invalid patient email format" },
+          { status: 400 },
+        );
+      }
+
+      // The signed-in requester is the REFERRER, so `data.clientId` (set from
+      // the session above) points at the wrong person. Re-point it at the
+      // patient — the same move the loved-one flow already makes for a minor.
+      // The referrer survives in referralInfo.referrer*, backfilled from the
+      // session so they stay reachable once they are no longer the account.
+      const referrerAccount = await User.findById(session.user.id).select(
+        "email phone language",
+      );
+      data.referralInfo = backfillReferrerContact(referral, {
+        email: referrerAccount?.email,
+        phone: referrerAccount?.phone,
+      });
+
+      const patientIdentity = resolveReferralPatientIdentity(data.referralInfo);
+      if (patientIdentity) {
+        const { user: patientUser } = await findOrCreateReferralPatient({
+          identity: patientIdentity,
+          // Best signal available: the locale the referral was submitted in.
+          language: referrerAccount?.language,
+        });
+        data.clientId = patientUser._id;
       }
     }
 
@@ -663,7 +698,9 @@ export async function POST(req: NextRequest) {
     // the response and Gmail SMTP (1-2s) never finishes.
     after(async () => {
       try {
-        const requester = await User.findById(session.user.id).select(
+        // `data.clientId` — not the session — so a referral files the alert
+        // under the PATIENT. On every other booking the two are the same user.
+        const requester = await User.findById(data.clientId).select(
           "firstName lastName email",
         );
         if (requester?.email) {
@@ -761,9 +798,10 @@ export async function POST(req: NextRequest) {
       //   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
       //   - patient referral       → the PATIENT (referralInfo.patientEmail), so a
       //                              referring professional informs the patient and
-      //                              NOT themselves; falls back to the referrer when
-      //                              no patient email was provided (it is optional).
-      const requester = await User.findById(session.user.id).select(
+      //                              NOT themselves. patientEmail is REQUIRED, and
+      //                              `data.clientId` is the patient's account, so
+      //                              the fallback below resolves to them as well.
+      const requester = await User.findById(data.clientId).select(
         "firstName lastName email language",
       );
       const requesterLocale: "fr" | "en" =

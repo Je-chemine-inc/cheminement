@@ -57,15 +57,18 @@ describe("professional referral (bookingFor: patient)", () => {
     });
   });
 
-  it("falls back to the account for referrer contact — on a referral the account IS the referrer", () => {
+  it("never borrows the account's contact for the referrer", () => {
+    // A referral now registers the PATIENT as the account, so the old fallback
+    // would print the patient's own address as their referring doctor's.
     const p = resolveServiceRequestParties({
       bookingFor: "patient",
       referralInfo: { ...referral, referrerEmail: null, referrerPhone: null },
       account: doctorAccount,
     });
 
-    expect(p.referrer?.email).toBe("sassiessid1@gmail.com");
-    expect(p.referrer?.phone).toBe("+15145550101");
+    expect(p.referrer?.name).toBe("Dr Sassi Essid");
+    expect(p.referrer?.email).toBeNull();
+    expect(p.referrer?.phone).toBeNull();
   });
 
   it("flags a missing patient email — the form makes it optional", () => {

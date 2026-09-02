@@ -1,18 +1,21 @@
 /**
  * Who is the *client* of a service request, and who referred them.
  *
- * For a professional referral (`bookingFor === "patient"`) the account attached
- * to the appointment belongs to the **referring doctor**, because the guest
- * booking route creates the prospect from the form's top-level identity — which
- * the referrer fills with their own details. The patient the request is actually
- * *for* lives in `referralInfo.patient*`.
+ * Booking routes now register the PATIENT as the account on a referral (see
+ * lib/referral-patient-account.ts), so for new requests the account and
+ * `referralInfo.patient*` name the same person and this resolver simply agrees
+ * with both. It remains the authority for two reasons: **legacy rows** created
+ * before that fix still carry the *referring doctor* as the account (the guest
+ * route built the prospect from the form's top-level identity, which the
+ * referrer fills with their own details), and it is the one place that decides
+ * how the referrer is surfaced separately from the client.
  *
- * That made admin queues show the doctor in the "Client" column with no way to
- * reach the referred patient. This resolves the pair explicitly:
+ * On those legacy rows the admin queues showed the doctor in the "Client" column
+ * with no way to reach the referred patient. This resolves the pair explicitly:
  *   - the **client** is the referred patient when we have their name
  *   - the **referrer** is surfaced separately, so an admin can still contact the
- *     doctor — which matters most when the patient left no email of their own
- *     (patient email is OPTIONAL on the referral form).
+ *     doctor — which matters most on a legacy row where the patient left no
+ *     email of their own (it was optional on the form until the fix above).
  *
  * Mirrors `resolveServiceRequestRecipient`, which already sends the
  * acknowledgement email to the patient rather than the referrer. This makes what
@@ -85,11 +88,14 @@ export function resolveServiceRequestParties(input: {
         name: referrerName,
         type: clean(referralInfo?.referrerType),
         license: clean(referralInfo?.referrerLicense),
-        // Fall back to the account's contact details: on a referral the account
-        // IS the referrer, so these are their details even when the dedicated
-        // referrer fields were left blank on the form.
-        email: clean(referralInfo?.referrerEmail) ?? clean(account?.email),
-        phone: clean(referralInfo?.referrerPhone) ?? clean(account?.phone),
+        // Read ONLY from referralInfo. The account used to belong to the
+        // referrer, so a blank field could safely fall back to it — that is no
+        // longer true: a referral now registers the PATIENT as the account
+        // (see lib/referral-patient-account.ts), and falling back would print
+        // the patient's own address as their doctor's. Both booking routes
+        // backfill these at write time, so new referrals always carry them.
+        email: clean(referralInfo?.referrerEmail),
+        phone: clean(referralInfo?.referrerPhone),
       }
     : null;
 

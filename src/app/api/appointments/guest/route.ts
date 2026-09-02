@@ -14,6 +14,13 @@ import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import { parseAppointmentDate } from "@/lib/appointment-date";
 import { isMinor, isUnder14 } from "@/lib/guardian-utils";
 import { resolveServiceRequestRecipient } from "@/lib/service-request-recipient";
+import {
+  backfillReferrerContact,
+  findOrCreateReferralPatient,
+  isValidEmail,
+  resolveReferralPatientIdentity,
+} from "@/lib/referral-patient-account";
+import type { IUser } from "@/models/User";
 
 export async function POST(req: NextRequest) {
   try {
@@ -185,16 +192,31 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // The patient's email is REQUIRED. It is the unique key of the account
+      // registered for them below, and the only address that can carry the
+      // confirmation and the payment request to the PATIENT instead of to the
+      // referring professional.
       const patientEmail = referral.patientEmail?.trim();
-      if (patientEmail) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(patientEmail)) {
-          return NextResponse.json(
-            { error: "Invalid patient email format" },
-            { status: 400 },
-          );
-        }
+      if (!patientEmail) {
+        return NextResponse.json(
+          { error: "Referred patient's email is required" },
+          { status: 400 },
+        );
       }
+      if (!isValidEmail(patientEmail)) {
+        return NextResponse.json(
+          { error: "Invalid patient email format" },
+          { status: 400 },
+        );
+      }
+
+      // The referrer's identity stops being the account, so pin their contact
+      // details onto the referral itself — the blue "Référence patient" badge
+      // and the admin queues read them from there.
+      appointmentData.referralInfo = backfillReferrerContact(referral, {
+        email,
+        phone,
+      });
     }
 
     // Look up by email across ALL roles — email is unique, so a user with the
@@ -217,36 +239,66 @@ export async function POST(req: NextRequest) {
             | "payment_plan")
         : undefined;
 
-    let guestUser = await User.findOne({ email: email.toLowerCase() });
+    // A patient referral registers the PATIENT as the client. The top-level
+    // guest identity belongs to the referring professional, who must NOT become
+    // the appointment's client — that is what put the doctor in the "Client"
+    // column and mailed them the patient's payment request. The referrer is
+    // preserved in referralInfo.referrer* only.
+    const patientIdentity = isPatientReferral
+      ? resolveReferralPatientIdentity(appointmentData.referralInfo)
+      : null;
 
-    if (guestUser) {
-      if (guestUser.role === "prospect" || guestUser.role === "guest") {
-        guestUser.firstName = firstName;
-        guestUser.lastName = lastName;
-        guestUser.phone = phone;
-        guestUser.location = location;
-        if (requestedPreferred) {
-          guestUser.preferredPaymentMethod = requestedPreferred;
-        } else if (!guestUser.preferredPaymentMethod) {
-          guestUser.preferredPaymentMethod = "interac";
+    let guestUser: IUser | null = null;
+
+    if (patientIdentity) {
+      // No location: the guest form's city belongs to the referrer, not the
+      // patient (the referral section collects name / email / phone only).
+      const { user } = await findOrCreateReferralPatient({
+        identity: patientIdentity,
+        language: notificationLocale === "fr" ? "fr" : "en",
+        preferredPaymentMethod: requestedPreferred,
+      });
+      guestUser = user;
+    } else {
+      guestUser = await User.findOne({ email: email.toLowerCase() });
+
+      if (guestUser) {
+        if (guestUser.role === "prospect" || guestUser.role === "guest") {
+          guestUser.firstName = firstName;
+          guestUser.lastName = lastName;
+          guestUser.phone = phone;
+          guestUser.location = location;
+          if (requestedPreferred) {
+            guestUser.preferredPaymentMethod = requestedPreferred;
+          } else if (!guestUser.preferredPaymentMethod) {
+            guestUser.preferredPaymentMethod = "interac";
+          }
+          await guestUser.save();
         }
+      } else {
+        // Create new prospect profile (Étape 1 — profil Prospect)
+        guestUser = new User({
+          email: email.toLowerCase(),
+          firstName,
+          lastName,
+          phone,
+          location,
+          role: "prospect",
+          status: "active",
+          language: notificationLocale === "fr" ? "fr" : "en",
+          preferredPaymentMethod: requestedPreferred ?? "interac",
+        });
         await guestUser.save();
       }
-    } else {
-      // Create new prospect profile (Étape 1 — profil Prospect)
-      guestUser = new User({
-        email: email.toLowerCase(),
-        firstName,
-        lastName,
-        phone,
-        location,
-        role: "prospect",
-        status: "active",
-        language: notificationLocale === "fr" ? "fr" : "en",
-        preferredPaymentMethod: requestedPreferred ?? "interac",
-      });
-      await guestUser.save();
     }
+
+    // Whose name/contact the request is filed under — the patient on a referral,
+    // the guest otherwise. Used for the admin alert and the professional's
+    // notification so neither announces the referring doctor as the client.
+    const clientDisplayName = patientIdentity
+      ? `${patientIdentity.firstName} ${patientIdentity.lastName}`.trim()
+      : `${firstName} ${lastName}`.trim();
+    const clientContactEmail = patientIdentity ? patientIdentity.email : email;
 
     // Only validate professional if one is specified
     let profile = null;
@@ -446,8 +498,8 @@ export async function POST(req: NextRequest) {
         };
 
       const proNotificationArgs = {
-        clientName: `${firstName} ${lastName}`,
-        clientEmail: email,
+        clientName: clientDisplayName,
+        clientEmail: clientContactEmail,
         professionalName: `${professionalDoc.firstName} ${professionalDoc.lastName}`,
         professionalEmail: professionalDoc.email,
         date: appointmentData.date || "To be scheduled",
@@ -469,8 +521,8 @@ export async function POST(req: NextRequest) {
 
     // Notify admins of the new service request
     const adminAlertArgs = {
-      clientName: `${firstName} ${lastName}`,
-      clientEmail: email,
+      clientName: clientDisplayName,
+      clientEmail: clientContactEmail,
       bookingFor: appointmentData.bookingFor || "self",
       motifs: motifs as string[],
       appointmentId: String(appointment._id),
@@ -495,7 +547,7 @@ export async function POST(req: NextRequest) {
     //                              patient email was provided (it is optional).
     // Sent on EVERY new request (not just first-ever), so a returning requester
     // still gets an acknowledgement and isn't left with only the admin alert.
-    let onboardingToEmail = email;
+    let onboardingToEmail = clientContactEmail;
     {
       const emailLocale: "fr" | "en" =
         notificationLocale === "en" ? "en" : "fr";
@@ -515,11 +567,14 @@ export async function POST(req: NextRequest) {
         referralInfo,
         lovedOneInfo,
         lovedOneUnder14: lovedOneIsUnder14,
-        fallbackName: firstName,
-        fallbackEmail: email,
+        // Defence in depth: on a referral this fallback is the patient too, so
+        // even a legacy payload that slipped past validation cannot address the
+        // acknowledgement to the referring professional.
+        fallbackName: clientDisplayName,
+        fallbackEmail: clientContactEmail,
       });
-      const onboardingToName = recipient.toName || firstName;
-      onboardingToEmail = recipient.toEmail || email;
+      const onboardingToName = recipient.toName || clientDisplayName;
+      onboardingToEmail = recipient.toEmail || clientContactEmail;
 
       // Acknowledge EVERY new service request. This was previously gated on
       // isNewGuest, which silently skipped the acknowledgement whenever the

@@ -599,7 +599,13 @@ export default function BookAppointmentPage() {
       setError(tB("errors.patientName"));
       return false;
     }
-    if (referralInfo.patientEmail.trim()) {
+    // Required: the confirmation and the payment request must reach the
+    // PATIENT, and this address is the key of the account registered for them.
+    if (!referralInfo.patientEmail.trim()) {
+      setError(tB("errors.patientEmailRequired"));
+      return false;
+    }
+    {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(referralInfo.patientEmail)) {
         setError(tB("errors.emailInvalid"));
@@ -2192,9 +2198,7 @@ export default function BookAppointmentPage() {
                           <div className="space-y-2">
                             <Label htmlFor="patientEmail">
                               {tB("emailLabel")}{" "}
-                              <span className="text-muted-foreground text-[10px] font-normal uppercase letter-spacing-wider">
-                                {tB("optional")}
-                              </span>
+                              <span className="text-red-500">*</span>
                             </Label>
                             <Input
                               id="patientEmail"
@@ -2208,6 +2212,9 @@ export default function BookAppointmentPage() {
                               }
                               placeholder="patient@email.com"
                             />
+                            <p className="text-xs text-muted-foreground">
+                              {tB("patientEmailHint")}
+                            </p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="patientPhone">

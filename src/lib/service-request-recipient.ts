@@ -10,9 +10,11 @@
  *   - loved-one 14+ adult   → the loved one directly, at lovedOneInfo.email
  *   - patient referral       → the PATIENT (referralInfo.patientEmail), so a doctor
  *                              referring a patient informs the patient, NOT the
- *                              referrer. When the patient email is blank (it is
- *                              OPTIONAL on the form) we fall back to the referrer
- *                              (= fallback) so the request is still acknowledged.
+ *                              referrer. patientEmail is REQUIRED at both booking
+ *                              routes, so the blank-email fallback below only ever
+ *                              fires for a legacy payload — and callers now pass
+ *                              the patient as the fallback too, so it cannot
+ *                              address a doctor either.
  *
  * Note: referralInfo.patientEmail is a plaintext Appointment subdocument field
  * (only referrerPhone/patientPhone are encrypted), so reading it here is safe.

@@ -935,10 +935,12 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           {appointment.bookingFor === "patient" &&
-                            appointment.referralInfo && (
+                            appointment.referralInfo?.referrerName && (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <FileText className="h-3 w-3" />
-                                {appointment.referralInfo.referrerName}
+                                {t("referredBy", {
+                                  name: appointment.referralInfo.referrerName,
+                                })}
                               </span>
                             )}
                         </div>
@@ -1083,10 +1085,12 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           {appointment.bookingFor === "patient" &&
-                            appointment.referralInfo && (
+                            appointment.referralInfo?.referrerName && (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <FileText className="h-3 w-3" />
-                                {appointment.referralInfo.referrerName}
+                                {t("referredBy", {
+                                  name: appointment.referralInfo.referrerName,
+                                })}
                               </span>
                             )}
                         </div>
@@ -1215,10 +1219,12 @@ export default function ProposalsPage() {
                               </span>
                             )}
                           {appointment.bookingFor === "patient" &&
-                            appointment.referralInfo && (
+                            appointment.referralInfo?.referrerName && (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <FileText className="h-3 w-3" />
-                                {appointment.referralInfo.referrerName}
+                                {t("referredBy", {
+                                  name: appointment.referralInfo.referrerName,
+                                })}
                               </span>
                             )}
                         </div>
