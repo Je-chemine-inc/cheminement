@@ -71,7 +71,16 @@ export async function GET() {
     const clientMap = new Map<string, ClientAgg>();
 
     for (const appointment of appointments) {
-      const client = appointment.clientId as unknown as PopulatedUser;
+      const client = appointment.clientId as unknown as PopulatedUser | null;
+      // A deleted client leaves a dangling ref, so populate yields null. This
+      // used to throw and 500 the whole endpoint, so ONE orphan appointment
+      // emptied the professional's entire client list. Skip the orphan instead.
+      if (!client?._id) {
+        console.warn(
+          `[clients] orphan appointment ${appointment._id} — its client no longer exists; skipping`,
+        );
+        continue;
+      }
       const clientId = client._id.toString();
 
       const aptSlice = {

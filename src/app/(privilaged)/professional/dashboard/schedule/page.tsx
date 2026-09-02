@@ -15,6 +15,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { appointmentsAPI, clientsAPI } from "@/lib/api-client";
+import { clientDisplayName } from "@/lib/appointment-client-name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -556,8 +557,7 @@ export default function SchedulePage() {
                                     <div className="flex items-center gap-1 text-xs font-light">
                                       {getTypeIcon(appointment.type)}
                                       <span className="text-foreground ml-1">
-                                        {appointment.clientId.firstName}{" "}
-                                        {appointment.clientId.lastName}
+                                        {clientDisplayName(appointment.clientId, t("deletedClient"))}
                                       </span>
                                     </div>
                                     <div className="text-xs text-muted-foreground font-light mt-1">
@@ -626,8 +626,7 @@ export default function SchedulePage() {
                             onClick={() => handleAppointmentClick(appointment)}
                             className={`w-full text-left rounded px-2 py-1 text-xs font-light truncate border cursor-pointer hover:brightness-95 ${appointmentStatusColor(appointment.status)}`}
                           >
-                            {appointment.time} {appointment.clientId.firstName}{" "}
-                            {appointment.clientId.lastName}
+                            {appointment.time} {clientDisplayName(appointment.clientId, t("deletedClient"))}
                           </button>
                         ))}
                   </div>
@@ -688,8 +687,7 @@ export default function SchedulePage() {
                                 </span>
                                 <div>
                                   <div className="font-light text-foreground">
-                                    {appointment.clientId.firstName}{" "}
-                                    {appointment.clientId.lastName}
+                                    {clientDisplayName(appointment.clientId, t("deletedClient"))}
                                   </div>
                                   <div className="text-sm text-muted-foreground font-light">
                                     {appointment.time} - {appointment.duration}{" "}
@@ -788,8 +786,7 @@ export default function SchedulePage() {
                   {t("meetingLink.appointmentDetails")}
                 </p>
                 <p className="text-sm font-light">
-                  {selectedAppointment.clientId.firstName}{" "}
-                  {selectedAppointment.clientId.lastName}
+                  {clientDisplayName(selectedAppointment.clientId, t("deletedClient"))}
                 </p>
                 <p className="text-xs text-muted-foreground font-light">
                   {new Date(selectedAppointment.date).toLocaleDateString(

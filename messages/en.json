@@ -3282,6 +3282,7 @@
       "adjustFilters": "Try adjusting your filters."
     },
     "scheduleCalendar": {
+      "deletedClient": "Deleted client",
       "title": "Schedule",
       "subtitle": "Manage your sessions and appointments",
       "addAppointment": "Schedule appointment",
@@ -5184,6 +5185,7 @@
   },
   "Professional": {
     "billing": {
+      "deletedClient": "Deleted client",
       "title": "Billing & Payments",
       "subtitle": "Track your receivables and payment history",
       "totalReceivables": "Total Receivables",

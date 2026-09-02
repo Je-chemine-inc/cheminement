@@ -19,6 +19,7 @@ import {
   type ProfessionalLedgerEntryResponse,
 } from "@/lib/api-client";
 import { getSessionActNatureLabelFr } from "@/lib/session-act-labels";
+import { clientDisplayName } from "@/lib/appointment-client-name";
 import { AppointmentResponse } from "@/types/api";
 import { PayoutMethodSection } from "@/components/billing/PayoutMethodSection";
 
@@ -175,7 +176,7 @@ export default function ProfessionalBillingPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-serif text-xl font-light text-foreground">
-                {t("session")} - {apt.clientId.firstName} {apt.clientId.lastName}
+                {t("session")} - {clientDisplayName(apt.clientId, t("deletedClient"))}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {formatDate(apt.date)}
