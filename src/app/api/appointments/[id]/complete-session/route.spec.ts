@@ -15,6 +15,7 @@ const h = vi.hoisted(() => {
   const charge = vi.fn();
   const sideEffects = vi.fn().mockResolvedValue(undefined);
   const findOneAndUpdate = vi.fn();
+  const resolveCustomerPm = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
 
   const setDeep = (obj: Record<string, unknown>, set: Record<string, unknown>) => {
@@ -45,7 +46,7 @@ const h = vi.hoisted(() => {
     },
   });
 
-  return { getServerSession, charge, sideEffects, findOneAndUpdate, store, setDeep, makeQuery };
+  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, store, setDeep, makeQuery };
 });
 
 vi.mock("next/server", () => ({
@@ -65,6 +66,7 @@ vi.mock("@/lib/stripe", () => ({
 }));
 vi.mock("@/lib/stripe-off-session-charge", () => ({
   chargeSavedPaymentMethodAfterSession: h.charge,
+  resolveCustomerChargeablePaymentMethod: h.resolveCustomerPm,
 }));
 vi.mock("@/lib/session-post-closure", () => ({
   runSessionClosureSideEffects: h.sideEffects,
@@ -92,6 +94,7 @@ vi.mock("@/models/Appointment", () => ({
 }));
 
 import { POST as completePOST } from "@/app/api/appointments/[id]/complete-session/route";
+import { decryptPaymentMethodReference } from "@/lib/field-encryption";
 
 const callClose = () =>
   completePOST(
@@ -107,6 +110,7 @@ const callClose = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   h.charge.mockResolvedValue({ paymentIntentId: "pi_1", settled: true });
+  h.resolveCustomerPm.mockResolvedValue(null);
   h.store.appointment = {
     _id: APPT_ID,
     clientId: CLIENT_ID,
@@ -166,6 +170,90 @@ describe("a future session cannot be closed", () => {
     const res = await callClose();
 
     expect(res.status).toBe(200);
+  });
+});
+
+/**
+ * Regression: a saved card attaches to the Stripe CUSTOMER, and no booking
+ * route ever copies a reference onto the appointment. A repeat booking by a
+ * client who had already saved a card therefore reached closure with nothing
+ * to charge, was soft-skipped as MISSING_PAYMENT_METHOD, and left the invoice
+ * pending with a perfectly good card on file.
+ */
+describe("closure falls back to the customer's stored payment method", () => {
+  it("charges the card Stripe holds when the appointment carries none", async () => {
+    delete (h.store.appointment.payment as Record<string, unknown>)
+      .stripePaymentMethodId;
+    h.resolveCustomerPm.mockResolvedValue({
+      paymentMethodId: "pm_from_customer",
+      method: "card",
+    });
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callClose();
+
+    expect(res.status).toBe(200);
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    const [args] = h.charge.mock.calls[0] as [Record<string, unknown>];
+    // Stored encrypted at rest, exactly as the setup routes store it — what
+    // matters is that it decrypts back to the customer's real method.
+    expect(
+      decryptPaymentMethodReference(args.encryptedPaymentMethodId as string),
+    ).toBe("pm_from_customer");
+    // KEY: what we charged is recorded, so receipt/refund/dunning agree.
+    const payment = h.store.appointment.payment as Record<string, unknown>;
+    expect(
+      decryptPaymentMethodReference(payment.stripePaymentMethodId as string),
+    ).toBe("pm_from_customer");
+    expect(payment.status).toBe("paid");
+  });
+
+  it("charges a PAD on its own rails, not the appointment's card method", async () => {
+    // acss_debit charged as a card is rejected outright by Stripe.
+    delete (h.store.appointment.payment as Record<string, unknown>)
+      .stripePaymentMethodId;
+    h.resolveCustomerPm.mockResolvedValue({
+      paymentMethodId: "pm_pad",
+      method: "direct_debit",
+    });
+    h.charge.mockResolvedValue({ paymentIntentId: "pi_2", settled: false });
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callClose();
+
+    expect(res.status).toBe(200);
+    const [args] = h.charge.mock.calls[0] as [Record<string, unknown>];
+    expect(args.method).toBe("direct_debit");
+    const payment = h.store.appointment.payment as Record<string, unknown>;
+    expect(payment.method).toBe("direct_debit");
+    // ACSS confirms asynchronously — the webhook flips it to paid later.
+    expect(payment.status).toBe("processing");
+  });
+
+  it("still closes softly when the client genuinely has nothing on file", async () => {
+    delete (h.store.appointment.payment as Record<string, unknown>)
+      .stripePaymentMethodId;
+    h.resolveCustomerPm.mockResolvedValue(null);
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callClose();
+
+    // A billing gap must never block a professional from ending their session.
+    expect(res.status).toBe(200);
+    expect(h.charge).not.toHaveBeenCalled();
+    expect((h.store.appointment.payment as Record<string, unknown>).status).toBe(
+      "pending",
+    );
+  });
+
+  it("does NOT consult the customer when the appointment has its own method", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callClose();
+
+    expect(h.resolveCustomerPm).not.toHaveBeenCalled();
+    const [args] = h.charge.mock.calls[0] as [Record<string, unknown>];
+    expect(args.encryptedPaymentMethodId).toBe("enc_pm");
   });
 });
 describe("complete-session atomic closure claim (C2)", () => {

@@ -14,8 +14,12 @@ import {
   type SessionOutcome,
 } from "@/lib/session-closure";
 import User from "@/models/User";
-import { chargeSavedPaymentMethodAfterSession } from "@/lib/stripe-off-session-charge";
+import {
+  chargeSavedPaymentMethodAfterSession,
+  resolveCustomerChargeablePaymentMethod,
+} from "@/lib/stripe-off-session-charge";
 import { buildInteracReferenceCode } from "@/lib/interac-reference";
+import { encryptPaymentMethodReference } from "@/lib/field-encryption";
 import { runSessionClosureSideEffects } from "@/lib/session-post-closure";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { sessionClosureWindow } from "@/lib/session-closure-window";
@@ -228,6 +232,12 @@ export async function POST(
     // surface a soft warning ("billing profile incomplete — invoice is pending").
     let chargeSkippedReason: string | undefined;
 
+    // When the charge falls back to the customer's stored instrument, record
+    // it on the appointment. Persistence here goes through `$set` +
+    // findByIdAndUpdate, so mutating `apt` in place would be silently lost.
+    let persistPaymentMethodRef: string | undefined;
+    let persistPaymentMethod: "card" | "direct_debit" | undefined;
+
     if (billableForPayment) {
       const payMethod = apt.payment.method || "card";
       if (payMethod === "card" || payMethod === "direct_debit") {
@@ -236,19 +246,52 @@ export async function POST(
           // Soft-skip: allow closure to proceed; invoice stays pending.
           paymentStatus = "pending";
           chargeSkippedReason = "MISSING_BILLING_PROFILE";
-        } else if (!apt.payment.stripePaymentMethodId) {
-          paymentStatus = "pending";
-          chargeSkippedReason = "MISSING_PAYMENT_METHOD";
         } else {
+          // The appointment usually carries its own payment-method reference
+          // (written by the appointment-setup routes). When it does not — a
+          // repeat booking by a client who already saved a card, an
+          // admin-scheduled session — fall back to what Stripe holds on the
+          // CUSTOMER. Without this the session closed unbilled with a
+          // perfectly good card on file. See lib/chargeable-payment-method.ts.
+          let chargePaymentMethod: string | undefined =
+            apt.payment.stripePaymentMethodId;
+          let chargeMethod: "card" | "direct_debit" = payMethod;
+          let resolvedFromCustomer: string | undefined;
+
+          if (!chargePaymentMethod) {
+            const fallback = await resolveCustomerChargeablePaymentMethod(
+              clientUser.stripeCustomerId,
+            );
+            if (fallback) {
+              // The instrument decides the rails, not the appointment: a PAD
+              // charged as a card is rejected outright by Stripe.
+              chargeMethod = fallback.method;
+              resolvedFromCustomer = fallback.paymentMethodId;
+              chargePaymentMethod =
+                encryptPaymentMethodReference(fallback.paymentMethodId) ??
+                fallback.paymentMethodId;
+            }
+          }
+
+          if (!chargePaymentMethod) {
+            paymentStatus = "pending";
+            chargeSkippedReason = "MISSING_PAYMENT_METHOD";
+          } else {
           try {
             const { paymentIntentId, settled } =
               await chargeSavedPaymentMethodAfterSession({
                 appointmentId: id,
                 customerId: clientUser.stripeCustomerId,
-                encryptedPaymentMethodId: apt.payment.stripePaymentMethodId,
+                encryptedPaymentMethodId: chargePaymentMethod,
                 amountCad: price,
-                method: payMethod,
+                method: chargeMethod,
               });
+            // Record what we actually charged, so the receipt, any refund and
+            // the dunning gate all agree with reality.
+            if (resolvedFromCustomer) {
+              persistPaymentMethodRef = chargePaymentMethod;
+              persistPaymentMethod = chargeMethod;
+            }
             stripeChargePaymentIntentId = paymentIntentId;
             // M1: ACSS/PAD confirms async as "processing" — record it as such
             // and let the payment_intent.succeeded webhook flip it to "paid".
@@ -259,6 +302,7 @@ export async function POST(
             // pending and surface a warning so the professional knows.
             paymentStatus = "pending";
             chargeSkippedReason = msg || "CHARGE_FAILED";
+          }
           }
         }
       } else if (payMethod === "transfer") {
@@ -298,6 +342,10 @@ export async function POST(
       $set["payment.platformFee"] = platformFee;
       $set["payment.professionalPayout"] = professionalPayout;
       $set["payment.status"] = paymentStatus;
+      if (persistPaymentMethodRef) {
+        $set["payment.stripePaymentMethodId"] = persistPaymentMethodRef;
+        $set["payment.method"] = persistPaymentMethod;
+      }
     }
 
     if (stripeChargePaymentIntentId) {

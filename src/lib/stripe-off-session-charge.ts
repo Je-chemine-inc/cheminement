@@ -1,6 +1,52 @@
 import { stripe, toCents } from "@/lib/stripe";
 import { decryptPaymentMethodReference } from "@/lib/field-encryption";
+import {
+  pickChargeablePaymentMethod,
+  type ChargeablePaymentMethod,
+} from "@/lib/chargeable-payment-method";
 
+
+/**
+ * The client's payment method as held by Stripe, for an appointment that has
+ * none of its own.
+ *
+ * A saved card attaches to the CUSTOMER; only the appointment-setup routes
+ * ever copied a reference onto an appointment, and no booking route does. So a
+ * second booking by a client who had already saved a card reached closure with
+ * nothing to charge and the invoice sat pending with a good card on file.
+ *
+ * Returns null rather than throwing when the client genuinely has nothing:
+ * closure must stay soft (an unchargeable session still closes, invoice
+ * pending) — never block a professional from ending their session because of
+ * a billing lookup.
+ */
+export async function resolveCustomerChargeablePaymentMethod(
+  customerId: string,
+): Promise<ChargeablePaymentMethod | null> {
+  try {
+    const [customer, cards, acss] = await Promise.all([
+      stripe.customers.retrieve(customerId),
+      stripe.paymentMethods.list({ customer: customerId, type: "card" }),
+      stripe.paymentMethods.list({ customer: customerId, type: "acss_debit" }),
+    ]);
+
+    // A deleted customer comes back as { deleted: true } with no settings.
+    const defaultPm =
+      !("deleted" in customer) && customer.invoice_settings
+        ? typeof customer.invoice_settings.default_payment_method === "string"
+          ? customer.invoice_settings.default_payment_method
+          : customer.invoice_settings.default_payment_method?.id
+        : undefined;
+
+    return pickChargeablePaymentMethod(defaultPm, cards.data, acss.data);
+  } catch (e) {
+    console.error(
+      "[stripe-off-session-charge] customer payment-method lookup failed:",
+      e,
+    );
+    return null;
+  }
+}
 /**
  * Prélève la carte ou le PAD enregistré après clôture de séance (hors session navigateur).
  */
