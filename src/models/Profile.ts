@@ -35,6 +35,22 @@ export interface IProfile extends Document {
   languages?: string[];
   sessionTypes?: string[];
   modalities?: string[];
+  /**
+   * Where in-person sessions actually take place. Reminders used to carry no
+   * location at all, so the only address a client saw was Je chemine's in the
+   * email footer — and they could turn up at the wrong building. Structured
+   * to match PlatformSettings.physicalAddress so formatStandardAddressBlock
+   * renders both identically.
+   */
+  officeAddress?: {
+    street?: string;
+    suite?: string;
+    city?: string;
+    province?: string;
+    postalCode?: string;
+  };
+  /** Free text for what an address cannot say: floor, buzzer, parking, entrance. */
+  officeNotes?: string;
   paymentAgreement?: string;
   paymentFrequency?: string;
   /**
@@ -183,6 +199,14 @@ const ProfileSchema = new Schema<IProfile>(
     languages: [String],
     sessionTypes: [String],
     modalities: [String],
+    officeAddress: {
+      street: { type: String, trim: true, default: "" },
+      suite: { type: String, trim: true, default: "" },
+      city: { type: String, trim: true, default: "" },
+      province: { type: String, trim: true, default: "" },
+      postalCode: { type: String, trim: true, default: "" },
+    },
+    officeNotes: { type: String, trim: true },
     paymentAgreement: String,
     paymentFrequency: String,
     // LEGACY single-number pricing — read as the professional's rate. See the

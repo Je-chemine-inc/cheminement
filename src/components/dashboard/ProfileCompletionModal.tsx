@@ -41,6 +41,15 @@ export interface ProfileData {
   languages: string[];
   sessionTypes: string[];
   modalities: string[];
+  /** Where in-person sessions happen. Reminders show this to the client. */
+  officeAddress: {
+    street: string;
+    suite: string;
+    city: string;
+    province: string;
+    postalCode: string;
+  };
+  officeNotes: string;
   pricing: {
     individualSession: number;
     coupleSession: number;
@@ -96,6 +105,14 @@ export default function ProfileCompletionModal({
     languages: profile?.languages || ["Français"],
     sessionTypes: profile?.sessionTypes || ["Solo"],
     modalities: profile?.modalities || ["En ligne"],
+    officeAddress: {
+      street: profile?.officeAddress?.street || "",
+      suite: profile?.officeAddress?.suite || "",
+      city: profile?.officeAddress?.city || "",
+      province: profile?.officeAddress?.province || "",
+      postalCode: profile?.officeAddress?.postalCode || "",
+    },
+    officeNotes: profile?.officeNotes || "",
     pricing: profile?.pricing || {
       individualSession: 0,
       coupleSession: 0,
@@ -911,6 +928,122 @@ export default function ProfileCompletionModal({
                           {t(`step5.modalitiesList.${opt.labelKey}`)}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Office address — shown to the client in in-person
+                      reminders. Without it the reminder carries no address at
+                      all and the only one in the email is the platform's own
+                      footer address, which is not where the session happens. */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label>{t("step5.officeTitle")}</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("step5.officeHelp")}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                          {t("step5.officeStreet")}
+                        </span>
+                        <Input
+                          value={formData.officeAddress.street}
+                          placeholder={t("step5.officeStreetPlaceholder")}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              officeAddress: {
+                                ...formData.officeAddress,
+                                street: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                          {t("step5.officeSuite")}
+                        </span>
+                        <Input
+                          value={formData.officeAddress.suite}
+                          placeholder={t("step5.officeSuitePlaceholder")}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              officeAddress: {
+                                ...formData.officeAddress,
+                                suite: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                          {t("step5.officeCity")}
+                        </span>
+                        <Input
+                          value={formData.officeAddress.city}
+                          placeholder={t("step5.officeCityPlaceholder")}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              officeAddress: {
+                                ...formData.officeAddress,
+                                city: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                          {t("step5.officeProvince")}
+                        </span>
+                        <Input
+                          value={formData.officeAddress.province}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              officeAddress: {
+                                ...formData.officeAddress,
+                                province: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                          {t("step5.officePostalCode")}
+                        </span>
+                        <Input
+                          value={formData.officeAddress.postalCode}
+                          placeholder={t("step5.officePostalCodePlaceholder")}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              officeAddress: {
+                                ...formData.officeAddress,
+                                postalCode: e.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase text-muted-foreground font-semibold">
+                        {t("step5.officeNotes")}
+                      </span>
+                      <Input
+                        value={formData.officeNotes}
+                        placeholder={t("step5.officeNotesPlaceholder")}
+                        onChange={(e) =>
+                          setFormData({ ...formData, officeNotes: e.target.value })
+                        }
+                      />
                     </div>
                   </div>
                 </div>

@@ -3006,7 +3006,32 @@ export async function sendAppointmentReminder(
  * Email 7 — H-72 reminder. Includes a cancel button AND a "request another
  * appointment" button. Free cancellation window is still open at this point.
  */
+
+/**
+ * A labelled "Lieu" block for the reminder emails.
+ *
+ * Reminders previously showed no location at all, so a client booked for an
+ * in-person session saw only Je chemine's address in the branding footer and
+ * could travel to the wrong building. Rendered only when the caller resolved
+ * a line (i.e. the appointment is in-person) — see lib/session-location.ts.
+ */
+function sessionLocationHtml(line: string | undefined, lang: "fr" | "en"): string {
+  if (!line) return "";
+  const label = lang === "en" ? "Location" : "Lieu";
+  return (
+    `<p style="margin:16px 0 0;"><strong>${label} :</strong><br>` +
+    `${line
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/ · /g, "<br>")}</p>`
+  );
+}
 export async function sendAppointment72hReminder(data: {
+  /** Where an in-person session takes place (the PROFESSIONAL's office,
+   *  never the platform's). Undefined for video/phone. See
+   *  lib/session-location.ts. */
+  sessionLocationLine?: string;
   clientName: string;
   clientEmail: string;
   professionalName?: string;
@@ -3032,7 +3057,9 @@ export async function sendAppointment72hReminder(data: {
       subtitle: editable.subtitle,
       theme: "info",
       greeting: "",
-      intro: editable.bodyHtml,
+      intro:
+        editable.bodyHtml +
+        sessionLocationHtml(data.sessionLocationLine, lang),
       button: editable.ctaText
         ? { text: editable.ctaText, url: data.cancelUrl }
         : undefined,
@@ -3086,7 +3113,8 @@ export async function sendAppointment72hReminder(data: {
     intro:
       lang === "fr"
         ? `Petit rappel : votre rendez-vous avec ${professionalName} est prévu le ${data.appointmentDateLabel}. Vous êtes encore dans la fenêtre d'annulation sans frais (jusqu'à 48 h avant la séance).`
-        : `Friendly reminder: your appointment with ${professionalName} is scheduled on ${data.appointmentDateLabel}. You are still within the free-cancellation window (until 48h before the session).`,
+        : `Friendly reminder: your appointment with ${professionalName} is scheduled on ${data.appointmentDateLabel}. You are still within the free-cancellation window (until 48h before the session).`
+        + sessionLocationHtml(data.sessionLocationLine, lang),
     infoBox: {
       title:
         lang === "fr" ? "Besoin de changer vos plans ?" : "Need to change your plans?",
@@ -3161,6 +3189,10 @@ export async function sendAppointment72hReminder(data: {
  *    at <48h; the only path is direct admin/pro contact.
  */
 export async function sendAppointment48hReminder(data: {
+  /** Where an in-person session takes place (the PROFESSIONAL's office,
+   *  never the platform's). Undefined for video/phone. See
+   *  lib/session-location.ts. */
+  sessionLocationLine?: string;
   clientName: string;
   clientEmail: string;
   professionalName?: string;
@@ -3200,7 +3232,9 @@ export async function sendAppointment48hReminder(data: {
       subtitle: editable.subtitle,
       theme: "warning",
       greeting: "",
-      intro: editable.bodyHtml,
+      intro:
+        editable.bodyHtml +
+        sessionLocationHtml(data.sessionLocationLine, lang),
       button: editable.ctaText
         ? { text: editable.ctaText, url: billingUrl }
         : undefined,
@@ -3257,7 +3291,8 @@ export async function sendAppointment48hReminder(data: {
     intro:
       lang === "fr"
         ? `Votre rendez-vous avec ${professionalName} aura lieu dans 48 heures (${data.appointmentDateLabel}).`
-        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}).`,
+        : `Your appointment with ${professionalName} will take place in 48 hours (${data.appointmentDateLabel}).`
+        + sessionLocationHtml(data.sessionLocationLine, lang),
     secondaryButton: data.noPaymentMethod
       ? {
           preamble:

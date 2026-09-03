@@ -38,6 +38,12 @@ export const PROFILE_SELF_WRITABLE = [
   "languages",
   "sessionTypes",
   "modalities",
+  // Where the professional actually receives clients. Self-writable: it is
+  // their own practice detail, and it is what an in-person reminder shows the
+  // client instead of the platform's address. Nothing about it is
+  // money- or identity-bearing.
+  "officeAddress",
+  "officeNotes",
   "paymentAgreement",
   "paymentFrequency",
   // NOTE: `pricing` and `rates` are deliberately ABSENT. Pricing is

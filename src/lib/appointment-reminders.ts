@@ -2,6 +2,12 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
+import Profile from "@/models/Profile";
+import {
+  formatSessionLocationLine,
+  isInPersonAppointment,
+  resolveSessionLocation,
+} from "@/lib/session-location";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { clientLacksPaymentGuaranteeForAppointment } from "@/lib/client-payment-guarantee";
 import {
@@ -132,11 +138,34 @@ export async function runAppointmentReminders(): Promise<{
       action: "reschedule",
       base: baseUrl,
     });
+    // Where the client must physically go. Reminders used to carry no
+    // location at all, so an "au bureau" client saw only Je chemine's
+    // address in the branding footer — the platform's, not the
+    // professional's office. Looked up only for in-person sessions.
+    let sessionLocationLine: string | undefined;
+    if (isInPersonAppointment(apt.type) && apt.professionalId) {
+      const proProfile = await Profile.findOne({
+        userId: apt.professionalId,
+      })
+        .select("officeAddress officeNotes")
+        .lean();
+      sessionLocationLine =
+        formatSessionLocationLine(
+          resolveSessionLocation({
+            appointmentType: apt.type,
+            officeAddress: proProfile?.officeAddress,
+            officeNotes: proProfile?.officeNotes,
+          }),
+          locale,
+        ) ?? undefined;
+    }
+
     const updates: Record<string, boolean> = {};
 
     // H-72 window: 48h < hoursUntil <= 72h
     if (!apt.reminder72hSent && hoursUntil > 48 && hoursUntil <= 72) {
       const ok = await sendAppointment72hReminder({
+        sessionLocationLine,
         clientName: recipient.name,
         clientEmail: recipient.email,
         professionalName,
@@ -182,6 +211,7 @@ export async function runAppointmentReminders(): Promise<{
         : undefined;
 
       const ok = await sendAppointment48hReminder({
+        sessionLocationLine,
         clientName: recipient.name,
         clientEmail: recipient.email,
         professionalName,

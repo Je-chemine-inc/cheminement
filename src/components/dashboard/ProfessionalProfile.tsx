@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { resolveSessionLocation } from "@/lib/session-location";
 import { AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,13 @@ export default function ProfessionalProfile({
   };
   const [professionalProfile, setProfessionalProfile] =
     useState<IProfile | null>(profile || null);
+  // Same resolver the reminder emails use, so what a professional sees here
+  // is exactly what the client is sent.
+  const officeAddressLines = resolveSessionLocation({
+    appointmentType: "in-person",
+    officeAddress: professionalProfile?.officeAddress,
+    officeNotes: professionalProfile?.officeNotes,
+  }).lines;
   const [isLoading, setIsLoading] = useState(!profile);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
@@ -505,6 +513,29 @@ export default function ProfessionalProfile({
                     {translateModalityLabel(modality)}
                   </span>
                 ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">{t("notAvailable")}</p>
+            )}
+          </div>
+
+          {/* Office address — this is what an in-person reminder shows the
+              client. Displayed here so a professional can see exactly what
+              the client will read, and notice when it is still empty. */}
+          <div>
+            <Label className="font-light mb-3 text-base">
+              {tModal("step5.officeTitle")}
+            </Label>
+            {officeAddressLines.length > 0 ? (
+              <div className="text-sm font-light text-foreground">
+                {officeAddressLines.map((line) => (
+                  <div key={line}>{line}</div>
+                ))}
+                {professionalProfile?.officeNotes ? (
+                  <p className="text-muted-foreground mt-1">
+                    {professionalProfile.officeNotes}
+                  </p>
+                ) : null}
               </div>
             ) : (
               <p className="text-muted-foreground">{t("notAvailable")}</p>
