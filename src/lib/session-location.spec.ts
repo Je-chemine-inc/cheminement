@@ -50,7 +50,7 @@ describe("resolveSessionLocation", () => {
   it("shows nothing at all for a video session", () => {
     expect(
       resolveSessionLocation({ appointmentType: "video", officeAddress: office }),
-    ).toEqual({ show: false, lines: [], notes: null, missing: false });
+    ).toEqual({ show: false, lines: [], notes: null, missing: false, fromAppointment: false });
   });
 
   it("flags a missing office rather than staying silent", () => {
@@ -60,7 +60,7 @@ describe("resolveSessionLocation", () => {
       appointmentType: "in-person",
       officeAddress: null,
     });
-    expect(loc).toEqual({ show: true, lines: [], notes: null, missing: true });
+    expect(loc).toEqual({ show: true, lines: [], notes: null, missing: true, fromAppointment: false });
   });
 
   it("treats a schema-default-only address as missing", () => {
@@ -127,5 +127,53 @@ describe("formatSessionLocationLine", () => {
     const line = formatSessionLocationLine(loc, "fr")!;
     expect(line).toContain("1250 rue Sainte-Catherine Ouest");
     expect(line).toContain("Stationnement à l'arrière");
+  });
+});
+
+describe("this session's own location wins over the default office", () => {
+  it("uses the address typed at scheduling, not the profile default", () => {
+    // Appointment.location is set by the admin or the professional when the
+    // session is booked somewhere other than the usual office. Preferring the
+    // profile would send the client to the wrong building.
+    const loc = resolveSessionLocation({
+      appointmentType: "in-person",
+      appointmentLocation: "Clinique Saint-Laurent, 40 boul. Curé-Labelle",
+      officeAddress: office,
+    });
+
+    expect(loc.fromAppointment).toBe(true);
+    expect(loc.lines).toEqual(["Clinique Saint-Laurent, 40 boul. Curé-Labelle"]);
+    expect(loc.lines.join(" ")).not.toContain("Sainte-Catherine");
+    expect(loc.missing).toBe(false);
+  });
+
+  it("falls back to the office when this session has no location of its own", () => {
+    const loc = resolveSessionLocation({
+      appointmentType: "in-person",
+      appointmentLocation: "   ",
+      officeAddress: office,
+    });
+    expect(loc.fromAppointment).toBe(false);
+    expect(loc.lines.join(" ")).toContain("Sainte-Catherine");
+  });
+
+  it("still keeps the access notes alongside a session-specific address", () => {
+    const loc = resolveSessionLocation({
+      appointmentType: "in-person",
+      appointmentLocation: "Clinique Saint-Laurent",
+      officeAddress: office,
+      officeNotes: "Sonner au 2",
+    });
+    expect(formatSessionLocationLine(loc, "fr")).toBe(
+      "Clinique Saint-Laurent · Sonner au 2",
+    );
+  });
+
+  it("ignores a session location on a VIDEO appointment", () => {
+    const loc = resolveSessionLocation({
+      appointmentType: "video",
+      appointmentLocation: "Clinique Saint-Laurent",
+    });
+    expect(loc.show).toBe(false);
   });
 });

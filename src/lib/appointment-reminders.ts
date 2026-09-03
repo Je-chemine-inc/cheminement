@@ -153,6 +153,7 @@ export async function runAppointmentReminders(): Promise<{
         formatSessionLocationLine(
           resolveSessionLocation({
             appointmentType: apt.type,
+            appointmentLocation: apt.location,
             officeAddress: proProfile?.officeAddress,
             officeNotes: proProfile?.officeNotes,
           }),

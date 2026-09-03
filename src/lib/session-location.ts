@@ -7,6 +7,16 @@
  * saw no address or read the platform's as the meeting place. Professionals
  * practise from their own offices; the two are rarely the same building.
  *
+ * Two sources exist and they are NOT interchangeable:
+ *   1. `Appointment.location` — free text typed at scheduling by the admin or
+ *      the professional, only ever set for in-person sessions. It describes
+ *      where THIS session happens, so it wins.
+ *   2. `Profile.officeAddress` — the professional's usual office. The
+ *      fallback, and the only one that exists for most bookings.
+ *
+ * Preferring the profile would quietly send a client to the wrong building
+ * whenever a session was booked somewhere other than the usual office.
+ *
  * This resolves what a reminder should say about *where*, for one appointment.
  * It is deliberately pure: the email builders and any UI can share it, and the
  * "what if it isn't set" decision is made in one place rather than re-guessed.
@@ -33,6 +43,11 @@ export interface SessionLocation {
   show: boolean;
   /** Address lines, already formatted. Empty when the pro has not set one. */
   lines: string[];
+  /**
+   * True when the address came from this appointment's own `location` field
+   * rather than the professional's default office.
+   */
+  fromAppointment: boolean;
   /** Floor / buzzer / parking, when given. */
   notes: string | null;
   /**
@@ -66,15 +81,41 @@ function hasAnyPart(address: OfficeAddressLike | null | undefined): boolean {
  */
 export function resolveSessionLocation(input: {
   appointmentType?: string | null;
+  /** This session's own location, typed at scheduling. Takes precedence. */
+  appointmentLocation?: string | null;
   officeAddress?: OfficeAddressLike | null;
   officeNotes?: string | null;
 }): SessionLocation {
   if (!isInPersonAppointment(input.appointmentType)) {
-    return { show: false, lines: [], notes: null, missing: false };
+    return {
+      show: false,
+      lines: [],
+      notes: null,
+      missing: false,
+      fromAppointment: false,
+    };
+  }
+
+  // This session was booked at a specific place — that beats the default.
+  const specific = clean(input.appointmentLocation);
+  if (specific) {
+    return {
+      show: true,
+      lines: [specific],
+      notes: clean(input.officeNotes) || null,
+      missing: false,
+      fromAppointment: true,
+    };
   }
 
   if (!hasAnyPart(input.officeAddress)) {
-    return { show: true, lines: [], notes: null, missing: true };
+    return {
+      show: true,
+      lines: [],
+      notes: null,
+      missing: true,
+      fromAppointment: false,
+    };
   }
 
   return {
@@ -91,6 +132,7 @@ export function resolveSessionLocation(input: {
     ),
     notes: clean(input.officeNotes) || null,
     missing: false,
+    fromAppointment: false,
   };
 }
 
