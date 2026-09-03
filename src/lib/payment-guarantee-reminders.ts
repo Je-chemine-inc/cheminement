@@ -4,7 +4,7 @@ import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import {
   clientLacksPaymentGuaranteeForAppointment,
-  clientOwesUncollectedFee,
+  resolvePostMeetingNotification,
   SETTLED_PAYMENT_STATUSES,
 } from "@/lib/client-payment-guarantee";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
@@ -282,9 +282,16 @@ export async function runPaymentGuaranteeReminders(
     const user = await User.findById(clientPop._id);
     if (!user) continue;
     // M15: collection gate (NOT the upfront-guarantee gate). A real unpaid fee
-    // with no card to auto-charge gets a reminder — including interac_trust
+    // with no card to auto-charge needs chasing — including interac_trust
     // clients, who waive only the upfront prepayment nudges.
-    if (!clientOwesUncollectedFee(apt)) continue;
+    //
+    // But WHO we chase depends on whether the client already gave us a way to
+    // pay. A green client has done her part; if the fee is still uncollected
+    // that is our failure to charge, so the admin is alerted and the client is
+    // left alone. Emailing her "please pay" for a card she has already saved is
+    // what made the platform look broken.
+    const notify = resolvePostMeetingNotification(apt, user);
+    if (!notify.notifyClient && !notify.notifyAdmin) continue;
 
     const recipient = resolveAppointmentRecipient(
       { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
@@ -299,13 +306,15 @@ export async function runPaymentGuaranteeReminders(
     });
 
     const [clientOk] = await Promise.all([
-      sendPostMeetingPaymentReminder({
-        clientName: recipient.name,
-        clientEmail: recipient.email,
-        appointmentDateLabel: dateLabel,
-        locale: recipient.language,
-        billingUrl: postMeetingBillingUrl,
-      }),
+      notify.notifyClient
+        ? sendPostMeetingPaymentReminder({
+            clientName: recipient.name,
+            clientEmail: recipient.email,
+            appointmentDateLabel: dateLabel,
+            locale: recipient.language,
+            billingUrl: postMeetingBillingUrl,
+          })
+        : Promise.resolve(false),
       sendAdminNoPaymentBeforeMeetingAlert({
         clientName: recipient.name,
         clientEmail: recipient.email,
@@ -314,7 +323,12 @@ export async function runPaymentGuaranteeReminders(
       }),
     ]);
 
-    if (clientOk) {
+    // Flag the appointment once the client has been nudged. A guaranteed
+    // client is never nudged, so her flag stays clear — but the admin alert
+    // above is deduped by the same pass only, meaning a still-uncollected fee
+    // keeps surfacing to the admin until someone reconciles it. That is the
+    // intended pressure: the debt is real, it is just not hers to chase.
+    if (notify.notifyClient && clientOk) {
       await Appointment.findByIdAndUpdate(apt._id, {
         $set: { postMeetingPaymentReminderSent: true },
       });

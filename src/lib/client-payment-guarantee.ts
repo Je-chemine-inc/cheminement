@@ -73,3 +73,33 @@ export function clientOwesUncollectedFee(appointment: {
   if (appointment.payment?.stripePaymentMethodId) return false;
   return true;
 }
+
+/**
+ * WHO should hear about a session fee we did not collect.
+ *
+ * `clientOwesUncollectedFee` answers "is this fee still outstanding" — it reads
+ * only the appointment, because that is where the charge-time payment method
+ * reference lives. That made us email a manual "please pay" nudge to clients
+ * who had already saved a card: the card is attached to the Stripe CUSTOMER,
+ * and a card saved from the billing page was never linked onto the
+ * appointment, so closure skipped the auto-charge (MISSING_PAYMENT_METHOD)
+ * and the client was then chased for a payment she had already set up.
+ *
+ * A client holding a valid guarantee has done her part. Nagging her is wrong
+ * and reads as a broken platform. But the fee IS genuinely uncollected, so the
+ * admin alert must still fire — louder, not quieter: this is our failure to
+ * charge, and a human has to reconcile it.
+ */
+export function resolvePostMeetingNotification(
+  appointment: {
+    payment?: { stripePaymentMethodId?: string; status?: string };
+  },
+  clientUser: Pick<IUser, "paymentGuaranteeStatus" | "paymentGuaranteeSource"> | null,
+): { notifyClient: boolean; notifyAdmin: boolean } {
+  if (!clientOwesUncollectedFee(appointment)) {
+    return { notifyClient: false, notifyAdmin: false };
+  }
+  // Green = a card/PAD on file, or an admin-approved Interac arrangement.
+  const hasGuarantee = clientUser?.paymentGuaranteeStatus === "green";
+  return { notifyClient: !hasGuarantee, notifyAdmin: true };
+}
