@@ -19,6 +19,8 @@ import {
   resolveCustomerChargeablePaymentMethod,
 } from "@/lib/stripe-off-session-charge";
 import { buildInteracReferenceCode } from "@/lib/interac-reference";
+import { parseAppointmentDate } from "@/lib/appointment-date";
+import { calculateAppointmentPricing } from "@/lib/pricing";
 import { encryptPaymentMethodReference } from "@/lib/field-encryption";
 import { runSessionClosureSideEffects } from "@/lib/session-post-closure";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
@@ -406,6 +408,82 @@ export async function POST(
       await runSessionClosureSideEffects(id);
     } catch (e) {
       console.error("runSessionClosureSideEffects:", e);
+    }
+
+    // Create the follow-up appointment the professional entered.
+    //
+    // `nextAppointmentAt` used to be stored as a bare note on the session
+    // being closed and nothing ever read it back — so a "prochain
+    // rendez-vous" typed here never reached the schedule, and the client was
+    // never told. The professional believed the next session was booked.
+    //
+    // Runs AFTER the closure is persisted and never throws outward: the
+    // session is already closed and billed, so a follow-up that cannot be
+    // created must not undo that. The date goes through parseAppointmentDate
+    // (UTC-noon anchor) like every other appointment date.
+    if (nextAt && nextAppointmentDate && nextAppointmentTime) {
+      try {
+        const followUpDate = parseAppointmentDate(nextAppointmentDate);
+        const alreadyLinked = (updated as { nextAppointmentId?: unknown })
+          .nextAppointmentId;
+
+        if (followUpDate && !alreadyLinked) {
+          // Never double-book the professional.
+          const clash = await Appointment.findOne({
+            professionalId: apt.professionalId,
+            date: followUpDate,
+            time: nextAppointmentTime,
+            status: "scheduled",
+          });
+
+          if (clash) {
+            console.warn(
+              `[complete-session] follow-up ${nextAppointmentDate} ${nextAppointmentTime} clashes with ${clash._id} — not created`,
+            );
+          } else {
+            const followUpPricing = await calculateAppointmentPricing(
+              String(apt.professionalId),
+              apt.therapyType,
+            );
+            const followUp = await Appointment.create({
+              clientId: apt.clientId,
+              professionalId: apt.professionalId,
+              date: followUpDate,
+              time: nextAppointmentTime,
+              duration: apt.duration || 60,
+              type: apt.type,
+              therapyType: apt.therapyType,
+              // Carry the context forward so the new session is a real
+              // continuation of the file, not an orphan row.
+              bookingFor: apt.bookingFor,
+              lovedOneInfo: apt.lovedOneInfo,
+              referralInfo: apt.referralInfo,
+              issueType: apt.issueType,
+              needs: apt.needs,
+              location: apt.location,
+              status: "scheduled",
+              routingStatus: "accepted",
+              firstScheduledAt: new Date(),
+              payment: {
+                price: followUpPricing.sessionPrice,
+                platformFee: followUpPricing.platformFee,
+                professionalPayout: followUpPricing.professionalPayout,
+                status: "pending",
+                method: apt.payment?.method || "card",
+                stripePaymentMethodId: apt.payment?.stripePaymentMethodId,
+              },
+            });
+            await Appointment.findByIdAndUpdate(id, {
+              $set: { nextAppointmentId: followUp._id },
+            });
+            console.log(
+              `[complete-session] follow-up ${followUp._id} created for ${nextAppointmentDate} ${nextAppointmentTime}`,
+            );
+          }
+        }
+      } catch (e) {
+        console.error("[complete-session] follow-up creation failed:", e);
+      }
     }
 
     const finalDoc = await Appointment.findById(id)

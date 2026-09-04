@@ -235,6 +235,15 @@ export interface IAppointment extends Document {
   sessionOutcome?: string;
   /** Prochain RDV convenu (information). */
   nextAppointmentAt?: Date;
+  /**
+   * The follow-up appointment actually created at closure.
+   *
+   * `nextAppointmentAt` alone was only ever a note on the finished session —
+   * no appointment existed, so the "prochain rendez-vous" a professional
+   * entered never reached the schedule. This links the real one and makes the
+   * creation idempotent if a closure is somehow replayed.
+   */
+  nextAppointmentId?: mongoose.Types.ObjectId;
   sessionCompletedAt?: Date;
   /** Reçu fiscal émis (PDF envoyé / disponible). */
   fiscalReceiptIssuedAt?: Date;
@@ -526,6 +535,11 @@ const AppointmentSchema = new Schema<IAppointment>(
     sessionActNatureOther: { type: String, required: false },
     sessionOutcome: { type: String, required: false },
     nextAppointmentAt: { type: Date, required: false },
+    nextAppointmentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Appointment",
+      required: false,
+    },
     sessionCompletedAt: { type: Date, required: false },
     fiscalReceiptIssuedAt: { type: Date, required: false },
     invoiceNumber: { type: String, required: false, index: true },

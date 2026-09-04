@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 /**
  * After an admin changes a professional's pricing, offer to apply it to that
@@ -151,7 +152,7 @@ export default function RepriceUnpaidAppointments({
               className="flex-1 cursor-pointer font-normal"
             >
               <span className="block text-sm text-foreground">
-                {row.date ? new Date(row.date).toLocaleDateString() : "—"} ·{" "}
+                {row.date ? formatCalendarDate(row.date, undefined) : "—"} ·{" "}
                 {row.therapyType}
               </span>
               <span className="block text-sm text-muted-foreground">

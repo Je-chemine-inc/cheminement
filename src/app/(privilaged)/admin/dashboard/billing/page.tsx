@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 type PaymentStatus = "paid" | "pending" | "upcoming" | "processing" | "overdue";
 type PaymentMethod = "all" | "card" | "transfer";
@@ -166,12 +167,12 @@ export default function AdminBillingPage() {
     }
   };
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString("fr-CA", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  // Receives BOTH bare calendar days (the session date, serialized by the API
+  // as "YYYY-MM-DD") and real timestamps (paidDate, transferDueAt). The helper
+  // tells them apart: a calendar day is rendered as the day it says, a
+  // timestamp in local time. Formatting a bare day with `new Date(...)` showed
+  // a 4 September session as 3 September in Montréal.
+  const formatDate = (dateString: string) => formatCalendarDate(dateString);
 
   const handleDownloadReceipt = async (appointmentId: string) => {
     try {

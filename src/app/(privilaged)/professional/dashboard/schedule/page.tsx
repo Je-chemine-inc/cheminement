@@ -35,6 +35,7 @@ import { AppointmentEditDialog } from "@/components/appointments/AppointmentEdit
 import { CalendarSyncDialog } from "@/components/appointments/CalendarSyncDialog";
 import { appointmentStatusColor } from "@/lib/appointment-colors";
 import { AppointmentResponse } from "@/types/api";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 export default function SchedulePage() {
   const t = useTranslations("Dashboard.scheduleCalendar");
@@ -789,7 +790,8 @@ export default function SchedulePage() {
                   {clientDisplayName(selectedAppointment.clientId, t("deletedClient"))}
                 </p>
                 <p className="text-xs text-muted-foreground font-light">
-                  {new Date(selectedAppointment.date).toLocaleDateString(
+                  {formatCalendarDate(
+                    selectedAppointment.date,
                     undefined,
                     {
                       month: "short",

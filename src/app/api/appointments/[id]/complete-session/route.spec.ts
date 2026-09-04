@@ -16,6 +16,8 @@ const h = vi.hoisted(() => {
   const sideEffects = vi.fn().mockResolvedValue(undefined);
   const findOneAndUpdate = vi.fn();
   const resolveCustomerPm = vi.fn();
+  const created = [] as Array<Record<string, unknown>>;
+  const clash = { value: null as Record<string, unknown> | null };
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
 
   const setDeep = (obj: Record<string, unknown>, set: Record<string, unknown>) => {
@@ -46,7 +48,7 @@ const h = vi.hoisted(() => {
     },
   });
 
-  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, store, setDeep, makeQuery };
+  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, created, clash, store, setDeep, makeQuery };
 });
 
 vi.mock("next/server", () => ({
@@ -60,6 +62,13 @@ vi.mock("next/server", () => ({
 vi.mock("next-auth", () => ({ getServerSession: h.getServerSession }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/pricing", () => ({
+  calculateAppointmentPricing: vi.fn().mockResolvedValue({
+    sessionPrice: 175,
+    platformFee: 25,
+    professionalPayout: 150,
+  }),
+}));
 vi.mock("@/lib/stripe", () => ({
   calculatePlatformFee: (n: number) => Math.round(n * 0.1 * 100) / 100,
   calculateProfessionalPayout: (n: number) => n - Math.round(n * 0.1 * 100) / 100,
@@ -83,6 +92,11 @@ vi.mock("@/models/Appointment", () => ({
   default: {
     findById: () => h.makeQuery(h.store.appointment),
     findOneAndUpdate: h.findOneAndUpdate,
+    findOne: async () => h.clash.value,
+    create: async (doc: Record<string, unknown>) => {
+      h.created.push(doc);
+      return { _id: "followup-1", ...doc };
+    },
     findByIdAndUpdate: (_id: string, update: Record<string, unknown>) => {
       const u = update as Record<string, Record<string, unknown>>;
       if (u.$set) h.setDeep(h.store.appointment, u.$set);
@@ -95,6 +109,7 @@ vi.mock("@/models/Appointment", () => ({
 
 import { POST as completePOST } from "@/app/api/appointments/[id]/complete-session/route";
 import { decryptPaymentMethodReference } from "@/lib/field-encryption";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 
 const callClose = () =>
   completePOST(
@@ -111,6 +126,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.charge.mockResolvedValue({ paymentIntentId: "pi_1", settled: true });
   h.resolveCustomerPm.mockResolvedValue(null);
+  h.created.length = 0;
+  h.clash.value = null;
   h.store.appointment = {
     _id: APPT_ID,
     clientId: CLIENT_ID,
@@ -254,6 +271,88 @@ describe("closure falls back to the customer's stored payment method", () => {
     expect(h.resolveCustomerPm).not.toHaveBeenCalled();
     const [args] = h.charge.mock.calls[0] as [Record<string, unknown>];
     expect(args.encryptedPaymentMethodId).toBe("enc_pm");
+  });
+});
+
+/**
+ * Regression: the "prochain rendez-vous" a professional enters when closing a
+ * session never reached the schedule. It was stored as `nextAppointmentAt`, a
+ * bare note on the session being closed, and nothing ever read it back — no
+ * appointment was created, so the professional believed the next session was
+ * booked and the client was never told.
+ */
+const callCloseWithNext = (date: string, time: string) =>
+  completePOST(
+    {
+      json: async () => ({
+        sessionOutcome: "completed",
+        sessionActNature: "individual_psychotherapy",
+        nextAppointmentDate: date,
+        nextAppointmentTime: time,
+      }),
+    } as never,
+    { params: Promise.resolve({ id: APPT_ID }) },
+  ) as unknown as Promise<{ status: number; body: Record<string, unknown> }>;
+
+describe("closing a session creates the follow-up appointment", () => {
+  it("creates a real appointment in the schedule", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callCloseWithNext("2027-03-15", "14:30");
+
+    expect(res.status).toBe(200);
+    expect(h.created).toHaveLength(1);
+    const followUp = h.created[0];
+    expect(followUp.time).toBe("14:30");
+    expect(followUp.status).toBe("scheduled");
+    expect(followUp.clientId).toBe(CLIENT_ID);
+    expect(followUp.professionalId).toBe(PRO_ID);
+  });
+
+  it("anchors the date at UTC noon so the day cannot slide", () => {
+    // A session booked for the 15th must not be stored as the 14th.
+    const d = parseAppointmentDate("2027-03-15")!;
+    expect(d.toISOString()).toBe("2027-03-15T12:00:00.000Z");
+  });
+
+  it("stores the follow-up date at UTC noon, not local midnight", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callCloseWithNext("2027-03-15", "14:30");
+
+    const stored = h.created[0].date as Date;
+    expect(stored.toISOString()).toBe("2027-03-15T12:00:00.000Z");
+  });
+
+  it("does not double-book the professional", async () => {
+    h.clash.value = { _id: "existing" };
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    const res = await callCloseWithNext("2027-03-15", "14:30");
+
+    // The closure still succeeds — only the follow-up is skipped.
+    expect(res.status).toBe(200);
+    expect(h.created).toHaveLength(0);
+  });
+
+  it("creates nothing when no next appointment was entered", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+
+    await callClose();
+
+    expect(h.created).toHaveLength(0);
+  });
+
+  it("never lets a failed follow-up undo the closure", async () => {
+    h.findOneAndUpdate.mockResolvedValueOnce(h.store.appointment);
+    h.clash.value = null;
+
+    const res = await callCloseWithNext("not-a-date", "14:30");
+
+    // The session is already closed and billed; an unusable follow-up date
+    // must not roll that back.
+    expect(res.status).toBe(200);
+    expect(h.store.appointment.status).toBe("completed");
   });
 });
 describe("complete-session atomic closure claim (C2)", () => {

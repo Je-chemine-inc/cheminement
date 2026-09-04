@@ -63,6 +63,7 @@ import AcceptingNewClientsCard from "@/components/dashboard/AcceptingNewClientsC
 import AcceptingEmergencyConsultationsCard from "@/components/dashboard/AcceptingEmergencyConsultationsCard";
 import { CitySearch } from "@/components/ui/CitySearch";
 import { IProfile } from "@/models/Profile";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 export default function ProfessionalDetailPage({
   params,
@@ -387,7 +388,7 @@ export default function ProfessionalDetailPage({
                 <TableCell className="text-muted-foreground">{client.email}</TableCell>
                 <TableCell className="text-muted-foreground">{client.phone || "—"}</TableCell>
                 <TableCell className="text-muted-foreground">
-                  {client.lastAppointmentDate ? new Date(client.lastAppointmentDate).toLocaleDateString() : "—"}
+                  {client.lastAppointmentDate ? formatCalendarDate(client.lastAppointmentDate, undefined) : "—"}
                 </TableCell>
                 <TableCell>
                   <Link href={`/admin/dashboard/patients/${client.id}`}>

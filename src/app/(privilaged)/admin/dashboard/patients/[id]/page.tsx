@@ -56,6 +56,7 @@ import { useTranslations } from "next-intl";
 import MedicalProfile from "@/components/dashboard/MedicalProfile";
 import { IMedicalProfile } from "@/models/MedicalProfile";
 import { MergeDuplicatesCard } from "@/components/admin/MergeDuplicatesCard";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 export default function PatientDetailPage({
   params,
@@ -490,7 +491,7 @@ export default function PatientDetailPage({
                       }
                     >
                       <TableCell className="text-sm">
-                        {apt.date ? new Date(apt.date).toLocaleDateString("fr-CA") : "—"}<br />
+                        {apt.date ? formatCalendarDate(apt.date, "fr-CA") : "—"}<br />
                         {apt.time || "—"} ({apt.duration}min)
                       </TableCell>
                       <TableCell className="text-sm">

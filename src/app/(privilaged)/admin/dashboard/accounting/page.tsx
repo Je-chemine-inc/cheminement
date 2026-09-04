@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AppointmentResponse } from "@/types/api";
+import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 type CollectionsData = {
   stripePaid: AppointmentResponse[];
@@ -126,9 +127,12 @@ export default function AdminAccountingPage() {
     void refresh();
   }, [refresh]);
 
+  // Session dates arrive as bare "YYYY-MM-DD"; formatting those with
+  // `new Date(...)` renders the previous day in Montréal. See
+  // lib/format-calendar-date.ts.
   const formatDate = (s: string | undefined) => {
     if (!s) return "—";
-    return new Date(s).toLocaleDateString("fr-CA", {
+    return formatCalendarDate(s, "fr-CA", {
       year: "numeric",
       month: "short",
       day: "numeric",
