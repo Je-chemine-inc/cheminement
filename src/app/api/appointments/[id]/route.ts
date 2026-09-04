@@ -22,6 +22,7 @@ import { voidReceiptForRefund } from "@/lib/payment-settlement";
 import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { redactPaymentForProfessional } from "@/lib/redact-payment";
+import { parseAppointmentDate } from "@/lib/appointment-date";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -206,6 +207,22 @@ export async function PATCH(
       !oldAppointment.firstScheduledAt
     ) {
       data.firstScheduledAt = new Date();
+    }
+
+    // Anchor any incoming calendar day at UTC noon before it is stored.
+    // A caller sending a bare "YYYY-MM-DD" would otherwise land on UTC
+    // midnight, which is the previous evening in Montréal — the appointment
+    // then shows a day early everywhere. Doing it here covers every caller of
+    // this endpoint, not just the one that was reported.
+    if (data.date !== undefined && data.date !== null && data.date !== "") {
+      const anchored = parseAppointmentDate(data.date as string | Date);
+      if (!anchored) {
+        return NextResponse.json(
+          { error: "Invalid appointment date" },
+          { status: 400 },
+        );
+      }
+      data.date = anchored;
     }
 
     // If status is being set to ongoing and scheduledStartAt is not provided,

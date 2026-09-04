@@ -46,6 +46,7 @@ import { AppointmentResponse } from "@/types/api";
 import { appointmentsAPI } from "@/lib/api-client";
 import { clientDisplayName, clientInitials } from "@/lib/appointment-client-name";
 import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
+import { appointmentDayKey } from "@/lib/appointment-date";
 import { useTranslations } from "next-intl";
 import { EndSessionDialog } from "@/components/appointments/EndSessionDialog";
 
@@ -215,6 +216,24 @@ export default function SessionDetailsPage() {
     }
   };
 
+  /**
+   * Open the reschedule dialog with the session's current date and time
+   * already filled in.
+   *
+   * They used to open empty, and an empty controlled <input type="time"> is
+   * what made the clock unusable in Safari: while a time is half-entered the
+   * browser reports an EMPTY value, React wrote that back, and the field
+   * reset under the professional's fingers. Starting from a real value means
+   * there is always something valid to step from.
+   */
+  const openRescheduleDialog = () => {
+    if (appointment?.date) {
+      setRescheduleDate(appointmentDayKey(appointment.date));
+    }
+    setRescheduleTime(appointment?.time || "");
+    setShowRescheduleDialog(true);
+  };
+
   const handleReschedule = async () => {
     if (!appointment || !rescheduleDate || !rescheduleTime) {
       alert(t("selectDateTime"));
@@ -224,7 +243,10 @@ export default function SessionDetailsPage() {
     try {
       setSaving(true);
       const response = await appointmentsAPI.update(appointment._id, {
-        date: new Date(rescheduleDate),
+        // Send the calendar day as-is. `new Date("2026-09-09")` parses to UTC
+        // midnight, which is the previous evening in Montréal — the session
+        // then showed up a day early. The API anchors it at UTC noon.
+        date: rescheduleDate,
         time: rescheduleTime,
       });
 
@@ -734,7 +756,7 @@ export default function SessionDetailsPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setShowRescheduleDialog(true)}
+                  onClick={openRescheduleDialog}
                 >
                   <Calendar className="h-4 w-4" />
                   {t("reschedule")}
@@ -822,7 +844,11 @@ export default function SessionDetailsPage() {
               <Input
                 id="reschedule-date"
                 type="date"
-                value={rescheduleDate}
+                // Uncontrolled while the dialog is open so a partially typed
+                // value is never overwritten mid-edit; `key` re-seeds it from
+                // the session each time the dialog opens.
+                key={`reschedule-date-${showRescheduleDialog}`}
+                defaultValue={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
               />
             </div>
@@ -831,7 +857,11 @@ export default function SessionDetailsPage() {
               <Input
                 id="reschedule-time"
                 type="time"
-                value={rescheduleTime}
+                // Minutes, never seconds — Safari otherwise offers a seconds
+                // column that cannot produce a valid session time.
+                step={60}
+                key={`reschedule-time-${showRescheduleDialog}`}
+                defaultValue={rescheduleTime}
                 onChange={(e) => setRescheduleTime(e.target.value)}
               />
             </div>
