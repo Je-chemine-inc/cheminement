@@ -3,6 +3,7 @@ import CronRun from "@/models/CronRun";
 import { runProposalTimeouts } from "@/lib/proposal-timeout";
 import { runPaymentReminders } from "@/lib/payment-reminders";
 import { runAppointmentReminders } from "@/lib/appointment-reminders";
+import { runInteracReconciliation } from "@/lib/interac-reconciler";
 
 /**
  * "Lazy cron": advance the matching cascade off normal authenticated traffic
@@ -116,5 +117,40 @@ export async function triggerDueAppointmentReminders(): Promise<void> {
     await runAppointmentReminders();
   } catch (err) {
     console.error("[lazy-cron] appointment reminders trigger failed:", err);
+  }
+}
+
+// Interac reconciliation. The on-box IMAP fetcher drops new notifications
+// from paiement@jechemine.ca into ExternalMessage every 5 minutes; this reads
+// them and settles the exact matches. Throttled tighter than the other jobs
+// (10 min) because a client who has paid should stop being chased quickly —
+// and the run is cheap, since every notification is marked processed and
+// never re-examined.
+const INTERAC_RECONCILIATION_KEY = "interac-reconciliation";
+const INTERAC_RECONCILIATION_THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
+let lastInteracLocalCheck = 0;
+
+export async function triggerDueInteracReconciliation(): Promise<void> {
+  const now = Date.now();
+  if (now - lastInteracLocalCheck < LOCAL_GUARD_MS) return;
+  lastInteracLocalCheck = now;
+  try {
+    await connectToDatabase();
+    await CronRun.updateOne(
+      { key: INTERAC_RECONCILIATION_KEY },
+      { $setOnInsert: { key: INTERAC_RECONCILIATION_KEY, lastRunAt: new Date(0) } },
+      { upsert: true },
+    );
+    const claimed = await CronRun.findOneAndUpdate(
+      {
+        key: INTERAC_RECONCILIATION_KEY,
+        lastRunAt: { $lt: new Date(now - INTERAC_RECONCILIATION_THROTTLE_MS) },
+      },
+      { $set: { lastRunAt: new Date(now) } },
+    );
+    if (!claimed) return;
+    await runInteracReconciliation();
+  } catch (err) {
+    console.error("[lazy-cron] interac reconciliation trigger failed:", err);
   }
 }

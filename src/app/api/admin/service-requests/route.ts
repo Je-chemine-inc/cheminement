@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import {
   triggerDueCascadeCron,
   triggerDuePaymentReminders,
+  triggerDueInteracReconciliation,
   triggerDueAppointmentReminders,
 } from "@/lib/lazy-cron";
 import { resolveServiceRequestParties } from "@/lib/service-request-parties";
@@ -45,6 +46,7 @@ export async function GET() {
     // Same opportunistic trigger for the post-session invoice dunning
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());
+    after(() => triggerDueInteracReconciliation());
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
     // the Vercel Hobby daily cron doesn't reliably run. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
