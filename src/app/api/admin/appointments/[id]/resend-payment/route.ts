@@ -9,6 +9,7 @@ import {
   sendSessionInvoiceEmail,
 } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { resolveInteracReferenceCode } from "@/lib/interac-reference";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 
 export async function POST(
@@ -77,6 +78,15 @@ export async function POST(
       : "—";
 
     const clientLegalName = `${client.firstName} ${client.lastName}`.trim();
+    // ONE reference for both branches below. The Interac branch used to send
+    // `apt.payment.interacReferenceCode || ""`, so an appointment that had
+    // never been through the Interac flow got instructions with a BLANK
+    // mandatory note — nothing for the client to write, nothing to match on.
+    const interacReferenceCode = resolveInteracReferenceCode(
+      apt.payment?.interacReferenceCode,
+      String(apt._id),
+      apt.professionalId,
+    );
     const professionalName = pro
       ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
       : "—";
@@ -110,6 +120,7 @@ export async function POST(
         clientName: recipient.name,
         amountCad: apt.payment.price,
         invoiceNumber: apt.invoiceNumber,
+        interacReferenceCode,
         appointmentDateLabel: dateLabel,
         payUrl,
         depositEmail,
@@ -125,7 +136,7 @@ export async function POST(
         clientLegalName,
         depositEmail,
         amountCad: apt.payment.price,
-        interacReferenceCode: apt.payment.interacReferenceCode || "",
+        interacReferenceCode,
         professionalName,
         appointmentDateLabel: dateLabel,
         locale: recipient.language,

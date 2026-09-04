@@ -2,6 +2,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import ClientReceipt from "@/models/ClientReceipt";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
+import { resolveInteracReferenceCode } from "@/lib/interac-reference";
 import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
@@ -165,12 +166,22 @@ export async function runPaymentReminders(): Promise<{
       forceTokenLink: true,
     });
 
+    // Same INT- reference as every other Interac instruction for this
+    // appointment, so a dunning reminder never contradicts what the client
+    // was already told to write.
+    const interacReferenceCode = resolveInteracReferenceCode(
+      apt.payment?.interacReferenceCode,
+      String(apt._id),
+      apt.professionalId,
+    );
+
     const sendReminder = async (n: 1 | 2) => {
       await sendSessionInvoiceEmail({
         clientEmail: recipient.email,
         clientName: recipient.name,
         amountCad,
         invoiceNumber,
+        interacReferenceCode,
         appointmentDateLabel: dateLabel,
         payUrl,
         depositEmail,
@@ -182,6 +193,7 @@ export async function runPaymentReminders(): Promise<{
       if (client.phone) {
         await sendSessionInvoiceSms(client.phone, {
           invoiceNumber,
+          interacReferenceCode,
           amountCad,
           payUrl,
           depositEmail,

@@ -80,6 +80,8 @@ export async function sendSessionInvoiceSms(
   toPhone: string,
   data: {
     invoiceNumber: string;
+    /** The single Interac reference — same code as the email. */
+    interacReferenceCode: string;
     amountCad: number;
     payUrl: string;
     /** Interac deposit address — appended so the SMS offers both options. */
@@ -103,8 +105,8 @@ export async function sendSessionInvoiceSms(
   // either option. Only shown when a deposit email is available.
   const interac = data.depositEmail
     ? lang === "en"
-      ? `\nInterac e-Transfer ⚡\n📧 Email: ${data.depositEmail}\n💰 Amount: ${amount}\n📝 Mandatory note: ${data.invoiceNumber}`
-      : `\nVirement Interac ⚡\n📧 Courriel : ${data.depositEmail}\n💰 Montant : ${amount}\n📝 Note obligatoire : ${data.invoiceNumber}`
+      ? `\nInterac e-Transfer ⚡\n📧 Email: ${data.depositEmail}\n💰 Amount: ${amount}\n📝 Mandatory note: ${data.interacReferenceCode}`
+      : `\nVirement Interac ⚡\n📧 Courriel : ${data.depositEmail}\n💰 Montant : ${amount}\n📝 Note obligatoire : ${data.interacReferenceCode}`
     : "";
   const lead = data.reminderNumber
     ? lang === "en"

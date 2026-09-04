@@ -4918,6 +4918,23 @@ export async function sendSessionInvoiceEmail(data: {
   clientLegalName: string;
   /** Professional who delivered the session — for context + admin reconciliation. */
   professionalName: string;
+  /**
+   * The SINGLE Interac reference a client is ever asked to write.
+   *
+   * This email used to name the INVOICE number as the mandatory transfer
+   * note, while the pre-session Interac instructions named the INT- code —
+   * two different "mandatory" references for the same appointment. A client
+   * who paid before the session and one who paid after quoted different
+   * things, and neither could be matched automatically.
+   *
+   * The INT- code wins because it exists from the moment Interac is chosen.
+   * The invoice number cannot: `nextInvoiceNumber` is a gap-free fiscal
+   * counter allocated at closure, and issuing one for a session that may
+   * never happen would punch holes in the sequence.
+   *
+   * The invoice number stays on the email as the document reference.
+   */
+  interacReferenceCode: string;
   /** When set, frame the email as an automatic dunning reminder (1 = H+12, 2 = H+36). */
   reminderNumber?: 1 | 2;
   locale?: "fr" | "en";
@@ -4962,11 +4979,11 @@ export async function sendSessionInvoiceEmail(data: {
             { label: "2. Montant", value: amount },
             {
               label: "3. Note obligatoire du virement",
-              value: data.invoiceNumber,
+              value: data.interacReferenceCode,
             },
             {
               label: "4. Nom du compte bancaire",
-              value: `Idéalement identique à « ${data.clientLegalName} ». Si le virement provient d'un autre nom (ex. conjoint), inscrivez bien le numéro de facture ${data.invoiceNumber} dans la note pour que nous puissions associer votre paiement.`,
+              value: `Idéalement identique à « ${data.clientLegalName} ». Si le virement provient d'un autre nom (ex. conjoint), inscrivez bien la référence ${data.interacReferenceCode} dans la note pour que nous puissions associer votre paiement.`,
               stacked: true,
             },
           ]
@@ -4975,11 +4992,11 @@ export async function sendSessionInvoiceEmail(data: {
             { label: "2. Amount", value: amount },
             {
               label: "3. Mandatory transfer note",
-              value: data.invoiceNumber,
+              value: data.interacReferenceCode,
             },
             {
               label: "4. Bank account name",
-              value: `Ideally identical to "${data.clientLegalName}". If the transfer comes from another name (e.g. a spouse), be sure to add invoice number ${data.invoiceNumber} in the note so we can match your payment.`,
+              value: `Ideally identical to "${data.clientLegalName}". If the transfer comes from another name (e.g. a spouse), be sure to add reference ${data.interacReferenceCode} in the note so we can match your payment.`,
               stacked: true,
             },
           ],
@@ -5006,8 +5023,8 @@ export async function sendSessionInvoiceEmail(data: {
           "Ou par virement Interac :",
           `• Envoyez à : ${data.depositEmail}`,
           `• Montant : ${amount}`,
-          `• Note obligatoire du virement : ${data.invoiceNumber}`,
-          `• Nom du compte : idéalement « ${data.clientLegalName} » (sinon, indiquez bien le numéro de facture dans la note).`,
+          `• Note obligatoire du virement : ${data.interacReferenceCode}`,
+          `• Nom du compte : idéalement « ${data.clientLegalName} » (sinon, indiquez bien la référence dans la note).`,
           "",
           "Votre reçu officiel suivra dès la confirmation du paiement.",
         ]
@@ -5021,8 +5038,8 @@ export async function sendSessionInvoiceEmail(data: {
           "Or by Interac e-Transfer:",
           `• Send to: ${data.depositEmail}`,
           `• Amount: ${amount}`,
-          `• Mandatory transfer note: ${data.invoiceNumber}`,
-          `• Account name: ideally "${data.clientLegalName}" (otherwise add the invoice number in the note).`,
+          `• Mandatory transfer note: ${data.interacReferenceCode}`,
+          `• Account name: ideally "${data.clientLegalName}" (otherwise add the reference in the note).`,
           "",
           "Your official receipt will follow once the payment is confirmed.",
         ],

@@ -18,6 +18,7 @@ import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import { nextInvoiceNumber } from "@/lib/invoice-number";
+import { resolveInteracReferenceCode } from "@/lib/interac-reference";
 import mongoose from "mongoose";
 import { cycleKeyFromDateOrNow } from "@/lib/ledger-cycle";
 
@@ -288,14 +289,30 @@ export async function runSessionClosureSideEffects(
   const clientLegalName = `${client.firstName} ${client.lastName}`.trim();
 
   // ONE unified payment request offering BOTH options — a credit-card button
-  // (no-login Stripe link) and Interac instructions (deposit email + the unique
-  // invoice number as the mandatory transfer note). No receipt is attached:
-  // the official receipt follows only once Stripe / the admin confirms payment.
+  // (no-login Stripe link) and Interac instructions (deposit email + the INT-
+  // reference as the mandatory transfer note). No receipt is attached: the
+  // official receipt follows only once Stripe / the admin confirms payment.
+  //
+  // The transfer note is the INT- code, NOT the invoice number: it is the same
+  // reference the pre-session Interac instructions gave, so a client who pays
+  // before the session and one who pays after quote the same thing.
+  const interacReferenceCode = resolveInteracReferenceCode(
+    appointment.payment?.interacReferenceCode,
+    String(appointment._id),
+    appointment.professionalId,
+  );
+  if (appointment.payment?.interacReferenceCode !== interacReferenceCode) {
+    // Persist so the admin can search a transfer note back to its appointment.
+    await Appointment.findByIdAndUpdate(appointmentId, {
+      $set: { "payment.interacReferenceCode": interacReferenceCode },
+    });
+  }
   await sendSessionInvoiceEmail({
     clientEmail: recipient.email,
     clientName: recipient.name,
     amountCad: price,
     invoiceNumber,
+    interacReferenceCode,
     appointmentDateLabel: dateLabel,
     payUrl,
     depositEmail,
@@ -329,6 +346,7 @@ export async function runSessionClosureSideEffects(
   if (client.phone) {
     await sendSessionInvoiceSms(client.phone, {
       invoiceNumber,
+      interacReferenceCode,
       amountCad: price,
       payUrl,
       depositEmail,

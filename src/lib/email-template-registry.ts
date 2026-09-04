@@ -1178,7 +1178,7 @@ const interacInstructions: EmailTemplateDefinition = {
     { key: "appointmentDateLabel", labelFr: "Date du rendez-vous", labelEn: "Appointment date", sampleFr: "12 juin 2026 à 18 h 05", sampleEn: "June 12, 2026 at 6:05 PM" },
     { key: "depositEmail", labelFr: "Courriel de dépôt Interac", labelEn: "Interac deposit email", sampleFr: "depot@jechemine.ca", sampleEn: "depot@jechemine.ca" },
     { key: "amount", labelFr: "Montant (formaté)", labelEn: "Amount (formatted)", sampleFr: "150.00 $", sampleEn: "CAD $150.00" },
-    { key: "interacReferenceCode", labelFr: "Code de référence (message obligatoire)", labelEn: "Reference code (mandatory message)", sampleFr: "JC-ABC123", sampleEn: "JC-ABC123" },
+    { key: "interacReferenceCode", labelFr: "Code de référence (message obligatoire)", labelEn: "Reference code (mandatory message)", sampleFr: "INT-1B7F-AF7CD2", sampleEn: "INT-1B7F-AF7CD2" },
     { key: "companyName", labelFr: "Nom de la plateforme", labelEn: "Platform name", sampleFr: "Je chemine", sampleEn: "Je chemine" },
   ],
   defaults: {
@@ -1238,7 +1238,7 @@ const interacReminder: EmailTemplateDefinition = {
     { key: "appointmentDateLabel", labelFr: "Date du rendez-vous", labelEn: "Appointment date", sampleFr: "12 juin 2026 à 18 h 05", sampleEn: "June 12, 2026 at 6:05 PM" },
     { key: "depositEmail", labelFr: "Courriel de dépôt Interac", labelEn: "Interac deposit email", sampleFr: "depot@jechemine.ca", sampleEn: "depot@jechemine.ca" },
     { key: "amount", labelFr: "Montant (formaté)", labelEn: "Amount (formatted)", sampleFr: "150.00 $ CAD", sampleEn: "CAD $150.00" },
-    { key: "interacReferenceCode", labelFr: "Code de référence (message obligatoire)", labelEn: "Reference code (mandatory message)", sampleFr: "JC-ABC123", sampleEn: "JC-ABC123" },
+    { key: "interacReferenceCode", labelFr: "Code de référence (message obligatoire)", labelEn: "Reference code (mandatory message)", sampleFr: "INT-1B7F-AF7CD2", sampleEn: "INT-1B7F-AF7CD2" },
     { key: "companyName", labelFr: "Nom de la plateforme", labelEn: "Platform name", sampleFr: "Je chemine", sampleEn: "Je chemine" },
     { key: "reminderNumber", labelFr: "Numéro de relance (1 ou 2)", labelEn: "Reminder number (1 or 2)", sampleFr: "1", sampleEn: "1" },
     { key: "isUrgent", labelFr: "Relance urgente (J+2) — laisser vide sinon", labelEn: "Urgent reminder (Day +2) — leave empty otherwise", sampleFr: "", sampleEn: "" },
