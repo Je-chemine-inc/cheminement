@@ -566,7 +566,17 @@ export default function AdminBillingPage() {
                     {/* Details Grid */}
                     <div className="grid gap-4 rounded-2xl bg-muted/30 p-4 md:grid-cols-5">
                       <div>
-                        <p className="text-xs text-muted-foreground">{t("invoiceNumber")}</p>
+                        {/* Before a session is closed there is no invoice yet,
+                            so this falls back to the synthetic SES-… session
+                            id. Labelling that "Numéro de facture" made it read
+                            as a real invoice reference — a client paying by
+                            Interac mistook it for the session they had paid,
+                            and reported the payment as undetected. */}
+                        <p className="text-xs text-muted-foreground">
+                          {payment.invoiceNumber
+                            ? t("invoiceNumber")
+                            : t("sessionReference")}
+                        </p>
                         <p className="font-medium text-foreground">{payment.invoiceNumber || payment.sessionId}</p>
                       </div>
                       <div>

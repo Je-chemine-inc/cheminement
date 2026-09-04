@@ -5454,6 +5454,7 @@
       "transactionsPlural": "transactions",
       "noTransactions": "No transactions found",
       "invoiceNumber": "Invoice Number",
+      "sessionReference": "Session reference (not yet invoiced)",
       "clientPayment": "Client Payment",
       "platformFee": "Platform Fee",
       "professionalPayout": "Professional Payout",

@@ -5453,6 +5453,7 @@
       "transactionsPlural": "transactions",
       "noTransactions": "Aucune transaction trouvée",
       "invoiceNumber": "Numéro de facture",
+      "sessionReference": "Référence de séance (pas encore facturée)",
       "clientPayment": "Paiement client",
       "platformFee": "Frais de plateforme",
       "professionalPayout": "Paiement professionnel",
