@@ -201,6 +201,12 @@ export default function ProposalsPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [isManualEntry, setIsManualEntry] = useState(false);
+  // Where an in-person FIRST session happens. Nothing asked for this before,
+  // so a client's very first appointment was confirmed with no address at all
+  // and the reminder had only the platform's footer address to show.
+  const [sessionAddress, setSessionAddress] = useState("");
+  const [saveAsDefaultOffice, setSaveAsDefaultOffice] = useState(true);
+  const [hasSavedOffice, setHasSavedOffice] = useState(false);
 
   const fetchProposedAppointments = useCallback(async () => {
     try {
@@ -599,7 +605,13 @@ export default function ProposalsPage() {
     setSelectedTime("");
     setAvailableSlots([]);
     setIsManualEntry(false);
+    setSessionAddress("");
+    setSaveAsDefaultOffice(true);
+    setHasSavedOffice(false);
     setIsScheduleModalOpen(true);
+    if (appointment.type === "in-person") {
+      void prefillSessionAddress();
+    }
   };
 
   const handleCloseScheduleModal = () => {
@@ -608,7 +620,12 @@ export default function ProposalsPage() {
     setSelectedDate("");
     setSelectedTime("");
     setAvailableSlots([]);
+    setSessionAddress("");
   };
+
+  /** An in-person first session is the only case that needs an address. */
+  const isInPersonScheduling = schedulingAppointment?.type === "in-person";
+  const addressMissing = Boolean(isInPersonScheduling) && !sessionAddress.trim();
 
   const getAvailableDates = () => {
     const dates = [];
@@ -661,14 +678,56 @@ export default function ProposalsPage() {
   // request they already accepted (matched). Hits schedule-first, which flips
   // the request to "scheduled" and sends the 1st-RDV confirmation + payment
   // email. Distinct from acceptance (which only matches + sends jumelage).
+  // Prefill from the professional's saved office so they type it once, not at
+  // every first appointment.
+  const prefillSessionAddress = useCallback(async () => {
+    try {
+      const profile = await apiClient.get<{
+        officeAddress?: {
+          street?: string;
+          suite?: string;
+          city?: string;
+          province?: string;
+          postalCode?: string;
+        };
+      }>("/profile");
+      const a = profile?.officeAddress;
+      const line = [
+        [a?.street, a?.suite].filter(Boolean).join(", "),
+        [a?.city, a?.postalCode].filter(Boolean).join(" "),
+      ]
+        .filter(Boolean)
+        .join(", ");
+      if (line) {
+        setSessionAddress(line);
+        setHasSavedOffice(true);
+      }
+    } catch {
+      // No profile or no address yet — the field simply starts empty.
+    }
+  }, []);
+
   const handleConfirmFirstRdv = async () => {
     if (!schedulingAppointment || !selectedDate || !selectedTime) return;
+    if (addressMissing) {
+      setError(t("officeAddressRequired"));
+      return;
+    }
 
     try {
       setScheduling(true);
       await apiClient.post(
         `/appointments/${schedulingAppointment._id}/schedule-first`,
-        { date: selectedDate, time: selectedTime },
+        {
+          date: selectedDate,
+          time: selectedTime,
+          ...(isInPersonScheduling
+            ? {
+                location: sessionAddress.trim(),
+                saveAsDefaultOffice: saveAsDefaultOffice && !hasSavedOffice,
+              }
+            : {}),
+        },
       );
       handleCloseScheduleModal();
       await fetchAllAppointments();
@@ -1443,6 +1502,38 @@ export default function ProposalsPage() {
                 </div>
               )}
 
+              {/* Where the session happens. Only an in-person first
+                  appointment needs it, and it is REQUIRED there: without it
+                  the confirmation and the reminders carry no address at all,
+                  leaving the platform's footer address as the only one the
+                  client can see. */}
+              {isInPersonScheduling && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="sessionAddress">
+                    {t("officeAddressLabel")}{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="sessionAddress"
+                    value={sessionAddress}
+                    placeholder={t("officeAddressPlaceholder")}
+                    onChange={(e) => setSessionAddress(e.target.value)}
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("officeAddressHint")}
+                  </p>
+                  {!hasSavedOffice && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={saveAsDefaultOffice}
+                        onCheckedChange={(v) => setSaveAsDefaultOffice(v === true)}
+                      />
+                      {t("officeAddressSaveDefault")}
+                    </label>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <Button
@@ -1454,7 +1545,9 @@ export default function ProposalsPage() {
                 </Button>
                 <Button
                   onClick={handleConfirmFirstRdv}
-                  disabled={!selectedDate || !selectedTime || scheduling}
+                  disabled={
+                    !selectedDate || !selectedTime || scheduling || addressMissing
+                  }
                   className="flex-1"
                 >
                   {scheduling ? (

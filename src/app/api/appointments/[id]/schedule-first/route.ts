@@ -13,6 +13,8 @@ import {
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import Profile from "@/models/Profile";
+import { resolveSessionLocation } from "@/lib/session-location";
 
 function getBaseUrl(): string {
   return (
@@ -55,8 +57,11 @@ export async function POST(
       type?: string;
       location?: string;
       notes?: string;
+      /** Store the address typed here as the professional's default office. */
+      saveAsDefaultOffice?: boolean;
     };
-    const { date, time, duration, type, location, notes } = body;
+    const { date, time, duration, type, location, notes, saveAsDefaultOffice } =
+      body;
 
     if (!date || !time) {
       return NextResponse.json(
@@ -131,8 +136,57 @@ export async function POST(
       appointment.duration = duration;
     }
     appointment.type = resolvedType as "video" | "in-person" | "phone" | "both";
+
+    // An in-person FIRST appointment must state where it happens. Nothing used
+    // to ask: this route accepted `location` but the professional's scheduling
+    // modal never sent it, so a client's very first session was confirmed with
+    // no address anywhere — and the reminder then had only the platform's own
+    // footer address to show. Later appointments were fine because the other
+    // scheduling paths do collect one.
+    //
+    // Resolution order: what the professional just typed, then whatever the
+    // appointment already carries, then their saved office address.
     if (resolvedType === "in-person") {
-      appointment.location = location?.trim() || appointment.location;
+      const typed = location?.trim();
+      let resolved = typed || appointment.location?.trim() || "";
+
+      const profile = await Profile.findOne({ userId: session.user.id })
+        .select("officeAddress officeNotes")
+        .lean();
+
+      if (!resolved) {
+        const office = resolveSessionLocation({
+          appointmentType: "in-person",
+          officeAddress: profile?.officeAddress,
+        });
+        resolved = office.lines.join(", ");
+      }
+
+      if (!resolved) {
+        return NextResponse.json(
+          {
+            error:
+              "An address is required for an in-person session. Add your office address, or enter the address for this appointment.",
+            code: "OFFICE_ADDRESS_REQUIRED",
+          },
+          { status: 400 },
+        );
+      }
+
+      appointment.location = resolved;
+
+      // Remember it, so the professional types it once rather than at every
+      // first appointment. Stored on `street` because what they typed is a
+      // single line; the structured fields stay available in their profile
+      // for anyone who wants to fill them in properly.
+      if (saveAsDefaultOffice && typed && profile && !profile.officeAddress?.street) {
+        await Profile.updateOne(
+          { userId: session.user.id },
+          { $set: { "officeAddress.street": typed } },
+        ).catch((err) =>
+          console.error("[schedule-first] saving default office failed:", err),
+        );
+      }
     }
     if (notes?.trim()) appointment.notes = notes.trim();
     appointment.status = "scheduled";
