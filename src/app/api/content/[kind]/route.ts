@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   isContentKind,
   listPublishedContent,
+  type PremiumFilter,
 } from "@/lib/content-entry";
 import type { ContentLocale } from "@/models/ContentEntry";
+
+function premiumFilter(value: string | null): PremiumFilter {
+  return value === "only" || value === "exclude" ? value : "all";
+}
 
 export async function GET(
   req: NextRequest,
@@ -18,9 +23,15 @@ export async function GET(
     const localeRaw = searchParams.get("locale");
     const locale: ContentLocale = localeRaw === "en" ? "en" : "fr";
 
-    const items = await listPublishedContent(kind, locale);
+    const items = await listPublishedContent(kind, locale, {
+      premium: premiumFilter(searchParams.get("premium")),
+    });
 
-    // Trim contentHtml for listing — clients pull full content via the detail page.
+    // An explicit allowlist, never a spread of the DTO. contentHtml, mediaUrl
+    // and previewHtml are all absent by construction: for a premium resource
+    // the first two ARE the paid good, and adding a field here would leak it to
+    // an unauthenticated caller. Clients read full content via /book/[slug],
+    // which checks entitlement.
     const slim = items.map((item) => ({
       id: item.id,
       kind: item.kind,
@@ -29,6 +40,9 @@ export async function GET(
       title: item.title,
       summary: item.summary,
       iconUrl: item.iconUrl,
+      mediaType: item.mediaType,
+      isPremium: item.isPremium,
+      priceCents: item.priceCents,
       status: item.status,
       sortOrder: item.sortOrder,
       publishedAt: item.publishedAt,
