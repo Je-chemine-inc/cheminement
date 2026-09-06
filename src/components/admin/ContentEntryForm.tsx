@@ -14,9 +14,13 @@ import {
   PlayCircle,
   Podcast,
   Link2,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import ContentEntryEditor from "@/components/admin/ContentEntryEditor";
 import { MEDIA_TYPES, type ContentKind, type MediaType } from "@/lib/content-kind";
+import { canBePremium, validatePriceCents } from "@/lib/content-premium";
+import { formatCad } from "@/lib/format-currency";
 
 export interface ContentEntryFormValues {
   slug: string;
@@ -28,7 +32,17 @@ export interface ContentEntryFormValues {
   contentHtmlFr: string;
   contentHtmlEn: string;
   mediaType: MediaType;
+  /** kind "media": one asset, mirrored across both locales. */
   mediaUrl: string;
+  /** kind "resource": the FR and EN assets are genuinely different files. */
+  mediaUrlFr: string;
+  mediaUrlEn: string;
+  /** Public teaser for a premium resource. Per-locale, like the body. */
+  previewHtmlFr: string;
+  previewHtmlEn: string;
+  isPremium: boolean;
+  /** INTEGER CENTS. The admin types dollars; the form converts on the way in. */
+  priceCents: number;
   status: "draft" | "published";
   sortOrder: number;
 }
@@ -84,8 +98,18 @@ export default function ContentEntryForm({
   const iconInputRef = useRef<HTMLInputElement>(null);
   const slugTouchedRef = useRef<boolean>(!autoSlugFromTitle);
 
+  // The admin types dollars; `values.priceCents` stays the integer source of
+  // truth. Kept as its own string so a half-typed "19." is not rewritten under
+  // the cursor. It is deliberately NOT part of `values`, so it cannot affect
+  // the dirty check.
+  const centsToInput = (cents: number) => (cents > 0 ? String(cents / 100) : "");
+  const [priceInput, setPriceInput] = useState(
+    centsToInput(initialValues.priceCents),
+  );
+
   useEffect(() => {
     setValues(initialValues);
+    setPriceInput(centsToInput(initialValues.priceCents));
   }, [initialValues]);
 
   const dirty = useMemo(() => {
@@ -159,6 +183,20 @@ export default function ContentEntryForm({
       setError(t("errorSlugRequired"));
       return;
     }
+    if (values.isPremium && validatePriceCents(values.priceCents) === null) {
+      setError(t("errorPriceRequired"));
+      return;
+    }
+    if (
+      values.isPremium &&
+      values.status === "published" &&
+      (!values.previewHtmlFr.trim() || !values.previewHtmlEn.trim())
+    ) {
+      // Publishing a paywall with nothing behind the preview shows a visitor a
+      // price and a blank page — they cannot tell what they would be buying.
+      setError(t("errorPreviewRequired"));
+      return;
+    }
 
     setSaving(true);
     try {
@@ -172,7 +210,13 @@ export default function ContentEntryForm({
   };
 
   const isMedia = kind === "media";
+  const isResource = kind === "resource";
+  // Resources gained an embeddable video/link, but they are still ordered by
+  // hand — `isDateSorted` must keep deriving from `isMedia` alone.
+  const showMediaBlock = isMedia || isResource;
   const isDateSorted = kind === "nouveaute" || isMedia;
+  const canSell = canBePremium(kind);
+  const premium = canSell && values.isPremium;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -351,14 +395,14 @@ export default function ContentEntryForm({
         </div>
       </div>
 
-      {isMedia ? (
+      {showMediaBlock ? (
         <div className="space-y-5 rounded-xl border border-border/40 bg-card p-6">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               {t("fieldMediaType")}
             </label>
             <p className="text-xs text-muted-foreground">
-              {t("mediaTypeHint")}
+              {isResource ? t("mediaBlockHint_resource") : t("mediaTypeHint")}
             </p>
             <div className="flex flex-wrap gap-2">
               {MEDIA_TYPES.map((type) => {
@@ -376,31 +420,149 @@ export default function ContentEntryForm({
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    {t(`mediaType_${type}`)}
+                    {t(
+                      isResource && type === "article"
+                        ? "mediaType_document"
+                        : `mediaType_${type}`,
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              {t(`mediaUrlLabel_${values.mediaType}`)}
-            </label>
-            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 focus-within:ring-2 focus-within:ring-primary">
-              <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <input
-                type="url"
-                value={values.mediaUrl}
-                onChange={(e) => update("mediaUrl", e.target.value)}
-                placeholder={t(`mediaUrlPlaceholder_${values.mediaType}`)}
-                className="w-full bg-transparent py-2 text-sm text-foreground focus:outline-none"
-              />
+          {isResource ? (
+            // Per-locale, unlike "media": a French course video is not the
+            // English one, so each language gets its own field.
+            <div className="grid gap-5 md:grid-cols-2">
+              {(["Fr", "En"] as const).map((suffix) => {
+                const key = `mediaUrl${suffix}` as const;
+                return (
+                  <div key={suffix} className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      {t(`mediaUrlLabel_${values.mediaType}`)} (
+                      {t(suffix === "Fr" ? "tabFrench" : "tabEnglish")})
+                    </label>
+                    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 focus-within:ring-2 focus-within:ring-primary">
+                      <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <input
+                        type="url"
+                        value={values[key]}
+                        onChange={(e) => update(key, e.target.value)}
+                        placeholder={t(`mediaUrlPlaceholder_${values.mediaType}`)}
+                        className="w-full bg-transparent py-2 text-sm text-foreground focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                {t(`mediaUrlHint_${values.mediaType}`)}
+              </p>
+              {premium && (values.mediaUrlFr || values.mediaUrlEn) ? (
+                <p className="text-xs text-amber-700 md:col-span-2 dark:text-amber-300">
+                  {t("premiumMediaWarning")}
+                </p>
+              ) : null}
             </div>
+          ) : (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                {t(`mediaUrlLabel_${values.mediaType}`)}
+              </label>
+              <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-3 focus-within:ring-2 focus-within:ring-primary">
+                <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  type="url"
+                  value={values.mediaUrl}
+                  onChange={(e) => update("mediaUrl", e.target.value)}
+                  placeholder={t(`mediaUrlPlaceholder_${values.mediaType}`)}
+                  className="w-full bg-transparent py-2 text-sm text-foreground focus:outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t(`mediaUrlHint_${values.mediaType}`)}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {canSell ? (
+        <div className="space-y-5 rounded-xl border border-border/40 bg-card p-6">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              {t("accessSectionTitle")}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {t(`mediaUrlHint_${values.mediaType}`)}
+              {t("accessSectionHint")}
             </p>
           </div>
+
+          <div className="inline-flex rounded-lg border border-border/60 bg-background p-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                update("isPremium", false);
+                update("priceCents", 0);
+                setPriceInput("");
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                !values.isPremium
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Unlock className="h-3.5 w-3.5" />
+              {t("accessFree")}
+            </button>
+            <button
+              type="button"
+              onClick={() => update("isPremium", true)}
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                values.isPremium
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Lock className="h-3.5 w-3.5" />
+              {t("accessPremium")}
+            </button>
+          </div>
+
+          {premium ? (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                {t("fieldPrice")}
+                <span className="ml-1 text-destructive">*</span>
+              </label>
+              <div className="flex max-w-[220px] items-center gap-2 rounded-lg border border-border/60 bg-background px-3 focus-within:ring-2 focus-within:ring-primary">
+                <span className="shrink-0 text-sm text-muted-foreground">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.5"
+                  value={priceInput}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setPriceInput(raw);
+                    const dollars = Number.parseFloat(raw);
+                    update(
+                      "priceCents",
+                      Number.isFinite(dollars) ? Math.round(dollars * 100) : 0,
+                    );
+                  }}
+                  className="w-full bg-transparent py-2 text-sm text-foreground focus:outline-none"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("priceHint", {
+                  fr: formatCad(values.priceCents, "fr"),
+                  en: formatCad(values.priceCents, "en"),
+                })}
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -430,22 +592,67 @@ export default function ContentEntryForm({
               {t("tabEnglish")}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground">{t("contentHint")}</p>
+          <p className="text-xs text-muted-foreground">
+            {premium ? t("contentHintPremium") : t("contentHint")}
+          </p>
         </div>
-        <div className="p-4">
-          {activeLocale === "fr" ? (
-            <ContentEntryEditor
-              key="fr"
-              value={values.contentHtmlFr}
-              onChange={(html) => update("contentHtmlFr", html)}
-            />
-          ) : (
-            <ContentEntryEditor
-              key="en"
-              value={values.contentHtmlEn}
-              onChange={(html) => update("contentHtmlEn", html)}
-            />
-          )}
+        <div className="space-y-5 p-4">
+          {/*
+            Tiptap is uncontrolled after mount, so each slot needs its own
+            stable key — "preview-fr" | "preview-en" | "fr" | "en". Reusing a
+            key across slots would carry one editor's content into another.
+          */}
+          {premium ? (
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {t("previewEditorLabel")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("previewEditorHint")}
+                </p>
+              </div>
+              {activeLocale === "fr" ? (
+                <ContentEntryEditor
+                  key="preview-fr"
+                  value={values.previewHtmlFr}
+                  onChange={(html) => update("previewHtmlFr", html)}
+                />
+              ) : (
+                <ContentEntryEditor
+                  key="preview-en"
+                  value={values.previewHtmlEn}
+                  onChange={(html) => update("previewHtmlEn", html)}
+                />
+              )}
+            </div>
+          ) : null}
+
+          <div className={premium ? "space-y-2 border-t border-border/40 pt-5" : ""}>
+            {premium ? (
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {t("fullEditorLabel")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("fullEditorHint")}
+                </p>
+              </div>
+            ) : null}
+            {activeLocale === "fr" ? (
+              <ContentEntryEditor
+                key="fr"
+                value={values.contentHtmlFr}
+                onChange={(html) => update("contentHtmlFr", html)}
+              />
+            ) : (
+              <ContentEntryEditor
+                key="en"
+                value={values.contentHtmlEn}
+                onChange={(html) => update("contentHtmlEn", html)}
+              />
+            )}
+          </div>
         </div>
       </div>
 

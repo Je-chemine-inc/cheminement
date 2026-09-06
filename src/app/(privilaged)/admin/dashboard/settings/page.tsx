@@ -217,6 +217,12 @@ const EMAIL_TEMPLATE_INFO: Record<
     description: "Envoyé aux invités après un paiement réussi",
     category: "Réservation invité",
   },
+  resource_purchase_complete: {
+    name: "Ressource premium achetée",
+    description:
+      "Envoyé à l'acheteur d'une ressource premium, avec son lien d'accès",
+    category: "Ressources",
+  },
   payment_failed: {
     name: "Échec de paiement",
     description: "Envoyé lorsqu'une tentative de paiement échoue",

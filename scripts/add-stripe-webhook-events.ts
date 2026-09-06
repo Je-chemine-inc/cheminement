@@ -1,9 +1,18 @@
 /**
- * One-time ops script: ensure the Stripe webhook endpoint for this app is
- * subscribed to the events the new handlers depend on (M2/M9):
- *   - setup_intent.succeeded   (green an ACSS/PAD guarantee once verified)
- *   - charge.dispute.created   (flag a chargeback, block the receipt)
- *   - charge.refund.updated    (revert a failed/canceled refund)
+ * Ops script: ensure the Stripe webhook endpoint for this app is subscribed
+ * to every event the handlers depend on.
+ *
+ *   - setup_intent.succeeded        (green an ACSS/PAD guarantee once verified)
+ *   - charge.dispute.created        (flag a chargeback, block the receipt)
+ *   - charge.refund.updated         (revert a failed/canceled refund)
+ *   - payment_intent.succeeded      (grant a premium-resource purchase)
+ *   - payment_intent.payment_failed (record a declined purchase)
+ *   - payment_intent.canceled       (record an abandoned purchase)
+ *   - charge.refunded               (REVOKE premium access after a refund)
+ *
+ * The last four were dispatched by the webhook long before they were listed
+ * here. Re-run this against LIVE whenever the handler list changes: refund
+ * revoking access is only as good as charge.refunded actually being delivered.
  *
  * Operates in the mode of STRIPE_SECRET_KEY (live vs test). Idempotent:
  * merges the events into the endpoint's existing list (never removes any) and
@@ -17,6 +26,10 @@ const NEEDED = [
   "setup_intent.succeeded",
   "charge.dispute.created",
   "charge.refund.updated",
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
+  "payment_intent.canceled",
+  "charge.refunded",
 ];
 
 async function main() {

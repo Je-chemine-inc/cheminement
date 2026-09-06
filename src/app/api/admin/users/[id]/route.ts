@@ -12,6 +12,7 @@ import ClientReceipt from "@/models/ClientReceipt";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import Review from "@/models/Review";
 import { ResourcePurchase } from "@/models/Resource";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
 import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
 import mongoose from "mongoose";
@@ -394,6 +395,10 @@ export async function DELETE(
         $or: [{ clientId: userObjectId }, { professionalId: userObjectId }],
       }),
       ResourcePurchase.deleteMany({ userId: userObjectId }),
+      // Matches the surrounding cascade, which also deletes ClientReceipts.
+      // Guest rows carrying the same email are NOT removed: they belong to the
+      // guest and are reachable by their token, not by this account.
+      ResourceEntitlement.deleteMany({ userId: userObjectId }),
       Message.deleteMany({ senderId: userObjectId }),
       Conversation.deleteMany({ participants: userObjectId }),
     ]);

@@ -1027,6 +1027,54 @@ const guestPaymentComplete: EmailTemplateDefinition = {
 };
 
 // ---------------------------------------------------------------------------
+// Premium resource purchased — the buyer's access link
+// ---------------------------------------------------------------------------
+
+const resourcePurchaseComplete: EmailTemplateDefinition = {
+  key: "resourcePurchaseComplete",
+  labelFr: "Ressource premium achetée",
+  labelEn: "Premium resource purchased",
+  descriptionFr:
+    "Envoyé après le paiement d'une ressource premium. Contient le lien d'accès personnel de l'acheteur — pour un invité, c'est son seul moyen de retrouver la ressource, donc le bouton doit rester présent.",
+  descriptionEn:
+    "Sent once a premium resource is paid for. Carries the buyer's personal access link — for a guest that link is their only way back to the resource, so the button must stay.",
+  placeholders: [
+    { key: "buyerName", labelFr: "Nom de l'acheteur", labelEn: "Buyer name", sampleFr: "Marie", sampleEn: "Marie" },
+    { key: "resourceTitle", labelFr: "Titre de la ressource", labelEn: "Resource title", sampleFr: "Gérer son stress", sampleEn: "Managing stress" },
+    { key: "price", labelFr: "Montant payé (formaté)", labelEn: "Amount paid (formatted)", sampleFr: "19,00", sampleEn: "19.00" },
+    { key: "currency", labelFr: "Devise", labelEn: "Currency", sampleFr: "CAD", sampleEn: "CAD" },
+    { key: "accessUrl", labelFr: "Lien d'accès personnel", labelEn: "Personal access link", sampleFr: "https://www.jechemine.ca/book/gerer-son-stress?token=…", sampleEn: "https://www.jechemine.ca/book/managing-stress?token=…" },
+  ],
+  defaults: {
+    fr: {
+      subject: "Votre ressource est débloquée — Je chemine",
+      title: "Votre ressource est débloquée",
+      subtitle: "Merci pour votre achat",
+      bodyHtml:
+        "<p>Bonjour {{buyerName}},</p>" +
+        "<p>Merci ! Votre paiement a été traité et <strong>{{resourceTitle}}</strong> vous est maintenant accessible.</p>" +
+        "<p><strong>Montant payé : {{price}} $ {{currency}}</strong></p>" +
+        "<h3>Votre lien d'accès</h3>" +
+        "<p>Conservez ce courriel : le lien ci-dessous est personnel et vous redonne accès à la ressource à tout moment, sur n'importe quel appareil.</p>" +
+        "<p>Vous avez un compte Je chemine ? Connectez-vous avec la même adresse courriel et la ressource apparaîtra directement dans votre bibliothèque.</p>",
+      ctaText: "Lire la ressource",
+    },
+    en: {
+      subject: "Your resource is unlocked — Je chemine",
+      title: "Your resource is unlocked",
+      subtitle: "Thank you for your purchase",
+      bodyHtml:
+        "<p>Hello {{buyerName}},</p>" +
+        "<p>Thank you! Your payment went through and <strong>{{resourceTitle}}</strong> is now yours to read.</p>" +
+        "<p><strong>Amount paid: {{currency}} ${{price}}</strong></p>" +
+        "<h3>Your access link</h3>" +
+        "<p>Keep this email: the link below is personal and lets you back into the resource at any time, on any device.</p>" +
+        "<p>Have a Je chemine account? Sign in with the same email address and the resource will appear in your library.</p>",
+      ctaText: "Read the resource",
+    },
+  },
+};
+// ---------------------------------------------------------------------------
 // Appointment reminder — generic (friendly reminder, no cancel/reschedule CTA)
 // ---------------------------------------------------------------------------
 
@@ -2893,6 +2941,7 @@ export const EMAIL_TEMPLATE_DEFINITIONS: EmailTemplateDefinition[] = [
   referralExistingMember,
   guestPaymentConfirmation,
   guestPaymentComplete,
+  resourcePurchaseComplete,
   appointmentReminderGeneric,
   unscheduledMatchReminder,
   interacInstructions,

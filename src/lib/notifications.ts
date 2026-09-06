@@ -740,6 +740,7 @@ const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
   "fiscal_receipt",
   "guest_payment_confirmation",
   "guest_payment_complete",
+  "resource_purchase_complete",
   "payment_guarantee_day1_reminder",
   "payment_guarantee_day2_reminder",
   "payment_guarantee_48h_client",
@@ -2259,6 +2260,136 @@ export async function sendGuestPaymentComplete(
   );
 }
 
+
+// =============================================================================
+// Public Email Functions - Premium resources
+// =============================================================================
+
+/**
+ * Confirms a premium-resource purchase and delivers the access link.
+ *
+ * For a GUEST this email is the only durable way back to what they bought —
+ * the link carries their bearer token. Never drop the button.
+ *
+ * `lang` comes from the entitlement row (the language they bought in), never
+ * inferred at send time.
+ */
+export async function sendResourcePurchaseComplete(data: {
+  buyerEmail: string;
+  buyerName?: string;
+  resourceTitle: string;
+  amountCents: number;
+  accessUrl: string;
+  locale: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const currency = await getCurrency();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const buyerName = data.buyerName?.trim() || (lang === "fr" ? "bonjour" : "there");
+  const price = (data.amountCents / 100).toFixed(2);
+
+  const editable = await loadEditableTemplate("resourcePurchaseComplete", lang, {
+    buyerName,
+    resourceTitle: data.resourceTitle,
+    price,
+    currency,
+    accessUrl: data.accessUrl,
+  });
+  if (editable) {
+    const html = buildEmailHtml({
+      title: editable.title,
+      subtitle: editable.subtitle,
+      theme: "success",
+      greeting: "",
+      intro: editable.bodyHtml,
+      button: { text: editable.ctaText || (lang === "fr" ? "Lire la ressource" : "Read the resource"), url: data.accessUrl },
+      branding,
+      lang,
+    });
+    const text = buildEmailText(
+      [
+        editable.title,
+        editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/s+/g, " ").trim(),
+        `${data.resourceTitle} : ${data.accessUrl}`,
+      ],
+      lang,
+    );
+    return sendEmail(
+      { to: data.buyerEmail, subject: editable.subject, html, text },
+      "resource_purchase_complete",
+    );
+  }
+
+  const html = buildEmailHtml({
+    title: lang === "fr" ? "Votre ressource est débloquée" : "Your resource is unlocked",
+    subtitle: lang === "fr" ? "Merci pour votre achat" : "Thank you for your purchase",
+    theme: "success",
+    greeting: lang === "fr" ? `Bonjour ${buyerName},` : `Hello ${buyerName},`,
+    intro:
+      lang === "fr"
+        ? `Merci ! Votre paiement a été traité et « ${data.resourceTitle} » vous est maintenant accessible.`
+        : `Thank you! Your payment went through and “${data.resourceTitle}” is now yours to read.`,
+    details: [
+      {
+        label: lang === "fr" ? "Ressource" : "Resource",
+        value: data.resourceTitle,
+      },
+    ],
+    detailsBorderColor: "#22c55e",
+    price: {
+      amount: data.amountCents / 100,
+      note: lang === "fr" ? "Paiement reçu — Merci !" : "Payment received — Thank you!",
+      theme: "success",
+      currency,
+    },
+    button: {
+      text: lang === "fr" ? "Lire la ressource" : "Read the resource",
+      url: data.accessUrl,
+    },
+    infoBox: {
+      title: lang === "fr" ? "Conservez ce courriel" : "Keep this email",
+      content:
+        lang === "fr"
+          ? "Le lien ci-dessus est personnel et vous redonne accès à la ressource à tout moment, sur n'importe quel appareil. Si vous avez un compte Je chemine, connectez-vous avec la même adresse courriel et la ressource apparaîtra dans votre bibliothèque."
+          : "The link above is personal and lets you back into the resource at any time, on any device. If you have a Je chemine account, sign in with the same email address and the resource will appear in your library.",
+    },
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    lang === "fr"
+      ? [
+          "Votre ressource est débloquée",
+          `Bonjour ${buyerName},`,
+          `Ressource : ${data.resourceTitle}`,
+          `Montant payé : ${price} $ ${currency}`,
+          `Lien d'accès : ${data.accessUrl}`,
+          "Conservez ce courriel : ce lien est personnel.",
+        ]
+      : [
+          "Your resource is unlocked",
+          `Hello ${buyerName},`,
+          `Resource: ${data.resourceTitle}`,
+          `Amount paid: ${currency} ${price}`,
+          `Access link: ${data.accessUrl}`,
+          "Keep this email: the link is personal.",
+        ],
+    lang,
+  );
+
+  const subject = await getSubject(
+    "resource_purchase_complete",
+    lang === "fr"
+      ? "Votre ressource est débloquée — Je chemine"
+      : "Your resource is unlocked — Je chemine",
+  );
+
+  return sendEmail(
+    { to: data.buyerEmail, subject, html, text },
+    "resource_purchase_complete",
+  );
+}
 // =============================================================================
 // Public Email Functions - Appointments
 // =============================================================================

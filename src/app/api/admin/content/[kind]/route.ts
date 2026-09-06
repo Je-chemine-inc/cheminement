@@ -13,6 +13,7 @@ import {
   slugify,
 } from "@/lib/content-entry";
 import { isMediaType } from "@/lib/content-kind";
+import { canBePremium, validatePriceCents } from "@/lib/content-premium";
 
 async function requireContentAdmin() {
   const session = await getServerSession(authOptions);
@@ -35,6 +36,8 @@ function listingPath(kind: string): string | null {
   if (kind === "traitement") return "/approaches";
   if (kind === "nouveaute") return "/nouveautes";
   if (kind === "media") return "/medias";
+  // Resources live in the #resources section of /book.
+  if (kind === "resource") return "/book";
   return null;
 }
 
@@ -75,7 +78,15 @@ interface CreateBody {
   contentHtmlFr?: string;
   contentHtmlEn?: string;
   mediaType?: string;
+  /** Mirrored across locales for kind "media". */
   mediaUrl?: string;
+  /** Per-locale, for kind "resource": a FR and an EN video are different assets. */
+  mediaUrlFr?: string;
+  mediaUrlEn?: string;
+  previewHtmlFr?: string;
+  previewHtmlEn?: string;
+  isPremium?: boolean;
+  priceCents?: number;
   status?: "draft" | "published";
   sortOrder?: number;
 }
@@ -124,22 +135,59 @@ export async function POST(
     const sortOrder =
       typeof body.sortOrder === "number" ? body.sortOrder : 100;
 
-    // Media-only fields; ignored for the other kinds.
-    const mediaType =
-      kind === "media" && isMediaType(body.mediaType)
+    // "media" and "resource" both carry an embeddable video/podcast/link;
+    // the other kinds ignore these entirely.
+    const supportsMedia = kind === "media" || kind === "resource";
+    const mediaType = supportsMedia
+      ? isMediaType(body.mediaType)
         ? body.mediaType
-        : kind === "media"
-          ? "article"
-          : undefined;
-    const mediaUrl =
-      kind === "media" ? body.mediaUrl?.trim() || undefined : undefined;
+        : "article"
+      : undefined;
+
+    // Mirrored for "media" (one asset, two languages), per-locale for
+    // "resource" (a French course video is not the English one). Falling back
+    // to the shared field keeps an older client working.
+    const sharedMediaUrl = body.mediaUrl?.trim() || undefined;
+    const mediaUrlFr = !supportsMedia
+      ? undefined
+      : kind === "resource"
+        ? body.mediaUrlFr?.trim() || sharedMediaUrl
+        : sharedMediaUrl;
+    const mediaUrlEn = !supportsMedia
+      ? undefined
+      : kind === "resource"
+        ? body.mediaUrlEn?.trim() || sharedMediaUrl
+        : sharedMediaUrl;
+
+    if (body.isPremium === true && !canBePremium(kind)) {
+      return NextResponse.json(
+        { error: "Only resources can be sold" },
+        { status: 400 },
+      );
+    }
+    const isPremium = body.isPremium === true;
+    let priceCents = 0;
+    if (isPremium) {
+      const validated = validatePriceCents(body.priceCents);
+      if (validated === null) {
+        return NextResponse.json(
+          { error: "priceCents must be a whole number of cents above 0" },
+          { status: 400 },
+        );
+      }
+      priceCents = validated;
+    }
 
     const common = {
       kind,
       slug,
       iconUrl: body.iconUrl,
       mediaType,
-      mediaUrl,
+      // isPremium/priceCents are mirrored: the entitlement is keyed on the
+      // logical (kind, slug), so the two locale rows must agree or ?locale=en
+      // becomes a paywall bypass.
+      isPremium,
+      priceCents,
       status,
       sortOrder,
       publishedAt: status === "published" ? now : undefined,
@@ -153,6 +201,8 @@ export async function POST(
         title: body.titleFr.trim(),
         summary: (body.summaryFr ?? "").trim(),
         contentHtml: body.contentHtmlFr ?? "",
+        previewHtml: body.previewHtmlFr ?? "",
+        mediaUrl: mediaUrlFr,
       },
       {
         ...common,
@@ -160,6 +210,8 @@ export async function POST(
         title: body.titleEn.trim(),
         summary: (body.summaryEn ?? "").trim(),
         contentHtml: body.contentHtmlEn ?? "",
+        previewHtml: body.previewHtmlEn ?? "",
+        mediaUrl: mediaUrlEn,
       },
     ]);
 

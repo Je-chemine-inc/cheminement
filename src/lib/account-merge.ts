@@ -15,6 +15,7 @@ import Admin from "@/models/Admin";
 import AdminAccessLog from "@/models/AdminAccessLog";
 import AuthAuditLog from "@/models/AuthAuditLog";
 import { ResourcePurchase } from "@/models/Resource";
+import { mergeResourceEntitlements } from "@/lib/resource-entitlement";
 
 /** Only client-side accounts are mergeable. Merging professionals/admins would
  * touch Profile, ledger/payouts, Stripe Connect and Admin RBAC — out of scope
@@ -146,6 +147,20 @@ export async function mergeAccounts(opts: {
     "resourcePurchases",
     (await ResourcePurchase.updateMany({ userId: lId }, { $set: { userId: sId } }))
       .modifiedCount,
+  );
+  // NOT an updateMany. If both accounts already own the same resource, the
+  // partial unique index throws E11000 — and this whole merge runs without a
+  // transaction, so the throw would abort after half a dozen collections have
+  // already been re-pointed. The helper moves rows one at a time and treats a
+  // conflict as a skip. It also claims GUEST purchases made with the loser's
+  // email, which is how a pre-account purchase follows someone in.
+  bump(
+    "resourceEntitlements",
+    await mergeResourceEntitlements({
+      loserId: lId,
+      survivorId: sId,
+      loserEmail: loser.email,
+    }),
   );
   bump(
     "storedFiles",

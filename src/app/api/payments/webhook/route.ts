@@ -5,12 +5,24 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import StripeWebhookEvent from "@/models/StripeWebhookEvent";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
+import {
+  disputeResourceEntitlement,
+  grantResourceEntitlement,
+  isResourcePurchaseIntent,
+  markResourcePurchaseCancelled,
+  markResourcePurchaseFailed,
+  restoreResourceEntitlement,
+  revokeResourceEntitlement,
+} from "@/lib/resource-entitlement";
 import Stripe from "stripe";
 import {
   sendGuestPaymentComplete,
   sendPaymentFailedNotification,
   sendRefundConfirmation,
+  sendResourcePurchaseComplete,
 } from "@/lib/notifications";
+import ContentEntry from "@/models/ContentEntry";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import {
   voidReceiptForRefund,
@@ -115,10 +127,60 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Sends the buyer their access link.
+ *
+ * A guest gets their bearer token in the URL — that link is their only durable
+ * way back to what they bought. A member does not: their access follows their
+ * session, so there is no reason to put a credential in their inbox.
+ */
+async function sendResourceAccessEmail(
+  ent: import("@/models/ResourceEntitlement").IResourceEntitlement,
+): Promise<void> {
+  const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+  const accessUrl = ent.userId
+    ? `${base}/book/${ent.slug}`
+    : `${base}/book/${ent.slug}?token=${ent.accessToken ?? ""}`;
+
+  const entry = await ContentEntry.findOne({
+    kind: "resource",
+    slug: ent.slug,
+    locale: ent.locale,
+  });
+
+  await sendResourcePurchaseComplete({
+    buyerEmail: ent.buyerEmail,
+    buyerName: ent.buyerName,
+    resourceTitle: entry?.title ?? ent.slug,
+    amountCents: ent.amountCents,
+    accessUrl,
+    // The language they bought in, never inferred at send time.
+    locale: ent.locale,
+  });
+}
+
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ) {
   console.log("Payment succeeded:", paymentIntent.id);
+
+  // Premium-resource purchases carry no appointmentId and must be handled
+  // before the bail below, or the buyer is charged and never granted access.
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    const { outcome, entitlement } = await grantResourceEntitlement(paymentIntent);
+    console.log("[resource] purchase outcome:", outcome, paymentIntent.id);
+    // "granted" means THIS delivery moved the row from pending to paid, so it
+    // is the only moment an access email may be sent. A replay reports
+    // "already-paid" and must stay silent, or the buyer is emailed twice.
+    if (outcome === "granted" && entitlement) {
+      await sendResourceAccessEmail(entitlement).catch((err) =>
+        // Fire-and-forget, like every other send in this file: a bad SMTP day
+        // must not release the idempotency claim and re-run the grant.
+        console.error("[resource] access email failed:", err),
+      );
+    }
+    return;
+  }
 
   const appointmentId = paymentIntent.metadata.appointmentId;
 
@@ -228,6 +290,11 @@ async function handlePaymentIntentSucceeded(
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   console.log("Payment failed:", paymentIntent.id);
 
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    await markResourcePurchaseFailed(paymentIntent);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -293,6 +360,11 @@ async function handlePaymentIntentCanceled(
 ) {
   console.log("Payment canceled:", paymentIntent.id);
 
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    await markResourcePurchaseCancelled(paymentIntent);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -319,6 +391,17 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
       : charge.payment_intent.id;
+
+  // Refund revokes access. A FULL refund also destroys the guest access token,
+  // so the emailed link dies immediately; a partial refund keeps access.
+  const refundedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (refundedEntitlement) {
+    const outcome = await revokeResourceEntitlement(refundedEntitlement, charge);
+    console.log("[resource] refund outcome:", outcome, paymentIntentId);
+    return;
+  }
 
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
@@ -415,6 +498,15 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
       : dispute.payment_intent?.id;
   if (!paymentIntentId) return;
 
+  // Stripe holds the funds until this resolves, so access stops meanwhile.
+  const disputedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (disputedEntitlement) {
+    await disputeResourceEntitlement(disputedEntitlement);
+    return;
+  }
+
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
   });
@@ -446,6 +538,18 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
       ? refund.payment_intent
       : refund.payment_intent?.id;
   if (!paymentIntentId) return;
+
+  // The refund never completed, so the money stayed with us and access is
+  // restored — with a NEW token, because the old one was revoked and may have
+  // circulated. The caller must re-send the access email.
+  const reversedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (reversedEntitlement) {
+    const { restored } = await restoreResourceEntitlement(reversedEntitlement);
+    console.log("[resource] refund reversal restored:", restored, paymentIntentId);
+    return;
+  }
 
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
