@@ -20,6 +20,7 @@ import { formatCad } from "@/lib/format-currency";
 import { authOptions } from "@/lib/auth";
 import StripAccessToken from "@/components/resources/StripAccessToken";
 import ResourceBuyButton from "@/components/resources/ResourceBuyButton";
+import ResendAccessLinkDialog from "@/components/resources/ResendAccessLinkDialog";
 import type { ContentLocale, MediaType } from "@/models/ContentEntry";
 
 /**
@@ -237,6 +238,9 @@ export default async function BookResourcePage({
             <>
               {view.previewHtml?.trim() ? (
                 <div className="relative">
+                  <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    {t("previewLabel")}
+                  </p>
                   <div
                     className="legal-prose max-h-[28rem] w-full overflow-hidden"
                     dangerouslySetInnerHTML={{ __html: view.previewHtml }}
@@ -291,6 +295,8 @@ export default async function BookResourcePage({
                   <Link href="/login" className="text-primary hover:underline">
                     {t("signInLink")}
                   </Link>
+                  {" · "}
+                  <ResendAccessLinkDialog slug={slug} />
                 </p>
               </div>
             </>

@@ -153,8 +153,8 @@ export default function ResourcePaymentModal({
           <DialogTitle className="text-2xl font-serif font-light">
             {t("title")}
           </DialogTitle>
-          <DialogDescription className="space-y-1">
-            <span className="block">{title}</span>
+          <DialogDescription>
+            {t("resourceLabel")} · {title}
           </DialogDescription>
         </DialogHeader>
 
@@ -190,7 +190,11 @@ export default function ResourcePaymentModal({
                   placeholder={t("emailPlaceholder")}
                   className="w-full rounded-lg border border-border/60 bg-background px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-                <p className="text-xs text-muted-foreground">{t("emailWhy")}</p>
+                {email.trim() && !emailValid ? (
+                  <p className="text-xs text-destructive">{t("emailInvalid")}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{t("emailWhy")}</p>
+                )}
               </div>
             )}
             <Button

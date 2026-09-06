@@ -16,6 +16,7 @@ import {
   FileText,
   PlayCircle,
   Podcast,
+  Lock,
 } from "lucide-react";
 import {
   isContentKind,
@@ -23,6 +24,7 @@ import {
   type ContentKind,
   type MediaType,
 } from "@/lib/content-kind";
+import { formatCad } from "@/lib/format-currency";
 
 const MEDIA_TYPE_ICON: Record<MediaType, typeof FileText> = {
   article: FileText,
@@ -39,6 +41,8 @@ interface ContentDTO {
   iconUrl?: string;
   mediaType?: MediaType;
   mediaUrl?: string;
+  isPremium?: boolean;
+  priceCents?: number;
   status: "draft" | "published";
   sortOrder: number;
   publishedAt?: string;
@@ -95,11 +99,12 @@ export default function ContentListPage() {
   }, [kind]);
 
   const counts = useMemo(() => {
-    if (!rows) return { total: 0, published: 0, drafts: 0 };
+    if (!rows) return { total: 0, published: 0, drafts: 0, premium: 0 };
     return {
       total: rows.length,
       published: rows.filter((r) => r.fr.status === "published").length,
       drafts: rows.filter((r) => r.fr.status === "draft").length,
+      premium: rows.filter((r) => r.fr.isPremium).length,
     };
   }, [rows]);
 
@@ -133,6 +138,9 @@ export default function ContentListPage() {
 
   const isDateSorted = isDateSortedKind(kind);
   const isMedia = kind === "media";
+  const isResource = kind === "resource";
+  // Resources carry a media type too, so they get the same icon treatment.
+  const showMediaIcon = isMedia || isResource;
 
   return (
     <div className="space-y-6">
@@ -155,10 +163,13 @@ export default function ContentListPage() {
       </div>
 
       {rows ? (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className={`grid gap-3 ${isResource ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
           <StatCard label={t("statTotal")} value={counts.total} />
           <StatCard label={t("statPublished")} value={counts.published} />
           <StatCard label={t("statDrafts")} value={counts.drafts} />
+          {isResource ? (
+            <StatCard label={t("statPremium")} value={counts.premium} />
+          ) : null}
         </div>
       ) : null}
 
@@ -188,6 +199,9 @@ export default function ContentListPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">{t("colTitle")}</th>
                 <th className="px-4 py-3 font-medium">{t("colSlug")}</th>
+                {isResource ? (
+                  <th className="px-4 py-3 font-medium">{t("colPrice")}</th>
+                ) : null}
                 <th className="px-4 py-3 font-medium">{t("colStatus")}</th>
                 <th className="px-4 py-3 font-medium">
                   {isDateSorted ? t("colPublishedAt") : t("colUpdated")}
@@ -207,7 +221,7 @@ export default function ContentListPage() {
                     : "—"
                   : new Date(fr.updatedAt).toLocaleDateString();
                 const MediaIcon =
-                  isMedia && fr.mediaType
+                  showMediaIcon && fr.mediaType
                     ? MEDIA_TYPE_ICON[fr.mediaType]
                     : null;
                 return (
@@ -243,6 +257,12 @@ export default function ContentListPage() {
                                 {t(`mediaType_${fr.mediaType}`)}
                               </span>
                             ) : null}
+                            {fr.isPremium ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                                <Lock className="h-3 w-3" />
+                                {t("premiumBadge")}
+                              </span>
+                            ) : null}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             EN · {row.en.title}
@@ -253,6 +273,11 @@ export default function ContentListPage() {
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                       {row.slug}
                     </td>
+                    {isResource ? (
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        {fr.isPremium ? formatCad(fr.priceCents ?? 0, "fr") : "—"}
+                      </td>
+                    ) : null}
                     <td className="px-4 py-3">
                       {isPublished ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-700 dark:text-green-400">
