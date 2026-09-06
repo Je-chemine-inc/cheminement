@@ -20,7 +20,9 @@ import {
   sendGuestPaymentComplete,
   sendPaymentFailedNotification,
   sendRefundConfirmation,
+  sendResourcePurchaseComplete,
 } from "@/lib/notifications";
+import ContentEntry from "@/models/ContentEntry";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import {
   voidReceiptForRefund,
@@ -125,6 +127,38 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Sends the buyer their access link.
+ *
+ * A guest gets their bearer token in the URL — that link is their only durable
+ * way back to what they bought. A member does not: their access follows their
+ * session, so there is no reason to put a credential in their inbox.
+ */
+async function sendResourceAccessEmail(
+  ent: import("@/models/ResourceEntitlement").IResourceEntitlement,
+): Promise<void> {
+  const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+  const accessUrl = ent.userId
+    ? `${base}/book/${ent.slug}`
+    : `${base}/book/${ent.slug}?token=${ent.accessToken ?? ""}`;
+
+  const entry = await ContentEntry.findOne({
+    kind: "resource",
+    slug: ent.slug,
+    locale: ent.locale,
+  });
+
+  await sendResourcePurchaseComplete({
+    buyerEmail: ent.buyerEmail,
+    buyerName: ent.buyerName,
+    resourceTitle: entry?.title ?? ent.slug,
+    amountCents: ent.amountCents,
+    accessUrl,
+    // The language they bought in, never inferred at send time.
+    locale: ent.locale,
+  });
+}
+
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
 ) {
@@ -133,11 +167,18 @@ async function handlePaymentIntentSucceeded(
   // Premium-resource purchases carry no appointmentId and must be handled
   // before the bail below, or the buyer is charged and never granted access.
   if (isResourcePurchaseIntent(paymentIntent)) {
-    const { outcome } = await grantResourceEntitlement(paymentIntent);
-    // "granted" means this delivery is the one that moved the row from pending
-    // to paid — the only moment an access email should be sent. A replay
-    // reports "already-paid" and must stay silent.
+    const { outcome, entitlement } = await grantResourceEntitlement(paymentIntent);
     console.log("[resource] purchase outcome:", outcome, paymentIntent.id);
+    // "granted" means THIS delivery moved the row from pending to paid, so it
+    // is the only moment an access email may be sent. A replay reports
+    // "already-paid" and must stay silent, or the buyer is emailed twice.
+    if (outcome === "granted" && entitlement) {
+      await sendResourceAccessEmail(entitlement).catch((err) =>
+        // Fire-and-forget, like every other send in this file: a bad SMTP day
+        // must not release the idempotency claim and re-run the grant.
+        console.error("[resource] access email failed:", err),
+      );
+    }
     return;
   }
 

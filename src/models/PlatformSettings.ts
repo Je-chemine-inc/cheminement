@@ -15,6 +15,7 @@ export type EmailNotificationType =
   | "service_request_onboarding"
   | "guest_payment_confirmation"
   | "guest_payment_complete"
+  | "resource_purchase_complete"
   | "payment_invitation"
   | "payment_failed"
   | "payment_refund"
@@ -225,6 +226,10 @@ const defaultEmailTemplates: Record<
   guest_payment_complete: {
     enabled: true,
     subject: "Paiement confirmé — Je chemine",
+  },
+  resource_purchase_complete: {
+    enabled: true,
+    subject: "Votre ressource est débloquée — Je chemine",
   },
   payment_invitation: {
     enabled: true,

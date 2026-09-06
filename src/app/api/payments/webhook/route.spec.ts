@@ -30,6 +30,8 @@ const h = vi.hoisted(() => ({
   revoke: vi.fn(),
   restore: vi.fn(),
   dispute: vi.fn(),
+  sendAccessEmail: vi.fn(),
+  entryFindOne: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
@@ -71,6 +73,10 @@ vi.mock("@/lib/notifications", () => ({
   sendGuestPaymentComplete: vi.fn(),
   sendPaymentFailedNotification: vi.fn(),
   sendRefundConfirmation: vi.fn(),
+  sendResourcePurchaseComplete: h.sendAccessEmail,
+}));
+vi.mock("@/models/ContentEntry", () => ({
+  default: { findOne: h.entryFindOne },
 }));
 vi.mock("@/lib/guardian-utils", () => ({ resolveAppointmentRecipient: vi.fn() }));
 vi.mock("@/lib/payment-settlement", () => ({
@@ -116,6 +122,9 @@ beforeEach(() => {
   h.grant.mockResolvedValue({ outcome: "granted", entitlement: { _id: "ent1" } });
   h.revoke.mockResolvedValue("revoked");
   h.restore.mockResolvedValue({ restored: true, accessToken: "tok" });
+  h.sendAccessEmail.mockResolvedValue(true);
+  h.entryFindOne.mockResolvedValue({ title: "Gérer son stress" });
+  process.env.NEXTAUTH_URL = "https://www.jechemine.ca";
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -147,7 +156,7 @@ describe("signature and idempotency", () => {
 
     const res = await POST(req());
 
-    expect((res.body as { duplicate: boolean }).duplicate).toBe(true);
+    expect((res.body as unknown as { duplicate: boolean }).duplicate).toBe(true);
     expect(h.grant).not.toHaveBeenCalled();
   });
 
@@ -192,6 +201,82 @@ describe("resource purchase succeeded", () => {
     expect(h.grant).toHaveBeenCalledTimes(2);
   });
 
+  it("emails the buyer their access link exactly once", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({
+      outcome: "granted",
+      entitlement: {
+        _id: "ent1",
+        slug: "gerer-son-stress",
+        buyerEmail: "guest@example.com",
+        locale: "fr",
+        amountCents: 1900,
+        accessToken: "f".repeat(64),
+      },
+    });
+
+    await POST(req());
+
+    expect(h.sendAccessEmail).toHaveBeenCalledTimes(1);
+    const sent = h.sendAccessEmail.mock.calls[0][0] as {
+      accessUrl: string;
+      locale: string;
+      resourceTitle: string;
+    };
+    // A guest's link carries their token — it is their only way back in.
+    expect(sent.accessUrl).toContain("/book/gerer-son-stress?token=");
+    // Language comes from the entitlement, never inferred at send time.
+    expect(sent.locale).toBe("fr");
+    expect(sent.resourceTitle).toBe("Gérer son stress");
+  });
+
+  it("does not put a bearer token in a member's inbox", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({
+      outcome: "granted",
+      entitlement: {
+        _id: "ent1",
+        slug: "gerer-son-stress",
+        userId: "user1",
+        buyerEmail: "membre@example.com",
+        locale: "en",
+        amountCents: 1900,
+        accessToken: "f".repeat(64),
+      },
+    });
+
+    await POST(req());
+
+    const sent = h.sendAccessEmail.mock.calls[0][0] as { accessUrl: string };
+    expect(sent.accessUrl).not.toContain("token=");
+  });
+
+  it("does not email again on a replayed delivery", async () => {
+    // The whole point of the conditional grant: "already-paid" must be silent.
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({ outcome: "already-paid", entitlement: { _id: "ent1" } });
+
+    await POST(req());
+
+    expect(h.sendAccessEmail).not.toHaveBeenCalled();
+  });
+
+  it("still returns 200 when the email fails", async () => {
+    // The buyer has paid and been granted access; a bad SMTP day must not
+    // release the claim and re-run the grant.
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({
+      outcome: "granted",
+      entitlement: { _id: "ent1", slug: "s", buyerEmail: "g@example.com", locale: "fr", amountCents: 1900 },
+    });
+    h.sendAccessEmail.mockRejectedValue(new Error("smtp down"));
+
+    const res = await POST(req());
+
+    expect(res.status).toBe(200);
+    expect(h.webhookEventDeleteOne).not.toHaveBeenCalled();
+  });
+
   it("does not throw when the payment was short", async () => {
     // Throwing would release the claim and make Stripe retry a permanently
     // failing event forever.
@@ -202,6 +287,7 @@ describe("resource purchase succeeded", () => {
 
     expect(res.status).toBe(200);
     expect(h.webhookEventDeleteOne).not.toHaveBeenCalled();
+    expect(h.sendAccessEmail).not.toHaveBeenCalled();
   });
 });
 

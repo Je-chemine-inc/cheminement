@@ -23,6 +23,7 @@ export type EmailTemplateKey =
   | "referralExistingMember"
   | "guestPaymentConfirmation"
   | "guestPaymentComplete"
+  | "resourcePurchaseComplete"
   | "appointmentReminderGeneric"
   | "unscheduledMatchReminder"
   | "interacInstructions"
@@ -95,6 +96,7 @@ const EmailTemplateSchema = new Schema<IEmailTemplate>(
         "referralExistingMember",
         "guestPaymentConfirmation",
         "guestPaymentComplete",
+        "resourcePurchaseComplete",
         "appointmentReminderGeneric",
         "unscheduledMatchReminder",
         "interacInstructions",
