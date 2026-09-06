@@ -20,6 +20,12 @@ const EMPTY_VALUES: ContentEntryFormValues = {
   contentHtmlEn: "",
   mediaType: "article",
   mediaUrl: "",
+  mediaUrlFr: "",
+  mediaUrlEn: "",
+  previewHtmlFr: "",
+  previewHtmlEn: "",
+  isPremium: false,
+  priceCents: 0,
   status: "draft",
   sortOrder: 100,
 };

@@ -14,29 +14,26 @@ import {
   type MediaType,
 } from "@/lib/content-kind";
 
+interface LocaleDTO {
+  title: string;
+  summary: string;
+  iconUrl?: string;
+  contentHtml: string;
+  previewHtml?: string;
+  mediaType?: MediaType;
+  mediaUrl?: string;
+  isPremium?: boolean;
+  priceCents?: number;
+  status: "draft" | "published";
+}
+
 interface PairDTO {
   kind: ContentKind;
   slug: string;
   sortOrder: number;
   publishedAt?: string;
-  fr: {
-    title: string;
-    summary: string;
-    iconUrl?: string;
-    contentHtml: string;
-    mediaType?: MediaType;
-    mediaUrl?: string;
-    status: "draft" | "published";
-  };
-  en: {
-    title: string;
-    summary: string;
-    iconUrl?: string;
-    contentHtml: string;
-    mediaType?: MediaType;
-    mediaUrl?: string;
-    status: "draft" | "published";
-  };
+  fr: LocaleDTO;
+  en: LocaleDTO;
 }
 
 const PUBLIC_BASE: Record<ContentKind, string> = {
@@ -82,6 +79,12 @@ export default function EditContentEntryPage() {
         contentHtmlEn: data.en.contentHtml,
         mediaType: data.fr.mediaType ?? "article",
         mediaUrl: data.fr.mediaUrl ?? "",
+        mediaUrlFr: data.fr.mediaUrl ?? "",
+        mediaUrlEn: data.en.mediaUrl ?? "",
+        previewHtmlFr: data.fr.previewHtml ?? "",
+        previewHtmlEn: data.en.previewHtml ?? "",
+        isPremium: data.fr.isPremium ?? false,
+        priceCents: data.fr.priceCents ?? 0,
         status: data.fr.status,
         sortOrder: data.sortOrder,
       });
@@ -112,6 +115,12 @@ export default function EditContentEntryPage() {
           contentHtmlEn: next.contentHtmlEn,
           mediaType: next.mediaType,
           mediaUrl: next.mediaUrl || null,
+          mediaUrlFr: next.mediaUrlFr || null,
+          mediaUrlEn: next.mediaUrlEn || null,
+          previewHtmlFr: next.previewHtmlFr,
+          previewHtmlEn: next.previewHtmlEn,
+          isPremium: next.isPremium,
+          priceCents: next.priceCents,
           status: next.status,
           sortOrder: next.sortOrder,
         }),

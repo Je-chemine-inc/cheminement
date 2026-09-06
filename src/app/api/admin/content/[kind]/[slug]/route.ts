@@ -10,6 +10,8 @@ import ContentEntry, {
 } from "@/models/ContentEntry";
 import { getContentPair, isContentKind } from "@/lib/content-entry";
 import { isMediaType } from "@/lib/content-kind";
+import { canBePremium, validatePriceCents } from "@/lib/content-premium";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
 
 async function requireContentAdmin() {
   const session = await getServerSession(authOptions);
@@ -32,6 +34,8 @@ function listingPath(kind: string): string | null {
   if (kind === "traitement") return "/approaches";
   if (kind === "nouveaute") return "/nouveautes";
   if (kind === "media") return "/medias";
+  // Resources live in the #resources section of /book.
+  if (kind === "resource") return "/book";
   return null;
 }
 
@@ -74,7 +78,17 @@ interface UpdateBody {
   contentHtmlFr?: string;
   contentHtmlEn?: string;
   mediaType?: string;
+  /** Mirrored across locales for kind "media". */
   mediaUrl?: string | null;
+  /** Per-locale, for kind "resource": a FR and an EN video are different assets. */
+  mediaUrlFr?: string | null;
+  mediaUrlEn?: string | null;
+  previewHtmlFr?: string;
+  previewHtmlEn?: string;
+  isPremium?: boolean;
+  priceCents?: number;
+  /** Required to change the price of something people have already bought. */
+  confirmPriceChange?: boolean;
   status?: "draft" | "published";
   sortOrder?: number;
 }
@@ -143,6 +157,74 @@ export async function PUT(
       }
     }
 
+    if (kind === "resource") {
+      if (isMediaType(body.mediaType)) {
+        // Mirrored: a resource is a video in both languages or in neither.
+        frDoc.mediaType = body.mediaType;
+        enDoc.mediaType = body.mediaType;
+      }
+      // Per-locale, unlike "media": the French and English assets differ.
+      const norm = (v: string | null | undefined) =>
+        v === null || v === undefined || v.trim() === "" ? undefined : v.trim();
+      if (body.mediaUrlFr !== undefined) frDoc.mediaUrl = norm(body.mediaUrlFr);
+      if (body.mediaUrlEn !== undefined) enDoc.mediaUrl = norm(body.mediaUrlEn);
+      if (typeof body.previewHtmlFr === "string")
+        frDoc.previewHtml = body.previewHtmlFr;
+      if (typeof body.previewHtmlEn === "string")
+        enDoc.previewHtml = body.previewHtmlEn;
+    }
+
+    // Access and price. Mirrored across both locale rows — see the model note.
+    if (body.isPremium !== undefined || body.priceCents !== undefined) {
+      if (body.isPremium === true && !canBePremium(kind)) {
+        return NextResponse.json(
+          { error: "Only resources can be sold" },
+          { status: 400 },
+        );
+      }
+
+      const nextIsPremium =
+        body.isPremium === undefined ? frDoc.isPremium === true : body.isPremium === true;
+
+      let nextPriceCents = 0;
+      if (nextIsPremium) {
+        const raw =
+          body.priceCents === undefined ? frDoc.priceCents : body.priceCents;
+        const validated = validatePriceCents(raw);
+        if (validated === null) {
+          return NextResponse.json(
+            { error: "priceCents must be a whole number of cents above 0" },
+            { status: 400 },
+          );
+        }
+        nextPriceCents = validated;
+      }
+
+      const changed =
+        nextIsPremium !== (frDoc.isPremium === true) ||
+        nextPriceCents !== (frDoc.priceCents ?? 0);
+
+      if (changed && !body.confirmPriceChange) {
+        // Existing buyers keep what they paid — the entitlement snapshots its
+        // own amount — but the admin should not discover that by accident.
+        const paid = await ResourceEntitlement.countDocuments({
+          slug,
+          status: "paid",
+        });
+        if (paid > 0) {
+          return NextResponse.json(
+            { error: "RESOURCE_HAS_PURCHASES", paid },
+            { status: 409 },
+          );
+        }
+      }
+
+      frDoc.isPremium = nextIsPremium;
+      enDoc.isPremium = nextIsPremium;
+      frDoc.priceCents = nextPriceCents;
+      enDoc.priceCents = nextPriceCents;
+    }
+
     if (typeof body.sortOrder === "number") {
       frDoc.sortOrder = body.sortOrder;
       enDoc.sortOrder = body.sortOrder;
@@ -198,6 +280,25 @@ export async function DELETE(
     if (!isContentKind(kind)) {
       return NextResponse.json({ error: "Unknown kind" }, { status: 404 });
     }
+    // Never delete something people have paid to read. Unpublishing keeps the
+    // buyers' access intact; deleting would strand it.
+    if (kind === "resource") {
+      const paid = await ResourceEntitlement.countDocuments({
+        slug,
+        status: "paid",
+      });
+      if (paid > 0) {
+        return NextResponse.json(
+          {
+            error: "RESOURCE_HAS_PURCHASES",
+            paid,
+            hint: "Unpublish this resource instead of deleting it.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const result = await ContentEntry.deleteMany({ kind, slug });
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
