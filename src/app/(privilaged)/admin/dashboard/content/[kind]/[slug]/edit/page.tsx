@@ -212,7 +212,6 @@ export default function EditContentEntryPage() {
         slugEditable={!wasPublished}
         autoSlugFromTitle={false}
         onSubmit={handleSubmit}
-        submitLabel={t("editSubmit")}
         saved={saved}
         savedMessage={justCreated ? t("createdMessage") : t("savedDefault")}
       />

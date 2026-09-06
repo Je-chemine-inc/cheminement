@@ -93,7 +93,6 @@ export default function NewContentEntryPage() {
         slugEditable={true}
         autoSlugFromTitle={true}
         onSubmit={handleSubmit}
-        submitLabel={t("createSubmit")}
       />
     </div>
   );

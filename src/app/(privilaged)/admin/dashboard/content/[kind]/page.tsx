@@ -264,8 +264,16 @@ export default function ContentListPage() {
                               </span>
                             ) : null}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            EN · {row.en.title}
+                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>EN · {row.en.title}</span>
+                            {/* English now falls back to French when left
+                                blank, so make the untranslated ones visible
+                                instead of letting them pass unnoticed. */}
+                            {row.en.title === fr.title ? (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                                {t("needsTranslation")}
+                              </span>
+                            ) : null}
                           </p>
                         </div>
                       </div>

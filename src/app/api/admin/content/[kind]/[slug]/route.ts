@@ -223,6 +223,17 @@ export async function PUT(
       enDoc.isPremium = nextIsPremium;
       frDoc.priceCents = nextPriceCents;
       enDoc.priceCents = nextPriceCents;
+
+      // A premium entry with no teaser would show a price above a blank page.
+      // Fall back to the summary rather than refusing to publish.
+      if (nextIsPremium) {
+        if (!frDoc.previewHtml?.trim() && frDoc.summary?.trim()) {
+          frDoc.previewHtml = `<p>${frDoc.summary.trim()}</p>`;
+        }
+        if (!enDoc.previewHtml?.trim() && enDoc.summary?.trim()) {
+          enDoc.previewHtml = `<p>${enDoc.summary.trim()}</p>`;
+        }
+      }
     }
 
     if (typeof body.sortOrder === "number") {

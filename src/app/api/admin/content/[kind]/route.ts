@@ -106,12 +106,26 @@ export async function POST(
     }
 
     const body = (await req.json()) as CreateBody;
-    if (!body.titleFr?.trim() || !body.titleEn?.trim()) {
-      return NextResponse.json(
-        { error: "titleFr and titleEn are required" },
-        { status: 400 },
-      );
+    if (!body.titleFr?.trim()) {
+      return NextResponse.json({ error: "titleFr is required" }, { status: 400 });
     }
+
+    // English is optional. An admin who works in French should be able to
+    // publish without writing everything twice; the English row is created
+    // from the French one and can be translated later. Both rows still exist,
+    // so nothing downstream has to cope with a missing locale.
+    const titleEn = body.titleEn?.trim() || body.titleFr.trim();
+    const summaryFr = (body.summaryFr ?? "").trim();
+    const summaryEn = (body.summaryEn ?? "").trim() || summaryFr;
+    const contentHtmlFr = body.contentHtmlFr ?? "";
+    const contentHtmlEn = body.contentHtmlEn || contentHtmlFr;
+    // The paywall teaser falls back to the summary rather than blocking the
+    // publish: a visitor needs *something* to read before deciding to buy, but
+    // the summary already serves that purpose.
+    const previewHtmlFr =
+      body.previewHtmlFr?.trim() || (summaryFr ? `<p>${summaryFr}</p>` : "");
+    const previewHtmlEn =
+      body.previewHtmlEn?.trim() || (summaryEn ? `<p>${summaryEn}</p>` : "");
 
     const rawSlug = body.slug?.trim() || slugify(body.titleFr);
     const slug = slugify(rawSlug);
@@ -199,18 +213,18 @@ export async function POST(
         ...common,
         locale: "fr",
         title: body.titleFr.trim(),
-        summary: (body.summaryFr ?? "").trim(),
-        contentHtml: body.contentHtmlFr ?? "",
-        previewHtml: body.previewHtmlFr ?? "",
+        summary: summaryFr,
+        contentHtml: contentHtmlFr,
+        previewHtml: previewHtmlFr,
         mediaUrl: mediaUrlFr,
       },
       {
         ...common,
         locale: "en",
-        title: body.titleEn.trim(),
-        summary: (body.summaryEn ?? "").trim(),
-        contentHtml: body.contentHtmlEn ?? "",
-        previewHtml: body.previewHtmlEn ?? "",
+        title: titleEn,
+        summary: summaryEn,
+        contentHtml: contentHtmlEn,
+        previewHtml: previewHtmlEn,
         mediaUrl: mediaUrlEn,
       },
     ]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Loader2,
@@ -63,7 +63,6 @@ interface Props {
   onSubmit: (
     values: ContentEntryFormValues,
   ) => Promise<{ ok: boolean; error?: string }>;
-  submitLabel: string;
   saved?: boolean;
   savedMessage?: string;
 }
@@ -85,7 +84,6 @@ export default function ContentEntryForm({
   slugEditable,
   autoSlugFromTitle,
   onSubmit,
-  submitLabel,
   saved,
   savedMessage,
 }: Props) {
@@ -111,10 +109,6 @@ export default function ContentEntryForm({
     setValues(initialValues);
     setPriceInput(centsToInput(initialValues.priceCents));
   }, [initialValues]);
-
-  const dirty = useMemo(() => {
-    return JSON.stringify(values) !== JSON.stringify(initialValues);
-  }, [values, initialValues]);
 
   const update = <K extends keyof ContentEntryFormValues>(
     key: K,
@@ -170,13 +164,22 @@ export default function ContentEntryForm({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * `intent` is what the admin actually pressed.
+   *
+   * Publishing used to be a toggle further down the form, so the obvious path
+   * — fill everything in, press the button — saved a DRAFT and reported
+   * "saved" while nothing appeared on the site. The button now says what it
+   * does, and the draft option is the quiet secondary.
+   */
+  const submitWith = async (intent: "published" | "draft") => {
     if (saving) return;
     setError(null);
 
-    if (!values.titleFr.trim() || !values.titleEn.trim()) {
-      setError(t("errorTitlesRequired"));
+    // French is the only hard requirement. English is filled in from it
+    // server-side when left blank, so a unilingual admin is never blocked.
+    if (!values.titleFr.trim()) {
+      setError(t("errorTitleRequired"));
       return;
     }
     if (!values.slug) {
@@ -187,26 +190,24 @@ export default function ContentEntryForm({
       setError(t("errorPriceRequired"));
       return;
     }
-    if (
-      values.isPremium &&
-      values.status === "published" &&
-      (!values.previewHtmlFr.trim() || !values.previewHtmlEn.trim())
-    ) {
-      // Publishing a paywall with nothing behind the preview shows a visitor a
-      // price and a blank page — they cannot tell what they would be buying.
-      setError(t("errorPreviewRequired"));
-      return;
-    }
 
     setSaving(true);
     try {
-      const result = await onSubmit(values);
+      const next = { ...values, status: intent };
+      setValues(next);
+      const result = await onSubmit(next);
       if (!result.ok) {
         setError(result.error ?? "Save failed");
       }
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Enter in a text field publishes, matching the primary button.
+    await submitWith("published");
   };
 
   const isMedia = kind === "media";
@@ -250,15 +251,18 @@ export default function ContentEntryForm({
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               {t("fieldTitleEn")}
-              <span className="ml-1 text-destructive">*</span>
+              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                {t("optionalHint")}
+              </span>
             </label>
             <input
               type="text"
               value={values.titleEn}
               onChange={(e) => update("titleEn", e.target.value)}
+              placeholder={values.titleFr || undefined}
               className="w-full rounded-lg border border-border/60 bg-background px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              required
             />
+            <p className="text-xs text-muted-foreground">{t("englishFallback")}</p>
           </div>
         </div>
 
@@ -656,54 +660,49 @@ export default function ContentEntryForm({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card p-4">
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {t("statusLabel")}
-          </p>
-          <p className="text-xs text-muted-foreground">{t("statusHint")}</p>
-        </div>
-        <div className="inline-flex rounded-lg border border-border/60 bg-background p-0.5">
-          <button
-            type="button"
-            onClick={() => update("status", "draft")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
-              values.status === "draft"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-            {t("statusDraft")}
-          </button>
-          <button
-            type="button"
-            onClick={() => update("status", "published")}
-            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
-              values.status === "published"
-                ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            {t("statusPublished")}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end gap-3">
-        <button
-          type="submit"
-          disabled={saving || !dirty}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+      {/*
+        The action bar. Publishing is the primary button because it is what an
+        admin almost always means; saving a draft is the deliberate exception,
+        not the accidental default it used to be.
+      */}
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card/95 p-4 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-2 text-sm">
+          {values.status === "published" ? (
+            <>
+              <Eye className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-muted-foreground">{t("liveNow")}</span>
+            </>
           ) : (
-            <Save className="h-4 w-4" />
+            <>
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{t("notLiveYet")}</span>
+            </>
           )}
-          {submitLabel}
-        </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => submitWith("draft")}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {t("saveDraft")}
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            {values.status === "published" ? t("updatePublished") : t("publishNow")}
+          </button>
+        </div>
       </div>
     </form>
   );
