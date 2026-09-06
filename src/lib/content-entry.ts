@@ -354,6 +354,9 @@ export interface ContentEntryDTO {
   contentHtml: string;
   mediaType?: MediaType;
   mediaUrl?: string;
+  isPremium: boolean;
+  priceCents: number;
+  previewHtml: string;
   status: "draft" | "published";
   sortOrder: number;
   publishedAt?: string;
@@ -382,6 +385,9 @@ function toDTO(doc: IContentEntry): ContentEntryDTO {
     contentHtml: doc.contentHtml ?? "",
     mediaType: doc.mediaType,
     mediaUrl: doc.mediaUrl,
+    isPremium: doc.isPremium ?? false,
+    priceCents: doc.priceCents ?? 0,
+    previewHtml: doc.previewHtml ?? "",
     status: doc.status,
     sortOrder: doc.sortOrder ?? 100,
     publishedAt: doc.publishedAt?.toISOString(),
@@ -634,20 +640,30 @@ export async function getContentPair(
   return pairs[0] ?? null;
 }
 
+/**
+ * "only" = paid entries, "exclude" = free ones, "all" = both (the default, and
+ * the behaviour every existing caller relies on).
+ */
+export type PremiumFilter = "only" | "exclude" | "all";
+
 export async function listPublishedContent(
   kind: ContentKind,
   locale: ContentLocale,
+  opts?: { premium?: PremiumFilter },
 ): Promise<ContentEntryDTO[]> {
   await connectToDatabase();
   await ensureSeeded();
   const sort: Record<string, 1 | -1> = isDateSortedKind(kind)
     ? { publishedAt: -1, createdAt: -1 }
     : { sortOrder: 1, title: 1 };
-  const docs = await ContentEntry.find({
-    kind,
-    locale,
-    status: "published",
-  }).sort(sort);
+
+  const filter: Record<string, unknown> = { kind, locale, status: "published" };
+  // `$ne: true` rather than `false` so rows written before isPremium existed
+  // (field absent) still count as free.
+  if (opts?.premium === "only") filter.isPremium = true;
+  else if (opts?.premium === "exclude") filter.isPremium = { $ne: true };
+
+  const docs = await ContentEntry.find(filter).sort(sort);
   return docs.map(toDTO);
 }
 
