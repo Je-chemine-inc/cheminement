@@ -5007,9 +5007,7 @@
         "sharedByYou": "Uploaded by you",
         "sharedByProfessional": "Shared by your professional",
         "sharedByPlatform": "Shared by the platform"
-      },
-      "comingSoonTitle": "Educational resources — Coming soon",
-      "comingSoonDesc": "We are preparing a library of educational resources, guided meditations, and audio capsules. This section will be available shortly."
+      }
     },
     "billing": {
       "title": "Billing & Payments",

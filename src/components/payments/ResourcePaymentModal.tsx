@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -42,7 +42,14 @@ const appearance = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Step = "email" | "loading" | "pay" | "owned" | "done" | "error";
+/**
+ * "review" is the opening step for everyone: it shows the amount, and a guest
+ * also types their email there. Members could technically skip it, but kicking
+ * the fetch off from an effect meant a setState cascade on mount — and asking
+ * for one deliberate click before a PaymentIntent exists also avoids creating
+ * intents for people who only opened the dialog to look at the price.
+ */
+type Step = "review" | "loading" | "pay" | "owned" | "done" | "error";
 
 interface Props {
   open: boolean;
@@ -67,7 +74,7 @@ export default function ResourcePaymentModal({
   const locale = useLocale();
   const router = useRouter();
 
-  const [step, setStep] = useState<Step>(isSignedIn ? "loading" : "email");
+  const [step, setStep] = useState<Step>("review");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -108,13 +115,6 @@ export default function ResourcePaymentModal({
     },
     [slug, locale, t],
   );
-
-  // A signed-in buyer has nothing to type, so go straight to the card form.
-  useEffect(() => {
-    if (open && isSignedIn && step === "loading" && !clientSecret) {
-      startIntent();
-    }
-  }, [open, isSignedIn, step, clientSecret, startIntent]);
 
   const handlePaid = useCallback(async () => {
     // The webhook is the authoritative grant; this call just lets the buyer
@@ -163,30 +163,41 @@ export default function ResourcePaymentModal({
           <span className="font-serif text-xl font-light text-foreground">{price}</span>
         </div>
 
-        {step === "email" ? (
+        {step === "review" ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (emailValid) startIntent(email.trim());
+              if (isSignedIn) startIntent();
+              else if (emailValid) startIntent(email.trim());
             }}
             className="space-y-4"
           >
-            <div className="space-y-2">
-              <label htmlFor="buyer-email" className="text-sm font-medium">
-                {t("emailLabel")}
-              </label>
-              <input
-                id="buyer-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("emailPlaceholder")}
-                className="w-full rounded-lg border border-border/60 bg-background px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <p className="text-xs text-muted-foreground">{t("emailWhy")}</p>
-            </div>
-            <Button type="submit" disabled={!emailValid} className="w-full">
+            {isSignedIn ? (
+              <p className="text-sm text-muted-foreground">
+                {t("signedInAs", { email: signedInEmail ?? "" })}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <label htmlFor="buyer-email" className="text-sm font-medium">
+                  {t("emailLabel")}
+                </label>
+                <input
+                  id="buyer-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("emailPlaceholder")}
+                  className="w-full rounded-lg border border-border/60 bg-background px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground">{t("emailWhy")}</p>
+              </div>
+            )}
+            <Button
+              type="submit"
+              disabled={!isSignedIn && !emailValid}
+              className="w-full"
+            >
               {t("continue")}
             </Button>
           </form>
@@ -276,7 +287,7 @@ export default function ResourcePaymentModal({
             ) : null}
             <Button
               variant="outline"
-              onClick={() => setStep(isSignedIn ? "loading" : "email")}
+              onClick={() => setStep("review")}
               className="w-full"
             >
               {t("goBack")}

@@ -5006,9 +5006,7 @@
         "sharedByYou": "Ajouté par vous",
         "sharedByProfessional": "Partagé par votre professionnel",
         "sharedByPlatform": "Partagé par la plateforme"
-      },
-      "comingSoonTitle": "Ressources éducatives — À venir",
-      "comingSoonDesc": "Nous préparons une bibliothèque de ressources éducatives, méditations et capsules audio. Cette section sera disponible prochainement."
+      }
     },
     "billing": {
       "title": "Facturation et paiements",

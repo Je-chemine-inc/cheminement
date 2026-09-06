@@ -33,6 +33,7 @@ const h = vi.hoisted(() => {
   const convo = mk();
   const extMsg = mk();
   const rpurch = mk();
+  const mergeEntitlements = vi.fn().mockResolvedValue(0);
   const store: {
     survivor: Record<string, unknown> | null;
     loser: Record<string, unknown> | null;
@@ -52,6 +53,7 @@ const h = vi.hoisted(() => {
     convo,
     extMsg,
     rpurch,
+    mergeEntitlements,
     store,
   };
 });
@@ -78,6 +80,13 @@ vi.mock("@/models/AuthAuditLog", () => ({
   default: { updateMany: vi.fn().mockResolvedValue({ modifiedCount: 0 }) },
 }));
 vi.mock("@/models/Resource", () => ({ ResourcePurchase: h.rpurch }));
+// Premium-resource entitlements move through a helper rather than an
+// updateMany, because a shared purchase would otherwise throw E11000 partway
+// through this transaction-less merge. Its own behaviour is covered in
+// resource-entitlement.spec.ts; here we only pin that the merge calls it.
+vi.mock("@/lib/resource-entitlement", () => ({
+  mergeResourceEntitlements: h.mergeEntitlements,
+}));
 
 import { mergeAccounts } from "@/lib/account-merge";
 
@@ -177,6 +186,24 @@ describe("mergeAccounts — happy path", () => {
     expect(String(h.user.deleteOne.mock.calls[0][0]._id)).toBe(LOSER);
     expect(res.deletedLoser).toBe(true);
     expect(res.reassigned.appointments).toBe(1);
+  });
+
+  it("carries premium-resource purchases over, including guest ones", async () => {
+    // The loser's email is passed so entitlements bought BEFORE they had an
+    // account (no userId, matched on email) follow them into the survivor.
+    h.store.loser = makeUser({ _id: LOSER, email: "loser@example.com" });
+    h.mergeEntitlements.mockResolvedValue(2);
+
+    const res = await mergeAccounts({ survivorId: SURV, loserId: LOSER });
+
+    expect(h.mergeEntitlements).toHaveBeenCalledTimes(1);
+    const arg = h.mergeEntitlements.mock.calls[0][0] as {
+      loserEmail?: string;
+      survivorId: unknown;
+    };
+    expect(arg.loserEmail).toBe("loser@example.com");
+    expect(String(arg.survivorId)).toBe(SURV);
+    expect(res.reassigned.resourceEntitlements).toBe(2);
   });
 
   it("keeps the survivor's MedicalProfile (loser's is NOT moved)", async () => {

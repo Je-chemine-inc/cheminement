@@ -5,6 +5,7 @@ import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import Review from "@/models/Review";
 import { ResourcePurchase } from "@/models/Resource";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -142,7 +143,8 @@ export async function GET(req: NextRequest) {
     };
 
     // Get revenue breakdown
-    const [appointmentRevenue, resourceRevenue] = await Promise.all([
+    const [appointmentRevenue, resourceRevenue, entitlementRevenue] =
+      await Promise.all([
       // Session fees from appointments
       Appointment.aggregate([
         {
@@ -173,11 +175,25 @@ export async function GET(req: NextRequest) {
           },
         },
       ]).catch(() => [{ resourceRevenue: 0 }]), // Fallback if collection doesn't exist yet
+      // Premium ContentEntry resources (the live path; the aggregate above is
+      // the dormant Resource model and has no rows).
+      //
+      // Two deliberate differences from it: this filters on paidAt rather than
+      // createdAt, so a pending row's creation date is not counted as revenue;
+      // and status "paid" means a later refund removes the sale from its
+      // original period. That is right for "revenue we still hold", but it does
+      // make past periods mutable — do not "fix" it by counting refunded rows.
+      ResourceEntitlement.aggregate([
+        { $match: { status: "paid", paidAt: { $gte: startDate } } },
+        { $group: { _id: null, cents: { $sum: "$amountCents" } } },
+      ]).catch(() => [{ cents: 0 }]),
     ]);
 
     const breakdown = {
       sessionFees: appointmentRevenue[0]?.sessionFees || 0,
-      resourceSales: resourceRevenue[0]?.resourceRevenue || 0,
+      resourceSales:
+        (resourceRevenue[0]?.resourceRevenue || 0) +
+        (entitlementRevenue[0]?.cents || 0) / 100,
     };
     const totalRevenue = breakdown.sessionFees + breakdown.resourceSales;
 
