@@ -5,6 +5,16 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import StripeWebhookEvent from "@/models/StripeWebhookEvent";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
+import {
+  disputeResourceEntitlement,
+  grantResourceEntitlement,
+  isResourcePurchaseIntent,
+  markResourcePurchaseCancelled,
+  markResourcePurchaseFailed,
+  restoreResourceEntitlement,
+  revokeResourceEntitlement,
+} from "@/lib/resource-entitlement";
 import Stripe from "stripe";
 import {
   sendGuestPaymentComplete,
@@ -120,6 +130,17 @@ async function handlePaymentIntentSucceeded(
 ) {
   console.log("Payment succeeded:", paymentIntent.id);
 
+  // Premium-resource purchases carry no appointmentId and must be handled
+  // before the bail below, or the buyer is charged and never granted access.
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    const { outcome } = await grantResourceEntitlement(paymentIntent);
+    // "granted" means this delivery is the one that moved the row from pending
+    // to paid — the only moment an access email should be sent. A replay
+    // reports "already-paid" and must stay silent.
+    console.log("[resource] purchase outcome:", outcome, paymentIntent.id);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -228,6 +249,11 @@ async function handlePaymentIntentSucceeded(
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   console.log("Payment failed:", paymentIntent.id);
 
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    await markResourcePurchaseFailed(paymentIntent);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -293,6 +319,11 @@ async function handlePaymentIntentCanceled(
 ) {
   console.log("Payment canceled:", paymentIntent.id);
 
+  if (isResourcePurchaseIntent(paymentIntent)) {
+    await markResourcePurchaseCancelled(paymentIntent);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -319,6 +350,17 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
       : charge.payment_intent.id;
+
+  // Refund revokes access. A FULL refund also destroys the guest access token,
+  // so the emailed link dies immediately; a partial refund keeps access.
+  const refundedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (refundedEntitlement) {
+    const outcome = await revokeResourceEntitlement(refundedEntitlement, charge);
+    console.log("[resource] refund outcome:", outcome, paymentIntentId);
+    return;
+  }
 
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
@@ -415,6 +457,15 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
       : dispute.payment_intent?.id;
   if (!paymentIntentId) return;
 
+  // Stripe holds the funds until this resolves, so access stops meanwhile.
+  const disputedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (disputedEntitlement) {
+    await disputeResourceEntitlement(disputedEntitlement);
+    return;
+  }
+
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
   });
@@ -446,6 +497,18 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
       ? refund.payment_intent
       : refund.payment_intent?.id;
   if (!paymentIntentId) return;
+
+  // The refund never completed, so the money stayed with us and access is
+  // restored — with a NEW token, because the old one was revoked and may have
+  // circulated. The caller must re-send the access email.
+  const reversedEntitlement = await ResourceEntitlement.findOne({
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (reversedEntitlement) {
+    const { restored } = await restoreResourceEntitlement(reversedEntitlement);
+    console.log("[resource] refund reversal restored:", restored, paymentIntentId);
+    return;
+  }
 
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,

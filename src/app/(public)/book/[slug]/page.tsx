@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
   ArrowLeft,
@@ -16,7 +17,9 @@ import { getMediaEmbed } from "@/lib/media-embed";
 import { isPremiumEntry, stripPremiumPayload } from "@/lib/content-premium";
 import { resolveResourceAccess } from "@/lib/resource-access";
 import { formatCad } from "@/lib/format-currency";
+import { authOptions } from "@/lib/auth";
 import StripAccessToken from "@/components/resources/StripAccessToken";
+import ResourceBuyButton from "@/components/resources/ResourceBuyButton";
 import type { ContentLocale, MediaType } from "@/models/ContentEntry";
 
 /**
@@ -84,6 +87,9 @@ export default async function BookResourcePage({
 
   const premium = isPremiumEntry(doc);
   const access = await resolveResourceAccess(slug, { isPremium: premium, token });
+  // Only used to pre-fill the checkout, never to decide access — that is
+  // resolveResourceAccess's job and its answer is already in `access`.
+  const session = premium && !access.granted ? await getServerSession(authOptions) : null;
 
   // THE boundary. Everything below renders from `view`, never from `doc`.
   const view = access.granted ? doc : stripPremiumPayload(doc);
@@ -271,13 +277,13 @@ export default async function BookResourcePage({
                 </ul>
 
                 <div className="mt-7">
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {t("buyCta", { price: formatCad(doc.priceCents, locale) })}
-                  </button>
+                  <ResourceBuyButton
+                    slug={slug}
+                    title={doc.title}
+                    priceCents={doc.priceCents}
+                    isSignedIn={Boolean(session?.user?.id)}
+                    signedInEmail={session?.user?.email ?? undefined}
+                  />
                 </div>
 
                 <p className="mt-4 text-xs text-muted-foreground">

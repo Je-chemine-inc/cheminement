@@ -39,6 +39,13 @@ interface CheckoutFormProps {
   onError?: (error: string) => void;
   paymentMethod?: "card" | "transfer" | "direct_debit";
   currency?: string;
+  /**
+   * Where Stripe sends the buyer if it has to redirect (3-D Secure). Normally
+   * unused because we confirm with redirect: "if_required", but when it IS
+   * used the default lands on the appointments dashboard — wrong for anything
+   * that is not an appointment payment.
+   */
+  returnUrl?: string;
 }
 
 export default function CheckoutForm({
@@ -48,6 +55,7 @@ export default function CheckoutForm({
   onError,
   paymentMethod = "card",
   currency = "CAD",
+  returnUrl,
 }: CheckoutFormProps) {
   const t = useTranslations("CheckoutForm");
   const locale = useLocale();
@@ -236,7 +244,9 @@ export default function CheckoutForm({
         const { error, paymentIntent } = await stripe.confirmPayment({
           elements,
           confirmParams: {
-            return_url: `${window.location.origin}/client/dashboard/appointments?payment_success=true`,
+            return_url:
+              returnUrl ??
+              `${window.location.origin}/client/dashboard/appointments?payment_success=true`,
           },
           redirect: "if_required",
         });
