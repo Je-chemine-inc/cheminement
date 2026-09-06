@@ -113,11 +113,27 @@ writes one gzipped archive per night to `/root/backups/mongo/`, validates it by 
 Logs one line per run to `/var/log/jechemine-backup.log`. Archives are ~12 MB each (~360 MB at full
 retention, against 78 GB free). Directory is `0700`, archives `0600` — **they contain client PHI**.
 
+**Off-site staging** (added 2026-09-06): after `--dryRun` validation the archive is copied to
+`/home/jechemin/db-backups/` (`0700`, files `0600`, owned by the `jechemin` cPanel account) so the
+WHC **external backup** (JetBackup → S3, stored in Canada) carries it off the machine. Placed
+*beside* `public_html`, never inside it — Apache's DocumentRoot is `/home/jechemin/public_html`,
+so the directory is not reachable over the web (verified: the URL returns the app's 404 page, not
+the archive). A staging failure is logged as `OFFSITE FAILED` but does **not** fail the run — the
+local archive is already valid and must not be discarded.
+
+⚠ **The JetBackup job itself still has to be created in the WHC client area** (Sauvegardes
+externes → JetBackup). As of 2026-09-06 the destination *works* (the daemon refreshes its disk
+usage every cycle) but **no job has ever run** — the panel shows 0 MB used and
+`Dernière sauvegarde : 1969-12-31`, i.e. never. Two empty job folders exist from 23 July. Until an
+**account-level** job for `jechemin` is enabled and scheduled, the staged archives go nowhere.
+
 ⚠ **cPanel's account backups do NOT cover MongoDB.** They back up the cPanel account; the dataset
 lives under `/var/lib/mongo` as root. This script is the only database backup.
 
 ⚠ **Two known gaps** — see §9:
-1. **Backups sit on the same box they protect.** A box loss loses both. There is no off-site copy.
+1. **Off-site is staged but not yet shipped.** Each validated archive is copied into the cPanel
+   account (above), which is where an account-level JetBackup job would pick it up — but that job
+   does not exist yet, so today the only copies still sit on the box they protect.
 2. **No full restore rehearsal has been done.** The app's Mongo user is scoped to the `jechemine`
    database, so restoring into a scratch copy fails with `not authorized`. `--dryRun` proves the
    archive is complete and parseable, which is not the same as proving a restore.
@@ -143,7 +159,7 @@ lives under `/var/lib/mongo` as root. This script is the only database backup.
 ## 9. Pending / open items
 
 - ~~**6-core CPU upgrade**~~ — **done**, `nproc` reports 6 (verified 2026-08-31). Close the WHC ticket if still open.
-- **Backups are on the same box they protect** — `/root/backups/mongo/` lives on the VPS. A box loss takes the backups with it, and cPanel's account backups do not cover `/var/lib/mongo` or `/root`. Needs an off-site copy (rsync/S3-compatible target in Canada for Loi 25, or a scheduled pull to another machine). **Highest-value open ops item.**
+- **Backups are staged for off-site but not yet leaving the box** — `/root/backups/mongo/` lives on the VPS, and cPanel's account backups do not cover `/var/lib/mongo` or `/root`. Since 2026-09-06 each validated archive is also copied to `/home/jechemin/db-backups/` so a JetBackup **account** job can carry it to the WHC S3 destination (confirmed stored in Canada, so Loi 25 is satisfied for the PHI in the archives). **What remains is one click in the WHC client area**: create + schedule a daily account backup job for `jechemin`. The purchased 50 GB is untouched (0 MB used) and ~360 MB/month is needed, so quota is a non-issue. Note the installed edition is **JetBackup Base**, which is account-oriented — pointing a job directly at `/root/backups/mongo` would need a tier that offers directory jobs, which is why the archives are staged inside the account instead. **Highest-value open ops item until that job runs.**
 - **No full restore rehearsal** — the app's Mongo user is scoped to the `jechemine` database, so restoring an archive into a scratch database fails `not authorized`. `--dryRun` validates the archive parses completely, which is weaker than a real restore. Needs a Mongo admin credential (or a throwaway mongod on another port) to rehearse properly. Do this before relying on the backup in anger.
 - **Email deliverability** — confirm whether welcome emails land in Gmail Promotions vs Primary (last live test sent; awaiting which-tab confirmation); improve Primary placement if needed.
 - **Admin-alert PHI** — a few admin-alert emails put client name + motif in the body/subject; strip to a deep-link (Loi 25).
