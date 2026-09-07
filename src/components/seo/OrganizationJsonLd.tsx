@@ -1,5 +1,4 @@
 import { getPlatformContactInfo, getSocialLinks } from "@/lib/platform-contact";
-import { DEFAULT_SOCIAL_LINKS } from "@/models/PlatformSettings";
 
 const SITE_URL = "https://www.jechemine.ca";
 
@@ -23,18 +22,14 @@ export default async function OrganizationJsonLd() {
   const address = contact?.physicalAddress;
   const hasAddress = Boolean(address?.city && address?.province);
 
-  // `sameAs` tells Google "these profiles are also us", so it must only contain
-  // profiles that exist. The social defaults in PlatformSettings are guessed
-  // placeholders — https://x.com/jechemine is a 404 — so anything still equal
-  // to its default is treated as "not configured" and left out. Once an admin
-  // sets a real URL in the platform settings it appears here automatically.
-  const sameAs = Object.entries(social ?? {})
-    .filter(([key, value]) => {
-      const url = typeof value === "string" ? value.trim() : "";
-      if (!url.startsWith("http")) return false;
-      return url !== DEFAULT_SOCIAL_LINKS[key as keyof typeof DEFAULT_SOCIAL_LINKS];
-    })
-    .map(([, value]) => (value as string).trim());
+  // `sameAs` tells Google "these profiles are also us", so a URL here that is
+  // not genuinely ours works against the entity match instead of for it.
+  // getSocialLinks() is the gate: it returns only admin-saved http(s) URLs, and
+  // there are no guessed defaults behind it any more, so an empty value here
+  // simply means "not configured" and is left out.
+  const sameAs = Object.values(social ?? {}).filter(
+    (value): value is string => typeof value === "string" && value.startsWith("http"),
+  );
 
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",

@@ -123,16 +123,26 @@ export const DEFAULT_PARTNERS: IPartner[] = [
 ];
 
 /**
- * Current footer URLs, kept as defaults so existing installs keep showing the
- * same icons until an admin edits them. Also the fallback in getSocialLinks().
+ * Every social link starts EMPTY, and empty means "hide that icon".
+ *
+ * Four of these used to ship as guessed handles — facebook/x/instagram/linkedin
+ * all pointing at ".../jechemine". Every one of them was wrong: the real
+ * accounts are facebook.com/CAJTerrebonne and linkedin.com/company/je-chemine,
+ * x.com/jechemine is a 404, and instagram.com/jechemine is an unrelated empty
+ * account. Because the admin settings form round-trips whatever it loads, the
+ * first save persisted those guesses into the database, and the public footer
+ * sent visitors to a dead profile until 2026-09-07.
+ *
+ * A default URL is a claim about the outside world that this repository cannot
+ * verify, so it makes none. An icon appears only once an admin puts a real URL
+ * behind it. Do not "helpfully" restore a handle here — platform-contact.spec.ts
+ * fails if any default is a URL.
  */
 export const DEFAULT_SOCIAL_LINKS: ISocialLinks = {
-  facebook: "https://facebook.com/jechemine",
-  x: "https://x.com/jechemine",
-  instagram: "https://instagram.com/jechemine",
-  linkedin: "https://linkedin.com/company/jechemine",
-  // No known default handles — empty means the icon stays hidden until an admin
-  // sets a URL (getSocialLinks preserves "" as "hide this icon").
+  facebook: "",
+  x: "",
+  instagram: "",
+  linkedin: "",
   youtube: "",
   tiktok: "",
 };

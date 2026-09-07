@@ -92,16 +92,33 @@ export async function getPlatformContactInfo(): Promise<PlatformContactInfo> {
 }
 
 /**
- * Admin-configured footer social links. Falls back to DEFAULT_SOCIAL_LINKS only
- * when a field is ABSENT (legacy docs / .lean() skips schema defaults) — an
- * explicitly emptied value ("") is preserved so the admin can hide that icon.
+ * Admin-configured footer social links, and the single source for both the
+ * footer icons and the `sameAs` block in the Organization structured data.
+ *
+ * Only an http(s) URL an admin actually saved comes back. An absent field, an
+ * explicit "" ("hide this icon") and a legacy non-URL value all return "" —
+ * there are no guessed handles left to fall back to, deliberately, because a
+ * made-up profile URL sends real visitors, and Google's entity match, to a page
+ * we do not control. See DEFAULT_SOCIAL_LINKS.
  */
 export async function getSocialLinks(): Promise<ISocialLinks> {
   await connectToDatabase();
   const settings = await PlatformSettings.findOne().select("socialLinks").lean();
   const s = settings?.socialLinks as Partial<ISocialLinks> | undefined;
-  const pick = (k: keyof ISocialLinks): string =>
-    (s?.[k] ?? DEFAULT_SOCIAL_LINKS[k]).trim();
+  const pick = (k: keyof ISocialLinks): string => {
+    // `.lean()` returns whatever Mongo actually holds, so the declared string
+    // type is not a guarantee — a legacy document can carry a number here.
+    const stored = s?.[k] ?? DEFAULT_SOCIAL_LINKS[k] ?? "";
+    const value = typeof stored === "string" ? stored.trim() : "";
+    // Anything that is not an http(s) URL must never become an href. Parsing
+    // rather than pattern-matching also rejects a bare scheme ("https://").
+    try {
+      const { protocol } = new URL(value);
+      return protocol === "http:" || protocol === "https:" ? value : "";
+    } catch {
+      return "";
+    }
+  };
   return {
     facebook: pick("facebook"),
     x: pick("x"),

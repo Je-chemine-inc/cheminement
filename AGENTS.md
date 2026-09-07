@@ -26,7 +26,15 @@ The entry point for every AI (and human) session in this repo. Read it once, in 
 | `pnpm prune` | knip — dead code / unused deps. |
 | `pnpm create-admin` / `pnpm seed-motifs` / `pnpm reset-motifs` / `pnpm seed-routing-test` | `tsx` ops scripts. ⚠ destructive — never point at the prod DB. |
 
-**"Green" = `pnpm test` passes AND `pnpm build` passes** (build = the strict typecheck). `pnpm lint` is **advisory**: the tree carries a large pre-existing ESLint backlog (~84 errors) and `next build` does not enforce it — so don't aim for a clean `pnpm lint`, just **don't add new lint errors** in files you touch. (`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) There is **no CI gate at all** — only the Vercel `next build` runs, and it runs neither vitest nor ESLint. So run `pnpm test` yourself: a logically-broken-but-compiling change can ship.
+**"Green" = `pnpm test` passes AND `pnpm build` passes** (build = the strict typecheck). `pnpm lint` is **advisory**: the tree carries a large pre-existing ESLint backlog (~84 errors) and `next build` does not enforce it — so don't aim for a clean `pnpm lint`, just **don't add new lint errors** in files you touch. ⚠ **`pnpm build` needs two env vars even though the repo ships no `.env`.**
+`src/lib/mongodb.ts` and `src/lib/stripe.ts` throw at *module load*, and Next
+imports every route while collecting page data, so a bare `pnpm build` dies with
+"Failed to collect page data" — which looks like a code error and is not. Any
+placeholder works; nothing connects at build time:
+`MONGODB_URI=mongodb://127.0.0.1:27017/x STRIPE_SECRET_KEY=sk_test_x pnpm build`.
+Never copy the production env file locally to get around this — it holds live keys.
+
+(`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) There is **no CI gate at all** — only the Vercel `next build` runs, and it runs neither vitest nor ESLint. So run `pnpm test` yourself: a logically-broken-but-compiling change can ship.
 
 ## 4. Docs map — which doc for which task
 
