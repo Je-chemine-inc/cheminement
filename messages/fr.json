@@ -1,5 +1,9 @@
 {
   "Common": {
+    "notFoundTitle": "Page introuvable",
+    "notFoundBody": "Cette page n'existe pas ou a été retirée. Elle a peut-être été déplacée, ou l'adresse comporte une erreur.",
+    "backHome": "Retour à l'accueil",
+    "browseResources": "Voir les ressources",
     "loading": "Chargement..."
   },
   "PhoneVerificationModal": {
