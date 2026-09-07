@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { contentSocialMetadata } from "@/lib/content-metadata";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -49,6 +50,9 @@ export async function generateMetadata({
   return {
     title: doc.title,
     description: doc.summary || undefined,
+    // Without this the link preview shows the generic site name, not the
+    // article name. See contentSocialMetadata.
+    ...contentSocialMetadata(doc),
   };
 }
 

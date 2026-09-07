@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { contentSocialMetadata } from "@/lib/content-metadata";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
@@ -59,11 +60,7 @@ export async function generateMetadata({
     // With ?token= in the URL, the default policy would ship the access token
     // to every embedded third party in the Referer header.
     referrer: "strict-origin-when-cross-origin",
-    openGraph: {
-      title: doc.title,
-      description: doc.summary || undefined,
-      images: doc.iconUrl ? [doc.iconUrl] : undefined,
-    },
+    ...contentSocialMetadata(doc),
   };
 }
 
