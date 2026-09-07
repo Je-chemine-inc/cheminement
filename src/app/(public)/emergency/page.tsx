@@ -4,6 +4,19 @@ import { getLocale, getTranslations } from "next-intl/server";
 import BookingButtonsGroup from "@/components/appointments/BookingButtonsGroup";
 import { getLegalDocument } from "@/lib/legal-content";
 import type { LegalDocumentLocale } from "@/models/LegalDocument";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Seo");
+  return {
+    title: t("emergency.title"),
+    description: t("emergency.description"),
+    openGraph: {
+      title: t("emergency.title"),
+      description: t("emergency.description"),
+    },
+  };
+}
 
 export const dynamic = "force-dynamic";
 

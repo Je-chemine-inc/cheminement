@@ -7,6 +7,20 @@ import {
   PersonalizedJourneySection,
 } from "@/components/sections/about";
 import { EthicsSection } from "@/components/sections/approaches";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Seo");
+  return {
+    title: t("whoWeAre.title"),
+    description: t("whoWeAre.description"),
+    openGraph: {
+      title: t("whoWeAre.title"),
+      description: t("whoWeAre.description"),
+    },
+  };
+}
 
 export default function WhoWeArePage() {
   return (

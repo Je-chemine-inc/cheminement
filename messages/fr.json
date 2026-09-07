@@ -1,4 +1,46 @@
 {
+  "Seo": {
+    "home": {
+      "title": "Soins en santé mentale au Québec",
+      "description": "Trouvez rapidement un professionnel de la santé mentale au Québec. Jumelage personnalisé, rendez-vous en ligne ou en personne, service bilingue."
+    },
+    "book": {
+      "title": "Ressources en santé mentale",
+      "description": "Articles, guides vidéo, outils d'auto-évaluation et méditations pour prendre soin de votre santé mentale, en accès libre ou en version premium."
+    },
+    "approaches": {
+      "title": "Nos approches thérapeutiques",
+      "description": "Thérapie cognitivo-comportementale, EMDR, thérapie de couple et plus : découvrez les approches offertes par nos professionnels et laquelle vous conviendrait."
+    },
+    "services": {
+      "title": "Nos services",
+      "description": "Consultation individuelle, de couple, familiale ou pour adolescents, en ligne ou en personne partout au Québec."
+    },
+    "contact": {
+      "title": "Nous joindre",
+      "description": "Une question sur nos services ou votre rendez-vous ? Notre équipe vous répond rapidement, en français comme en anglais."
+    },
+    "whoWeAre": {
+      "title": "Qui nous sommes",
+      "description": "Je chemine met en relation les Québécois avec des professionnels de la santé mentale vérifiés. Découvrez notre mission et notre équipe."
+    },
+    "whyUs": {
+      "title": "Pourquoi nous choisir",
+      "description": "Sans longue attente, avec un jumelage adapté à vos besoins et des professionnels vérifiés. Voici ce qui distingue Je chemine."
+    },
+    "professional": {
+      "title": "Devenir professionnel partenaire",
+      "description": "Rejoignez le réseau Je chemine : recevez des demandes de clients jumelés à votre expertise, gérez votre horaire et vos paiements au même endroit."
+    },
+    "emergency": {
+      "title": "Ressources d'urgence",
+      "description": "En situation de crise ou de détresse ? Voici les lignes d'aide et les ressources d'urgence disponibles 24 h sur 24 au Québec."
+    },
+    "schoolManager": {
+      "title": "Pour les établissements scolaires",
+      "description": "Offrez à vos élèves et à votre personnel un accès encadré à des professionnels de la santé mentale, avec suivi et facturation centralisés."
+    }
+  },
   "Common": {
     "notFoundTitle": "Page introuvable",
     "notFoundBody": "Cette page n'existe pas ou a été retirée. Elle a peut-être été déplacée, ou l'adresse comporte une erreur.",

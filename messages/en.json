@@ -1,4 +1,46 @@
 {
+  "Seo": {
+    "home": {
+      "title": "Mental health care in Quebec",
+      "description": "Find a mental health professional in Quebec quickly. Personalized matching, online or in-person appointments, bilingual service."
+    },
+    "book": {
+      "title": "Mental health resources",
+      "description": "Articles, video guides, self-assessment tools and meditations to care for your mental health, free or premium."
+    },
+    "approaches": {
+      "title": "Our therapeutic approaches",
+      "description": "Cognitive behavioural therapy, EMDR, couples therapy and more: discover the approaches our professionals offer and which one suits you."
+    },
+    "services": {
+      "title": "Our services",
+      "description": "Individual, couples, family or teen consultations, online or in person across Quebec."
+    },
+    "contact": {
+      "title": "Contact us",
+      "description": "A question about our services or your appointment? Our team replies quickly, in French or English."
+    },
+    "whoWeAre": {
+      "title": "Who we are",
+      "description": "Je chemine connects Quebecers with vetted mental health professionals. Discover our mission and our team."
+    },
+    "whyUs": {
+      "title": "Why choose us",
+      "description": "No long waits, matching adapted to your needs, and vetted professionals. Here is what sets Je chemine apart."
+    },
+    "professional": {
+      "title": "Become a partner professional",
+      "description": "Join the Je chemine network: receive client requests matched to your expertise and manage your schedule and payments in one place."
+    },
+    "emergency": {
+      "title": "Emergency resources",
+      "description": "In crisis or distress? Here are the help lines and emergency resources available 24/7 in Quebec."
+    },
+    "schoolManager": {
+      "title": "For schools and institutions",
+      "description": "Give your students and staff supervised access to mental health professionals, with centralized follow-up and billing."
+    }
+  },
   "Common": {
     "notFoundTitle": "Page not found",
     "notFoundBody": "This page doesn't exist or has been removed. It may have moved, or the address may contain a typo.",

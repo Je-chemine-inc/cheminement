@@ -4,6 +4,20 @@ import PlatformBenefitsSection from "@/components/sections/professional/Platform
 import ProfessionalCTASection from "@/components/sections/professional/ProfessionalCTASection";
 import ColorTransition from "@/components/ui/ColorTransition";
 import ProfessionalCollaborationSection from "@/components/sections/professional/ProfessionalCollaborationSection";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Seo");
+  return {
+    title: t("professional.title"),
+    description: t("professional.description"),
+    openGraph: {
+      title: t("professional.title"),
+      description: t("professional.description"),
+    },
+  };
+}
 
 export default function ProfessionalPage() {
   return (

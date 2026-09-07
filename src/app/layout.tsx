@@ -13,7 +13,19 @@ export const metadata: Metadata = {
   // Resolves relative URLs (incl. the auto-generated og:image) to absolute, which
   // social/link-preview scrapers require.
   metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
+  // Self-referencing canonical on every route. The site was reachable on four
+  // addresses (apex/www × http/https); the middleware now redirects them, but
+  // this is the belt to that braces — it also collapses any tracking query
+  // string a visitor arrives with into a single indexable URL.
+  alternates: {
+    canonical: "./",
+  },
+  title: {
+    default: SITE_TITLE,
+    // Pages set only their own name; the brand is appended here so every
+    // title is distinct without repeating "Je chemine" in each file.
+    template: "%s | Je chemine",
+  },
   description: SITE_DESCRIPTION,
   icons: {
     icon: "/favicon.png",

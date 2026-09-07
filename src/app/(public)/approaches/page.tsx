@@ -7,6 +7,20 @@ import {
   PersonCenteredSection,
 } from "@/components/sections/approaches";
 import ColorTransition from "@/components/ui/ColorTransition";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Seo");
+  return {
+    title: t("approaches.title"),
+    description: t("approaches.description"),
+    openGraph: {
+      title: t("approaches.title"),
+      description: t("approaches.description"),
+    },
+  };
+}
 
 export default function ApproachesPage() {
   return (
