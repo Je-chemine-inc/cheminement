@@ -3,6 +3,7 @@ import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
+import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd";
 
 const SITE_URL = "https://www.jechemine.ca";
 const SITE_TITLE = "Je chemine - Soins en santé mentale";
@@ -57,6 +58,10 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className="antialiased" suppressHydrationWarning>
+        {/* Identifies the business to search engines. Built from the
+            admin-configured contact settings, so it cannot drift from what the
+            site actually says. */}
+        <OrganizationJsonLd />
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
