@@ -45,6 +45,17 @@ The box is an **oversubscribed LXC container** — `uptime` load is the *host-wi
 - **App runtime**: Next.js 16 **standalone** build. systemd service **`jechemine`**:
   `ExecStart=/usr/bin/node --env-file=/root/jechemine.env /root/app/server.js`, `HOSTNAME=127.0.0.1 PORT=3000`, `WorkingDirectory=/root/app`, `Restart=on-failure`.
 - **Web**: **Apache (httpd)** owns 80/443, reverse-proxies the domain → `127.0.0.1:3000` (mod_proxy). AutoSSL/Let's Encrypt certs. Non-standard inbound ports (e.g. 3000) are NOT reachable externally — everything goes through Apache.
+- **Apache config lives in cPanel userdata includes, NOT in httpd.conf.** cPanel owns and regenerates `/etc/apache2/conf/httpd.conf`, so edits there are lost. The two files that matter:
+  - `/etc/apache2/conf.d/userdata/ssl/2_4/jechemin/jechemine.ca/proxy.conf` — **https**: the actual reverse proxy to `127.0.0.1:3000`.
+  - `/etc/apache2/conf.d/userdata/std/2_4/jechemin/jechemine.ca/proxy.conf` — **http**: nothing but a 301 to `https://www.jechemine.ca`.
+
+  After editing either: `/scripts/ensure_vhost_includes --user=jechemin && apachectl configtest && apachectl graceful`. **Always configtest before reloading.**
+
+  ⚠ Two things that will bite whoever touches this next:
+  1. **`ProxyPass` is evaluated before `RewriteRule`.** The first attempt at the http→https redirect kept the ProxyPass alongside it and the redirect never fired — the proxy claimed the URL first. Port 80 now has *no* ProxyPass at all; that is deliberate, not an omission.
+  2. **`/.well-known` must stay reachable over plain http.** AutoSSL validates there. Redirect it and the certificate silently stops renewing, taking the site down ~60 days later with no warning. The `RewriteCond %{REQUEST_URI} !^/.well-known/` line is load-bearing. Verified after the change by serving a canary file over http on both hostnames.
+
+  Also note the https vhost sets `RequestHeader set X-Forwarded-Proto "https"` — on the **port 80 vhost too**, historically. That means the app can never tell http from https, which is why the http→https redirect has to live here in Apache rather than in `src/middleware.ts`.
 - **DB**: **MongoDB 8** on `127.0.0.1:27017` (auth enabled, not exposed). Connect on-box: `mongosh "$(grep -m1 '^MONGODB_URI=' /root/jechemine.env | cut -d= -f2- | tr -d '\"')"`.
 - **Data**: migrated once from Atlas (Paris) → this box; the box is now the source of truth. Vercel + Atlas can be decommissioned after a rollback window.
 - `csf` firewall: required outbound ports opened (25, 443, 465, 587, 993, 27017, …). `imunify360-full` WAF active (see §6).
