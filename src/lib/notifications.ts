@@ -6319,7 +6319,16 @@ export async function sendAdminNewServiceRequestAlert(data: {
 }): Promise<void> {
   await connectToDatabase();
   const adminEmails = await getAdminAlertRecipients();
-  if (adminEmails.length === 0) return;
+  if (adminEmails.length === 0) {
+    // Never return silently: with no recipients configured this warning is
+    // the ONLY trace that every new demande is going unannounced.
+    console.warn(
+      "[admin_new_service_request] No admin recipients — set adminAlertEmail " +
+        "in Admin → Settings, or ADMIN_ALERT_EMAIL. New service requests are " +
+        "NOT being announced to anyone.",
+    );
+    return;
+  }
 
   const branding = await getBranding();
   const base =
@@ -6366,7 +6375,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
     for (const to of adminEmails) {
       await sendEmail(
         { to, subject: editable.subject, html, text },
-        "service_request_onboarding",
+        "admin_new_service_request",
       ).catch((e) => console.error("sendAdminNewServiceRequestAlert:", e));
     }
     return;
@@ -6414,7 +6423,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
   for (const to of adminEmails) {
     await sendEmail(
       { to, subject, html, text },
-      "service_request_onboarding",
+      "admin_new_service_request",
     ).catch((e) => console.error("sendAdminNewServiceRequestAlert:", e));
   }
 }

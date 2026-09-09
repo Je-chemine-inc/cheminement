@@ -146,8 +146,14 @@ const EMAIL_TEMPLATE_INFO: Record<
   service_request_onboarding: {
     name: "Courriel de bienvenue (formulaire de demande)",
     description:
-      "Envoyé automatiquement à un client lorsqu'il soumet le formulaire de demande pour lui-même ou un proche.",
+      "Envoyé automatiquement à un client lorsqu'il soumet le formulaire de demande pour lui-même ou un proche. N'affecte PAS l'alerte envoyée à l'équipe.",
     category: "Bienvenue & Relances",
+  },
+  admin_new_service_request: {
+    name: "Alerte équipe — nouvelle demande de service",
+    description:
+      "Envoyé à l'équipe (adresse « Courriel d'alerte admin ») à chaque nouvelle demande de service. Désactivez-le et personne ne sera prévenu des nouvelles demandes.",
+    category: "Alertes administratives",
   },
   professional_approval: {
     name: "Courriel de bienvenue professionnel (profil complété)",

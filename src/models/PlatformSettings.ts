@@ -23,6 +23,12 @@ export type EmailNotificationType =
   | "professional_approval"
   | "professional_rejection"
   | "admin_interac_trust_request"
+  // Admin alert for a new service request. Deliberately its OWN type and not
+  // "service_request_onboarding": that one is the CLIENT's confirmation, shown
+  // in Admin → Settings as "Courriel de bienvenue (formulaire de demande)".
+  // Sharing it meant switching off the client welcome email also silently
+  // switched off the team's own new-demande alerts.
+  | "admin_new_service_request"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_day2_reminder"
@@ -268,6 +274,10 @@ const defaultEmailTemplates: Record<
   admin_interac_trust_request: {
     enabled: true,
     subject: "Interac / virement — validation requise (Statut vert)",
+  },
+  admin_new_service_request: {
+    enabled: true,
+    subject: "Nouvelle demande de service — Je chemine",
   },
   interac_transfer_instructions: {
     enabled: true,
