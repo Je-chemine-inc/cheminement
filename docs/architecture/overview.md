@@ -36,7 +36,7 @@ src/
   middleware.ts · theme.ts
 messages/           en.json + fr.json (the i18n catalogs)
 scripts/            one-shot tsx ops scripts (backfill, add-stripe-webhook-events)
-vercel.json         5 daily crons (+ in-app "lazy cron" for the matching cascade — lib/lazy-cron.ts)
+(no vercel.json)    crons live in /etc/cron.d/jechemine on the VPS (+ in-app "lazy cron" — lib/lazy-cron.ts)
 ```
 
 ### Where business logic lives
@@ -63,11 +63,11 @@ A service request **is** an `Appointment` document (it may have no `professional
 
 ## External services & integrations
 
-- **MongoDB Atlas** (data + binary file storage as BSON `Buffer` in `StoredFile`, because Vercel's FS is read-only).
+- **MongoDB** on the WHC VPS (data + binary file storage as BSON `Buffer` in `StoredFile` — a pattern inherited from the read-only Vercel FS, kept because it still works and moving it is a migration).
 - **Stripe 19** (`apiVersion 2025-10-29.clover`) — **separate charges & transfers** model: PaymentIntents carry no `application_fee`/`transfer_data`; the platform collects the full charge then pays pros later via admin-triggered `transfers.create` to Express Connect accounts (the platform holds the float). The **webhook** (`api/payments/webhook`, raw body, signature-verified, idempotent via `StripeWebhookEvent`) handles 7 event types (payment success/fail/cancel, full/partial refund with receipt void/restore, dispute, `setup_intent.succeeded`).
 - **SMTP email** via Nodemailer (`lib/email-transport.ts`), **fail-soft** (skips silently if unconfigured). `MAIL_FROM` must equal `SMTP_USER` or be a verified Gmail alias.
 - **Twilio** SMS via raw REST (`lib/sms.ts`), best-effort; `SMS_DRY_RUN` for local.
-- **Crons**: 5 daily routes (`vercel.json`) guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent.
+- **Crons**: 7 routes scheduled **hourly** from `/etc/cron.d/jechemine` on the VPS (via `run-cron.sh`, which curls `127.0.0.1:3000`), guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent.
 
 ## Entry points
 
@@ -85,4 +85,4 @@ These are recorded factually — they are **not** to be "fixed" except when a ta
 - **God-files**: `lib/notifications.ts` (6.7k), `email-template-registry.ts` (3k), `app/appointment/page.tsx` (3.1k), `MedicalProfile.tsx` (2.2k), `signup/member` (2.1k).
 - **Two of several things** coexist: two CMS models (`Problematique` legacy vs `ContentEntry`), two email-config layers (`PlatformSettings.emailSettings.templates` legacy vs `EmailTemplate`), two file mechanisms (`StoredFile` bytes vs `ClientDocument` URLs), two shadcn primitive generations, two animation systems (CSS keyframes + framer-motion), `guardianId` vs `accountManagerId`.
 - **Orphaned design tokens**: `src/theme.ts` (indigo/purple) and `src/config/colors.ts` do **not** match the authoritative OKLCH variables in `globals.css`; `globals.css` references undefined `--font-*` variables (no `next/font` loaded).
-- **No CI quality gate** — the Vercel `next build` is the only pre-deploy gate and does not run vitest. See [debt-map](../quality/debt-map.md).
+- **No CI quality gate** — `.github/workflows/deploy-whc.yml` runs `next build` and nothing else; it does not run vitest or ESLint, and a green build deploys straight to production. See [debt-map](../quality/debt-map.md).

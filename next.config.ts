@@ -5,10 +5,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // Self-hosted (WHC) CI build ships a standalone server; Vercel builds stay unchanged.
+  // The WHC CI build ships a standalone server (STANDALONE_BUILD=1); a plain
+  // local `pnpm build` skips it. Production is self-hosted — there is no Vercel.
   output: process.env.STANDALONE_BUILD === "1" ? "standalone" : undefined,
   reactCompiler: true,
-  /** TLS 1.2+ is terminated by the host (e.g. Vercel). Headers below enforce browser-side protections. */
+  /** TLS 1.2+ is terminated by Apache on the WHC VPS, which reverse-proxies to
+   *  127.0.0.1:3000. Headers below enforce browser-side protections. */
   async headers() {
     const securityHeaders = [
       {

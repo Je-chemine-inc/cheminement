@@ -6,14 +6,14 @@ argument-hint: (optional) what changed / which CUJ to exercise
 
 # Verify
 
-Produce an **evidence summary**, never a bare "done". The Vercel build is the only deploy gate and it does **not** run tests — so run them yourself.
+Produce an **evidence summary**, never a bare "done". The GitHub Actions build is the only deploy gate and it does **not** run tests — so run them yourself. A green build deploys to production automatically.
 
 ## The green sequence (real commands)
 
 Run from the repo root and capture the output. **"Green" = `pnpm test` and `pnpm build` both pass.**
 
 1. `pnpm test` — Vitest (`*.spec.ts`, node env). Focused run: `pnpm test <path-or-name>`. Must pass.
-2. `pnpm build` — `next build`: the deploy gate (what Vercel runs). Enforces the **strict TypeScript typecheck** + bundling. Treat a failing build as not-done. (`pnpm exec tsc --noEmit` is a faster typecheck-only check — the compiler directly, not a package.json script.)
+2. `pnpm build` — `next build`: the deploy gate (what GitHub Actions runs before deploying to the WHC VPS). Needs `MONGODB_URI` and `STRIPE_SECRET_KEY` set to any placeholder — see AGENTS.md §3. Enforces the **strict TypeScript typecheck** + bundling. Treat a failing build as not-done. (`pnpm exec tsc --noEmit` is a faster typecheck-only check — the compiler directly, not a package.json script.)
 3. `pnpm lint` — ESLint. **Advisory, not a gate**: the tree has ~84 pre-existing errors and `next build` (Next 16) does not run ESLint. Don't aim for zero — just confirm you added **no new** errors in the files you touched (compare against the baseline).
 
 (`pnpm seed` is broken — don't use it. Never point the `tsx` ops scripts at the prod DB.)

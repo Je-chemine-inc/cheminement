@@ -28,9 +28,9 @@ Written for a new teammate. For *why* and scope/metrics see the [PRD](prd.md); f
 
 ## Integrations that power it
 
-- **MongoDB Atlas** — all data, plus binary uploads stored as BSON `Buffer`s (Vercel's filesystem is read-only).
+- **MongoDB** on the WHC VPS (Canada, Loi 25) — all data, plus binary uploads stored as BSON `Buffer`s.
 - **Stripe 19 + Stripe Connect** — payments (separate charges & transfers; the platform holds the float), guest payments, ACSS/PAD mandates, refunds/disputes via a signed, idempotent webhook.
 - **Nodemailer SMTP** — all ~45 transactional emails (fail-soft), built by one bilingual builder and backed by an admin-editable template registry.
 - **Twilio** — SMS for phone verification and payment-request reminders (best-effort).
 - **next-intl** — bilingual FR/EN, cookie-driven (no locale in the URL).
-- **Vercel Cron + in-app lazy trigger** — daily reminder crons (`vercel.json`); the time-sensitive matching cascade advances via an in-app "lazy cron" off dashboard traffic (`lib/lazy-cron.ts`), with an optional external pinger as a 24/7 backstop.
+- **System cron + in-app lazy trigger** — hourly reminder jobs from `/etc/cron.d/jechemine` on the VPS; the time-sensitive matching cascade also advances via an in-app "lazy cron" off dashboard traffic (`lib/lazy-cron.ts`) so it survives a cron outage.

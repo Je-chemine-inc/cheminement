@@ -693,9 +693,9 @@ export async function POST(req: NextRequest) {
     await appointment.save();
 
     // Notify admins of the new service request.
-    // Wrapped in after() so Vercel keeps the serverless function alive until
-    // the SMTP send completes; otherwise the container is killed ~250ms after
-    // the response and Gmail SMTP (1-2s) never finishes.
+    // after() defers the work until the response has been sent, so a 1-2s SMTP
+    // round-trip never delays the client. Production is a long-lived Node
+    // server on the WHC VPS, so nothing is torn down mid-send.
     after(async () => {
       try {
         // `data.clientId` — not the session — so a referral files the alert

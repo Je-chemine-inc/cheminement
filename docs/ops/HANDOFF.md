@@ -57,7 +57,7 @@ The box is an **oversubscribed LXC container** — `uptime` load is the *host-wi
 
   Also note the https vhost sets `RequestHeader set X-Forwarded-Proto "https"` — on the **port 80 vhost too**, historically. That means the app can never tell http from https, which is why the http→https redirect has to live here in Apache rather than in `src/middleware.ts`.
 - **DB**: **MongoDB 8** on `127.0.0.1:27017` (auth enabled, not exposed). Connect on-box: `mongosh "$(grep -m1 '^MONGODB_URI=' /root/jechemine.env | cut -d= -f2- | tr -d '\"')"`.
-- **Data**: migrated once from Atlas (Paris) → this box; the box is now the source of truth. Vercel + Atlas can be decommissioned after a rollback window.
+- **Data**: migrated once from Atlas (Paris) → this box; the box is now the source of truth. **The Vercel app is gone** — `cheminement-b77i.vercel.app` returns 404, DNS points at this VPS, and `vercel.json` has been deleted from the repo (verified 2026-09-09). Nothing in production depends on Vercel any more; only the Vercel *account* may still hold old env vars — see §Decommission.
 - `csf` firewall: required outbound ports opened (25, 443, 465, 587, 993, 27017, …). `imunify360-full` WAF active (see §6).
 
 ---
@@ -118,6 +118,22 @@ imunify360-agent rules update-shared-disabled-rules
 | `*/3 * * * *` | **app watchdog** — `/root/jechemine/healthcheck.sh` restarts `jechemine` if it stops responding |
 | `15 7 * * *` | **MongoDB backup** — `/root/jechemine/backup-mongo.sh` (see below) |
 
+⚠️ **Never leave a backup copy of a cron file inside `/etc/cron.d/`.** On 2026-09-09 that directory
+held `jechemine`, `jechemine.bak.1785763065` and `jechemine.bak.1788531196`, and **cron executed all
+three** — every reminder job fired **twice**, three times between 09:00–14:00 UTC where the older
+backup's daily schedule overlapped, and the watchdog and inbound-mail sync ran 3× as well. The
+active file's own header warns about exactly this ("so they do NOT double-run and double-email
+clients") — the `.bak` copies quietly defeated it. Nothing in `/var/log/cron` flags a duplicate; you
+only see it by counting executions per minute (every count must be **1**):
+
+```bash
+grep "CMD (/root/jechemine/run-cron.sh" /var/log/cron | tail -200 \
+  | awk '{print $1, $2, $3, $NF}' | sort | uniq -c | sort -rn | head
+```
+
+Backups now live in `/root/jechemine/cron-backups/` — outside anything cron reads. Do **not** rely on
+a dot in the filename to disable a job: cron on this box runs it regardless of the extension.
+
 **Database backups** (added 2026-08-31 — there were none before): `/root/jechemine/backup-mongo.sh`
 writes one gzipped archive per night to `/root/backups/mongo/`, validates it by parsing it back with
 `mongorestore --dryRun` (an unvalidated dump is not a backup), then prunes to the newest **30**.
@@ -175,7 +191,7 @@ lives under `/var/lib/mongo` as root. This script is the only database backup.
 - **Email deliverability** — confirm whether welcome emails land in Gmail Promotions vs Primary (last live test sent; awaiting which-tab confirmation); improve Primary placement if needed.
 - **Admin-alert PHI** — a few admin-alert emails put client name + motif in the body/subject; strip to a deep-link (Loi 25).
 - **Field encryption** — enable `FIELD_ENCRYPTION_KEY` + backfill (§8).
-- **Decommission** Vercel + Atlas after the rollback window.
+- **Decommission**: the Vercel *deployment* is already down (404, verified 2026-09-09). Still to do **in the Vercel and Atlas dashboards** (no repo change can do this): delete the `cheminement-b77i` project, and **rotate every secret it still stores** — `FIELD_ENCRYPTION_KEY`, `STRIPE_SECRET_KEY`, `NEXTAUTH_SECRET`, SMTP and Twilio credentials. An abandoned project keeps its env vars readable to anyone with account access.
 
 ---
 

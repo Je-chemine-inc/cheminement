@@ -38,7 +38,7 @@ In Quebec, access to mental-health care is slowed by long waitlists and the fric
 ## Constraints
 
 - **Regulatory (Quebec)**: Loi 25 / Bill 25 compliance, data hosted in Canada, end-to-end encryption, mandatory 2FA, LSSSS art. 14 (minors), RGPD-style right-to-be-forgotten **with mandatory retention of invoices/financial data**, consent/terms versioning. *(observed: messages trust icons; src/models/AdminAccessLog.ts, AuthAuditLog.ts; request-deletion route)*
-- **Technical**: in-production on Vercel (read-only FS → binaries stored in Mongo); no multi-doc transactions (atomic single-doc claims); JWT sessions go stale until re-login; fail-soft email/SMS; **no CI test gate** (see [debt-map](../quality/debt-map.md)).
+- **Technical**: in-production on a WHC VPS in Canada (Loi 25); binaries stored in Mongo (inherited from the old read-only Vercel FS); no multi-doc transactions (atomic single-doc claims); JWT sessions go stale until re-login; fail-soft email/SMS; **no CI test gate** (see [debt-map](../quality/debt-map.md)).
 - **Commercial**: separate-charges-and-transfers Stripe model — the platform holds the float and pays pros manually. *(observed: api/stripe-connect/payout)*
 
 ## Success metrics (confirmed — the ones the PRD tracks)

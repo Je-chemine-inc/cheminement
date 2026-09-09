@@ -19,4 +19,4 @@ The operating documentation for **Je chemine**. Start at [../AGENTS.md](../AGENT
 
 ## Operations (production infra)
 - [ops/HANDOFF.md](ops/HANDOFF.md) — **start here to operate production**: how to reach the WHC VPS, CI/CD & deploys, DNS/email, the Imunify WAF gotcha, cron + app watchdog, lessons learned, pending items, and a command reference. The portable knowledge bridge for a new machine/session (no secrets — those live on the box).
-- [ops/whc-migration-runbook.md](ops/whc-migration-runbook.md) — the step-by-step Vercel + Atlas → WHC migration runbook.
+- [ops/whc-migration-runbook.md](ops/whc-migration-runbook.md) — the Vercel + Atlas → WHC migration runbook. **Historical**: the migration is done (see HANDOFF.md for how production runs now); keep it only as the record of what moved and why.

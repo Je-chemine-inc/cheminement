@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { runProposalTimeouts } from "@/lib/proposal-timeout";
 
 /**
- * Daily cron (Vercel Hobby plan allows daily crons only). Call with header:
+ * Scheduled from /etc/cron.d/jechemine on the WHC VPS (hourly at :20).
+ * Call with header:
  * Authorization: Bearer <CRON_SECRET>.
  * Advances targeted proposals left unanswered past their window (24h regular /
  * 12h urgent "Consultation ponctuelle rapide"), treating the silence like a

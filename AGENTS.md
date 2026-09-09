@@ -19,7 +19,7 @@ The entry point for every AI (and human) session in this repo. Read it once, in 
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev` | Run the dev server (Next 16 / Turbopack). |
-| `pnpm build` | `next build` — **the deploy gate** (Vercel runs this): enforces the **strict TypeScript typecheck** + bundling. Note: Next 16 does **not** run ESLint during build, so lint errors do **not** block it. |
+| `pnpm build` | `next build` — **the deploy gate** (GitHub Actions runs it on every push to `main`, then rsyncs the standalone bundle to the WHC VPS): enforces the **strict TypeScript typecheck** + bundling. Note: Next 16 does **not** run ESLint during build, so lint errors do **not** block it. |
 | `pnpm test` | Vitest — **34 `.spec.ts` files, node env**: pure logic + a slice of route guards. **No UI/component tests exist.** |
 | `pnpm lint` | ESLint (`eslint-config-next` core-web-vitals + typescript). **Advisory only** — see below. |
 | `pnpm format` | Prettier (`--write .`). |
@@ -34,7 +34,7 @@ placeholder works; nothing connects at build time:
 `MONGODB_URI=mongodb://127.0.0.1:27017/x STRIPE_SECRET_KEY=sk_test_x pnpm build`.
 Never copy the production env file locally to get around this — it holds live keys.
 
-(`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) There is **no CI gate at all** — only the Vercel `next build` runs, and it runs neither vitest nor ESLint. So run `pnpm test` yourself: a logically-broken-but-compiling change can ship.
+(`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) The deploy workflow (`.github/workflows/deploy-whc.yml`) runs **only** `next build` — **not** vitest, **not** ESLint. So run `pnpm test` yourself: a logically-broken-but-compiling change ships straight to production, because a green build auto-deploys.
 
 ## 4. Docs map — which doc for which task
 

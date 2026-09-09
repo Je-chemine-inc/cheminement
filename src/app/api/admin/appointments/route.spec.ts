@@ -2,7 +2,7 @@
  * Admin substitution booking: POST /api/admin/appointments.
  * Pins the guard (admin + manageUsers) and — the regression this file exists
  * for — that the client + professional notifications are scheduled through
- * next/server `after()`. A bare fire-and-forget Promise.all is killed on Vercel
+ * next/server `after()`. A bare fire-and-forget Promise.all can be cut short
  * when the response returns, before Gmail SMTP finishes, so the client never
  * receives the confirmation for the newly-booked appointment.
  */
@@ -159,7 +159,7 @@ describe("POST /api/admin/appointments — guards", () => {
   });
 });
 
-describe("POST /api/admin/appointments — notifications survive on Vercel", () => {
+describe("POST /api/admin/appointments — notifications survive the response", () => {
   it("schedules the client + pro notifications through after()", async () => {
     const res = await callPost(validBody());
     expect(res.status).toBe(201);

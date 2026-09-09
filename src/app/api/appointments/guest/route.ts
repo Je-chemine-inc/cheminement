@@ -510,8 +510,8 @@ export async function POST(req: NextRequest) {
         bookingFor: appointmentData.bookingFor,
         lovedOneInfo: appointmentData.lovedOneInfo,
       };
-      // after() keeps the serverless function alive on Vercel until the SMTP
-      // send completes; otherwise the container is killed before Gmail responds.
+      // after() defers the send until the response has gone out, so the SMTP
+      // round-trip never delays the caller.
       after(() =>
         sendProfessionalNotification(proNotificationArgs).catch((err) =>
           console.error("Error sending professional notification email:", err),

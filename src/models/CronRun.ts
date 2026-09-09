@@ -6,7 +6,8 @@ import mongoose, { Schema, Document, Model } from "mongoose";
  * from hot API routes runs the job at most once per window — and exactly once
  * across concurrent serverless instances (the claim is an atomic findOneAndUpdate
  * on `lastRunAt`). This lets the matching cascade advance off normal traffic
- * without depending on an external scheduler (GitHub Actions / Vercel Pro).
+ * without depending on the system scheduler alone (/etc/cron.d/jechemine on the
+ * WHC VPS), so the cascade still advances if cron is down.
  */
 export interface ICronRun extends Document {
   key: string;
