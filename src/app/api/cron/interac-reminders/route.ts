@@ -4,9 +4,9 @@ import { runPaymentReminders } from "@/lib/payment-reminders";
 /**
  * Post-session invoice dunning cron. Drives the H+12 / H+36 reminders and the
  * H+48 → "overdue" + admin alert for ANY unpaid invoice (card or Interac).
- * Endpoint path kept (`/api/cron/interac-reminders`) so vercel.json + any
+ * Endpoint path kept (`/api/cron/interac-reminders`) so /etc/cron.d/jechemine + any
  * external pinger stay unchanged; the runner is now method-agnostic. The
- * boolean/state flags make repeated runs (daily Vercel cron + the in-app lazy
+ * boolean/state flags make repeated runs (hourly system cron + the in-app lazy
  * trigger, or an hourly external pinger) safe.
  *   Authorization: Bearer <CRON_SECRET>
  */

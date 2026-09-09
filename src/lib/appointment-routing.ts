@@ -881,7 +881,7 @@ export async function routeAppointmentToProfessionals(
     // self-claim it — rather than sitting in the red "awaiting_admin" queue.
     // Admins are still alerted so the fallback never goes unseen. Awaited (not
     // fire-and-forget) so the send completes before this function — itself
-    // wrapped in after() by the caller — resolves; otherwise Vercel may kill the
+    // wrapped in after() by the caller — resolves; otherwise the work may be cut
     // container mid-send.
     const notifyAdminMovedToGeneral = async () => {
       const populated = await Appointment.findById(appointmentId)
@@ -1161,7 +1161,7 @@ export async function routeAppointmentToProfessionals(
 
       // Await the sends (collected, run together) so they complete before this
       // function resolves. The caller wraps the whole call in after(), which
-      // keeps the Vercel container alive until this promise settles — a prior
+      // lets this promise settle after the response — a prior
       // fire-and-forget (`void`) here could be killed before SMTP finished.
       const notificationPromises: Promise<unknown>[] = [];
       for (const match of topMatches) {

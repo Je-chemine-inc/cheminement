@@ -162,8 +162,8 @@ export async function POST(req: NextRequest) {
     });
     await appointment.save();
 
-    // Client confirmation email. after() keeps the serverless function alive
-    // until SMTP completes on Vercel; without it Gmail SMTP (1-2s) is killed.
+    // Client confirmation email. after() runs the send once the response has
+    // gone out, so Gmail SMTP (1-2s) never delays the caller.
     if (client.email) {
       const emailData = {
         clientName: `${client.firstName ?? ""} ${client.lastName ?? ""}`.trim(),

@@ -4,7 +4,7 @@ import { runPaymentGuaranteeReminders } from "@/lib/payment-guarantee-reminders"
 /**
  * Planifier un appel HTTP périodique (cron) avec l’en-tête :
  *   Authorization: Bearer <CRON_SECRET>
- * Ex. Vercel Cron, GitHub Actions, ou systemd timer.
+ * Ici : /etc/cron.d/jechemine sur le VPS (via run-cron.sh).
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;

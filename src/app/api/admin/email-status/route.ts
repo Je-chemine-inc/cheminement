@@ -16,7 +16,7 @@ import { getEmailSettings } from "@/lib/notifications";
  *   - envVars: { name: boolean }  (which env vars are populated;
  *                                  never the values themselves)
  *
- * Use it from the prod host to confirm Vercel env vars are loaded — if
+ * Use it from the prod host to confirm /root/jechemine.env is loaded — if
  * `backend === "none"`, SMTP_HOST / SMTP_USER / SMTP_PASS are missing.
  */
 export async function GET() {

@@ -2,7 +2,7 @@
  * In-memory IP-based rate limiter for Next.js API routes (Node.js runtime).
  *
  * NOTE: Each serverless function instance has its own memory. For multi-instance
- * production deployments (Vercel, etc.) upgrade to an Upstash Redis store:
+ * multi-instance deployments upgrade to a shared Redis store:
  *   https://upstash.com/docs/redis/sdks/ratelimit-ts/overview
  *
  * Current implementation is safe for single-instance and development use,

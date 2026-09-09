@@ -20,7 +20,7 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
  *
  * Stores the SHA-256 hash of the token on User.passwordResetTokenHash so the
  * raw token never persists. The email is wrapped in after() so the response
- * returns immediately while the SMTP send completes on Vercel.
+ * returns immediately while the SMTP send completes in the background.
  */
 export async function POST(
   _req: NextRequest,

@@ -114,7 +114,7 @@ export async function scanBufferForViruses(
         allowHtml: "true",
       },
       body: form,
-      // Kept under Vercel's default function limit so a slow scanner trips the
+      // Kept short so a slow scanner trips the
       // catch -> "error" fail-open branch instead of a platform 504.
       signal: AbortSignal.timeout(8_000),
     });

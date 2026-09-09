@@ -18,7 +18,7 @@ const HOUR_MS = 60 * 60 * 1000;
  * accepted within 24h (regular) / 12h (urgent) advances the cascade — handled by
  * the proposal timeout (see proposal-timeout.ts), not here.
  *
- * NOTE: Vercel Hobby allows DAILY crons only, so a 12h deadline is detected up to
+ * NOTE: the cron runs HOURLY, so a 12h deadline is detected up to
  * ~24h late (one daily-cron cycle). The deadline is exact; only detection lags.
  * The alert is one-shot via takeChargeSlaAlertSent (reset on each acceptance).
  */

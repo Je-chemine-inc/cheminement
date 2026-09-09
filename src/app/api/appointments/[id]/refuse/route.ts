@@ -163,8 +163,8 @@ export async function POST(
     // proposed set to "pending" — so the actual re-route runs OUTSIDE the request
     // path. Defer it to after(): the matcher awaits its own SMTP fan-out
     // (proposal emails, or the general-pool broadcast), and after() both keeps
-    // the response from blocking on those sends AND keeps the Vercel container
-    // alive until they finish (the matcher's documented contract). The client
+    // the response from blocking on those sends AND still runs them to
+    // completion afterwards (the matcher's documented contract). The client
     // (proposals page) just re-fetches, so it doesn't read the body below.
     after(async () => {
       try {

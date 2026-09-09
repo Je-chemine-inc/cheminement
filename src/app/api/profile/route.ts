@@ -104,8 +104,8 @@ export async function PUT(req: NextRequest) {
 
     // First-time profile completion → send welcome / "admin will reach out" email.
     // Idempotent because we only fire on the false→true transition.
-    // after() keeps the serverless function alive on Vercel until the SMTP
-    // send completes; without it, fire-and-forget is killed mid-flight.
+    // after() runs the send once the response has gone out, so it neither
+    // delays the caller nor gets cut short mid-flight.
     if (
       !wasAlreadyCompleted &&
       profile?.profileCompleted &&

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Persist in MongoDB (not the filesystem) so uploads work on serverless
-    // hosts with a read-only filesystem (Vercel) and survive redeploys. Served
+    // a read-only filesystem and survive redeploys. Served
     // publicly via /api/files/[id]. `folder` is kept for backward-compatible
     // bookkeeping only.
     const stored = await StoredFile.create({

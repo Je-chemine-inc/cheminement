@@ -163,8 +163,8 @@ describe("POST /api/admin/appointments — notifications survive the response", 
   it("schedules the client + pro notifications through after()", async () => {
     const res = await callPost(validBody());
     expect(res.status).toBe(201);
-    // The regression: sends MUST be wrapped in after() so Vercel keeps the
-    // function alive until Gmail SMTP completes.
+    // The regression: sends MUST be wrapped in after() so they still run
+    // after the response, until Gmail SMTP completes.
     expect(h.afterSpy).toHaveBeenCalledTimes(1);
     expect(h.sendConfirmation).toHaveBeenCalledTimes(1);
     expect(h.sendProNotification).toHaveBeenCalledTimes(1);

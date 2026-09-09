@@ -198,8 +198,8 @@ export async function POST(req: NextRequest) {
       bookingFor: appointment.bookingFor,
       lovedOneInfo: appointment.lovedOneInfo,
     };
-    // after() keeps the serverless function alive on Vercel until the SMTP
-    // sends complete; a bare fire-and-forget Promise.all is killed when the
+    // after() defers the sends until the response has gone out; a bare
+    // fire-and-forget Promise.all can be cut short when the
     // response returns (~250ms) before Gmail SMTP (1-2s) finishes, so the
     // client never receives the confirmation for the newly-booked slot. Mirrors
     // the professional booking route + every other notification call site.

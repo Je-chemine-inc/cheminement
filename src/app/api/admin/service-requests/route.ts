@@ -48,7 +48,7 @@ export async function GET() {
     after(() => triggerDuePaymentReminders());
     after(() => triggerDueInteracReconciliation());
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
-    // the Vercel Hobby daily cron doesn't reliably run. Throttled (30 min).
+    // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
 
     // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-

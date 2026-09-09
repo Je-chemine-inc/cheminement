@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
-    // the Vercel Hobby daily cron doesn't reliably run. Throttled (30 min).
+    // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
 
     const { searchParams } = new URL(req.url);

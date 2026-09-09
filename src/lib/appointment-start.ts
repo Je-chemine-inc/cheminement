@@ -56,7 +56,7 @@ export function getAppointmentStartAt(apt: {
   // UTC getters (stable regardless of server timezone). The time string is the
   // local wall-clock time in Montréal (America/Toronto) — convert it to the real
   // UTC instant. The old code used `base.setHours()`, which interprets the time
-  // in the SERVER's zone (UTC on Vercel), landing every start 4–5h early and
+  // in the SERVER's zone (the VPS runs UTC), landing every start 4–5h early and
   // shifting the reminder windows + the 48h cancellation boundary.
   const asUtcWall = Date.UTC(
     base.getUTCFullYear(),

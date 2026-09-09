@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 /**
- * Generic binary-file storage. Used when Vercel's read-only serverless FS
+ * Generic binary-file storage. Introduced when the old host's read-only FS
  * makes writing to /public unsafe — instead, the bytes live in MongoDB and
  * are streamed back via GET /api/files/[id].
  *

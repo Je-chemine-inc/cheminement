@@ -191,8 +191,8 @@ export async function POST(
     }
     await appointment.save();
 
-    // Confirm to both parties (fire-and-forget; after() keeps the container
-    // alive on Vercel until the SMTP sends settle).
+    // Confirm to both parties (deferred with after(), so the SMTP sends
+    // settle after the response rather than delaying it).
     const client = appointment.clientId as unknown as {
       firstName?: string;
       lastName?: string;

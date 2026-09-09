@@ -10,7 +10,7 @@ import { runInteracReconciliation } from "@/lib/interac-reconciler";
  * (admin queue / pro proposals polls) instead of an external scheduler. The
  * cascade's 24h/12h proposal timeouts (Pro 1 → expire → Pro 2 → expire →
  * general pool) only need to fire roughly hourly, so piggy-backing on the
- * frequent dashboard polls is enough — no GitHub Actions / Vercel Pro required.
+ * frequent dashboard polls is enough, so the cascade survives a cron outage.
  *
  * Safety:
  *  - DB heartbeat (CronRun) throttles the real job to once per THROTTLE_MS, and
@@ -56,7 +56,7 @@ export async function triggerDueCascadeCron(): Promise<void> {
 
 // Post-session invoice dunning (H+12 / H+36 reminders, H+48 → overdue + alert).
 // The windows are coarse ("le lendemain matin"), so a 30-min lazy throttle off
-// dashboard traffic — plus the daily Vercel cron baseline — is plenty.
+// dashboard traffic — plus the hourly system cron baseline — is plenty.
 const PAYMENT_REMINDERS_KEY = "payment-reminders";
 const PAYMENT_REMINDERS_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
 let lastPaymentLocalCheck = 0;
@@ -87,7 +87,7 @@ export async function triggerDuePaymentReminders(): Promise<void> {
 }
 
 // Pre-appointment reminders (H-72 with cancel/reschedule, H-48 without). On
-// Vercel Hobby the daily /api/cron/appointment-reminders is unreliable (only 2
+// a cron outage makes /api/cron/appointment-reminders miss its window (only 2
 // of the 5 declared crons actually run), so drive it off dashboard traffic too.
 // The windows are 24h/48h wide and the job dedupes via per-appointment flags, so
 // a ~30-min lazy cadence catches every appointment exactly once.

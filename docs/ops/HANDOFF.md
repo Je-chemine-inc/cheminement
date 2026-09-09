@@ -57,7 +57,7 @@ The box is an **oversubscribed LXC container** — `uptime` load is the *host-wi
 
   Also note the https vhost sets `RequestHeader set X-Forwarded-Proto "https"` — on the **port 80 vhost too**, historically. That means the app can never tell http from https, which is why the http→https redirect has to live here in Apache rather than in `src/middleware.ts`.
 - **DB**: **MongoDB 8** on `127.0.0.1:27017` (auth enabled, not exposed). Connect on-box: `mongosh "$(grep -m1 '^MONGODB_URI=' /root/jechemine.env | cut -d= -f2- | tr -d '\"')"`.
-- **Data**: migrated once from Atlas (Paris) → this box; the box is now the source of truth. **The Vercel app is gone** — `cheminement-b77i.vercel.app` returns 404, DNS points at this VPS, and `vercel.json` has been deleted from the repo (verified 2026-09-09). Nothing in production depends on Vercel any more; only the Vercel *account* may still hold old env vars — see §Decommission.
+- **Data**: migrated once from Atlas (Paris) → this box; the box is now the source of truth. **Vercel is fully gone** — the `cheminement-b77i` project is deleted (owner-confirmed 2026-09-09), the URL 404s, DNS points at this VPS, and the repo carries no Vercel config at all.
 - `csf` firewall: required outbound ports opened (25, 443, 465, 587, 993, 27017, …). `imunify360-full` WAF active (see §6).
 
 ---
@@ -191,7 +191,7 @@ lives under `/var/lib/mongo` as root. This script is the only database backup.
 - **Email deliverability** — confirm whether welcome emails land in Gmail Promotions vs Primary (last live test sent; awaiting which-tab confirmation); improve Primary placement if needed.
 - **Admin-alert PHI** — a few admin-alert emails put client name + motif in the body/subject; strip to a deep-link (Loi 25).
 - **Field encryption** — enable `FIELD_ENCRYPTION_KEY` + backfill (§8).
-- **Decommission**: the Vercel *deployment* is already down (404, verified 2026-09-09). Still to do **in the Vercel and Atlas dashboards** (no repo change can do this): delete the `cheminement-b77i` project, and **rotate every secret it still stores** — `FIELD_ENCRYPTION_KEY`, `STRIPE_SECRET_KEY`, `NEXTAUTH_SECRET`, SMTP and Twilio credentials. An abandoned project keeps its env vars readable to anyone with account access.
+- **Decommission**: **Vercel is done** — project deleted, repo config removed, MCP entry dropped (2026-09-09). Confirm **Atlas** is likewise torn down. ⚠️ `FIELD_ENCRYPTION_KEY` is **not** a rotatable secret: `User.phone` and `User.location` are encrypted with it, so changing it without a decrypt-then-re-encrypt migration makes every existing row unreadable. Treat it as key *material*, not a credential. The outstanding Stripe `sk_live` rotation is tracked in the debt map.
 
 ---
 

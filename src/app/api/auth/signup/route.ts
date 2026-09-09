@@ -21,7 +21,7 @@ import {
 import { LEGAL_VERSIONS } from "@/lib/legal";
 import { provisionClientServiceRequest } from "@/lib/service-request";
 
-// Allow enough time for cold-start Mongo connect + SMTP send before Vercel kills the function
+// Allow enough time for a cold Mongo connect + SMTP send before the request times out
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
@@ -311,8 +311,8 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_APP_URL ||
         new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(existingUser._id.toString())}&token=${encodeURIComponent(claimToken)}`;
-      // Await the send: on Vercel serverless, fire-and-forget can be killed when
-      // the response returns, so the email never actually leaves the server.
+      // Await the send rather than fire-and-forget: the user is told the email
+      // is on its way, so the response must not claim success before it is.
       try {
         await sendAccountEmailVerificationEmail({
           name: `${firstName} ${lastName}`,
@@ -560,8 +560,8 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_APP_URL ||
         new URL(req.url).origin;
       const verifyUrl = `${base}/verify-account?uid=${encodeURIComponent(user._id.toString())}&token=${encodeURIComponent(emailVerifyPlainToken)}`;
-      // Await the send: on Vercel serverless, fire-and-forget can be killed when
-      // the response returns, so the email never actually leaves the server.
+      // Await the send rather than fire-and-forget: the user is told the email
+      // is on its way, so the response must not claim success before it is.
       try {
         await sendAccountEmailVerificationEmail({
           name: `${user.firstName} ${user.lastName}`,

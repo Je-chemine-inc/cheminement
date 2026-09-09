@@ -4,7 +4,7 @@ import { runAppointmentReminders } from "@/lib/appointment-reminders";
 /**
  * Planifier un appel HTTP périodique (cron) avec l'en-tête :
  *   Authorization: Bearer <CRON_SECRET>
- * Fréquence : une fois par jour (limite du plan Vercel Hobby). Les fenêtres
+ * Fréquence : toutes les heures (/etc/cron.d/jechemine sur le VPS). Les fenêtres
  * H-72 (24 h) et H-48 (48 h) avec drapeaux de déduplication garantissent
  * qu'un passage quotidien capte chaque rendez-vous une seule fois.
  */

@@ -20,7 +20,7 @@ export const PROPOSAL_TIMEOUT_HOURS_URGENT = 12;
  * Find proposals stuck in "proposed" past their window and advance them as if the
  * proposed professional had refused. The window is isEmergency-dependent (§3):
  * 24h for regular requests, 12h for urgent "Consultation ponctuelle rapide". Run
- * by a DAILY cron (Vercel Hobby plan allows daily only), so the cutoff is exact
+ * by an HOURLY cron (/etc/cron.d/jechemine), so the cutoff is exact
  * but detection lags up to ~24h. Idempotent and concurrency-safe via the same
  * atomic claim the refuse route uses (only one actor — this job OR a live
  * refusal — flips a given proposed dossier out of "proposed").

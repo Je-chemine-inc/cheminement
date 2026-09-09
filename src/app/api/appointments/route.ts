@@ -779,8 +779,8 @@ export async function POST(req: NextRequest) {
         lovedOneInfo: populatedAppointment.lovedOneInfo,
       };
 
-      // Send notifications without blocking the response. after() keeps the
-      // serverless function alive until the SMTP sends complete on Vercel.
+      // Send notifications without blocking the response: after() runs them
+      // once it has been sent.
       after(() =>
         Promise.all([
           sendAppointmentConfirmation({ ...emailData, locale: clientLocale }),
