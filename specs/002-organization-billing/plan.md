@@ -199,6 +199,13 @@ consent 409 · void releases lines · cron double-run safe.
   Org reminders carry number + amount only — no names, no PDF.
 - Emails: `organization_payment_reminder`, `organization_payment_received`,
   `admin_organization_invoice_overdue`.
+- **As built (2026-09-11):** the Interac reference is the invoice **number** (`JCO-…`), not a
+  separate `ORG-` code — the PDF already asked for it, and two references per invoice is the
+  problem `interac-reference.ts` documents fixing for clients. The pay link is **card only**
+  (a PAD debit settles days later and can bounce after the invoice looks paid). Anything a
+  person must look at (overpayment, money on a void invoice, refund, chargeback) also gets
+  its own email, `admin_organization_payment_review`. Reminders go out weekdays 8 h – 18 h
+  Montréal. Details and invariants: debt-map, 2026-09-11 phase 5 entry.
 
 ### Phase 6 — Accounting & polish
 Org receivables aging report, anomalies (overdue org invoices, awaiting decisions, confirmed
