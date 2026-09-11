@@ -62,6 +62,8 @@ interface CheckoutFormProps {
   onSuccess: () => void;
   onError: (error: string) => void;
   paymentMethod: PaymentMethodType;
+  /** Tells the server Stripe accepted the payment (see /api/payments/guest/confirm). */
+  onConfirmed: (paymentIntentId: string) => Promise<void>;
 }
 
 function CheckoutForm({
@@ -69,6 +71,7 @@ function CheckoutForm({
   onSuccess,
   onError,
   paymentMethod,
+  onConfirmed,
 }: CheckoutFormProps) {
   const t = useTranslations("Client.guestPay");
   const stripe = useStripe();
@@ -101,6 +104,14 @@ function CheckoutForm({
       onError(error.message || t("errorLabel"));
       setLoading(false);
     } else if (paymentIntent) {
+      if (
+        paymentIntent.status === "succeeded" ||
+        paymentIntent.status === "processing"
+      ) {
+        // Best effort: a bank debit is only marked "processing" once reported
+        // here. A card that succeeded is settled by the webhook regardless.
+        await onConfirmed(paymentIntent.id).catch(() => undefined);
+      }
       if (paymentIntent.status === "succeeded") {
         setMessage(t("paymentSuccessful"));
         setMessageKind("success");
@@ -363,6 +374,15 @@ function GuestPaymentContent() {
 
   const handlePaymentSuccess = () => {
     setPaymentSuccess(true);
+  };
+
+  const reportPaymentConfirmed = async (paymentIntentId: string) => {
+    if (!token) return;
+    await fetch("/api/payments/guest/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, paymentIntentId }),
+    });
   };
 
   const createGuestSetupIntent = async () => {
@@ -1129,6 +1149,7 @@ function GuestPaymentContent() {
                       onSuccess={handlePaymentSuccess}
                       onError={handlePaymentError}
                       paymentMethod={selectedPaymentMethod}
+                      onConfirmed={reportPaymentConfirmed}
                     />
                   </Elements>
                 )}

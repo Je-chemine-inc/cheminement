@@ -4,6 +4,63 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { stripe, toCents } from "@/lib/stripe";
+import {
+  decideGuestPayment,
+  GUEST_PAY_REFUSAL_MESSAGES,
+  hasClosedLateOrNoShowFee,
+} from "@/lib/guest-payment-eligibility";
+
+/** Stripe states where the payer still has to act: safe to hand back. */
+const AWAITING_PAYER = new Set([
+  "requires_payment_method",
+  "requires_confirmation",
+  "requires_action",
+]);
+/** Stripe states where money is moving or has moved. */
+const IN_FLIGHT = new Set(["processing", "succeeded"]);
+
+/**
+ * Is the stored payment intent genuinely paying? A missing intent is not; any
+ * other Stripe error is rethrown rather than guessed at, so an outage never
+ * resets a payment that is really in flight.
+ */
+async function isPaymentIntentInFlight(
+  paymentIntentId: string | null | undefined,
+): Promise<boolean> {
+  if (!paymentIntentId) return false;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    return IN_FLIGHT.has(pi.status);
+  } catch (error) {
+    if (
+      error instanceof Stripe.errors.StripeError &&
+      error.code === "resource_missing"
+    ) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+/** The stored intent, if the payer can still complete it as-is. */
+async function findReusablePaymentIntent(
+  paymentIntentId: string | null | undefined,
+  amountCents: number,
+  methodType: string,
+): Promise<Stripe.PaymentIntent | null> {
+  if (!paymentIntentId) return null;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const reusable =
+      AWAITING_PAYER.has(pi.status) &&
+      pi.amount === amountCents &&
+      pi.payment_method_types.includes(methodType);
+    return reusable ? pi : null;
+  } catch {
+    // Unknown or unreadable: just create a fresh one.
+    return null;
+  }
+}
 
 // GET - Get appointment details by payment token
 export async function GET(req: NextRequest) {
@@ -37,8 +94,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Check if appointment is still valid
-    if (appointment.status === "cancelled") {
+    // Check if appointment is still valid. A late cancellation closed by the
+    // professional carries a fee the client is asked to pay through this very
+    // link, so it is not "cancelled" for payment purposes.
+    if (
+      appointment.status === "cancelled" &&
+      !hasClosedLateOrNoShowFee(appointment)
+    ) {
       return NextResponse.json(
         { error: "This appointment has been cancelled" },
         { status: 400 },
@@ -131,42 +193,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if already paid
-    if (appointment.payment.status === "paid") {
-      return NextResponse.json(
-        { error: "This appointment has already been paid" },
-        { status: 400 },
+    // A `processing` row written by the old code at intent CREATION may be a
+    // payment nobody ever made. Ask Stripe: if nothing is actually in flight,
+    // put the row back to pending so this attempt can go ahead.
+    if (appointment.payment.status === "processing") {
+      const inFlight = await isPaymentIntentInFlight(
+        appointment.payment.stripePaymentIntentId,
       );
-    }
-
-    if (appointment.status === "pending") {
-      return NextResponse.json(
+      if (inFlight) {
+        return NextResponse.json(
+          {
+            error: GUEST_PAY_REFUSAL_MESSAGES.PAYMENT_IN_PROGRESS,
+            code: "PAYMENT_IN_PROGRESS",
+          },
+          { status: 409 },
+        );
+      }
+      await Appointment.updateOne(
         {
-          error:
-            "This appointment is not yet confirmed by your professional.",
+          _id: appointment._id,
+          "payment.status": "processing",
+          "payment.stripePaymentIntentId":
+            appointment.payment.stripePaymentIntentId ?? null,
         },
-        { status: 400 },
+        { $set: { "payment.status": "pending" } },
       );
+      appointment.payment.status = "pending";
     }
 
-    if (
-      appointment.status === "cancelled" ||
-      appointment.status === "no-show"
-    ) {
+    // Completed sessions, and closed late cancellations / no-shows whose fee is
+    // billed to the client (see guest-payment-eligibility.ts).
+    const decision = decideGuestPayment(appointment);
+    if (!decision.payable) {
       return NextResponse.json(
-        { error: "This appointment is not available for payment" },
-        { status: 400 },
-      );
-    }
-
-    // Guest pays the session fee only after it is marked completed
-    if (appointment.status !== "completed") {
-      return NextResponse.json(
-        {
-          error:
-            "Payment opens after your session is completed. Use the same link to register a payment method first, then pay once your professional has marked the meeting as done.",
-        },
-        { status: 400 },
+        { error: GUEST_PAY_REFUSAL_MESSAGES[decision.code], code: decision.code },
+        { status: decision.code === "PAYMENT_IN_PROGRESS" ? 409 : 400 },
       );
     }
 
@@ -280,12 +341,22 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    // Re-opening the link must not stack up payment intents: hand back the one
+    // already waiting for this exact amount and method.
+    const reusable = await findReusablePaymentIntent(
+      appointment.payment.stripePaymentIntentId,
+      toCents(amount),
+      paymentMethodTypes[0],
+    );
     const paymentIntent =
-      await stripe.paymentIntents.create(paymentIntentConfig);
+      reusable ?? (await stripe.paymentIntents.create(paymentIntentConfig));
 
-    // Update appointment payment information
+    // Record the attempt, but do NOT mark it `processing`: nothing is paid yet.
+    // Writing it here meant a payer who closed the tab left the session
+    // "processing" forever — and every reminder treats that as settled, so the
+    // fee was never chased again. /api/payments/guest/confirm sets it once
+    // Stripe reports a payment actually in flight.
     appointment.payment.stripePaymentIntentId = paymentIntent.id;
-    appointment.payment.status = "processing";
     appointment.payment.method = paymentMethod;
     await appointment.save();
 
