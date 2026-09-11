@@ -1007,7 +1007,8 @@
       "submit": "Enregistrer le versement",
       "close": "Fermer",
       "validationError": "Saisissez un montant valide.",
-      "error": "Échec de l'enregistrement. Veuillez réessayer."
+      "error": "Échec de l'enregistrement. Veuillez réessayer.",
+      "forbidden": "Il vous faut la permission « Gérer la facturation » pour enregistrer un versement. Rien n’a été enregistré."
     },
     "professionalDetail": {
       "loadError": "Impossible de charger le dossier professionnel.",
@@ -1490,6 +1491,10 @@
           }
         }
       }
+    },
+    "billingAccess": {
+      "title": "Accès réservé",
+      "body": "Cette section est réservée aux administrateurs qui ont la permission « Gérer la facturation ». Demandez-la à un super administrateur."
     }
   },
   "AppointmentSelector": {

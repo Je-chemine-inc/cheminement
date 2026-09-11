@@ -24,6 +24,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 import type { PaymentAssurance } from "@/lib/client-payment-guarantee";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
+import { BillingAccessRequired, isAccessDenied } from "@/components/admin/BillingAccessRequired";
 
 type PaymentStatus =
   | "paid"
@@ -109,11 +111,18 @@ interface BillingData {
   };
 }
 
+/** Billing rights only: every client's payments are behind manageBilling. */
 export default function AdminBillingPage() {
+  const { manageBilling } = useAdminPermissions();
+  return manageBilling ? <BillingScreen /> : <BillingAccessRequired />;
+}
+
+function BillingScreen() {
   const router = useRouter();
   const [data, setData] = useState<BillingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [methodFilter, setMethodFilter] = useState<PaymentMethod>("all");
@@ -171,6 +180,11 @@ export default function AdminBillingPage() {
         if (dateFrom) params.set("dateFrom", dateFrom);
         if (dateTo) params.set("dateTo", dateTo);
         const response = await fetch(`/api/admin/billing?${params}`);
+        // The right was taken away while the page was open.
+        if (isAccessDenied(response.status)) {
+          setForbidden(true);
+          return;
+        }
         if (!response.ok) throw new Error("Failed to fetch billing data");
         const result = await response.json();
         setData(result);
@@ -311,6 +325,8 @@ export default function AdminBillingPage() {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (forbidden) return <BillingAccessRequired />;
 
   if (loading) {
     return (

@@ -6,6 +6,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import InactivityLogout from "@/components/auth/InactivityLogout";
+import { AdminPermissionsProvider } from "@/components/admin/AdminPermissionsProvider";
+import { getAdminUiPermissions } from "@/lib/admin-rbac";
 
 export default async function AdminLayout({
   children,
@@ -19,21 +21,25 @@ export default async function AdminLayout({
   }
 
   const locale = await getLocale();
+  // Read here, once, so the menu hides billing screens without a flicker.
+  const permissions = await getAdminUiPermissions(session.user);
 
   return (
-    <SidebarProvider>
-      <InactivityLogout />
-      <div className="flex min-h-screen w-full">
-        <AdminSidebar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-border/40 bg-background px-4 sm:px-6">
-            <SidebarTrigger />
-            <div className="flex-1" />
-            <LocaleSwitcher currentLocale={locale} />
-          </div>
-          <div className="p-4 sm:p-6 w-full">{children}</div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <AdminPermissionsProvider permissions={permissions}>
+      <SidebarProvider>
+        <InactivityLogout />
+        <div className="flex min-h-screen w-full">
+          <AdminSidebar />
+          <main className="flex-1 overflow-y-auto">
+            <div className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-border/40 bg-background px-4 sm:px-6">
+              <SidebarTrigger />
+              <div className="flex-1" />
+              <LocaleSwitcher currentLocale={locale} />
+            </div>
+            <div className="p-4 sm:p-6 w-full">{children}</div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </AdminPermissionsProvider>
   );
 }

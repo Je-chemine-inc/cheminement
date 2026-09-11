@@ -64,6 +64,7 @@ import AcceptingEmergencyConsultationsCard from "@/components/dashboard/Acceptin
 import { CitySearch } from "@/components/ui/CitySearch";
 import { IProfile } from "@/models/Profile";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
 
 export default function ProfessionalDetailPage({
   params,
@@ -156,9 +157,12 @@ export default function ProfessionalDetailPage({
   const [ledger, setLedger] = useState<any>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [payingOut, setPayingOut] = useState(false);
+  // The ledger and the payout are accounting: billing rights only.
+  const { manageBilling } = useAdminPermissions();
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") === "ledger" ? "ledger" : "ongoing";
+  const initialTab =
+    manageBilling && searchParams.get("tab") === "ledger" ? "ledger" : "ongoing";
 
   // Form states
   const [formData, setFormData] = useState({
@@ -257,8 +261,8 @@ export default function ProfessionalDetailPage({
 
   useEffect(() => {
     fetchData();
-    fetchLedger();
-  }, [fetchData, fetchLedger]);
+    if (manageBilling) fetchLedger();
+  }, [fetchData, fetchLedger, manageBilling]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -875,8 +879,12 @@ export default function ProfessionalDetailPage({
             <Tabs defaultValue={initialTab} className="w-full">
               {/* Mobile: horizontal scroll so each tab can keep its full label
                   (whitespace-nowrap is already on TabsTrigger). sm+ snaps to a
-                  5-column grid. */}
-              <TabsList className="flex w-full overflow-x-auto mb-8 h-auto sm:grid sm:grid-cols-5 sm:h-9">
+                  grid, one column per tab (no ledger tab without billing rights). */}
+              <TabsList
+                className={`flex w-full overflow-x-auto mb-8 h-auto sm:grid sm:h-9 ${
+                  manageBilling ? "sm:grid-cols-5" : "sm:grid-cols-4"
+                }`}
+              >
                 <TabsTrigger value="proposed" className="flex items-center gap-2 text-xs sm:text-sm px-3">
                   <Inbox className="h-4 w-4 shrink-0" /> {t("proposed", { count: caseload.proposed.length })}
                 </TabsTrigger>
@@ -889,9 +897,11 @@ export default function ProfessionalDetailPage({
                 <TabsTrigger value="completed" className="flex items-center gap-2 text-xs sm:text-sm px-3">
                   <CheckCircle2 className="h-4 w-4 shrink-0" /> {t("completed", { count: caseload.completed.length })}
                 </TabsTrigger>
-                <TabsTrigger value="ledger" className="flex items-center gap-2 text-xs sm:text-sm px-3">
-                  <History className="h-4 w-4 shrink-0" /> {t("ledgerTab")}
-                </TabsTrigger>
+                {manageBilling && (
+                  <TabsTrigger value="ledger" className="flex items-center gap-2 text-xs sm:text-sm px-3">
+                    <History className="h-4 w-4 shrink-0" /> {t("ledgerTab")}
+                  </TabsTrigger>
+                )}
               </TabsList>
               
               <TabsContent value="proposed" className="mt-0">
@@ -918,6 +928,7 @@ export default function ProfessionalDetailPage({
                 {renderClientList(caseload.completed, t("completedEmpty"))}
               </TabsContent>
 
+              {manageBilling && (
               <TabsContent value="ledger" className="mt-0 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 rounded-xl border bg-muted/20">
@@ -1021,6 +1032,7 @@ export default function ProfessionalDetailPage({
                   </Table>
                 </div>
               </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

@@ -45,6 +45,12 @@ import {
 } from "@/components/ui/select";
 import { AppointmentResponse } from "@/types/api";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
+import {
+  AccessDeniedError,
+  BillingAccessRequired,
+  isAccessDenied,
+} from "@/components/admin/BillingAccessRequired";
 
 type CollectionsData = {
   stripePaid: AppointmentResponse[];
@@ -72,7 +78,13 @@ type BalancesData = {
   currentCycleKey: string;
 };
 
+/** Billing rights only: the exports, balances and payouts are behind manageBilling. */
 export default function AdminAccountingPage() {
+  const { manageBilling } = useAdminPermissions();
+  return manageBilling ? <AccountingScreen /> : <BillingAccessRequired />;
+}
+
+function AccountingScreen() {
   const t = useTranslations("Admin.accounting");
   const [tab, setTab] = useState<
     "collections" | "anomalies" | "balances" | "exports" | "payout"
@@ -82,6 +94,7 @@ export default function AdminAccountingPage() {
   const [balances, setBalances] = useState<BalancesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [forbidden, setForbidden] = useState(false);
   const [exportYear, setExportYear] = useState(
     String(new Date().getFullYear()),
   );
@@ -95,18 +108,21 @@ export default function AdminAccountingPage() {
 
   const loadCollections = useCallback(async () => {
     const res = await fetch("/api/admin/accounting/collections");
+    if (isAccessDenied(res.status)) throw new AccessDeniedError();
     if (!res.ok) throw new Error("collections");
     setCollections(await res.json());
   }, []);
 
   const loadAnomalies = useCallback(async () => {
     const res = await fetch("/api/admin/accounting/anomalies");
+    if (isAccessDenied(res.status)) throw new AccessDeniedError();
     if (!res.ok) throw new Error("anomalies");
     setAnomalies(await res.json());
   }, []);
 
   const loadBalances = useCallback(async () => {
     const res = await fetch("/api/admin/accounting/balances");
+    if (isAccessDenied(res.status)) throw new AccessDeniedError();
     if (!res.ok) throw new Error("balances");
     setBalances(await res.json());
   }, []);
@@ -116,8 +132,10 @@ export default function AdminAccountingPage() {
       setLoading(true);
       setError(null);
       await Promise.all([loadCollections(), loadAnomalies(), loadBalances()]);
-    } catch {
-      setError(t("loadError"));
+    } catch (e) {
+      // The right was taken away while the page was open.
+      if (e instanceof AccessDeniedError) setForbidden(true);
+      else setError(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -208,6 +226,8 @@ export default function AdminAccountingPage() {
   };
 
   const professionals = balances?.professionals ?? [];
+
+  if (forbidden) return <BillingAccessRequired />;
 
   return (
     <div className="space-y-8 max-w-6xl">

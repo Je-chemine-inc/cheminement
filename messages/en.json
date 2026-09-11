@@ -1007,7 +1007,8 @@
       "submit": "Record payment",
       "close": "Close",
       "validationError": "Enter a valid amount.",
-      "error": "Failed to record. Please try again."
+      "error": "Failed to record. Please try again.",
+      "forbidden": "You need the “Manage billing” permission to record a payout. Nothing was recorded."
     },
     "professionalDetail": {
       "loadError": "Failed to load professional record.",
@@ -1490,6 +1491,10 @@
           }
         }
       }
+    },
+    "billingAccess": {
+      "title": "Restricted access",
+      "body": "This section is for administrators with the “Manage billing” permission. Ask a super administrator for it."
     }
   },
   "AppointmentSelector": {

@@ -69,6 +69,11 @@ export function RecordPayoutModal({
           payoutNotes: notes.trim() || undefined,
         }),
       });
+      // Billing rights only: say so rather than a generic failure.
+      if (res.status === 401 || res.status === 403) {
+        setError(t("forbidden"));
+        return;
+      }
       if (!res.ok) throw new Error();
       onRecorded?.();
     } catch {

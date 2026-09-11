@@ -37,6 +37,7 @@ import {
   type ManualInvoiceContext,
 } from "@/components/billing/ManualInvoiceModal";
 import { RecordPayoutModal } from "@/components/billing/RecordPayoutModal";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
 import { appointmentStatusColor } from "@/lib/appointment-colors";
 import type { AppointmentResponse } from "@/types/api";
 
@@ -92,8 +93,10 @@ export default function AdminProfessionalSchedulePage({
     useState<ManualInvoiceContext | null>(null);
 
   // Record an external payment made to this pro (Interac/bank, outside the
-  // platform) — surfaces in the pro's "Historique des paiements".
+  // platform) — surfaces in the pro's "Historique des paiements". Billing
+  // rights only, like the accounting screen it writes to.
   const [payoutOpen, setPayoutOpen] = useState(false);
+  const { manageBilling } = useAdminPermissions();
 
   const professionals: BookableProfessional[] = useMemo(
     () => [{ id, name: professionalName || id }],
@@ -393,14 +396,16 @@ export default function AdminProfessionalSchedulePage({
             <FileText className="h-4 w-4" />
             {t("createInvoice")}
           </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setPayoutOpen(true)}
-          >
-            <Wallet className="h-4 w-4" />
-            {t("recordPayout")}
-          </Button>
+          {manageBilling && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setPayoutOpen(true)}
+            >
+              <Wallet className="h-4 w-4" />
+              {t("recordPayout")}
+            </Button>
+          )}
           <Button
             className="gap-2"
             onClick={() => {
@@ -643,13 +648,15 @@ export default function AdminProfessionalSchedulePage({
         }}
       />
 
-      <RecordPayoutModal
-        open={payoutOpen}
-        onOpenChange={setPayoutOpen}
-        professionalId={id}
-        professionalName={professionalName}
-        onRecorded={() => setPayoutOpen(false)}
-      />
+      {manageBilling && (
+        <RecordPayoutModal
+          open={payoutOpen}
+          onOpenChange={setPayoutOpen}
+          professionalId={id}
+          professionalName={professionalName}
+          onRecorded={() => setPayoutOpen(false)}
+        />
+      )}
     </div>
   );
 }

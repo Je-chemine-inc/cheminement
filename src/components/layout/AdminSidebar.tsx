@@ -30,9 +30,12 @@ import {
   Layers,
   Building2,
   Receipt,
+  type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
+import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
+import { visibleNavSections, type AdminUiPermissions } from "@/lib/admin-nav";
 
 import {
   Sidebar,
@@ -54,8 +57,19 @@ export function AdminSidebar() {
   const router = useRouter();
   const { state } = useSidebar();
   const t = useTranslations("Dashboard.sidebar");
+  const permissions = useAdminPermissions();
 
-  const navigationItems = [
+  // `requires`: hidden from an admin without that permission — the screen's
+  // API refuses them anyway.
+  const navigationItems: Array<{
+    title: string;
+    items: Array<{
+      title: string;
+      url: string;
+      icon: LucideIcon;
+      requires?: keyof AdminUiPermissions;
+    }>;
+  }> = [
     {
       title: t("dashboard"),
       items: [
@@ -108,21 +122,25 @@ export function AdminSidebar() {
           title: t("billing"),
           url: "/admin/dashboard/billing",
           icon: Wallet,
+          requires: "manageBilling",
         },
         {
           title: t("organizations"),
           url: "/admin/dashboard/organizations",
           icon: Building2,
+          requires: "manageBilling",
         },
         {
           title: t("organizationInvoices"),
           url: "/admin/dashboard/organization-invoices",
           icon: Receipt,
+          requires: "manageBilling",
         },
         {
           title: t("accounting"),
           url: "/admin/dashboard/accounting",
           icon: BookOpen,
+          requires: "manageBilling",
         },
         {
           title: t("paymentTrust"),
@@ -223,7 +241,7 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {navigationItems.map((section) => (
+        {visibleNavSections(navigationItems, permissions).map((section) => (
           <SidebarGroup key={section.title}>
             <SidebarGroupLabel className="text-xs font-light tracking-wider text-muted-foreground/70">
               {section.title}
