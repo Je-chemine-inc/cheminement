@@ -1,6 +1,7 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import ClientReceipt from "@/models/ClientReceipt";
+import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import { issueFiscalReceipt } from "@/lib/session-post-closure";
 
 /**
@@ -49,10 +50,21 @@ export async function settleInteracPayment(
   const note = opts?.note?.trim();
 
   const alreadyPaid = appointment.payment?.status === "paid";
+  // Money confirmed here never went through Stripe: an Interac transfer, or an
+  // admin's "marquer comme payé". A session still labelled "card" — the
+  // model's default — kept saying so: its receipt read « Carte (Stripe) », its
+  // ledger line "stripe", and the Connect auto-payout (card/PAD only) would
+  // pay out money that never reached Stripe. A PAD debit already settling
+  // ("processing") is Stripe money and keeps its label; "manual" stays.
+  let recordedAsInterac = false;
   if (!alreadyPaid) {
+    recordedAsInterac =
+      appointment.payment.status !== "processing" &&
+      appointment.payment.method !== "transfer" &&
+      appointment.payment.method !== "manual";
     appointment.payment.status = "paid";
     appointment.payment.paidAt = new Date();
-    if (!appointment.payment.method) {
+    if (recordedAsInterac) {
       appointment.payment.method = "transfer";
     }
   }
@@ -61,6 +73,16 @@ export async function settleInteracPayment(
   if (note) appointment.payment.interacReconciliationNote = note;
   if (!alreadyPaid || payerName || note) {
     await appointment.save();
+  }
+
+  // The professional's line for the session says how it was collected too.
+  if (recordedAsInterac) {
+    await ProfessionalLedgerEntry.updateOne(
+      { appointmentId: appointment._id, entryKind: "credit", paymentChannel: "stripe" },
+      { $set: { paymentChannel: "transfer" } },
+    ).catch((err: unknown) =>
+      console.error("ledger channel (settleInteracPayment):", err),
+    );
   }
 
   // GOLDEN RULE: the transfer is now confirmed → issue + send the official

@@ -3,11 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import User from "@/models/User";
+import User, { type IUser } from "@/models/User";
 import Profile from "@/models/Profile";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { sendProfessionalNotification } from "@/lib/notifications";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import { paymentMethodForNewAppointment } from "@/lib/client-payment-guarantee";
 
 /**
  * Lets a returning client request a follow-up appointment with the professional
@@ -88,13 +89,20 @@ export async function POST(req: NextRequest) {
 
     // Require phone verification for clients before booking (mirrors /api/appointments)
     const clientUser = await User.findById(session.user.id)
-      .select("phoneVerifiedAt firstName lastName email")
-      .lean<{
-        phoneVerifiedAt?: Date | null;
-        firstName?: string;
-        lastName?: string;
-        email?: string;
-      }>();
+      .select(
+        "phoneVerifiedAt firstName lastName email paymentGuaranteeStatus paymentGuaranteeSource preferredPaymentMethod",
+      )
+      .lean<
+        {
+          phoneVerifiedAt?: Date | null;
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+        } & Pick<
+          IUser,
+          "paymentGuaranteeStatus" | "paymentGuaranteeSource" | "preferredPaymentMethod"
+        >
+      >();
     if (clientUser && !clientUser.phoneVerifiedAt) {
       return NextResponse.json(
         {
@@ -175,6 +183,8 @@ export async function POST(req: NextRequest) {
         price: pricing.sessionPrice,
         platformFee: pricing.platformFee,
         professionalPayout: pricing.professionalPayout,
+        // The client's way of paying, not the model's "card" default.
+        method: paymentMethodForNewAppointment(clientUser),
       },
     });
     await appointment.save();

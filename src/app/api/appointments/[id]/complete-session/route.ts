@@ -28,7 +28,11 @@ import { sessionClosureWindow } from "@/lib/session-closure-window";
 import { planSessionPayers, type PlannedPayers } from "@/lib/session-payer-plan";
 import { releaseCoverageSlot } from "@/lib/organization-coverage";
 import { fromCents, toCents } from "@/lib/money-cents";
-import { paysByInterac } from "@/lib/client-payment-guarantee";
+import {
+  paymentMethodForNewAppointment,
+  paysByInterac,
+  type PayingClient,
+} from "@/lib/client-payment-guarantee";
 
 function parseNextAppointmentAt(
   dateStr: string | undefined,
@@ -286,11 +290,14 @@ export async function POST(
     // a card (JC-2026-000014). The client's arrangement decides instead.
     let billByInterac = false;
     let reroutedToInterac = false;
+    // The client as loaded for billing, reused for the follow-up's method.
+    let billedClient: PayingClient | null = null;
 
     if (billableForPayment) {
       const payMethod = apt.payment.method || "card";
       if (payMethod === "card" || payMethod === "direct_debit") {
         const clientUser = await User.findById(apt.clientId);
+        billedClient = clientUser;
         if (!clientUser?.stripeCustomerId) {
           if (paysByInterac(clientUser)) {
             reroutedToInterac = true;
@@ -511,6 +518,21 @@ export async function POST(
               String(apt.professionalId),
               apt.therapyType,
             );
+            // An Interac client with no card gets an Interac session; anyone
+            // else carries on as before (the method copied, a card kept).
+            const followUpClient =
+              billedClient ?? (await User.findById(apt.clientId));
+            const followUpMethod = paymentMethodForNewAppointment(
+              followUpClient,
+              apt.payment?.method || "card",
+              {
+                cardLinked: Boolean(
+                  apt.payment?.stripePaymentMethodId ||
+                    persistPaymentMethodRef ||
+                    stripeChargePaymentIntentId,
+                ),
+              },
+            );
             const followUp = await Appointment.create({
               clientId: apt.clientId,
               professionalId: apt.professionalId,
@@ -535,7 +557,7 @@ export async function POST(
                 platformFee: followUpPricing.platformFee,
                 professionalPayout: followUpPricing.professionalPayout,
                 status: "pending",
-                method: apt.payment?.method || "card",
+                method: followUpMethod,
                 stripePaymentMethodId: apt.payment?.stripePaymentMethodId,
               },
             });

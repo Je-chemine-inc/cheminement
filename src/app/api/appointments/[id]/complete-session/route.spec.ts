@@ -816,4 +816,45 @@ describe("an Interac client with no card is billed by Interac", () => {
     expect(payment().transferDueAt).toBeUndefined();
     expect(payment().interacReferenceCode).toBeUndefined();
   });
+
+  // The follow-up used to copy the closed session's label — "card" again.
+  const followUpPayment = () => h.created[0]?.payment as Record<string, unknown> | undefined;
+
+  it("the follow-up of an Interac client's session is an Interac session", async () => {
+    h.clientUser.value = { ...interacClient };
+
+    await callCloseWithNext("2099-03-15", "14:30");
+
+    expect(h.created).toHaveLength(1);
+    expect(followUpPayment()?.method).toBe("transfer");
+  });
+
+  it("a card client's follow-up stays on the card it had", async () => {
+    payment().stripePaymentMethodId = "enc_pm";
+
+    await callCloseWithNext("2099-03-15", "14:30");
+
+    expect(followUpPayment()).toMatchObject({ method: "card", stripePaymentMethodId: "enc_pm" });
+  });
+
+  it("a client who prefers Interac but whose card was just charged keeps the card", async () => {
+    h.clientUser.value = { stripeCustomerId: "cus_5", preferredPaymentMethod: "interac" };
+    payment().stripePaymentMethodId = "enc_pm";
+
+    await callCloseWithNext("2099-03-15", "14:30");
+
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    expect(followUpPayment()?.method).toBe("card");
+  });
+
+  it("a client who has saved a card since gets a card follow-up after an Interac session", async () => {
+    payment().method = "transfer";
+    h.clientUser.value = { paymentGuaranteeStatus: "green", paymentGuaranteeSource: "stripe", preferredPaymentMethod: "card" };
+
+    await callCloseWithNext("2099-03-15", "14:30");
+
+    // The closed session itself stays Interac (its instructions went out).
+    expect(payment().method).toBe("transfer");
+    expect(followUpPayment()?.method).toBe("card");
+  });
 });

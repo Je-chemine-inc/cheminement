@@ -68,7 +68,7 @@ export function clientLacksPaymentGuaranteeForAppointment(
       status?: string;
     };
   },
-  clientUser: Pick<IUser, "paymentGuaranteeStatus" | "paymentGuaranteeSource"> | null,
+  clientUser: PayingClient | null,
 ): boolean {
   // A settled/terminal payment (Stripe captured, an ACSS charge in flight, an
   // admin-confirmed Interac, refunded, or cancelled) means there is nothing left
@@ -80,9 +80,13 @@ export function clientLacksPaymentGuaranteeForAppointment(
   }
   if (appointment.payment?.stripePaymentMethodId) return false;
   if (clientUser?.paymentGuaranteeStatus === "green") return false;
+  // An Interac request awaiting approval is the client's answer: no "add a
+  // card" nudges meanwhile, for ANY of their sessions. Reading only the
+  // session's label missed those booked by a professional or an admin, which
+  // were stored as "card".
   if (
     clientUser?.paymentGuaranteeStatus === "pending_admin" &&
-    appointment.payment?.method === "transfer"
+    (appointment.payment?.method === "transfer" || paysByInterac(clientUser))
   ) {
     return false;
   }
@@ -139,7 +143,8 @@ export function resolvePostMeetingNotification(
   return { notifyClient: !hasGuarantee, notifyAdmin: true };
 }
 
-type PayingClient = Pick<
+/** The client fields that say how a client pays. */
+export type PayingClient = Pick<
   IUser,
   "paymentGuaranteeStatus" | "paymentGuaranteeSource" | "preferredPaymentMethod"
 >;
@@ -158,6 +163,35 @@ export function paysByInterac(client: PayingClient | null | undefined): boolean 
     client?.preferredPaymentMethod === "interac"
   );
 }
+
+/**
+ * The payment method a NEW appointment should carry. The model defaults to
+ * "card" and the professional, admin and follow-up booking paths never set
+ * it, so an Interac client's sessions read "card": the billing screen said
+ * card, and while their Interac request awaited approval they were nudged to
+ * add one.
+ *
+ * An Interac client with no card gets "transfer". A client with a card on
+ * file never gets a new Interac session — not even as the follow-up of one —
+ * since closure bills a "transfer" session by Interac and would leave the
+ * card uncharged. Everyone else gets `fallback` (the model's "card", or what
+ * a follow-up copies). A card saved later moves open Interac sessions to it —
+ * see linkPaymentMethodToOpenAppointments.
+ */
+export function paymentMethodForNewAppointment(
+  client: PayingClient | null | undefined,
+  fallback: AppointmentPaymentMethod = "card",
+  opts: { cardLinked?: boolean } = {},
+): AppointmentPaymentMethod {
+  const cardOnFile = Boolean(opts.cardLinked) || hasCardOnFile({}, client);
+  if (cardOnFile) {
+    if (fallback !== "transfer") return fallback;
+    return client?.preferredPaymentMethod === "direct_debit" ? "direct_debit" : "card";
+  }
+  return paysByInterac(client) ? "transfer" : fallback;
+}
+
+type AppointmentPaymentMethod = "card" | "direct_debit" | "transfer" | "manual";
 
 /**
  * Whether closure has a card to charge: one linked to the appointment, or the

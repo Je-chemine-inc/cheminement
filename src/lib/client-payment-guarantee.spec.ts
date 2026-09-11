@@ -9,6 +9,7 @@ import {
   clientOwesUncollectedFee,
   hasCardOnFile,
   paymentAssurance,
+  paymentMethodForNewAppointment,
   paysByInterac,
   SETTLED_PAYMENT_STATUSES,
 } from "./client-payment-guarantee";
@@ -273,5 +274,71 @@ describe("what may be said about how a session gets paid", () => {
     expect(paymentAssurance({ payment: { method: "manual" } }, cardClient)).toBeNull();
     expect(paymentAssurance({ payment: { method: "direct_debit" } }, cardClient)).toBeNull();
     expect(paymentAssurance({}, cardClient)).toBeNull();
+  });
+});
+
+/**
+ * Sessions booked by a professional or an admin were stored as "card" — the
+ * model's default — whatever the client's arrangement.
+ */
+describe("the payment method a new session carries", () => {
+  const approvedInterac = {
+    paymentGuaranteeStatus: "green",
+    paymentGuaranteeSource: "interac_trust",
+    preferredPaymentMethod: "interac",
+  } as const;
+  const awaitingInterac = { paymentGuaranteeStatus: "pending_admin", preferredPaymentMethod: "interac" } as const;
+  const cardClient = { paymentGuaranteeStatus: "green", paymentGuaranteeSource: "stripe", preferredPaymentMethod: "card" } as const;
+  const padClient = { paymentGuaranteeStatus: "green", paymentGuaranteeSource: "stripe", preferredPaymentMethod: "direct_debit" } as const;
+
+  it("an Interac client with no card gets an Interac session", () => {
+    expect(paymentMethodForNewAppointment(approvedInterac)).toBe("transfer");
+    expect(paymentMethodForNewAppointment(awaitingInterac)).toBe("transfer");
+    expect(paymentMethodForNewAppointment({ preferredPaymentMethod: "interac" })).toBe("transfer");
+  });
+
+  it("everyone else keeps what the route wrote before", () => {
+    expect(paymentMethodForNewAppointment(cardClient)).toBe("card");
+    expect(paymentMethodForNewAppointment({ paymentGuaranteeStatus: "none" })).toBe("card");
+    expect(paymentMethodForNewAppointment(null)).toBe("card");
+    expect(paymentMethodForNewAppointment(cardClient, "direct_debit")).toBe("direct_debit");
+    expect(paymentMethodForNewAppointment({ paymentGuaranteeStatus: "none" }, "transfer")).toBe("transfer");
+  });
+
+  it("a client with a card is never given an Interac session, not even as a follow-up", () => {
+    // Interac preference but a card saved: closure would bill a "transfer"
+    // session by Interac and leave the card uncharged.
+    expect(paymentMethodForNewAppointment({ ...cardClient, preferredPaymentMethod: "interac" })).toBe("card");
+    expect(paymentMethodForNewAppointment(cardClient, "transfer")).toBe("card");
+    expect(paymentMethodForNewAppointment(padClient, "transfer")).toBe("direct_debit");
+    // A card linked on the session being followed counts as a card on file.
+    expect(paymentMethodForNewAppointment(approvedInterac, "card", { cardLinked: true })).toBe("card");
+  });
+});
+
+/**
+ * An Interac request awaiting approval is the client's answer — yet sessions a
+ * professional or an admin booked were stored as "card", so the client kept
+ * being asked to add a card while the team reviewed the request.
+ */
+describe("no card nudges while an Interac request awaits approval", () => {
+  const awaitingInterac = { paymentGuaranteeStatus: "pending_admin", preferredPaymentMethod: "interac" } as const;
+
+  it("whatever the session's label says", () => {
+    expect(
+      clientLacksPaymentGuaranteeForAppointment({ payment: { method: "card", status: "pending" } }, awaitingInterac),
+    ).toBe(false);
+    expect(
+      clientLacksPaymentGuaranteeForAppointment({ payment: { method: "transfer", status: "pending" } }, awaitingInterac),
+    ).toBe(false);
+  });
+
+  it("but a client with no arrangement at all is still asked", () => {
+    expect(
+      clientLacksPaymentGuaranteeForAppointment({ payment: { method: "card", status: "pending" } }, { paymentGuaranteeStatus: "none", preferredPaymentMethod: "interac" }),
+    ).toBe(true);
+    expect(
+      clientLacksPaymentGuaranteeForAppointment({ payment: { method: "card", status: "pending" } }, { paymentGuaranteeStatus: "pending_admin", preferredPaymentMethod: "card" }),
+    ).toBe(true);
   });
 });

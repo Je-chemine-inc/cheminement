@@ -206,7 +206,10 @@ export async function GET() {
         { date: { $gte: now, $lte: upcomingCutoff } },
       ],
     })
-      .populate("clientId", "firstName lastName email paymentGuaranteeStatus paymentGuaranteeSource")
+      .populate(
+        "clientId",
+        "firstName lastName email paymentGuaranteeStatus paymentGuaranteeSource preferredPaymentMethod",
+      )
       .populate("professionalId", "firstName lastName")
       .lean();
 
@@ -238,6 +241,7 @@ export async function GET() {
         email?: string;
         paymentGuaranteeStatus?: string;
         paymentGuaranteeSource?: string;
+        preferredPaymentMethod?: string;
       } | null;
       if (!clientPop) continue;
       const clientIdStr = clientPop._id.toString();
@@ -248,6 +252,8 @@ export async function GET() {
         {
           paymentGuaranteeStatus: clientPop.paymentGuaranteeStatus,
           paymentGuaranteeSource: clientPop.paymentGuaranteeSource,
+          // An Interac request awaiting approval: not flagged for a card.
+          preferredPaymentMethod: clientPop.preferredPaymentMethod,
         } as never,
       );
       if (!lacks) continue;

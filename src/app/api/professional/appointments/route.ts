@@ -9,6 +9,7 @@ import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { getValidMotifLabels } from "@/lib/motifs";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import { paymentMethodForNewAppointment } from "@/lib/client-payment-guarantee";
 import {
   sendAppointmentConfirmation,
 } from "@/lib/notifications";
@@ -158,6 +159,9 @@ export async function POST(req: NextRequest) {
         platformFee: pricing.platformFee,
         professionalPayout: pricing.professionalPayout,
         status: "pending",
+        // The client's way of paying, not the model's "card" default: an
+        // Interac client's session read "card" (JC-2026-000014).
+        method: paymentMethodForNewAppointment(client),
       },
     });
     await appointment.save();

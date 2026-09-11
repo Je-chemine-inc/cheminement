@@ -174,3 +174,40 @@ describe("POST /api/admin/appointments — notifications survive the response", 
     });
   });
 });
+
+/**
+ * Sessions an admin booked took the model's "card" default whatever the
+ * client's arrangement: an Interac client's session read "card", and while
+ * their Interac request awaited approval they were asked to add a card.
+ */
+describe("POST /api/admin/appointments — the client's way of paying", () => {
+  const savedMethod = () =>
+    (h.store.lastSaved?.payment as { method?: string } | undefined)?.method;
+
+  it("an Interac client with no card gets an Interac session", async () => {
+    h.store.client = {
+      ...(h.store.client as object),
+      paymentGuaranteeStatus: "pending_admin",
+      preferredPaymentMethod: "interac",
+    };
+    const res = await callPost(validBody());
+    expect(res.status).toBe(201);
+    expect(savedMethod()).toBe("transfer");
+  });
+
+  it("a client with a card on file gets a card session", async () => {
+    h.store.client = {
+      ...(h.store.client as object),
+      paymentGuaranteeStatus: "green",
+      paymentGuaranteeSource: "stripe",
+      preferredPaymentMethod: "card",
+    };
+    await callPost(validBody());
+    expect(savedMethod()).toBe("card");
+  });
+
+  it("a client with no arrangement keeps the card default", async () => {
+    await callPost(validBody());
+    expect(savedMethod()).toBe("card");
+  });
+});

@@ -10,10 +10,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => {
   const receiptUpdate = vi.fn().mockResolvedValue(null);
   const issueFiscalReceipt = vi.fn().mockResolvedValue(undefined);
+  const ledgerUpdate = vi.fn().mockResolvedValue({ modifiedCount: 1 });
   const store: { appointment: Record<string, unknown> | null } = {
     appointment: null,
   };
-  return { receiptUpdate, issueFiscalReceipt, store };
+  return { receiptUpdate, issueFiscalReceipt, ledgerUpdate, store };
 });
 
 vi.mock("@/lib/mongodb", () => ({
@@ -24,6 +25,9 @@ vi.mock("@/models/Appointment", () => ({
 }));
 vi.mock("@/models/ClientReceipt", () => ({
   default: { findOneAndUpdate: h.receiptUpdate },
+}));
+vi.mock("@/models/ProfessionalLedgerEntry", () => ({
+  default: { updateOne: h.ledgerUpdate },
 }));
 // Mock the receipt-issuance side effect so the test doesn't pull in the
 // server-only PDF/notifications chain; its behavior is covered separately.
@@ -88,6 +92,75 @@ describe("settleInteracPayment (H2)", () => {
     const res = await settleInteracPayment("missing");
     expect(res.found).toBe(false);
     expect(h.receiptUpdate).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A session still labelled "card" (the model's default) and then paid by
+ * Interac — or marked paid by an admin — kept saying card: the official
+ * receipt read « Carte (Stripe) », the professional's line said "stripe", and
+ * the Connect auto-payout (card/PAD only) would pay out money that never
+ * reached Stripe.
+ */
+describe("money confirmed outside Stripe is recorded as Interac", () => {
+  const payment = () => h.store.appointment!.payment as Record<string, unknown>;
+
+  it("a card-labelled session becomes Interac, and so does its ledger line", async () => {
+    h.store.appointment = {
+      _id: "a1",
+      payment: { status: "pending", method: "card" },
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+    await settleInteracPayment("a1");
+    expect(payment().status).toBe("paid");
+    expect(payment().method).toBe("transfer");
+    expect(h.ledgerUpdate).toHaveBeenCalledWith(
+      { appointmentId: "a1", entryKind: "credit", paymentChannel: "stripe" },
+      { $set: { paymentChannel: "transfer" } },
+    );
+    // Relabelled BEFORE the receipt is issued, so the receipt says Interac.
+    const saveOrder = (h.store.appointment!.save as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0];
+    expect(saveOrder).toBeLessThan(h.issueFiscalReceipt.mock.invocationCallOrder[0]);
+  });
+
+  it("an overdue card-labelled session too", async () => {
+    h.store.appointment = { _id: "a1", payment: { status: "overdue", method: "card" }, save: vi.fn() };
+    await settleInteracPayment("a1");
+    expect(payment().method).toBe("transfer");
+  });
+
+  it("a PAD debit already settling on Stripe keeps its label", async () => {
+    h.store.appointment = { _id: "a1", payment: { status: "processing", method: "direct_debit" }, save: vi.fn() };
+    await settleInteracPayment("a1");
+    expect(payment().status).toBe("paid");
+    expect(payment().method).toBe("direct_debit");
+    expect(h.ledgerUpdate).not.toHaveBeenCalled();
+  });
+
+  it("a manual payment stays manual; an Interac session needs no change", async () => {
+    h.store.appointment = { _id: "a1", payment: { status: "pending", method: "manual" }, save: vi.fn() };
+    await settleInteracPayment("a1");
+    expect(payment().method).toBe("manual");
+    h.store.appointment = { _id: "a2", payment: { status: "pending", method: "transfer" }, save: vi.fn() };
+    await settleInteracPayment("a2");
+    expect(payment().method).toBe("transfer");
+    expect(h.ledgerUpdate).not.toHaveBeenCalled();
+  });
+
+  it("an already-paid session is not relabelled", async () => {
+    h.store.appointment = { _id: "a1", payment: { status: "paid", method: "card" }, save: vi.fn() };
+    await settleInteracPayment("a1", { note: "virement vu" });
+    expect(payment().method).toBe("card");
+    expect(h.ledgerUpdate).not.toHaveBeenCalled();
+  });
+
+  it("a ledger write that fails does not undo the payment", async () => {
+    h.store.appointment = { _id: "a1", payment: { status: "pending", method: "card" }, save: vi.fn() };
+    h.ledgerUpdate.mockRejectedValueOnce(new Error("db down"));
+    const res = await settleInteracPayment("a1");
+    expect(res.found).toBe(true);
+    expect(payment().status).toBe("paid");
+    expect(h.issueFiscalReceipt).toHaveBeenCalledWith("a1");
   });
 });
 

@@ -10,6 +10,7 @@ import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { getValidMotifLabels } from "@/lib/motifs";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import { paymentMethodForNewAppointment } from "@/lib/client-payment-guarantee";
 import {
   sendAppointmentConfirmation,
   sendProfessionalNotification,
@@ -175,6 +176,8 @@ export async function POST(req: NextRequest) {
         platformFee: pricing.platformFee,
         professionalPayout: pricing.professionalPayout,
         status: "pending",
+        // The client's way of paying, not the model's "card" default.
+        method: paymentMethodForNewAppointment(client),
       },
     });
     await appointment.save();

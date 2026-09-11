@@ -30,24 +30,58 @@ export const OPEN_APPOINTMENT_STATUSES = ["pending", "scheduled", "ongoing"];
  *
  * Never overwrites a reference an appointment already carries (that one was
  * chosen for that booking). Stored encrypted, exactly as the setup routes do.
+ *
+ * The sessions also move onto the saved instrument's rails. An Interac
+ * client's sessions are stored as "transfer" (see
+ * paymentMethodForNewAppointment), and closure bills a "transfer" session by
+ * Interac whatever card it carries — so a client who then gave us a card
+ * would never be charged on it. A PAD charged as a card is refused by Stripe,
+ * hence `rails`. A session the client was already sent Interac instructions
+ * for (it has an Interac reference) stays Interac: money may be on its way.
  */
 export async function linkPaymentMethodToOpenAppointments(
   userId: string,
   paymentMethodId: string,
+  rails: "card" | "direct_debit" = "card",
 ): Promise<number> {
   const stored = encryptPaymentMethodReference(paymentMethodId) ?? paymentMethodId;
+  const open = {
+    clientId: userId,
+    status: { $in: OPEN_APPOINTMENT_STATUSES },
+    "payment.status": { $nin: [...SETTLED_PAYMENT_STATUSES] },
+  };
+  const noPaymentMethod = [
+    { "payment.stripePaymentMethodId": { $exists: false } },
+    { "payment.stripePaymentMethodId": null },
+    { "payment.stripePaymentMethodId": "" },
+  ];
   try {
-    const res = await Appointment.updateMany(
+    // First the rails (the filter needs "no reference yet"), then the link.
+    await Appointment.updateMany(
       {
-        clientId: userId,
-        status: { $in: OPEN_APPOINTMENT_STATUSES },
-        "payment.status": { $nin: [...SETTLED_PAYMENT_STATUSES] },
-        $or: [
-          { "payment.stripePaymentMethodId": { $exists: false } },
-          { "payment.stripePaymentMethodId": null },
-          { "payment.stripePaymentMethodId": "" },
+        ...open,
+        $and: [
+          { $or: noPaymentMethod },
+          {
+            $or: [
+              { "payment.method": { $in: ["card", "direct_debit"] } },
+              { "payment.method": { $exists: false } },
+              {
+                "payment.method": "transfer",
+                $or: [
+                  { "payment.interacReferenceCode": { $exists: false } },
+                  { "payment.interacReferenceCode": null },
+                  { "payment.interacReferenceCode": "" },
+                ],
+              },
+            ],
+          },
         ],
       },
+      { $set: { "payment.method": rails } },
+    );
+    const res = await Appointment.updateMany(
+      { ...open, $or: noPaymentMethod },
       { $set: { "payment.stripePaymentMethodId": stored } },
     );
     return res.modifiedCount ?? 0;
@@ -81,7 +115,11 @@ export async function markClientPaymentGuaranteeGreen(
 
   await User.findByIdAndUpdate(userId, update);
   // Make the card usable where it is actually read: on the open appointments.
-  await linkPaymentMethodToOpenAppointments(userId, paymentMethodId);
+  await linkPaymentMethodToOpenAppointments(
+    userId,
+    paymentMethodId,
+    paymentMethodType === "acss_debit" ? "direct_debit" : "card",
+  );
   if (!setStripeDefault) {
     return;
   }
