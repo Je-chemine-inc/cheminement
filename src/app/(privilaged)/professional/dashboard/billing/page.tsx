@@ -85,7 +85,9 @@ export default function ProfessionalBillingPage() {
     (apt) =>
       apt.payment.status === "paid" ||
       apt.payment.status === "refunded" ||
-      apt.payment.status === "cancelled",
+      apt.payment.status === "cancelled" ||
+      // Spec 002: an organization pays; the pro is credited at closure.
+      apt.payment.status === "covered",
   );
 
   const totalReceivables = receivablePayments.reduce(
@@ -109,7 +111,7 @@ export default function ProfessionalBillingPage() {
 
   // Pros only need to know if a session is paid or pending — everything else collapses to pending.
   const isPaid = (status: AppointmentResponse["payment"]["status"]) =>
-    status === "paid";
+    status === "paid" || status === "covered";
 
   const getStatusColor = (status: AppointmentResponse["payment"]["status"]) =>
     isPaid(status)
@@ -188,9 +190,11 @@ export default function ProfessionalBillingPage() {
               )}`}
             >
               {getStatusIcon(apt.payment.status)}
-              {isPaid(apt.payment.status)
-                ? t("paymentStatusPaid")
-                : t("paymentStatusPending")}
+              {apt.payment.status === "covered"
+                ? t("paymentStatusCovered")
+                : isPaid(apt.payment.status)
+                  ? t("paymentStatusPaid")
+                  : t("paymentStatusPending")}
             </span>
           </div>
 

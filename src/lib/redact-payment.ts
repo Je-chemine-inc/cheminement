@@ -55,6 +55,18 @@ export function redactPaymentForProfessional<T>(appointment: T): T {
         kind: t.kind,
         proPayoutTotalCents: t.proPayoutTotalCents,
       };
+      // `payment` is the CLIENT's share — 0 $ when an organization pays in
+      // full. The professional is paid for the whole session, so what their
+      // screens read as "my pay" is the total (the same figure as their ledger).
+      if (
+        payment &&
+        typeof payment === "object" &&
+        typeof t.proPayoutTotalCents === "number" &&
+        Number.isFinite(t.proPayoutTotalCents)
+      ) {
+        (payment as Record<string, unknown>).professionalPayout =
+          Math.round(t.proPayoutTotalCents) / 100;
+      }
     }
     delete obj.payerDeclaration;
     delete obj.billingOverride;

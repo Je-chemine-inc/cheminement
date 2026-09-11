@@ -319,7 +319,9 @@ export default function SessionDetailsPage() {
     paymentStatus: AppointmentResponse["payment"]["status"],
   ) => {
     // Pros only need Paid vs Pending — everything non-paid collapses to pending.
-    const isPaid = paymentStatus === "paid";
+    // "covered" (an organization pays, spec 002) is settled for the pro.
+    const isCovered = paymentStatus === "covered";
+    const isPaid = paymentStatus === "paid" || isCovered;
     return (
       <span
         className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -328,7 +330,7 @@ export default function SessionDetailsPage() {
             : "bg-yellow-100 text-yellow-700"
         }`}
       >
-        {isPaid ? t("paid") : t("pending")}
+        {isCovered ? t("covered") : isPaid ? t("paid") : t("pending")}
       </span>
     );
   };

@@ -123,6 +123,7 @@ export default function ClientDetailsModal({
   // value when no label exists so an unexpected value never renders a raw
   // message key like "sessions.failed".
   const SESSION_LABEL_KEYS = new Set([
+    "covered",
     "scheduled",
     "completed",
     "cancelled",
@@ -172,6 +173,7 @@ export default function ClientDetailsModal({
       cancelled: "bg-red-100 text-red-700",
       failed: "bg-red-100 text-red-700",
       refunded: "bg-amber-100 text-amber-800",
+      covered: "bg-teal-100 text-teal-700",
     };
 
     return (

@@ -7,6 +7,7 @@ import Review from "@/models/Review";
 import { ResourcePurchase } from "@/models/Resource";
 import ResourceEntitlement from "@/models/ResourceEntitlement";
 import { authOptions } from "@/lib/auth";
+import { SESSION_BILLED_TOTAL_EXPR } from "@/lib/billing-totals";
 
 export async function GET(req: NextRequest) {
   try {
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
           {
             $group: {
               _id: null,
-              totalRevenue: { $sum: "$payment.price" }, // Use actual payment price
+              totalRevenue: { $sum: SESSION_BILLED_TOTAL_EXPR }, // client + organization share (spec 002)
             },
           },
         ]),
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
           {
             $group: {
               _id: null,
-              totalRevenue: { $sum: "$payment.price" }, // Use actual payment price
+              totalRevenue: { $sum: SESSION_BILLED_TOTAL_EXPR }, // client + organization share (spec 002)
             },
           },
         ]),
@@ -156,7 +157,7 @@ export async function GET(req: NextRequest) {
         {
           $group: {
             _id: null,
-            sessionFees: { $sum: "$payment.price" },
+            sessionFees: { $sum: SESSION_BILLED_TOTAL_EXPR },
           },
         },
       ]),
@@ -235,7 +236,7 @@ export async function GET(req: NextRequest) {
             clientId: "$clientId",
           },
           sessionsCount: { $sum: 1 },
-          totalRevenue: { $sum: "$payment.price" }, // Use actual payment price
+          totalRevenue: { $sum: SESSION_BILLED_TOTAL_EXPR }, // client + organization share (spec 002)
         },
       },
       {

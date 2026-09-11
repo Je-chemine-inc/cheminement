@@ -199,7 +199,8 @@
       "refunded": "Remboursé",
       "partially_refunded": "Partiellement remboursé",
       "cancelled": "Paiement annulé",
-      "overdue": "Paiement en retard"
+      "overdue": "Paiement en retard",
+      "covered": "Pris en charge par un tiers"
     }
   },
   "AdminDashboard": {
@@ -3126,7 +3127,8 @@
         "saving": "Enregistrement...",
         "submit": "Terminer la rencontre",
         "genericError": "Une erreur est survenue. Veuillez réessayer."
-      }
+      },
+      "covered": "Pris en charge"
     },
     "bookAppointmentModal": {
       "title": "Planifier un rendez-vous",
@@ -3351,7 +3353,8 @@
         "in-person": "En personne",
         "phone": "Téléphone",
         "both": "Visio ou en personne",
-        "loading": "Chargement des séances..."
+        "loading": "Chargement des séances...",
+        "covered": "Pris en charge"
       },
       "documents": {
         "title": "Documents du patient",
@@ -3442,7 +3445,8 @@
         "failed": "Échoué",
         "refunded": "Remboursé",
         "processing": "En traitement",
-        "pending": "En attente"
+        "pending": "En attente",
+        "covered": "Pris en charge"
       },
       "alerts": {
         "addLinkFirst": "Veuillez ajouter un lien de réunion avant de commencer la séance.",
@@ -5185,7 +5189,8 @@
         "refunded": "Remboursé",
         "cancelled": "Annulé",
         "no-show": "Absence"
-      }
+      },
+      "coveredByOrganization": "Cette séance est prise en charge par un tiers payeur — vous n’avez rien à payer."
     },
     "guestPay": {
       "pendingTitle": "En attente de confirmation",
@@ -5395,7 +5400,8 @@
         "refunded": "Remboursé",
         "scheduled": "Planifié",
         "cancelled": "Annulé"
-      }
+      },
+      "paymentStatusCovered": "Pris en charge par un organisme"
     },
     "proposals": {
       "title": "Propositions de clients",
@@ -5557,7 +5563,8 @@
         "pending": "En attente",
         "upcoming": "À venir",
         "processing": "En traitement",
-        "overdue": "En retard"
+        "overdue": "En retard",
+        "covered": "Couvert (tiers payeur)"
       },
       "allTransactions": "Toutes les transactions",
       "transactions": "transaction",
@@ -5582,7 +5589,8 @@
         "pending": "En attente",
         "upcoming": "À venir",
         "processing": "En traitement",
-        "overdue": "En retard"
+        "overdue": "En retard",
+        "covered": "Couvert (tiers payeur)"
       },
       "dailyTracking": "Suivi quotidien",
       "interacPending": "Interac en attente",
@@ -5604,7 +5612,9 @@
       "resendSuccess": "Instructions envoyées",
       "resendError": "Échec de l'envoi",
       "validationCard": "Carte validée",
-      "validationInterac": "Dossier validé"
+      "validationInterac": "Dossier validé",
+      "organizationShare": "Part de l’organisme",
+      "payerAwaitingDecision": "Payeur à confirmer"
     },
     "accounting": {
       "title": "Comptabilité et cycles de paiement",

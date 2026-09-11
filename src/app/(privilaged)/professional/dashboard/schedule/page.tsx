@@ -807,7 +807,8 @@ export default function SchedulePage() {
                   </span>
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      selectedAppointment.payment?.status === "paid"
+                      selectedAppointment.payment?.status === "paid" ||
+                      selectedAppointment.payment?.status === "covered"
                         ? "bg-green-100 text-green-700"
                         : selectedAppointment.payment?.status === "failed"
                           ? "bg-red-100 text-red-700"

@@ -73,6 +73,16 @@ describe("settleInteracPayment (H2)", () => {
     expect(h.receiptUpdate).toHaveBeenCalled();
   });
 
+  it("never marks a covered session paid — the client owes nothing (spec 002)", async () => {
+    (h.store.appointment!.payment as Record<string, unknown>).status = "covered";
+    const res = await settleInteracPayment("a1");
+    expect(res).toMatchObject({ found: true, alreadyPaid: false, nothingOwed: true });
+    expect((h.store.appointment!.payment as Record<string, unknown>).status).toBe("covered");
+    expect(h.store.appointment!.save as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+    expect(h.issueFiscalReceipt).not.toHaveBeenCalled();
+    expect(h.receiptUpdate).not.toHaveBeenCalled();
+  });
+
   it("returns found:false for a missing appointment", async () => {
     h.store.appointment = null;
     const res = await settleInteracPayment("missing");

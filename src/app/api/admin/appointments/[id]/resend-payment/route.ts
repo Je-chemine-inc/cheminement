@@ -33,6 +33,17 @@ export async function POST(
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
+    // Spec 002: a third party pays — never send the client a payment request.
+    if (apt.payment.status === "covered") {
+      return NextResponse.json(
+        {
+          error: "The client owes nothing for this session — a third party pays.",
+          code: "NOTHING_OWED",
+        },
+        { status: 409 },
+      );
+    }
+
     if (apt.payment.method !== "transfer") {
       return NextResponse.json(
         { error: "This appointment does not use Interac" },

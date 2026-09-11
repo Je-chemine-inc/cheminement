@@ -479,7 +479,8 @@ export default function PatientDetailPage({
                   const canMarkPaid =
                     !isPaid &&
                     paymentStatus !== "refunded" &&
-                    paymentStatus !== "cancelled";
+                    paymentStatus !== "cancelled" &&
+                    paymentStatus !== "covered";
                   return (
                     <TableRow
                       key={apt.id}

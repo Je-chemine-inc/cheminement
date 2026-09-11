@@ -199,7 +199,8 @@
       "refunded": "Refunded",
       "partially_refunded": "Partially refunded",
       "cancelled": "Payment cancelled",
-      "overdue": "Payment overdue"
+      "overdue": "Payment overdue",
+      "covered": "Covered by a third party"
     }
   },
   "AdminDashboard": {
@@ -3126,7 +3127,8 @@
         "saving": "Saving...",
         "submit": "Close session",
         "genericError": "An error occurred. Please try again."
-      }
+      },
+      "covered": "Covered"
     },
     "bookAppointmentModal": {
       "title": "Schedule an appointment",
@@ -3351,7 +3353,8 @@
         "in-person": "In person",
         "phone": "Phone",
         "both": "Video or in person",
-        "loading": "Loading sessions..."
+        "loading": "Loading sessions...",
+        "covered": "Covered"
       },
       "documents": {
         "title": "Patient Documents",
@@ -3442,7 +3445,8 @@
         "failed": "Failed",
         "refunded": "Refunded",
         "processing": "Processing",
-        "pending": "Pending"
+        "pending": "Pending",
+        "covered": "Covered"
       },
       "alerts": {
         "addLinkFirst": "Please add a meeting link before starting the session.",
@@ -5186,7 +5190,8 @@
         "refunded": "Refunded",
         "cancelled": "Cancelled",
         "no-show": "No show"
-      }
+      },
+      "coveredByOrganization": "This session is covered by a third-party payer — you have nothing to pay."
     },
     "guestPay": {
       "pendingTitle": "Awaiting confirmation",
@@ -5396,7 +5401,8 @@
         "refunded": "Refunded",
         "scheduled": "Scheduled",
         "cancelled": "Cancelled"
-      }
+      },
+      "paymentStatusCovered": "Covered by an organization"
     },
     "proposals": {
       "title": "Client Proposals",
@@ -5558,7 +5564,8 @@
         "pending": "Pending",
         "upcoming": "Upcoming",
         "processing": "Processing",
-        "overdue": "Overdue"
+        "overdue": "Overdue",
+        "covered": "Covered (third party)"
       },
       "allTransactions": "All Transactions",
       "transactions": "transaction",
@@ -5583,7 +5590,8 @@
         "pending": "Pending",
         "upcoming": "Upcoming",
         "processing": "Processing",
-        "overdue": "Overdue"
+        "overdue": "Overdue",
+        "covered": "Covered (third party)"
       },
       "dailyTracking": "Daily Tracking",
       "interacPending": "Interac Pending",
@@ -5605,7 +5613,9 @@
       "resendSuccess": "Instructions sent",
       "resendError": "Failed to resend",
       "validationCard": "Card validated",
-      "validationInterac": "Validated record"
+      "validationInterac": "Validated record",
+      "organizationShare": "Organization share",
+      "payerAwaitingDecision": "Payer to confirm"
     },
     "accounting": {
       "title": "Accounting & payment cycles",

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+import { isLedgerCreditCleared } from "@/lib/billing-totals";
 
 function csvEscape(s: string | number | undefined | null): string {
   if (s === undefined || s === null) return "";
@@ -40,23 +41,21 @@ export async function GET(req: NextRequest) {
       .populate("professionalId", "firstName lastName email")
       .populate(
         "appointmentId",
-        "date time status sessionActNature payment.status",
+        // The org side is select:false; naming it includes it (spec 002).
+        "date time status sessionActNature payment.status thirdPartyBilling.orgStatus thirdPartyBilling.clientAmountCents",
       )
       .sort({ createdAt: 1 })
       .lean();
 
-    // M17: don't recognize uncleared Interac as revenue. Stripe credits
-    // (paymentChannel "stripe" = card/direct_debit) clear at closure, but a
-    // "transfer" (Interac) credit is only real revenue once an admin confirms
-    // the e-transfer (appointment payment.status === "paid"). Exclude
-    // transfer-channel credits that are not yet paid from the sales journal.
-    const cleared = rows.filter((r) => {
-      if (r.paymentChannel !== "transfer") return true;
-      const apt = r.appointmentId as unknown as {
-        payment?: { status?: string };
-      } | null;
-      return apt?.payment?.status === "paid";
-    });
+    // M17: don't recognize uncleared money as revenue — an unconfirmed Interac
+    // transfer, or an organization that has not paid yet (spec 002). Rules in
+    // isLedgerCreditCleared.
+    const cleared = rows.filter((r) =>
+      isLedgerCreditCleared(
+        r,
+        r.appointmentId as unknown as Parameters<typeof isLedgerCreditCleared>[1],
+      ),
+    );
 
     const header = [
       "date_ligne",

@@ -146,6 +146,20 @@ describe("third-party billing (spec 002)", () => {
     expect(apt).not.toHaveProperty("billingOverride");
   });
 
+  it("shows the professional their pay for the WHOLE session, not the client's share", () => {
+    // Client co-pays 30 (pro share 27); the organization pays the rest.
+    const apt = redactPaymentForProfessional(withTpb()) as { payment: Record<string, unknown> };
+    expect(apt.payment.professionalPayout).toBe(108);
+    expect(apt.payment).not.toHaveProperty("price");
+  });
+
+  it("leaves the payout alone when there is no third party", () => {
+    const apt = redactPaymentForProfessional({
+      payment: { price: 120, platformFee: 12, professionalPayout: 108 },
+    }) as { payment: Record<string, unknown> };
+    expect(apt.payment.professionalPayout).toBe(108);
+  });
+
   it("clients see who pays — never the org's amount, the margin or the pro's pay", () => {
     const apt = redactThirdPartyBillingForClient(withTpb()) as Record<string, unknown>;
     expect(apt.thirdPartyBilling).toEqual({ kind: "organization", state: "confirmed" });

@@ -26,11 +26,24 @@ export async function settleInteracPayment(
 ): Promise<{
   found: boolean;
   alreadyPaid: boolean;
+  /** A third party pays (spec 002): the client owes nothing, so nothing is settled. */
+  nothingOwed?: boolean;
   payment: { status?: string; paidAt?: Date; method?: string } | null;
 }> {
   await connectToDatabase();
   const appointment = await Appointment.findById(appointmentId);
   if (!appointment) return { found: false, alreadyPaid: false, payment: null };
+
+  // Marking a covered session "paid" would erase who pays and record a client
+  // payment of 0 $. Money received for it belongs to the organization side.
+  if (appointment.payment?.status === "covered") {
+    return {
+      found: true,
+      alreadyPaid: false,
+      nothingOwed: true,
+      payment: { status: "covered" },
+    };
+  }
 
   const payerName = opts?.payerName?.trim();
   const note = opts?.note?.trim();

@@ -107,10 +107,16 @@ export async function GET(req: NextRequest) {
       if (endDate) query.date.$lte = new Date(endDate);
     }
 
-    const appointments = await Appointment.find(query)
+    const appointmentsQuery = Appointment.find(query)
       .populate("clientId", "firstName lastName email phone location")
       .populate("professionalId", "firstName lastName email phone")
       .sort({ date: 1, time: 1 });
+    // Spec 002: a professional is shown their pay for the whole session, which
+    // lives in the (select:false) payer snapshot. Redacted to {kind, total} below.
+    if (session.user.role === "professional") {
+      appointmentsQuery.select("+thirdPartyBilling");
+    }
+    const appointments = await appointmentsQuery;
 
     // Hide client gross + platform fee from professionals (commercial confidentiality + accounting clarity)
     if (session.user.role === "professional") {

@@ -24,7 +24,13 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 
-type PaymentStatus = "paid" | "pending" | "upcoming" | "processing" | "overdue";
+type PaymentStatus =
+  | "paid"
+  | "pending"
+  | "upcoming"
+  | "processing"
+  | "overdue"
+  | "covered";
 type PaymentMethod = "all" | "card" | "transfer";
 
 interface Payment {
@@ -40,6 +46,11 @@ interface Payment {
   platformFee: number;
   professionalPayout: number;
   status: PaymentStatus;
+  payer?: {
+    kind: "client" | "organization" | "external";
+    state: "confirmed" | "awaiting_decision";
+    orgAmount: number;
+  };
   paymentMethod?: string;
   invoiceUrl?: string;
   paidDate?: string;
@@ -151,6 +162,8 @@ export default function AdminBillingPage() {
         return "bg-purple-500/15 text-purple-700 dark:text-purple-400";
       case "overdue":
         return "bg-red-500/15 text-red-700 dark:text-red-400";
+      case "covered":
+        return "bg-teal-500/15 text-teal-700 dark:text-teal-400";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -159,6 +172,7 @@ export default function AdminBillingPage() {
   const getStatusIcon = (status: PaymentStatus) => {
     switch (status) {
       case "paid":
+      case "covered":
         return <CheckCircle2 className="h-4 w-4" />;
       case "overdue":
         return <AlertCircle className="h-4 w-4" />;
@@ -460,7 +474,7 @@ export default function AdminBillingPage() {
               {t("filterStatus")}
             </p>
             <div className="flex flex-wrap gap-2">
-              {(["all", "paid", "pending", "upcoming", "processing", "overdue"] as const).map((s) => {
+              {(["all", "paid", "pending", "upcoming", "processing", "overdue", "covered"] as const).map((s) => {
                 const isActive = statusFilter === s;
                 return (
                   <button
@@ -561,6 +575,12 @@ export default function AdminBillingPage() {
                         {getStatusIcon(payment.status)}
                         {t(`status.${payment.status}`)}
                       </span>
+                      {payment.payer?.state === "awaiting_decision" && (
+                        <span className="ml-2 flex items-center gap-2 rounded-full bg-amber-500/15 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                          <AlertCircle className="h-4 w-4" />
+                          {t("payerAwaitingDecision")}
+                        </span>
+                      )}
                     </div>
 
                     {/* Details Grid */}
@@ -583,6 +603,12 @@ export default function AdminBillingPage() {
                         <p className="text-xs text-muted-foreground">{t("clientPayment")}</p>
                         <p className="font-medium text-foreground">{payment.amount.toFixed(2)} $</p>
                       </div>
+                      {payment.payer && payment.payer.orgAmount > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">{t("organizationShare")}</p>
+                          <p className="font-medium text-foreground">{payment.payer.orgAmount.toFixed(2)} $</p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs text-muted-foreground">{t("platformFee")}</p>
                         <p className="font-medium text-primary">{payment.platformFee.toFixed(2)} $</p>
@@ -641,7 +667,7 @@ export default function AdminBillingPage() {
                     </div>
 
                     {/* No payment method warning */}
-                    {!payment.paymentMethod && payment.status !== "paid" && (
+                    {!payment.paymentMethod && payment.status !== "paid" && payment.status !== "covered" && (
                       <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/20 px-3 py-2 text-xs text-red-700 dark:text-red-300">
                         <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                         {t("noPaymentBeforeMeeting")}
@@ -712,7 +738,8 @@ export default function AdminBillingPage() {
 
                       {/* Relancer button — Interac pending/overdue only */}
                       {payment.paymentMethod === "transfer" &&
-                        payment.status !== "paid" && (
+                        payment.status !== "paid" &&
+                        payment.status !== "covered" && (
                           <Button
                             variant={payment.status === "overdue" ? "destructive" : "outline"}
                             className="gap-2 rounded-full"

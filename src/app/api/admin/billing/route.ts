@@ -59,6 +59,8 @@ export async function GET(req: NextRequest) {
         query.date = { ...(query.date as object ?? {}), $gte: new Date() };
       } else if (status === "processing") {
         query["payment.status"] = "processing";
+      } else if (status === "covered") {
+        query["payment.status"] = "covered";
       }
     }
 
@@ -94,6 +96,9 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
     const appointments = await Appointment.find(query)
+      // Admin-only route: the payer snapshot (select:false) says who pays the
+      // part the client does not (spec 002).
+      .select("+thirdPartyBilling")
       .populate("clientId", "firstName lastName email")
       .populate("professionalId", "firstName lastName")
       .sort({ date: -1, time: -1 })
@@ -117,10 +122,19 @@ export async function GET(req: NextRequest) {
 
       // Derive display status from real payment.status, falling back to date-based logic
       const rawPaymentStatus = appointment.payment?.status;
-      let paymentStatus: "paid" | "pending" | "upcoming" | "processing" | "overdue";
+      let paymentStatus:
+        | "paid"
+        | "pending"
+        | "upcoming"
+        | "processing"
+        | "overdue"
+        | "covered";
 
       if (rawPaymentStatus === "paid") {
         paymentStatus = "paid";
+      } else if (rawPaymentStatus === "covered") {
+        // The client owes nothing: never "pending"/"overdue", never chased.
+        paymentStatus = "covered";
       } else if (rawPaymentStatus === "overdue") {
         paymentStatus = "overdue";
       } else if (rawPaymentStatus === "processing") {
@@ -156,10 +170,24 @@ export async function GET(req: NextRequest) {
         sessionDate: appointment.date
           ? `${new Date(appointment.date).toISOString().split("T")[0]} ${appointment.time || ""}`.trim()
           : "N/A",
+        // `amount` is what the CLIENT owes; fee and payout are for the whole
+        // session — with a third party they come from the payer snapshot.
         amount: appointment.payment?.price ?? 120,
-        platformFee: appointment.payment?.platformFee ?? 12,
-        professionalPayout: appointment.payment?.professionalPayout ?? 108,
+        platformFee: appointment.thirdPartyBilling
+          ? appointment.thirdPartyBilling.platformFeeTotalCents / 100
+          : (appointment.payment?.platformFee ?? 12),
+        professionalPayout: appointment.thirdPartyBilling
+          ? appointment.thirdPartyBilling.proPayoutTotalCents / 100
+          : (appointment.payment?.professionalPayout ?? 108),
         status: paymentStatus,
+        // Spec 002: who pays the rest, and whether an admin still has to decide.
+        payer: appointment.thirdPartyBilling
+          ? {
+              kind: appointment.thirdPartyBilling.kind,
+              state: appointment.thirdPartyBilling.state,
+              orgAmount: (appointment.thirdPartyBilling.orgAmountCents ?? 0) / 100,
+            }
+          : undefined,
         paymentMethod: appointment.payment?.method ?? undefined,
         paidDate: appointment.payment?.paidAt
           ? new Date(appointment.payment.paidAt).toISOString().split("T")[0]

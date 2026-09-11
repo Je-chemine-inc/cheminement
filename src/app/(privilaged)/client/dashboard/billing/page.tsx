@@ -272,7 +272,10 @@ export default function ClientBillingPage() {
       !p.payment.stripePaymentMethodId,
   );
 
-  const paidPayments = appointments.filter((p) => p.payment.status === "paid");
+  // Spec 002: "covered" = a third party pays; nothing to pay, shown in history.
+  const paidPayments = appointments.filter(
+    (p) => p.payment.status === "paid" || p.payment.status === "covered",
+  );
 
   const totalOwed = owedPayments.reduce((sum, p) => sum + p.payment.price, 0);
 
@@ -300,6 +303,8 @@ export default function ClientBillingPage() {
         return "bg-gray-500/15 text-gray-700 dark:text-gray-400";
       case "processing":
         return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
+      case "covered":
+        return "bg-teal-500/15 text-teal-700 dark:text-teal-400";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -308,6 +313,7 @@ export default function ClientBillingPage() {
   const getStatusIcon = (status: AppointmentResponse["payment"]["status"]) => {
     switch (status) {
       case "paid":
+      case "covered":
         return <CheckCircle2 className="h-4 w-4" />;
       case "processing":
         return <Clock className="h-4 w-4" />;
@@ -735,6 +741,11 @@ export default function ClientBillingPage() {
                         <Download className="h-4 w-4" />
                         {t("downloadReceipt")}
                       </Button>
+                    )}
+                    {apt.payment.status === "covered" && (
+                      <div className="text-sm text-muted-foreground">
+                        {t("coveredByOrganization")}
+                      </div>
                     )}
                     {apt.status === "pending" && (
                       <div className="text-sm text-muted-foreground italic">

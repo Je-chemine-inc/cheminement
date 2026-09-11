@@ -41,9 +41,19 @@ export async function POST(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const { found, alreadyPaid, payment } = await settleInteracPayment(id);
+    const { found, alreadyPaid, nothingOwed, payment } =
+      await settleInteracPayment(id);
     if (!found) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (nothingOwed) {
+      return NextResponse.json(
+        {
+          error: "The client owes nothing for this session — a third party pays.",
+          code: "NOTHING_OWED",
+        },
+        { status: 409 },
+      );
     }
 
     return NextResponse.json({ id, payment, alreadyPaid });

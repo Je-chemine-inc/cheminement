@@ -69,9 +69,15 @@ export async function GET(
 
     const { id } = await params;
 
-    const appointment = await Appointment.findById(id)
+    const appointmentQuery = Appointment.findById(id)
       .populate("clientId", "firstName lastName email phone location")
       .populate("professionalId", "firstName lastName email phone");
+    // Spec 002: a professional is shown their pay for the whole session, which
+    // lives in the (select:false) payer snapshot. Redacted to {kind, total} below.
+    if (session.user.role === "professional") {
+      appointmentQuery.select("+thirdPartyBilling");
+    }
+    const appointment = await appointmentQuery;
 
     if (!appointment) {
       return NextResponse.json(

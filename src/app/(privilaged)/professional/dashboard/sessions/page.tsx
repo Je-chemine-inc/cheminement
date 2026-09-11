@@ -67,7 +67,8 @@ interface ApiAppointment {
       | "paid"
       | "failed"
       | "refunded"
-      | "cancelled";
+      | "cancelled"
+      | "covered";
     stripePaymentIntentId?: string;
     stripePaymentMethodId?: string;
     paidAt?: string;
@@ -154,7 +155,11 @@ export default function SessionsPage() {
           .map((appointment: ApiAppointment) => {
             // Pros see only Paid vs Pending; anything non-paid collapses to pending.
             const paymentStatus: "paid" | "pending" =
-              appointment.payment?.status === "paid" ? "paid" : "pending";
+              // Spec 002: "covered" (an organization pays) is settled for the pro.
+              appointment.payment?.status === "paid" ||
+              appointment.payment?.status === "covered"
+                ? "paid"
+                : "pending";
 
             return {
               id: appointment._id,
