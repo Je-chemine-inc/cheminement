@@ -47,6 +47,7 @@ always go to the client.
 | Pro payout | Unchanged — credited at closure |
 | Consent (Loi 25) | Hard gate on every disclosure |
 | Cap alerts | Admin at 1 left · client at 1 left · pro sees « PAE — séance 4/6 » |
+| Own claim form (2026-09-11) | One PDF per invoice or statement, filled in by an admin and sent with it under a fixed name (`JCO-…-formulaire.pdf`). If the organization requires it, nothing goes out — the hourly auto-send included — until it is attached, unless an admin sends without it (recorded in the send log) |
 | Not in v1 | Per-therapy-type rates · dollar cap · auto-filling orgs' own proforma forms |
 
 ## 4. Acceptance criteria

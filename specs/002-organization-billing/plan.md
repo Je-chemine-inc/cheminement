@@ -216,6 +216,24 @@ billing, client dashboard « 3/10 séances utilisées ».
   disputes, refunds, money on void invoices). The client's « 3/10 » is on their billing page
   and is hidden while the organization-billing switch is off.
 
+### Phase 7 — The organization's own claim form (2026-09-11)
+Some organizations want their own form with each invoice. The admin fills it in by hand and
+attaches one PDF; it is not auto-filled (still out of scope).
+- `OrganizationInvoice.attachment` (file, size, sha256, scan status, fingerprint of the lines it
+  was filled in from, who attached it); `sendLog[]` gains `attachment` (the form as it went out)
+  and `withoutOwnForm`. The file is a `StoredFile` of kind `organization-form`, which
+  `/api/files/[id]` refuses; billing admins use `/api/admin/organization-invoices/[id]/attachment`
+  (POST multipart with a « nothing clinical » confirmation, GET, DELETE).
+- Rules (`src/lib/organization-invoice-form.ts`): a form changes only while the invoice can still be
+  sent; a required form missing, or out of date (the lines changed since it was attached), refuses
+  the send **before anything is reserved or numbered**; `withoutOwnForm` (an admin, never the
+  cron) sends without it and is logged; the form leaves under a fixed name, never the uploaded
+  one; a scanner that cannot answer refuses the upload.
+- Files: a draft's form is deleted with the draft, or when replaced on it (it never left); once
+  issued, old forms are kept (the record of what was disclosed).
+- The hourly run counts a held auto-send as `autoSendAwaitingForm`; the review email flags drafts
+  waiting for a form. Details and invariants: debt-map, 2026-09-11 claim-form entry.
+
 ---
 
 ## Reuse, don't rebuild

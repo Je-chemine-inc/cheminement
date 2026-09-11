@@ -75,7 +75,7 @@ Never copy the production env file locally to get around this — it holds live 
 - **God-files** (edit surgically, don't rewrite): `lib/notifications.ts` (~6.7k lines), `lib/email-template-registry.ts` (~3k), `app/appointment/page.tsx` (~3.1k), `signup/member`, `MedicalProfile.tsx`.
 - **Dates**: always write appointment dates through `parseAppointmentDate` (UTC-noon anchor) — never `new Date("YYYY-MM-DD")`.
 - **Encryption ordering**: the `User` lookup-hash pre-save hook must run **before** the contact-encryption plugin (phone must still be plaintext). Don't reorder.
-- **`/api/files/[id]`**: coarse auth (any signed-in user can read any non-`content-image` file by id) + a BSON-Binary empty-body trap — keep the normalize branch.
+- **`/api/files/[id]`**: coarse auth (any signed-in user can read any non-`content-image` file by id, except the kinds in `PRIVATE_STORED_FILE_KINDS`, which have their own route) + a BSON-Binary empty-body trap — keep the normalize branch.
 - See the full list, including the **`admin@admin.com`/`admin123` production super-admin**, in [docs/quality/debt-map.md](docs/quality/debt-map.md).
 
 ## 8. When unsure
