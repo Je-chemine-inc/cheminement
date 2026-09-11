@@ -234,6 +234,20 @@ attaches one PDF; it is not auto-filled (still out of scope).
 - The hourly run counts a held auto-send as `autoSendAwaitingForm`; the review email flags drafts
   waiting for a form. Details and invariants: debt-map, 2026-09-11 claim-form entry.
 
+### Phase 8 — Refunding an organization (2026-09-11)
+- `OrganizationInvoice`: payment rows get a `paymentId`; `refunds[]` (amount, credit part, owed choice,
+  Stripe or outside, reason, status requested → pending → succeeded / failed, request key, who);
+  `creditedCents`. What is owed: `balance = total − credited − paid`, recomputed in one pipeline write.
+- `src/lib/organization-invoice-money.ts` (pure): the owed / credit split, what can be refunded.
+  `src/lib/organization-invoice-refund.ts`: a card refund writes a `requested` row, asks Stripe with
+  `orgref_<refundId>`, then records the result through the webhook's path; « Vérifier » settles an
+  unknown outcome. Outside refunds are one conditional write.
+- Statuses: a full refund still owed puts the invoice back to `sent` / `overdue`; `refunded` is the
+  closed state (all back, all credited) and can be voided. Webhook `charge.refund.updated` follows a
+  screen refund by its metadata; the team is alerted only about refunds made elsewhere and failures.
+- Admin: « Rembourser » per payment (`OrganizationRefundDialog`), the refunds list, a credit line on
+  the invoice, the pay page and the PDF; email `organization_refund` (on by default).
+
 ---
 
 ## Reuse, don't rebuild
