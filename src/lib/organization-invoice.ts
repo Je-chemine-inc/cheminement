@@ -17,6 +17,11 @@
  *
  * Nothing is sent without the client's consent on every line (`blockedLines`),
  * and there is no override.
+ *
+ * An organization that requires its own claim form (phase 7) gets nothing
+ * until the form is attached — the hourly auto-send included — unless an
+ * admin explicitly sends without it (`withoutOwnForm`, recorded in the send
+ * log). Rules in organization-invoice-form.ts.
  */
 import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
@@ -43,6 +48,12 @@ import {
   newPayToken,
   organizationPayUrl,
 } from "@/lib/organization-invoice-pay-link";
+import { decideFormForSend } from "@/lib/organization-invoice-form";
+import {
+  discardUnsentForm,
+  formForDelivery,
+  type FormDelivery,
+} from "@/lib/organization-invoice-attachment";
 
 // Money received lives with the rest of the settlement code (phase 5).
 export { recordOrganizationPayment } from "@/lib/organization-invoice-settlement";
@@ -69,6 +80,16 @@ const refuse = (
   error,
   ...(details === undefined ? {} : { details }),
 });
+
+type FormRefusal = "OWN_FORM_MISSING" | "OWN_FORM_STALE" | "OWN_FORM_UNAVAILABLE";
+const FORM_REFUSALS: Record<FormRefusal, string> = {
+  OWN_FORM_MISSING: "This organization requires its own form. Attach it, or send without it.",
+  OWN_FORM_STALE: "The sessions changed since the form was attached. Attach it again, or send without it.",
+  OWN_FORM_UNAVAILABLE: "The attached form could not be read. Attach it again.",
+};
+/** The organization's notes on its form come back, so the admin knows what to attach. */
+const formRefusal = (code: FormRefusal, org: Pick<IOrganization, "formNotes">) =>
+  refuse(409, code, FORM_REFUSALS[code], { formNotes: org.formNotes ?? "" });
 
 /** Closed sessions an organization owes for and nobody has invoiced yet. */
 export function billableSessionsFilter(
@@ -134,8 +155,12 @@ async function upsertDraft(args: {
 }): Promise<InvoiceResult | null> {
   const lines = await linesFor(args.filter);
   if (lines.length === 0) {
-    // An emptied draft (sessions reassigned meanwhile) is simply dropped.
-    await OrganizationInvoice.deleteOne({ draftKey: args.draftKey, status: "draft" });
+    // An emptied draft (sessions reassigned meanwhile) is simply dropped —
+    // with the organization's form, if one was attached: it never left.
+    const gone = await OrganizationInvoice.findOneAndDelete({ draftKey: args.draftKey, status: "draft" })
+      .select("attachment")
+      .lean();
+    await discardUnsentForm(gone);
     return null;
   }
   const total = sumLineCents(lines);
@@ -334,10 +359,14 @@ export async function renderInvoicePdf(
   });
 }
 
-/** Email the PDF to every billing address. Returns the addresses reached. */
+/**
+ * Email the PDF — and the organization's own form, when one goes out — to
+ * every billing address. Returns the addresses reached.
+ */
 async function deliver(
   inv: IOrganizationInvoice,
   org: Pick<IOrganization, "name" | "language">,
+  formPdf: Buffer | null,
 ): Promise<string[]> {
   const language = org.language === "en" ? "en" : "fr";
   const pdf = await renderInvoicePdf(inv, language);
@@ -355,6 +384,7 @@ async function deliver(
       dueAt: inv.dueAt ?? null,
       periodKey: inv.periodKey ?? null,
       pdf,
+      formPdf,
       payUrl: token && inv.balanceCents > 0 ? organizationPayUrl(token, language) : null,
       interacEmail: interacEmail || null,
       locale: language,
@@ -371,11 +401,15 @@ async function deliver(
  * Issue a draft and send it. Every check happens before anything is reserved;
  * a failure after the claim puts things back. Safe to call again on an invoice
  * stuck in "issuing" (the email failed): it keeps its number and resends.
+ *
+ * `withoutOwnForm`: an admin sends to an organization that requires its own
+ * form without it. The hourly run never passes it.
  */
 export async function issueAndSend(args: {
   invoiceId: string;
   byUserId?: string | null;
   now?: Date;
+  withoutOwnForm?: boolean;
 }): Promise<InvoiceResult> {
   const now = args.now ?? new Date();
   await connectToDatabase();
@@ -406,6 +440,18 @@ export async function issueAndSend(args: {
     if (stale.length > 0) {
       return refuse(409, "DRAFT_STALE", "Some sessions changed since this draft. Refresh it.", { stale });
     }
+  }
+
+  // The organization's own form — still before anything is reserved or numbered.
+  const form = decideFormForSend({
+    requiresOwnForm: Boolean(org.requiresOwnForm),
+    attachment: inv.attachment,
+    lines: inv.lines,
+    withoutOwnForm: args.withoutOwnForm,
+  });
+  if (form.kind === "refuse") return formRefusal(form.code, org);
+
+  if (inv.status === "draft") {
     const claimed = await OrganizationInvoice.findOneAndUpdate(
       { _id: inv._id, status: "draft" },
       { $set: { status: "issuing" } },
@@ -457,7 +503,12 @@ export async function issueAndSend(args: {
   }
 
   const issued = (await OrganizationInvoice.findById(inv._id))!;
-  const reached = await deliver(issued, org);
+  // Decided again on the invoice as it is now: the form may have been removed
+  // or replaced while this ran. Refused here, it stays "issuing" and keeps its
+  // number, like a failed email.
+  const delivery = await formForDelivery(issued, org, args.withoutOwnForm === true);
+  if (!delivery.ok) return formRefusal(delivery.code, org);
+  const reached = await deliver(issued, org, delivery.form?.bytes ?? null);
   if (reached.length === 0) {
     return refuse(
       502,
@@ -469,25 +520,40 @@ export async function issueAndSend(args: {
     { _id: inv._id, status: "issuing" },
     {
       $set: { status: "sent" },
-      $push: {
-        sendLog: {
-          at: now,
-          to: reached,
-          kind: "sent",
-          ...(args.byUserId ? { byUserId: new mongoose.Types.ObjectId(args.byUserId) } : {}),
-        },
-      },
+      $push: { sendLog: sendLogEntry("sent", now, reached, args.byUserId, delivery) },
     },
     { new: true },
   );
   return { ok: true, invoice: sent ?? issued };
 }
 
-/** Send an issued invoice again (same PDF, same number). */
+/** A disclosure, as it happened: who got it, sent by whom, and whether the form went too. */
+function sendLogEntry(
+  kind: "sent" | "resent",
+  at: Date,
+  to: string[],
+  byUserId: string | null | undefined,
+  delivery: Extract<FormDelivery, { ok: true }>,
+) {
+  return {
+    at,
+    to,
+    kind,
+    ...(byUserId ? { byUserId: new mongoose.Types.ObjectId(byUserId) } : {}),
+    ...(delivery.form ? { attachment: delivery.form.log } : {}),
+    ...(delivery.withoutOwnForm ? { withoutOwnForm: true } : {}),
+  };
+}
+
+/**
+ * Send an issued invoice again (same PDF, same number) — with the
+ * organization's form as it is attached now, or without it on purpose.
+ */
 export async function resendInvoice(args: {
   invoiceId: string;
   byUserId?: string | null;
   now?: Date;
+  withoutOwnForm?: boolean;
 }): Promise<InvoiceResult> {
   const now = args.now ?? new Date();
   await connectToDatabase();
@@ -502,20 +568,13 @@ export async function resendInvoice(args: {
   }
   const org = await Organization.findById(inv.organizationId).lean();
   if (!org) return refuse(404, "ORGANIZATION_NOT_FOUND", "Organization not found");
-  const reached = await deliver(inv, org);
+  const delivery = await formForDelivery(inv, org, args.withoutOwnForm === true);
+  if (!delivery.ok) return formRefusal(delivery.code, org);
+  const reached = await deliver(inv, org, delivery.form?.bytes ?? null);
   if (reached.length === 0) return refuse(502, "EMAIL_FAILED", "The invoice could not be emailed.");
   const updated = await OrganizationInvoice.findByIdAndUpdate(
     inv._id,
-    {
-      $push: {
-        sendLog: {
-          at: now,
-          to: reached,
-          kind: "resent",
-          ...(args.byUserId ? { byUserId: new mongoose.Types.ObjectId(args.byUserId) } : {}),
-        },
-      },
-    },
+    { $push: { sendLog: sendLogEntry("resent", now, reached, args.byUserId, delivery) } },
     { new: true },
   );
   return { ok: true, invoice: updated! };
@@ -546,7 +605,11 @@ export async function voidInvoice(args: {
   const inv = await OrganizationInvoice.findById(args.invoiceId).lean();
   if (!inv) return refuse(404, "NOT_FOUND", "Invoice not found");
   if (inv.status === "draft") {
-    await OrganizationInvoice.deleteOne({ _id: inv._id, status: "draft" });
+    // Its form goes with it: a draft's form never left the platform.
+    const gone = await OrganizationInvoice.findOneAndDelete({ _id: inv._id, status: "draft" })
+      .select("attachment")
+      .lean();
+    await discardUnsentForm(gone);
     return { ok: true, invoice: null };
   }
   if (!["issuing", "sent", "overdue"].includes(inv.status) || inv.paidCents > 0) {

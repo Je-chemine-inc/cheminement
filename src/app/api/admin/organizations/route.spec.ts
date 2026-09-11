@@ -60,6 +60,17 @@ vi.mock("@/lib/organization-invoice", () => ({
 vi.mock("@/lib/organization-invoice-card", () => ({
   cancelOpenOrganizationPaymentIntent: () => h.touched(),
 }));
+// Phase 7: the organization's own form on an invoice.
+vi.mock("@/models/StoredFile", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/models/StoredFile")>()),
+  default: trap,
+}));
+vi.mock("@/lib/organization-invoice-attachment", () => ({
+  attachInvoiceForm: () => h.touched(),
+  readInvoiceForm: () => h.touched(),
+  removeInvoiceForm: () => h.touched(),
+}));
+vi.mock("@/lib/upload-pipeline", () => ({ prepareAndScanUpload: () => h.touched() }));
 vi.mock("@/lib/coverage-admin", () => ({
   createCoverage: () => h.touched(),
   updateCoverageTerms: () => h.touched(),

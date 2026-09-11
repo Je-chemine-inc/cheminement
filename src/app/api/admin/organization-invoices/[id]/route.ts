@@ -18,6 +18,9 @@ import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** What the serializer shows of the organization. */
+const ORG_FIELDS = "name requiresOwnForm formNotes";
+
 async function respond(result: InvoiceResult<IOrganizationInvoice | null> | null) {
   if (result === null) {
     return NextResponse.json(
@@ -33,7 +36,7 @@ async function respond(result: InvoiceResult<IOrganizationInvoice | null> | null
   }
   if (!result.invoice) return NextResponse.json({ invoice: null });
   const inv = "toObject" in result.invoice ? result.invoice.toObject() : result.invoice;
-  const org = await Organization.findById(inv.organizationId).select("name").lean();
+  const org = await Organization.findById(inv.organizationId).select(ORG_FIELDS).lean();
   return NextResponse.json({ invoice: serializeInvoice(inv, org) });
 }
 
@@ -46,14 +49,16 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   }
   const inv = await OrganizationInvoice.findById(id).lean();
   if (!inv) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const org = await Organization.findById(inv.organizationId).select("name").lean();
+  const org = await Organization.findById(inv.organizationId).select(ORG_FIELDS).lean();
   return NextResponse.json({ invoice: serializeInvoice(inv, org) });
 }
 
 /**
  * POST /api/admin/organization-invoices/[id] — one action:
  *  `{ action: "send" }` issue a draft and email it (consent-gated);
- *  `{ action: "resend" }`; `{ action: "refresh" }` rebuild a draft;
+ *  `{ action: "resend" }`; both take `withoutOwnForm: true` to send to an
+ *  organization that requires its own form without it (recorded);
+ *  `{ action: "refresh" }` rebuild a draft;
  *  `{ action: "void", reason }` (a draft is discarded);
  *  `{ action: "pay", amount, method, reference?, receivedOn? }` money received.
  */
@@ -67,11 +72,13 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     const byUserId = gate.session.user.id;
+    // Only an explicit `true`: anything else keeps the form requirement.
+    const withoutOwnForm = body?.withoutOwnForm === true;
     switch (body?.action) {
       case "send":
-        return respond(await issueAndSend({ invoiceId: id, byUserId }));
+        return respond(await issueAndSend({ invoiceId: id, byUserId, withoutOwnForm }));
       case "resend":
-        return respond(await resendInvoice({ invoiceId: id, byUserId }));
+        return respond(await resendInvoice({ invoiceId: id, byUserId, withoutOwnForm }));
       case "refresh":
         return respond(await refreshDraft(id));
       case "void": {

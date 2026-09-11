@@ -1,17 +1,20 @@
 import type { IOrganization } from "@/models/Organization";
 import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
+import { isFormEditable, linesFingerprint } from "@/lib/organization-invoice-form";
 
 type Lean<T> = Omit<T, keyof import("mongoose").Document> & { _id: unknown };
 
 /**
  * An organization invoice as the admin screens see it. Lines keep the names
- * (this is the billing admin's own view of what was sent); the pay token and
- * Stripe ids stay server-side.
+ * (this is the billing admin's own view of what was sent); the pay token,
+ * Stripe ids and the stored form's id and hash stay server-side.
  */
 export function serializeInvoice(
   inv: Lean<IOrganizationInvoice>,
-  org?: Pick<Lean<IOrganization>, "name"> | null,
+  org?: Pick<Lean<IOrganization>, "name" | "requiresOwnForm" | "formNotes"> | null,
 ) {
+  const form = inv.attachment;
+  const sendLog = inv.sendLog ?? [];
   return {
     id: String(inv._id),
     kind: inv.kind,
@@ -43,7 +46,29 @@ export function serializeInvoice(
       receivedAt: p.receivedAt,
       source: p.source,
     })),
-    sendLog: (inv.sendLog ?? []).map((s) => ({ at: s.at, to: s.to, kind: s.kind })),
+    sendLog: sendLog.map((s) => ({
+      at: s.at,
+      to: s.to,
+      kind: s.kind,
+      withForm: Boolean(s.attachment),
+      withoutOwnForm: Boolean(s.withoutOwnForm),
+    })),
+    // The organization's own claim form (phase 7).
+    requiresOwnForm: Boolean(org?.requiresOwnForm),
+    formNotes: org?.formNotes ?? "",
+    attachmentEditable: isFormEditable(inv.status),
+    attachment: form
+      ? {
+          fileName: form.fileName,
+          size: form.size,
+          scanStatus: form.scanStatus,
+          uploadedAt: form.uploadedAt,
+          // The lines changed since it was attached: it would be refused.
+          stale: form.linesFingerprint !== linesFingerprint(inv.lines ?? []),
+          // This very file already went out at least once.
+          sent: sendLog.some((s) => s.attachment && String(s.attachment.fileId) === String(form.fileId)),
+        }
+      : null,
     paymentEvents: (inv.paymentEvents ?? []).map((e) => ({ at: e.at, kind: e.kind, detail: e.detail })),
     reminders: {
       dueSentAt: inv.reminders?.dueSentAt ?? null,

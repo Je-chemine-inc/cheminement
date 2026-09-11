@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const [invoices, unbilled, orgs] = await Promise.all([
       OrganizationInvoice.find(query).sort({ createdAt: -1 }).limit(200).lean(),
       unbilledSummary(),
-      Organization.find({}).select("name billingCycle active billingEmails").lean(),
+      Organization.find({}).select("name billingCycle active billingEmails requiresOwnForm formNotes").lean(),
     ]);
     const orgById = new Map(orgs.map((o) => [String(o._id), o]));
     return NextResponse.json({
@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           organizationName: o?.name ?? "",
           billingCycle: o?.billingCycle ?? "per_session",
           hasBillingEmail: (o?.billingEmails?.length ?? 0) > 0,
+          requiresOwnForm: Boolean(o?.requiresOwnForm),
         };
       }),
     });

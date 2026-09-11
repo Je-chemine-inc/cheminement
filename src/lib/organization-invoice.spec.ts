@@ -28,13 +28,36 @@ const h = vi.hoisted(() => ({
   invUpdateOne: vi.fn(),
   invDeleteOne: vi.fn(async () => ({})),
   invFindByIdAndUpdate: vi.fn(),
+  // A deleted draft, as findOneAndDelete returns it.
+  deleted: null as Record<string, unknown> | null,
+  invFindOneAndDelete: vi.fn(),
   aptUpdateMany: vi.fn(),
   send: vi.fn(),
+  // The organization's own form (phase 7).
+  storedForm: null as { data: Buffer } | null,
+  fileDeleteOne: vi.fn(async () => ({})),
+  // Sessions a draft is rebuilt from (linesFor).
+  billable: [] as Record<string, unknown>[],
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
-vi.mock("@/models/Profile", () => ({ default: {} }));
+vi.mock("@/models/Profile", () => ({
+  default: { find: () => ({ select: () => ({ lean: async () => [] }) }) },
+}));
+vi.mock("@/models/StoredFile", () => ({
+  default: {
+    findOne: () => ({
+      select: () => ({
+        lean: async () => {
+          h.calls.push("load-form");
+          return h.storedForm;
+        },
+      }),
+    }),
+    deleteOne: h.fileDeleteOne,
+  },
+}));
 vi.mock("@/models/OrganizationInvoice", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/models/OrganizationInvoice")>();
   const findById = () => {
@@ -49,6 +72,7 @@ vi.mock("@/models/OrganizationInvoice", async (importOriginal) => {
       updateOne: h.invUpdateOne,
       deleteOne: h.invDeleteOne,
       findByIdAndUpdate: h.invFindByIdAndUpdate,
+      findOneAndDelete: h.invFindOneAndDelete,
     },
   };
 });
@@ -62,7 +86,21 @@ vi.mock("@/models/OrganizationCoverage", () => ({
 }));
 vi.mock("@/models/Appointment", () => ({
   default: {
-    find: () => ({ select: () => ({ lean: async () => h.snapshots }) }),
+    // staleLines reads the snapshots (select → lean); linesFor rebuilds a
+    // draft from the billable sessions (select → populate → sort → lean).
+    find: () => {
+      let rebuilding = false;
+      const q = {
+        select: () => q,
+        populate: () => {
+          rebuilding = true;
+          return q;
+        },
+        sort: () => q,
+        lean: async () => (rebuilding ? h.billable : h.snapshots),
+      };
+      return q;
+    },
     updateMany: h.aptUpdateMany,
   },
 }));
@@ -82,9 +120,12 @@ vi.mock("@/lib/interac-deposit-email", () => ({ getInteracDepositEmail: async ()
 vi.mock("@/lib/notifications", () => ({ sendOrganizationInvoiceEmail: h.send }));
 
 import {
+  draftStatement,
   issueAndSend,
   voidInvoice,
+  resendInvoice,
 } from "@/lib/organization-invoice";
+import { linesFingerprint, sha256Hex } from "@/lib/organization-invoice-form";
 
 const line = (appointmentId: mongoose.Types.ObjectId, amountCents = 9000) => ({
   appointmentId,
@@ -97,6 +138,20 @@ const line = (appointmentId: mongoose.Types.ObjectId, amountCents = 9000) => ({
 const snapshot = (id: mongoose.Types.ObjectId, amount = 9000) => ({
   _id: id,
   thirdPartyBilling: { kind: "organization", state: "confirmed", organizationId: ORG, orgAmountCents: amount },
+});
+
+// The organization's own form, attached to the invoice's two lines.
+const FORM_FILE = new mongoose.Types.ObjectId("0123456789abcdef0123456f");
+const FORM_BYTES = Buffer.from("%PDF-1.4 formulaire PAE rempli");
+const attachedForm = (over: Record<string, unknown> = {}) => ({
+  fileId: FORM_FILE,
+  fileName: "Formulaire Léa Roy (interne).pdf",
+  size: FORM_BYTES.length,
+  sha256: sha256Hex(FORM_BYTES),
+  scanStatus: "clean",
+  linesFingerprint: linesFingerprint([line(A1), line(A2)]),
+  uploadedAt: NOW,
+  ...over,
 });
 
 beforeEach(() => {
@@ -133,6 +188,12 @@ beforeEach(() => {
     return { modifiedCount: 1 };
   });
   h.invDeleteOne.mockClear();
+  h.deleted = null;
+  h.invFindOneAndDelete.mockReset();
+  h.invFindOneAndDelete.mockImplementation(() => ({ select: () => ({ lean: async () => h.deleted }) }));
+  h.storedForm = null;
+  h.fileDeleteOne.mockClear();
+  h.billable = [];
   h.invFindByIdAndUpdate.mockReset();
   h.invFindByIdAndUpdate.mockImplementation(async () => h.invoice);
   h.aptUpdateMany.mockReset();
@@ -238,8 +299,22 @@ describe("voidInvoice", () => {
   it("discards a draft outright — nothing left, nothing to release", async () => {
     const r = await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN });
     expect(r).toEqual({ ok: true, invoice: null });
-    expect(h.invDeleteOne).toHaveBeenCalled();
+    expect(h.invFindOneAndDelete).toHaveBeenCalledWith({ _id: INV, status: "draft" });
     expect(h.aptUpdateMany).not.toHaveBeenCalled();
+    expect(h.fileDeleteOne).not.toHaveBeenCalled();
+  });
+
+  it("discarding a draft deletes its form: it never left", async () => {
+    h.deleted = { _id: INV, attachment: { fileId: FORM_FILE } };
+    await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN });
+    expect(h.fileDeleteOne).toHaveBeenCalledWith({ _id: FORM_FILE, kind: "organization-form" });
+  });
+
+  it("voiding a sent invoice keeps its form: it is the record of what went out", async () => {
+    h.invoice = { ...h.invoice, status: "sent", number: "JCO-2026-000007", attachment: attachedForm() };
+    const r = await voidInvoice({ invoiceId: String(INV), reason: "Erreur", byUserId: ADMIN, now: NOW });
+    expect(r.ok).toBe(true);
+    expect(h.fileDeleteOne).not.toHaveBeenCalled();
   });
 
   it("voids a sent invoice, frees its key and makes its sessions billable again", async () => {
@@ -257,5 +332,130 @@ describe("voidInvoice", () => {
     h.invoice = { ...h.invoice, status: "partially_paid", paidCents: 5000 };
     expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "CANNOT_VOID" });
     expect(h.aptUpdateMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Phase 7 — some organizations want their own claim form with each invoice.
+ * For them nothing goes out until it is attached, unless an admin sends
+ * without it on purpose (recorded). The form goes out under a fixed name.
+ */
+describe("issueAndSend — the organization's own form", () => {
+  const sentLog = () =>
+    (h.invFindOneAndUpdate.mock.calls.at(-1)![1] as { $push: { sendLog: Record<string, unknown> } }).$push.sendLog;
+
+  it("refuses when the organization requires its form and none is attached — before anything is reserved", async () => {
+    h.org = { ...h.org, requiresOwnForm: true, formNotes: "Formulaire PAE-12, signé" };
+    const r = await issue();
+    expect(r).toMatchObject({ ok: false, status: 409, code: "OWN_FORM_MISSING" });
+    expect((r as { details: { formNotes: string } }).details.formNotes).toBe("Formulaire PAE-12, signé");
+    expect(h.calls).toEqual([]);
+    expect(h.send).not.toHaveBeenCalled();
+  });
+
+  it("an admin may send without it: the decision is recorded and nothing else is attached", async () => {
+    h.org = { ...h.org, requiresOwnForm: true };
+    const r = await issueAndSend({ invoiceId: String(INV), byUserId: ADMIN, now: NOW, withoutOwnForm: true });
+    expect(r.ok).toBe(true);
+    expect((h.send.mock.calls[0][0] as { formPdf: unknown }).formPdf).toBeNull();
+    expect(sentLog()).toMatchObject({ kind: "sent", withoutOwnForm: true });
+    expect(sentLog()).not.toHaveProperty("attachment");
+    expect(h.calls).not.toContain("load-form");
+  });
+
+  it("with the form: claimed, reserved and numbered first, then the form is read and goes out under a fixed name", async () => {
+    h.org = { ...h.org, requiresOwnForm: true };
+    h.invoice = { ...h.invoice, attachment: attachedForm() };
+    h.storedForm = { data: FORM_BYTES };
+    const r = await issue();
+    expect(r.ok).toBe(true);
+    expect(h.calls).toEqual([
+      "claim:draft", "reserve", "number", "store-number", "load-form", "email", "email", "claim:issuing",
+    ]);
+    const email = h.send.mock.calls[0][0] as { formPdf: Buffer };
+    expect(Buffer.compare(email.formPdf, FORM_BYTES)).toBe(0);
+    expect(sentLog()).toMatchObject({
+      kind: "sent",
+      attachment: {
+        fileId: FORM_FILE,
+        // Never the uploaded name, which may carry a patient's name.
+        fileName: "JCO-2026-000007-formulaire.pdf",
+        size: FORM_BYTES.length,
+        sha256: sha256Hex(FORM_BYTES),
+      },
+    });
+    expect(sentLog()).not.toHaveProperty("withoutOwnForm");
+  });
+
+  it("refuses a form attached before the sessions changed, before anything is reserved", async () => {
+    h.org = { ...h.org, requiresOwnForm: true };
+    h.invoice = { ...h.invoice, attachment: attachedForm({ linesFingerprint: "attached-to-other-lines" }) };
+    expect(await issue()).toMatchObject({ status: 409, code: "OWN_FORM_STALE" });
+    expect(h.calls).toEqual([]);
+  });
+
+  it("without every client's consent the form is not even read", async () => {
+    h.consent = "withdrawn";
+    h.invoice = { ...h.invoice, attachment: attachedForm() };
+    h.storedForm = { data: FORM_BYTES };
+    expect(await issue()).toMatchObject({ code: "CONSENT_MISSING" });
+    expect(h.calls).not.toContain("load-form");
+  });
+
+  it("a form whose bytes changed is not sent; the invoice stays issuing with its number", async () => {
+    h.invoice = { ...h.invoice, attachment: attachedForm() };
+    h.storedForm = { data: Buffer.from("%PDF-1.4 un autre fichier") };
+    expect(await issue()).toMatchObject({ status: 409, code: "OWN_FORM_UNAVAILABLE" });
+    expect(h.calls).toEqual(["claim:draft", "reserve", "number", "store-number", "load-form"]);
+    expect(h.send).not.toHaveBeenCalled();
+  });
+
+  it("an organization that asks for no form gets the invoice alone", async () => {
+    await issue();
+    expect((h.send.mock.calls[0][0] as { formPdf: unknown }).formPdf).toBeNull();
+    expect(sentLog()).not.toHaveProperty("attachment");
+    expect(sentLog()).not.toHaveProperty("withoutOwnForm");
+  });
+});
+
+describe("resendInvoice — the organization's own form", () => {
+  const resend = (withoutOwnForm?: boolean) =>
+    resendInvoice({ invoiceId: String(INV), byUserId: ADMIN, now: NOW, withoutOwnForm });
+  const resentLog = () =>
+    (h.invFindByIdAndUpdate.mock.calls.at(-1)![1] as { $push: { sendLog: Record<string, unknown> } }).$push.sendLog;
+
+  beforeEach(() => {
+    // A sent invoice has its number and its pay link.
+    h.invoice = { ...h.invoice, status: "sent", number: "JCO-2026-000007", payToken: "a".repeat(64) };
+  });
+
+  it("refuses without the form the organization requires", async () => {
+    h.org = { ...h.org, requiresOwnForm: true };
+    expect(await resend()).toMatchObject({ code: "OWN_FORM_MISSING" });
+    expect(h.send).not.toHaveBeenCalled();
+  });
+
+  it("sends the form attached since, and records it", async () => {
+    h.org = { ...h.org, requiresOwnForm: true, language: "en" };
+    h.invoice = { ...h.invoice, attachment: attachedForm() };
+    h.storedForm = { data: FORM_BYTES };
+    expect((await resend()).ok).toBe(true);
+    expect(resentLog()).toMatchObject({ kind: "resent", attachment: { fileName: "JCO-2026-000007-form.pdf" } });
+  });
+
+  it("records a resend without the form, on purpose", async () => {
+    h.org = { ...h.org, requiresOwnForm: true };
+    expect((await resend(true)).ok).toBe(true);
+    expect(resentLog()).toMatchObject({ kind: "resent", withoutOwnForm: true });
+  });
+});
+
+describe("drafts dropped with their form", () => {
+  it("an emptied draft goes, and its form with it", async () => {
+    h.billable = [];
+    h.deleted = { _id: INV, attachment: { fileId: FORM_FILE } };
+    expect(await draftStatement(String(ORG), "2026-09")).toBeNull();
+    expect(h.invFindOneAndDelete).toHaveBeenCalledWith({ draftKey: `statement:${ORG}:2026-09`, status: "draft" });
+    expect(h.fileDeleteOne).toHaveBeenCalledWith({ _id: FORM_FILE, kind: "organization-form" });
   });
 });

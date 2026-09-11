@@ -9,6 +9,13 @@ import mongoose, { Schema, Document, Model } from "mongoose";
  * referral attachments, client-shared documents) so callers all funnel
  * through the same auth, validation, and serving path.
  */
+/**
+ * Kinds GET /api/files/[id] never serves, whoever asks: they have their own,
+ * narrower route. An organization's claim form carries patient data and goes
+ * only to billing admins (/api/admin/organization-invoices/[id]/attachment).
+ */
+export const PRIVATE_STORED_FILE_KINDS = ["organization-form"] as const;
+
 export interface IStoredFile extends Document {
   fileName: string;
   fileType: string;
@@ -21,6 +28,7 @@ export interface IStoredFile extends Document {
     | "payout-cheque"
     | "content-image"
     | "referral"
+    | "organization-form"
     | "generic";
   uploadedBy?: mongoose.Types.ObjectId;
   /**
@@ -52,6 +60,7 @@ const StoredFileSchema = new Schema<IStoredFile>(
         "payout-cheque",
         "content-image",
         "referral",
+        "organization-form",
         "generic",
       ],
       default: "generic",

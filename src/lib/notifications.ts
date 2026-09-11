@@ -31,6 +31,7 @@ import {
 import type { EmailTemplateKey } from "@/models/EmailTemplate";
 import { findRealAccountByEmail } from "@/lib/account-dedup";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
+import { organizationFormFileName } from "@/lib/organization-invoice-form";
 
 /**
  * Loads an admin-editable email template + renders {{placeholder}} tokens.
@@ -6765,6 +6766,9 @@ const orgInteracBox = (email: string, number: string, lang: "fr" | "en") => ({
  * The body names no patient — only the organization, the number, the amounts
  * and the due date. Patient names are in the attached PDF, which may only be
  * sent with every client's consent (checked by the caller).
+ *
+ * `formPdf`: the organization's own claim form, attached as a second PDF under
+ * a fixed name (never the name it was uploaded under).
  */
 export async function sendOrganizationInvoiceEmail(data: {
   to: string;
@@ -6776,6 +6780,7 @@ export async function sendOrganizationInvoiceEmail(data: {
   dueAt: Date | null;
   periodKey: string | null;
   pdf: Buffer;
+  formPdf?: Buffer | null;
   /** The pay link (card), when a balance is due. */
   payUrl?: string | null;
   /** Interac deposit address; the invoice number is the transfer message. */
@@ -6791,15 +6796,22 @@ export async function sendOrganizationInvoiceEmail(data: {
     ? lang === "fr" ? "Relevé de facturation" : "Billing statement"
     : lang === "fr" ? "Facture" : "Invoice";
   const org = escapeHtml(data.organizationName);
+  const withForm = Boolean(data.formPdf);
+  const formSentence = withForm
+    ? lang === "fr"
+      ? " Le formulaire demandé par votre organisme est également joint."
+      : " The form your organization asked for is also attached."
+    : "";
 
   const html = buildEmailHtml({
     title: `${title} ${data.number}`,
     theme: "info",
     greeting: lang === "fr" ? "Bonjour," : "Hello,",
     intro:
-      lang === "fr"
+      (lang === "fr"
         ? `Veuillez trouver ci-joint ${statement ? "le relevé" : "la facture"} ${data.number} adressé${statement ? "" : "e"} à ${org} pour des séances offertes par Je chemine.`
-        : `Please find attached ${statement ? "statement" : "invoice"} ${data.number} for ${org}, for sessions provided by Je chemine.`,
+        : `Please find attached ${statement ? "statement" : "invoice"} ${data.number} for ${org}, for sessions provided by Je chemine.`) +
+      formSentence,
     details: [
       { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
       ...(data.periodKey ? [{ label: lang === "fr" ? "Période" : "Period", value: data.periodKey }] : []),
@@ -6820,7 +6832,13 @@ export async function sendOrganizationInvoiceEmail(data: {
     [
       `${title} ${data.number}`,
       `${data.organizationName} — ${money(data.balanceCents)} — ${due}`,
-      lang === "fr" ? "Le document est joint à ce courriel." : "The document is attached to this email.",
+      withForm
+        ? lang === "fr"
+          ? "La facture et le formulaire de votre organisme sont joints à ce courriel."
+          : "The invoice and your organization's form are attached to this email."
+        : lang === "fr"
+          ? "Le document est joint à ce courriel."
+          : "The document is attached to this email.",
       data.payUrl ? `${lang === "fr" ? "Payer par carte" : "Pay by card"} : ${data.payUrl}` : "",
       data.interacEmail ? orgInteracLine(data.interacEmail, data.number, lang) : "",
     ],
@@ -6834,6 +6852,15 @@ export async function sendOrganizationInvoiceEmail(data: {
       text,
       attachments: [
         { filename: `${data.number}.pdf`, content: data.pdf, contentType: "application/pdf" },
+        ...(data.formPdf
+          ? [
+              {
+                filename: organizationFormFileName(data.number, lang),
+                content: data.formPdf,
+                contentType: "application/pdf",
+              },
+            ]
+          : []),
       ],
     },
     statement ? "organization_statement" : "organization_invoice",
@@ -6852,6 +6879,8 @@ export async function sendAdminOrganizationInvoicesReview(data: {
     periodKey?: string | null;
     sessions: number;
     totalCents: number;
+    /** The organization requires its own form and none is attached yet. */
+    needsOwnForm?: boolean;
   }>;
 }): Promise<boolean> {
   if (data.items.length === 0) return false;
@@ -6869,13 +6898,14 @@ export async function sendAdminOrganizationInvoicesReview(data: {
   const url = `${base}/admin/dashboard/organization-invoices`;
   const money = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} $`;
   const describe = (i: (typeof data.items)[number]) =>
-    `${escapeHtml(i.organizationName)} — ${i.kind === "statement" ? `relevé ${i.periodKey ?? ""}` : "facture de séance"} — ${i.sessions} séance(s), ${money(i.totalCents)}`;
+    `${escapeHtml(i.organizationName)} — ${i.kind === "statement" ? `relevé ${i.periodKey ?? ""}` : "facture de séance"} — ${i.sessions} séance(s), ${money(i.totalCents)}${i.needsOwnForm ? " — formulaire de l’organisme à joindre" : ""}`;
+  const needForm = data.items.some((i) => i.needsOwnForm);
 
   const html = buildEmailHtml({
     title: "Factures aux organismes à réviser",
     theme: "info",
     greeting: "Bonjour,",
-    intro: `${data.items.length} brouillon(s) de facture aux organismes attend(ent) votre révision. Rien n’est envoyé à un organisme avant que vous cliquiez « Envoyer ».`,
+    intro: `${data.items.length} brouillon(s) de facture aux organismes attend(ent) votre révision. Rien n’est envoyé à un organisme avant que vous cliquiez « Envoyer ».${needForm ? " Certains organismes exigent leur propre formulaire : rien ne leur part, même automatiquement, avant qu’il soit joint." : ""}`,
     details: data.items.map((i, n) => ({ label: `#${n + 1}`, value: describe(i), stacked: true })),
     button: { text: "Réviser les factures", url },
     branding,

@@ -77,11 +77,40 @@ export interface IOrganizationInvoicePaymentEvent {
   detail: string;
 }
 
+/**
+ * The organization's own claim form (spec 002, phase 7): one PDF the admin
+ * filled in by hand, sent with the invoice. `linesFingerprint` is the lines as
+ * they were when it was attached — if they change, the form no longer matches
+ * and sending is refused until it is attached again. The file is a
+ * StoredFile of kind "organization-form", never served by /api/files.
+ */
+export interface IOrganizationInvoiceAttachment {
+  fileId: mongoose.Types.ObjectId;
+  /** The uploaded name, for the admin screens only — never emailed. */
+  fileName: string;
+  size: number;
+  sha256: string;
+  scanStatus: "clean" | "skipped";
+  linesFingerprint: string;
+  uploadedAt: Date;
+  /** Who attached it — and confirmed it holds no reason for consultation. */
+  uploadedBy?: mongoose.Types.ObjectId;
+}
+
 export interface IOrganizationInvoiceSendLogEntry {
   at: Date;
   to: string[];
   byUserId?: mongoose.Types.ObjectId;
   kind: "sent" | "resent" | "reminder" | "payment_received";
+  /** The organization's form as it went out, under its outgoing name. */
+  attachment?: {
+    fileId: mongoose.Types.ObjectId;
+    fileName: string;
+    size: number;
+    sha256: string;
+  };
+  /** Sent without the form the organization requires: an admin's decision. */
+  withoutOwnForm?: boolean;
 }
 
 export interface IOrganizationInvoice extends Document {
@@ -132,7 +161,7 @@ export interface IOrganizationInvoice extends Document {
   sendLog: IOrganizationInvoiceSendLogEntry[];
   internalNotes?: string;
   printedNote?: string;
-  attachmentFileId?: mongoose.Types.ObjectId;
+  attachment?: IOrganizationInvoiceAttachment;
   voidedAt?: Date;
   voidedBy?: mongoose.Types.ObjectId;
   voidReason?: string;
@@ -188,6 +217,32 @@ const PaymentEventSchema = new Schema<IOrganizationInvoicePaymentEvent>(
   { _id: false },
 );
 
+const AttachmentSchema = new Schema<IOrganizationInvoiceAttachment>(
+  {
+    fileId: { type: Schema.Types.ObjectId, ref: "StoredFile", required: true },
+    fileName: { type: String, required: true, maxlength: 200 },
+    size: { type: Number, required: true, min: 0 },
+    sha256: { type: String, required: true },
+    scanStatus: { type: String, enum: ["clean", "skipped"], required: true },
+    linesFingerprint: { type: String, required: true },
+    uploadedAt: { type: Date, required: true },
+    uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false },
+);
+
+const SentAttachmentSchema = new Schema(
+  {
+    fileId: { type: Schema.Types.ObjectId, ref: "StoredFile", required: true },
+    fileName: { type: String, required: true },
+    size: { type: Number, required: true },
+    sha256: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+// Strict like every schema here: a key missing below is dropped silently from
+// a $push — which would erase the record of what went out.
 const SendLogSchema = new Schema<IOrganizationInvoiceSendLogEntry>(
   {
     at: { type: Date, required: true },
@@ -198,6 +253,8 @@ const SendLogSchema = new Schema<IOrganizationInvoiceSendLogEntry>(
       enum: ["sent", "resent", "reminder", "payment_received"],
       required: true,
     },
+    attachment: { type: SentAttachmentSchema, default: undefined },
+    withoutOwnForm: Boolean,
   },
   { _id: false },
 );
@@ -250,7 +307,7 @@ const OrganizationInvoiceSchema = new Schema<IOrganizationInvoice>(
     sendLog: { type: [SendLogSchema], default: [] },
     internalNotes: { type: String, maxlength: 4000 },
     printedNote: { type: String, maxlength: 1000 },
-    attachmentFileId: { type: Schema.Types.ObjectId, ref: "StoredFile" },
+    attachment: { type: AttachmentSchema, default: undefined },
     voidedAt: Date,
     voidedBy: { type: Schema.Types.ObjectId, ref: "User" },
     voidReason: { type: String, maxlength: 500 },

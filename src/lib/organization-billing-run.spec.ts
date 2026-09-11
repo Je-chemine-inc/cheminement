@@ -135,7 +135,7 @@ describe("runOrganizationBilling", () => {
     const r = await runOrganizationBilling(NOW);
     expect(h.invUpdateOne.mock.calls[0][0]).toMatchObject({ _id: "d1", reviewAlertSentAt: { $exists: false } });
     expect(h.review.mock.calls[0][0]).toEqual({
-      items: [{ organizationName: "", kind: "statement", periodKey: "2026-09", sessions: 2, totalCents: 18000 }],
+      items: [{ organizationName: "", kind: "statement", periodKey: "2026-09", sessions: 2, totalCents: 18000, needsOwnForm: false }],
     });
     expect(r.reviewAlerts).toBe(1);
 
@@ -146,6 +146,41 @@ describe("runOrganizationBilling", () => {
       { _id: { $in: ["d1"] } },
       { $unset: { reviewAlertSentAt: 1 } },
     );
+  });
+
+  // Phase 7 — the organization's own claim form.
+  it("holds an auto-send until the organization's form is attached: counted apart, no warning", async () => {
+    h.orgs = [{ _id: PER_SESSION, billingCycle: "per_session", autoSendPerSession: true }];
+    h.issueAndSend.mockResolvedValue({ ok: false, code: "OWN_FORM_MISSING" });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const r = await runOrganizationBilling(NOW);
+    expect(r).toMatchObject({ autoSent: 0, autoSendRefused: 0, autoSendAwaitingForm: 1 });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+
+    // A form out of date waits the same way.
+    h.issueAndSend.mockResolvedValue({ ok: false, code: "OWN_FORM_STALE" });
+    expect(await runOrganizationBilling(NOW)).toMatchObject({ autoSendAwaitingForm: 1, autoSendRefused: 0 });
+  });
+
+  it("never sends without the form on its own: only a person may decide that", async () => {
+    h.orgs = [{ _id: PER_SESSION, billingCycle: "per_session", autoSendPerSession: true }];
+    await runOrganizationBilling(NOW);
+    for (const [args] of h.issueAndSend.mock.calls) {
+      expect(args).not.toHaveProperty("withoutOwnForm");
+    }
+  });
+
+  it("tells the team which drafts wait for the organization's form", async () => {
+    h.orgs = [{ _id: MONTHLY, name: "PAE Desjardins", billingCycle: "monthly", requiresOwnForm: true }];
+    h.existingKeys.add(`statement:${MONTHLY}:2026-09`);
+    h.unannounced = [
+      { _id: "d1", organizationId: MONTHLY, kind: "statement", periodKey: "2026-09", lines: [{}], totalCents: 9000 },
+      { _id: "d2", organizationId: MONTHLY, kind: "statement", periodKey: "2026-08", lines: [{}], totalCents: 9000, attachment: { fileId: "f1" } },
+    ];
+    await runOrganizationBilling(NOW);
+    const items = (h.review.mock.calls[0][0] as { items: Array<{ needsOwnForm: boolean }> }).items;
+    expect(items.map((i) => i.needsOwnForm)).toEqual([true, false]);
   });
 
   it("marks sent invoices past their due date overdue", async () => {

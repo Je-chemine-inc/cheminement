@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
-import StoredFile from "@/models/StoredFile";
+import StoredFile, { PRIVATE_STORED_FILE_KINDS } from "@/models/StoredFile";
 
 /**
  * GET /api/files/[id]
@@ -28,6 +28,11 @@ export async function GET(
     await connectToDatabase();
     const file = await StoredFile.findById(id).lean();
     if (!file) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    // Kinds with their own, narrower route (an organization's claim form goes
+    // to billing admins only). The same 404: not even whether it exists.
+    if ((PRIVATE_STORED_FILE_KINDS as readonly string[]).includes(file.kind)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

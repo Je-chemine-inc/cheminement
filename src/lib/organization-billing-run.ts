@@ -6,7 +6,8 @@
  *      once. Existing drafts are rebuilt so they stay current until sent.
  *   2. Per-session organizations: one draft per closed session; sent at once
  *      where the organization asked for that (auto-send, off by default) —
- *      through the same consent gate as a manual send.
+ *      through the same consent gate as a manual send. An organization that
+ *      requires its own form waits for it: auto-send never sends without it.
  *   3. One review email for drafts nobody was told about yet, claimed per
  *      draft before sending and given back if the email fails.
  *   4. Sent invoices past their due date become "overdue".
@@ -40,6 +41,8 @@ export type OrganizationBillingRunResult = {
   draftsRefreshed: number;
   autoSent: number;
   autoSendRefused: number;
+  /** Auto-send held until an admin attaches the organization's own form. */
+  autoSendAwaitingForm: number;
   reviewAlerts: number;
   markedOverdue: number;
   dunning?: DunningRunResult;
@@ -54,6 +57,7 @@ export async function runOrganizationBilling(
     draftsRefreshed: 0,
     autoSent: 0,
     autoSendRefused: 0,
+    autoSendAwaitingForm: 0,
     reviewAlerts: 0,
     markedOverdue: 0,
   };
@@ -101,9 +105,13 @@ export async function runOrganizationBilling(
         draftId = String(r.invoice._id);
       }
       if (org.autoSendPerSession && draftId) {
+        // Never `withoutOwnForm`: only a person may decide to send without it.
         const sent = await issueAndSend({ invoiceId: draftId, byUserId: null, now });
         if (sent.ok) result.autoSent += 1;
-        else {
+        else if (sent.code === "OWN_FORM_MISSING" || sent.code === "OWN_FORM_STALE") {
+          // Expected until someone attaches the form; the review email says so.
+          result.autoSendAwaitingForm += 1;
+        } else {
           result.autoSendRefused += 1;
           console.warn(`[organization-billing] auto-send refused for ${draftId}: ${sent.code}`);
         }
@@ -116,7 +124,7 @@ export async function runOrganizationBilling(
     status: "draft",
     reviewAlertSentAt: { $exists: false },
   })
-    .select("_id organizationId kind periodKey lines totalCents")
+    .select("_id organizationId kind periodKey lines totalCents attachment")
     .lean();
   const claimed: typeof unannounced = [];
   for (const d of unannounced) {
@@ -130,17 +138,21 @@ export async function runOrganizationBilling(
     const names = await Organization.find({
       _id: { $in: claimed.map((d) => d.organizationId) },
     })
-      .select("name")
+      .select("name requiresOwnForm")
       .lean();
-    const nameOf = new Map(names.map((n) => [String(n._id), n.name]));
+    const orgOf = new Map(names.map((n) => [String(n._id), n]));
     const sent = await sendAdminOrganizationInvoicesReview({
-      items: claimed.map((d) => ({
-        organizationName: nameOf.get(String(d.organizationId)) ?? "",
-        kind: d.kind,
-        periodKey: d.periodKey ?? null,
-        sessions: d.lines.length,
-        totalCents: d.totalCents,
-      })),
+      items: claimed.map((d) => {
+        const org = orgOf.get(String(d.organizationId));
+        return {
+          organizationName: org?.name ?? "",
+          kind: d.kind,
+          periodKey: d.periodKey ?? null,
+          sessions: d.lines.length,
+          totalCents: d.totalCents,
+          needsOwnForm: Boolean(org?.requiresOwnForm) && !d.attachment,
+        };
+      }),
     }).catch(() => false);
     if (sent) result.reviewAlerts = claimed.length;
     else {
