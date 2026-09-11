@@ -24,6 +24,34 @@ function isSettled(status: string | undefined | null): boolean {
   return (SETTLED_PAYMENT_STATUSES as readonly string[]).includes(status ?? "");
 }
 
+/**
+ * The admin "Aucun paiement — séance passée" alert repeats until someone
+ * reconciles the fee — that pressure is intended — but at most ONCE A DAY per
+ * session. It had no limit at all, so once the reminder cron moved from daily
+ * (Vercel) to hourly (/etc/cron.d/jechemine), the same alert hit the admin
+ * inbox every hour: 18 copies in 18 hours for one client (2026-09-10).
+ *
+ * The 10-minute tolerance absorbs cron jitter. Without it, a run that starts a
+ * few seconds earlier than yesterday's reads as 23h59m and slips the alert by
+ * a full hour, drifting later every day.
+ */
+export const POST_MEETING_ADMIN_ALERT_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const ADMIN_ALERT_JITTER_TOLERANCE_MS = 10 * 60 * 1000;
+
+export function isPostMeetingAdminAlertDue(
+  lastSentAt: Date | string | null | undefined,
+  nowMs: number,
+): boolean {
+  if (!lastSentAt) return true;
+  const last = new Date(lastSentAt).getTime();
+  // An unreadable stamp must not silence the alert forever.
+  if (!Number.isFinite(last)) return true;
+  return (
+    nowMs - last >=
+    POST_MEETING_ADMIN_ALERT_INTERVAL_MS - ADMIN_ALERT_JITTER_TOLERANCE_MS
+  );
+}
+
 /** True si le client doit encore « sécuriser » le paiement (carte/PAD ou entente validée). */
 export function clientLacksPaymentGuaranteeForAppointment(
   appointment: {

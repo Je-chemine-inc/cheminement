@@ -4,6 +4,7 @@ import User from "@/models/User";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import {
   clientLacksPaymentGuaranteeForAppointment,
+  isPostMeetingAdminAlertDue,
   resolvePostMeetingNotification,
   SETTLED_PAYMENT_STATUSES,
 } from "@/lib/client-payment-guarantee";
@@ -291,7 +292,12 @@ export async function runPaymentGuaranteeReminders(
     // left alone. Emailing her "please pay" for a card she has already saved is
     // what made the platform look broken.
     const notify = resolvePostMeetingNotification(apt, user);
-    if (!notify.notifyClient && !notify.notifyAdmin) continue;
+    // The admin alert repeats until the fee is reconciled, but no more than
+    // once a day — this runner fires hourly.
+    const adminAlertDue =
+      notify.notifyAdmin &&
+      isPostMeetingAdminAlertDue(apt.postMeetingAdminAlertSentAt, now);
+    if (!notify.notifyClient && !adminAlertDue) continue;
 
     const recipient = resolveAppointmentRecipient(
       { bookingFor: apt.bookingFor, lovedOneInfo: apt.lovedOneInfo },
@@ -305,7 +311,7 @@ export async function runPaymentGuaranteeReminders(
       recipientLocale: recipient.language,
     });
 
-    const [clientOk] = await Promise.all([
+    const [clientOk, adminOk] = await Promise.all([
       notify.notifyClient
         ? sendPostMeetingPaymentReminder({
             clientName: recipient.name,
@@ -315,19 +321,29 @@ export async function runPaymentGuaranteeReminders(
             billingUrl: postMeetingBillingUrl,
           })
         : Promise.resolve(false),
-      sendAdminNoPaymentBeforeMeetingAlert({
-        clientName: recipient.name,
-        clientEmail: recipient.email,
-        appointmentDateLabel: dateLabel,
-        appointmentId: String(apt._id),
-      }),
+      adminAlertDue
+        ? sendAdminNoPaymentBeforeMeetingAlert({
+            clientName: recipient.name,
+            clientEmail: recipient.email,
+            appointmentDateLabel: dateLabel,
+            appointmentId: String(apt._id),
+          })
+        : Promise.resolve(false),
     ]);
 
+    // Start the once-a-day clock only when the alert actually went out, so a
+    // transient SMTP failure retries on the next hourly run, not tomorrow.
+    if (adminOk) {
+      await Appointment.findByIdAndUpdate(apt._id, {
+        $set: { postMeetingAdminAlertSentAt: new Date(now) },
+      });
+    }
+
     // Flag the appointment once the client has been nudged. A guaranteed
-    // client is never nudged, so her flag stays clear — but the admin alert
-    // above is deduped by the same pass only, meaning a still-uncollected fee
-    // keeps surfacing to the admin until someone reconciles it. That is the
-    // intended pressure: the debt is real, it is just not hers to chase.
+    // client is never nudged, so her flag stays clear and a still-uncollected
+    // fee keeps surfacing to the admin until someone reconciles it — once a
+    // day, via postMeetingAdminAlertSentAt above. That is the intended
+    // pressure: the debt is real, it is just not hers to chase.
     if (notify.notifyClient && clientOk) {
       await Appointment.findByIdAndUpdate(apt._id, {
         $set: { postMeetingPaymentReminderSent: true },

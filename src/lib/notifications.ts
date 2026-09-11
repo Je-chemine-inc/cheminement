@@ -6129,10 +6129,13 @@ export async function sendAdminNoPaymentBeforeMeetingAlert(data: {
   clientEmail: string;
   appointmentDateLabel: string;
   appointmentId: string;
-}): Promise<void> {
+}): Promise<boolean> {
+  // Resolves true once at least one admin copy was accepted, so the caller
+  // only records the send (and starts the once-a-day clock) when it happened.
   await connectToDatabase();
   const adminEmails = await getAdminAlertRecipients();
-  if (adminEmails.length === 0) return;
+  if (adminEmails.length === 0) return false;
+  let sent = false;
 
   const branding = await getBranding();
   const base = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -6168,14 +6171,16 @@ export async function sendAdminNoPaymentBeforeMeetingAlert(data: {
       "fr",
     );
     for (const to of adminEmails) {
-      await sendEmail(
+      const ok = await sendEmail(
         { to, subject: editable.subject, html, text },
         "admin_interac_trust_request",
-      ).catch((e) =>
-        console.error("sendAdminNoPaymentBeforeMeetingAlert:", e),
-      );
+      ).catch((e) => {
+        console.error("sendAdminNoPaymentBeforeMeetingAlert:", e);
+        return false;
+      });
+      sent = sent || ok;
     }
-    return;
+    return sent;
   }
 
   const html = buildEmailHtml({
@@ -6202,10 +6207,13 @@ export async function sendAdminNoPaymentBeforeMeetingAlert(data: {
   const subject = `⚠️ Aucun paiement — séance passée — ${data.clientName}`;
 
   for (const to of adminEmails) {
-    await sendEmail({ to, subject, html, text }, "admin_interac_trust_request").catch((e) =>
-      console.error("sendAdminNoPaymentBeforeMeetingAlert:", e),
-    );
+    const ok = await sendEmail({ to, subject, html, text }, "admin_interac_trust_request").catch((e) => {
+      console.error("sendAdminNoPaymentBeforeMeetingAlert:", e);
+      return false;
+    });
+    sent = sent || ok;
   }
+  return sent;
 }
 
 export async function sendResendInvitationEmail(data: {

@@ -259,6 +259,12 @@ export interface IAppointment extends Document {
    * configuré avant la date de rencontre. Admin alerté en même temps.
    */
   postMeetingPaymentReminderSent?: boolean;
+  /**
+   * Last time the admin "Aucun paiement — séance passée" alert went out for
+   * this session. The alert deliberately repeats until the fee is
+   * reconciled, but at most once a day — see isPostMeetingAdminAlertDue.
+   */
+  postMeetingAdminAlertSentAt?: Date;
 
   /** Relance automatique Interac J+1 (24h après transferDueAt sans paiement). */
   interacReminder24hSent?: boolean;
@@ -525,6 +531,7 @@ const AppointmentSchema = new Schema<IAppointment>(
     clientConfirmedAt: { type: Date, required: false },
 
     postMeetingPaymentReminderSent: { type: Boolean, default: false },
+    postMeetingAdminAlertSentAt: { type: Date, required: false },
 
     interacReminder24hSent: { type: Boolean, default: false },
     interacReminder48hSent: { type: Boolean, default: false },
