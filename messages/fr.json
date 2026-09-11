@@ -6028,7 +6028,13 @@
         "paid": "Payé — {number}",
         "void": "Facture annulée — {number}",
         "refunded": "Remboursé — {number}"
-      }
+      },
+      "assuranceBilledByInterac": "Aucune carte — Interac",
+      "assuranceBilledByInteracHelp": "Aucune carte enregistrée. Ce client paie par Interac : la séance lui est facturée par Interac à la clôture.",
+      "assuranceNoCard": "Aucune carte",
+      "assuranceNoCardHelp": "Aucune carte enregistrée : rien n’est prélevé à la clôture, le client reçoit la facture à payer.",
+      "assuranceInteracPending": "Entente à valider",
+      "assuranceInteracPendingHelp": "Le client a demandé à payer par Interac ; un administrateur doit encore valider l’entente."
     },
     "accounting": {
       "title": "Comptabilité et cycles de paiement",

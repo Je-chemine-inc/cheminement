@@ -23,6 +23,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
+import type { PaymentAssurance } from "@/lib/client-payment-guarantee";
 
 type PaymentStatus =
   | "paid"
@@ -56,6 +57,8 @@ interface Payment {
     orgInvoiceNumber?: string;
   };
   paymentMethod?: string;
+  /** What the method badge may claim; see paymentAssurance(). */
+  assurance?: PaymentAssurance | null;
   invoiceUrl?: string;
   paidDate?: string;
   interacReferenceCode?: string;
@@ -63,6 +66,30 @@ interface Payment {
   interacReminder24hSent?: boolean;
   interacReminder48hSent?: boolean;
 }
+
+const BADGE_GREEN = "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+const BADGE_BLUE = "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+const BADGE_AMBER = "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
+
+/** One badge per fact the server established — never inferred from the method alone. */
+const ASSURANCE_BADGES: Record<
+  PaymentAssurance,
+  { label: string; help?: string; className: string }
+> = {
+  card_on_file: { label: "validationCard", className: BADGE_GREEN },
+  billed_by_interac: {
+    label: "assuranceBilledByInterac",
+    help: "assuranceBilledByInteracHelp",
+    className: BADGE_BLUE,
+  },
+  no_card: { label: "assuranceNoCard", help: "assuranceNoCardHelp", className: BADGE_AMBER },
+  interac_approved: { label: "validationInterac", className: BADGE_BLUE },
+  interac_pending: {
+    label: "assuranceInteracPending",
+    help: "assuranceInteracPendingHelp",
+    className: BADGE_AMBER,
+  },
+};
 
 interface BillingData {
   payments: Payment[];
@@ -648,7 +675,7 @@ export default function AdminBillingPage() {
                       {payment.paymentMethod && (
                         <div>
                           <p className="text-xs text-muted-foreground">{t("paymentMethod")}</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <p className="font-medium text-foreground capitalize">
                               {payment.paymentMethod === "transfer"
                                 ? t("methodInterac")
@@ -656,14 +683,16 @@ export default function AdminBillingPage() {
                                   ? t("methodCard")
                                   : payment.paymentMethod}
                             </p>
-                            {payment.paymentMethod === "card" && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                                {t("validationCard")}
-                              </span>
-                            )}
-                            {payment.paymentMethod === "transfer" && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                                {t("validationInterac")}
+                            {payment.assurance && (
+                              <span
+                                title={
+                                  ASSURANCE_BADGES[payment.assurance].help
+                                    ? t(ASSURANCE_BADGES[payment.assurance].help as string)
+                                    : undefined
+                                }
+                                className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold ${ASSURANCE_BADGES[payment.assurance].className}`}
+                              >
+                                {t(ASSURANCE_BADGES[payment.assurance].label)}
                               </span>
                             )}
                           </div>

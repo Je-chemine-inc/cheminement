@@ -138,3 +138,87 @@ export function resolvePostMeetingNotification(
   const hasGuarantee = clientUser?.paymentGuaranteeStatus === "green";
   return { notifyClient: !hasGuarantee, notifyAdmin: true };
 }
+
+type PayingClient = Pick<
+  IUser,
+  "paymentGuaranteeStatus" | "paymentGuaranteeSource" | "preferredPaymentMethod"
+>;
+
+/**
+ * A client who settles by Interac transfer: an admin-approved Interac
+ * arrangement, or Interac chosen as their way to pay.
+ *
+ * An appointment's `payment.method` does not say this reliably. It defaults to
+ * "card", and the professional, admin and follow-up booking paths never set
+ * it, so an Interac client's sessions routinely read "card" (JC-2026-000014).
+ */
+export function paysByInterac(client: PayingClient | null | undefined): boolean {
+  return (
+    client?.paymentGuaranteeSource === "interac_trust" ||
+    client?.preferredPaymentMethod === "interac"
+  );
+}
+
+/**
+ * Whether closure has a card to charge: one linked to the appointment, or the
+ * card/PAD a green Stripe guarantee says the client's Stripe customer holds.
+ */
+export function hasCardOnFile(
+  appointment: { payment?: { stripePaymentMethodId?: string } },
+  client: PayingClient | null | undefined,
+): boolean {
+  if (appointment.payment?.stripePaymentMethodId) return true;
+  return (
+    client?.paymentGuaranteeStatus === "green" &&
+    client.paymentGuaranteeSource === "stripe"
+  );
+}
+
+/** Statuses meaning a card payment actually went through (when a Stripe intent is recorded). */
+const CARD_PAYMENT_MADE = new Set(["paid", "processing", "refunded", "partially_refunded"]);
+
+/**
+ * What the admin billing screen may truthfully say next to a session's payment
+ * method. It used to print « Carte validée » for every "card" session without
+ * checking anything, so an Interac client who had never given a card showed a
+ * validated card, and the unpaid session read as a failed charge.
+ *
+ * Mirrors closure: a card on file is charged; an Interac client with none is
+ * billed by Interac (see complete-session).
+ */
+export type PaymentAssurance =
+  | "card_on_file"
+  | "billed_by_interac"
+  | "no_card"
+  | "interac_approved"
+  | "interac_pending";
+
+export function paymentAssurance(
+  appointment: {
+    payment?: {
+      method?: string;
+      status?: string;
+      stripePaymentMethodId?: string;
+      stripePaymentIntentId?: string;
+    };
+  },
+  client: PayingClient | null | undefined,
+): PaymentAssurance | null {
+  const p = appointment.payment;
+  if (p?.method === "card") {
+    const cardPaid =
+      Boolean(p.stripePaymentIntentId) && CARD_PAYMENT_MADE.has(p.status ?? "");
+    if (cardPaid || hasCardOnFile(appointment, client)) return "card_on_file";
+    return paysByInterac(client) ? "billed_by_interac" : "no_card";
+  }
+  if (p?.method === "transfer") {
+    if (
+      client?.paymentGuaranteeStatus === "green" &&
+      client.paymentGuaranteeSource === "interac_trust"
+    ) {
+      return "interac_approved";
+    }
+    if (client?.paymentGuaranteeStatus === "pending_admin") return "interac_pending";
+  }
+  return null;
+}

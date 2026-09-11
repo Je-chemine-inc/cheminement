@@ -28,6 +28,7 @@ import { sessionClosureWindow } from "@/lib/session-closure-window";
 import { planSessionPayers, type PlannedPayers } from "@/lib/session-payer-plan";
 import { releaseCoverageSlot } from "@/lib/organization-coverage";
 import { fromCents, toCents } from "@/lib/money-cents";
+import { paysByInterac } from "@/lib/client-payment-guarantee";
 
 function parseNextAppointmentAt(
   dateStr: string | undefined,
@@ -277,14 +278,27 @@ export async function POST(
     let persistPaymentMethodRef: string | undefined;
     let persistPaymentMethod: "card" | "direct_debit" | undefined;
 
+    // Collected by Interac: the session says so, or it says "card" but the
+    // client pays by Interac and there is no card to charge. `payment.method`
+    // defaults to "card" and several booking paths never set it, so an Interac
+    // client's session reached closure as a card session with a missing card:
+    // nothing charged, no Interac due date, and the professional told to ask for
+    // a card (JC-2026-000014). The client's arrangement decides instead.
+    let billByInterac = false;
+    let reroutedToInterac = false;
+
     if (billableForPayment) {
       const payMethod = apt.payment.method || "card";
       if (payMethod === "card" || payMethod === "direct_debit") {
         const clientUser = await User.findById(apt.clientId);
         if (!clientUser?.stripeCustomerId) {
-          // Soft-skip: allow closure to proceed; invoice stays pending.
-          paymentStatus = "pending";
-          chargeSkippedReason = "MISSING_BILLING_PROFILE";
+          if (paysByInterac(clientUser)) {
+            reroutedToInterac = true;
+          } else {
+            // Soft-skip: allow closure to proceed; invoice stays pending.
+            paymentStatus = "pending";
+            chargeSkippedReason = "MISSING_BILLING_PROFILE";
+          }
         } else {
           // The appointment usually carries its own payment-method reference
           // (written by the appointment-setup routes). When it does not — a
@@ -312,7 +326,9 @@ export async function POST(
             }
           }
 
-          if (!chargePaymentMethod) {
+          if (!chargePaymentMethod && paysByInterac(clientUser)) {
+            reroutedToInterac = true;
+          } else if (!chargePaymentMethod) {
             paymentStatus = "pending";
             chargeSkippedReason = "MISSING_PAYMENT_METHOD";
           } else {
@@ -344,7 +360,9 @@ export async function POST(
           }
           }
         }
-      } else if (payMethod === "transfer") {
+      }
+      billByInterac = payMethod === "transfer" || reroutedToInterac;
+      if (billByInterac) {
         interacRefToSet =
           apt.payment.interacReferenceCode ||
           buildInteracReferenceCode(
@@ -385,6 +403,11 @@ export async function POST(
         $set["payment.stripePaymentMethodId"] = persistPaymentMethodRef;
         $set["payment.method"] = persistPaymentMethod;
       }
+      // Recorded as Interac, so the billing screen, the ledger channel, the
+      // receipt and the payout rules (Interac is never auto-paid out) agree.
+      if (reroutedToInterac) {
+        $set["payment.method"] = "transfer";
+      }
     }
 
     if (payerPlan) {
@@ -421,12 +444,9 @@ export async function POST(
       $set.cancelledAt = now;
     }
 
-    const shouldSetTransferDue =
-      !paymentLocked &&
-      price > 0 &&
-      apt.payment.method === "transfer" &&
-      getBillingFraction(outcome) > 0 &&
-      !settledExternally;
+    // Only ever set inside `billableForPayment` (not locked, something owed,
+    // a billing outcome, not settled externally).
+    const shouldSetTransferDue = billByInterac;
 
     if (shouldSetTransferDue) {
       $set["payment.transferDueAt"] = due;

@@ -113,3 +113,48 @@ describe("GET /api/admin/billing — the payer", () => {
     expect(h.invFind).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * JC-2026-000014: every "card" session showed « Carte validée », including an
+ * Interac client who had never given a card — so her unpaid session read as a
+ * card the platform had failed to charge.
+ */
+describe("GET /api/admin/billing — what the method badge may claim", () => {
+  const session = (
+    id: string,
+    payment: Record<string, unknown>,
+    guarantee: Record<string, unknown>,
+  ) => ({
+    ...apt(id),
+    clientId: { _id: { toString: () => `client-${id}` }, firstName: "Élorie", lastName: "B", ...guarantee },
+    payment: { price: 175, platformFee: 25, professionalPayout: 150, ...payment },
+  });
+
+  const rows = async () =>
+    ((await GET({ url: "https://x/api/admin/billing" } as never)) as unknown as {
+      body: { payments: Array<Record<string, unknown>> };
+    }).body.payments;
+
+  it("says a card is validated only when one is really on file", async () => {
+    h.page = [
+      // The reported session: labelled card, Interac client, no card anywhere.
+      session("a1", { method: "card", status: "pending" }, { paymentGuaranteeStatus: "green", paymentGuaranteeSource: "interac_trust", preferredPaymentMethod: "interac" }),
+      session("a2", { method: "card", status: "pending" }, { paymentGuaranteeStatus: "none" }),
+      session("a3", { method: "card", status: "pending", stripePaymentMethodId: "enc:pm_secret" }, {}),
+      session("a4", { method: "transfer", status: "pending" }, { paymentGuaranteeStatus: "pending_admin", preferredPaymentMethod: "interac" }),
+    ];
+    const [interac, nothing, card, pendingInterac] = await rows();
+    expect(interac.assurance).toBe("billed_by_interac");
+    expect(nothing.assurance).toBe("no_card");
+    expect(card.assurance).toBe("card_on_file");
+    expect(pendingInterac.assurance).toBe("interac_pending");
+  });
+
+  it("never sends the card reference or the client's guarantee fields to the browser", async () => {
+    h.page = [session("a1", { method: "card", status: "pending", stripePaymentMethodId: "enc:pm_secret" }, { paymentGuaranteeStatus: "green", paymentGuaranteeSource: "stripe" })];
+    const [row] = await rows();
+    expect(JSON.stringify(row)).not.toContain("pm_secret");
+    expect(row).not.toHaveProperty("stripePaymentMethodId");
+    expect(JSON.stringify(row)).not.toContain("paymentGuarantee");
+  });
+});

@@ -53,7 +53,9 @@ const h = vi.hoisted(() => {
   const plan = vi.fn().mockResolvedValue(null);
   const failPersist = { value: false };
   const releaseSlot = vi.fn().mockResolvedValue(true);
-  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, created, clash, store, setDeep, makeQuery, plan, releaseSlot, failPersist };
+  // The client being billed, as User.findById returns it.
+  const clientUser = { value: {} as Record<string, unknown> | null };
+  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, created, clash, store, setDeep, makeQuery, plan, releaseSlot, failPersist, clientUser };
 });
 
 vi.mock("next/server", () => ({
@@ -97,7 +99,7 @@ vi.mock("@/lib/interac-reference", () => ({
 }));
 vi.mock("@/models/User", () => ({
   default: {
-    findById: () => Promise.resolve({ stripeCustomerId: "cus_1" }),
+    findById: () => Promise.resolve(h.clientUser.value),
   },
 }));
 vi.mock("@/models/Appointment", () => ({
@@ -148,6 +150,7 @@ beforeEach(() => {
   h.plan.mockResolvedValue(null);
   h.failPersist.value = false;
   h.releaseSlot.mockResolvedValue(true);
+  h.clientUser.value = { stripeCustomerId: "cus_1" };
   h.store.appointment = {
     _id: APPT_ID,
     clientId: CLIENT_ID,
@@ -696,5 +699,121 @@ describe("closure with an organization paying (spec 002)", () => {
     for (const field of ["thirdPartyBilling", "billingOverride", "payerDeclaration"]) {
       expect(h.created[0]).not.toHaveProperty(field);
     }
+  });
+});
+
+/**
+ * Regression (JC-2026-000014, second closure): an Interac client — admin-
+ * approved arrangement, never gave a card — had a professional-booked session
+ * stored as "card", the model's default. Closure looked for a card, found no
+ * Stripe customer, and left a card session with a missing card: nothing
+ * charged, no Interac due date, the professional told to ask for a card, and
+ * the billing screen still reading « Carte validée ».
+ */
+describe("an Interac client with no card is billed by Interac", () => {
+  const interacClient = {
+    paymentGuaranteeStatus: "green",
+    paymentGuaranteeSource: "interac_trust",
+    preferredPaymentMethod: "interac",
+  };
+  const payment = () => h.store.appointment.payment as Record<string, unknown>;
+
+  beforeEach(() => {
+    h.store.appointment.payment = {
+      method: "card",
+      price: 175,
+      listPrice: 175,
+      platformFee: 25,
+      professionalPayout: 150,
+      status: "pending",
+    };
+    h.findOneAndUpdate.mockResolvedValue(h.store.appointment);
+  });
+
+  it("the reported session: no Stripe customer → recorded and invoiced as Interac", async () => {
+    h.clientUser.value = { ...interacClient };
+
+    const res = await callClose();
+
+    expect(res.status).toBe(200);
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(payment().method).toBe("transfer");
+    expect(payment().status).toBe("pending");
+    expect(payment().interacReferenceCode).toBe("INT-TEST");
+    expect(payment().transferDueAt).toBeInstanceOf(Date);
+    // Not a failed card: the professional is not told to ask for one.
+    expect(res.body.chargeSkippedReason).toBeUndefined();
+    // Same split as a card session.
+    expect(payment()).toMatchObject({ price: 175, platformFee: 25, professionalPayout: 150 });
+  });
+
+  it("a client who chose Interac, with a Stripe customer but no card, is billed by Interac too", async () => {
+    h.clientUser.value = { stripeCustomerId: "cus_2", preferredPaymentMethod: "interac" };
+    h.resolveCustomerPm.mockResolvedValue(null);
+
+    const res = await callClose();
+
+    expect(h.resolveCustomerPm).toHaveBeenCalledWith("cus_2");
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(payment().method).toBe("transfer");
+    expect(payment().transferDueAt).toBeInstanceOf(Date);
+    expect(res.body.chargeSkippedReason).toBeUndefined();
+  });
+
+  it("keeps the Interac reference the client was already given", async () => {
+    h.clientUser.value = { ...interacClient };
+    payment().interacReferenceCode = "INT-9126-6EEBE5";
+
+    await callClose();
+
+    expect(payment().interacReferenceCode).toBe("INT-9126-6EEBE5");
+  });
+
+  it("an Interac client who has a card on file is still charged on it", async () => {
+    h.clientUser.value = { stripeCustomerId: "cus_3", preferredPaymentMethod: "interac" };
+    h.resolveCustomerPm.mockResolvedValue({ paymentMethodId: "pm_card", method: "card" });
+
+    await callClose();
+
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    expect(payment().status).toBe("paid");
+    expect(payment().method).toBe("card");
+    expect(payment().transferDueAt).toBeUndefined();
+    expect(payment().interacReferenceCode).toBeUndefined();
+  });
+
+  it("a declined card stays a card problem, not an Interac invoice", async () => {
+    h.clientUser.value = { stripeCustomerId: "cus_4", preferredPaymentMethod: "interac" };
+    payment().stripePaymentMethodId = "enc_pm";
+    h.charge.mockRejectedValue(new Error("Your card was declined."));
+
+    const res = await callClose();
+
+    expect(res.body.chargeSkippedReason).toBe("Your card was declined.");
+    expect(payment().method).toBe("card");
+    expect(payment().status).toBe("pending");
+    expect(payment().transferDueAt).toBeUndefined();
+  });
+
+  it("a card client with nothing on file is unchanged: pending, and the professional is told", async () => {
+    h.clientUser.value = { preferredPaymentMethod: "card" };
+
+    const res = await callClose();
+
+    expect(res.body.chargeSkippedReason).toBe("MISSING_BILLING_PROFILE");
+    expect(payment().method).toBe("card");
+    expect(payment().transferDueAt).toBeUndefined();
+    expect(payment().interacReferenceCode).toBeUndefined();
+  });
+
+  it("a free cancellation bills nobody, Interac client or not", async () => {
+    h.clientUser.value = { ...interacClient };
+
+    await callCloseWith("cancelled_48h_plus");
+
+    expect(payment().status).toBe("cancelled");
+    expect(payment().method).toBe("card");
+    expect(payment().transferDueAt).toBeUndefined();
+    expect(payment().interacReferenceCode).toBeUndefined();
   });
 });

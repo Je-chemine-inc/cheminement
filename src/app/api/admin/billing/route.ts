@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import User from "@/models/User";
+import User, { type IUser } from "@/models/User";
 import Organization from "@/models/Organization";
 import OrganizationInvoice from "@/models/OrganizationInvoice";
 import { authOptions } from "@/lib/auth";
+import { paymentAssurance } from "@/lib/client-payment-guarantee";
 
 export async function GET(req: NextRequest) {
   try {
@@ -101,7 +102,12 @@ export async function GET(req: NextRequest) {
       // Admin-only route: the payer snapshot (select:false) says who pays the
       // part the client does not (spec 002).
       .select("+thirdPartyBilling")
-      .populate("clientId", "firstName lastName email")
+      // The guarantee fields say whether a card is really on file, so the
+      // method badge can stop claiming one for every "card" session.
+      .populate(
+        "clientId",
+        "firstName lastName email paymentGuaranteeStatus paymentGuaranteeSource preferredPaymentMethod",
+      )
       .populate("professionalId", "firstName lastName")
       .sort({ date: -1, time: -1 })
       .skip(skip)
@@ -135,7 +141,10 @@ export async function GET(req: NextRequest) {
         firstName?: string;
         lastName?: string;
         email?: string;
-      };
+      } & Pick<
+        IUser,
+        "paymentGuaranteeStatus" | "paymentGuaranteeSource" | "preferredPaymentMethod"
+      >;
       const professional = appointment.professionalId as {
         firstName?: string;
         lastName?: string;
@@ -218,6 +227,9 @@ export async function GET(req: NextRequest) {
             }
           : undefined,
         paymentMethod: appointment.payment?.method ?? undefined,
+        // What the method badge may claim — derived here so the card
+        // reference itself never leaves the server.
+        assurance: paymentAssurance(appointment, client ?? null),
         paidDate: appointment.payment?.paidAt
           ? new Date(appointment.payment.paidAt).toISOString().split("T")[0]
           : undefined,

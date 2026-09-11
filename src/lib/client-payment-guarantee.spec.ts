@@ -7,6 +7,9 @@ import { describe, it, expect } from "vitest";
 import {
   clientLacksPaymentGuaranteeForAppointment,
   clientOwesUncollectedFee,
+  hasCardOnFile,
+  paymentAssurance,
+  paysByInterac,
   SETTLED_PAYMENT_STATUSES,
 } from "./client-payment-guarantee";
 
@@ -176,5 +179,99 @@ describe("settled statuses must never be dunned", () => {
     expect(clientOwesUncollectedFee({ payment: { status: "pending" } })).toBe(
       true,
     );
+  });
+});
+
+/**
+ * JC-2026-000014: an Interac client (admin-approved arrangement, no card ever
+ * given) had a professional-booked session stored as "card" — the model's
+ * default. The billing screen printed « Carte validée » for it, so the unpaid
+ * session read as a card the platform had failed to charge.
+ */
+describe("what may be said about how a session gets paid", () => {
+  const interacClient = {
+    paymentGuaranteeStatus: "green",
+    paymentGuaranteeSource: "interac_trust",
+    preferredPaymentMethod: "interac",
+  } as const;
+  const cardClient = {
+    paymentGuaranteeStatus: "green",
+    paymentGuaranteeSource: "stripe",
+    preferredPaymentMethod: "card",
+  } as const;
+  const nothingClient = { paymentGuaranteeStatus: "none" } as const;
+
+  it("an Interac client is one with an approved arrangement or who chose Interac", () => {
+    expect(paysByInterac(interacClient)).toBe(true);
+    expect(paysByInterac({ paymentGuaranteeSource: "interac_trust" })).toBe(true);
+    expect(paysByInterac({ preferredPaymentMethod: "interac" })).toBe(true);
+    expect(paysByInterac(cardClient)).toBe(false);
+    expect(paysByInterac(nothingClient)).toBe(false);
+    expect(paysByInterac(null)).toBe(false);
+  });
+
+  it("a card is on file only when one is linked or a Stripe guarantee holds one", () => {
+    expect(hasCardOnFile({ payment: { stripePaymentMethodId: "enc" } }, null)).toBe(true);
+    expect(hasCardOnFile({ payment: {} }, cardClient)).toBe(true);
+    expect(hasCardOnFile({ payment: {} }, interacClient)).toBe(false);
+    expect(hasCardOnFile({ payment: {} }, { paymentGuaranteeStatus: "pending_admin", paymentGuaranteeSource: "stripe" })).toBe(false);
+  });
+
+  it("the reported session: « card », no card, Interac client → billed by Interac, not « card validated »", () => {
+    expect(
+      paymentAssurance({ payment: { method: "card", status: "pending" } }, interacClient),
+    ).toBe("billed_by_interac");
+  });
+
+  it("a card session with nothing on file says so", () => {
+    expect(
+      paymentAssurance({ payment: { method: "card", status: "pending" } }, nothingClient),
+    ).toBe("no_card");
+    expect(paymentAssurance({ payment: { method: "card", status: "pending" } }, null)).toBe(
+      "no_card",
+    );
+  });
+
+  it("a card session is « card validated » when a card is really there", () => {
+    expect(
+      paymentAssurance(
+        { payment: { method: "card", status: "pending", stripePaymentMethodId: "enc" } },
+        nothingClient,
+      ),
+    ).toBe("card_on_file");
+    expect(
+      paymentAssurance({ payment: { method: "card", status: "pending" } }, cardClient),
+    ).toBe("card_on_file");
+  });
+
+  it("a card charge that went through counts, an intent that was only opened does not", () => {
+    const charged = { method: "card", status: "paid", stripePaymentIntentId: "pi_1" };
+    expect(paymentAssurance({ payment: charged }, nothingClient)).toBe("card_on_file");
+    // /pay records the intent before the client pays: not a card yet.
+    const opened = { method: "card", status: "pending", stripePaymentIntentId: "pi_2" };
+    expect(paymentAssurance({ payment: opened }, nothingClient)).toBe("no_card");
+    // Settled by Interac while the label still said "card": no Stripe intent.
+    expect(
+      paymentAssurance({ payment: { method: "card", status: "paid" } }, interacClient),
+    ).toBe("billed_by_interac");
+  });
+
+  it("an Interac session is « validated » only once an admin approved the arrangement", () => {
+    expect(paymentAssurance({ payment: { method: "transfer" } }, interacClient)).toBe(
+      "interac_approved",
+    );
+    expect(
+      paymentAssurance(
+        { payment: { method: "transfer" } },
+        { paymentGuaranteeStatus: "pending_admin", preferredPaymentMethod: "interac" },
+      ),
+    ).toBe("interac_pending");
+    expect(paymentAssurance({ payment: { method: "transfer" } }, nothingClient)).toBeNull();
+  });
+
+  it("claims nothing for other methods", () => {
+    expect(paymentAssurance({ payment: { method: "manual" } }, cardClient)).toBeNull();
+    expect(paymentAssurance({ payment: { method: "direct_debit" } }, cardClient)).toBeNull();
+    expect(paymentAssurance({}, cardClient)).toBeNull();
   });
 });

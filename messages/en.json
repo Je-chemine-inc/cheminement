@@ -6029,7 +6029,13 @@
         "paid": "Paid — {number}",
         "void": "Invoice voided — {number}",
         "refunded": "Refunded — {number}"
-      }
+      },
+      "assuranceBilledByInterac": "No card — Interac",
+      "assuranceBilledByInteracHelp": "No card on file. This client pays by Interac, so the session is billed by Interac when it is closed.",
+      "assuranceNoCard": "No card",
+      "assuranceNoCardHelp": "No card on file: nothing is charged at closure, and the client is sent the invoice to pay.",
+      "assuranceInteracPending": "Awaiting approval",
+      "assuranceInteracPendingHelp": "The client asked to pay by Interac; an administrator has yet to approve the arrangement."
     },
     "accounting": {
       "title": "Accounting & payment cycles",
