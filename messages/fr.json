@@ -944,7 +944,8 @@
       "resendInvite": "Renvoyer l'invitation",
       "resendGuarantee": "Relance Garantie Bancaire",
       "approveGuarantee": "Approuver la garantie manuellement",
-      "paymentCovered": "Couvert"
+      "paymentCovered": "Couvert",
+      "deleteHasBillingHistory": "Ce profil a des séances facturées, des reçus ou des lignes au grand livre : le supprimer effacerait des dossiers de facturation. Désactivez-le plutôt."
     },
     "appointmentStatus": {
       "scheduled": "Planifié",
@@ -1116,7 +1117,8 @@
       "reviewLicenseStatus_verified": "Vérifié",
       "reviewLicenseStatus_pending_review": "En attente de révision",
       "reviewLicenseStatus_rejected": "Rejeté",
-      "reviewLicenseStatus_not_applicable": "Non applicable"
+      "reviewLicenseStatus_not_applicable": "Non applicable",
+      "deleteHasBillingHistory": "Ce profil a des séances facturées, des reçus ou des lignes au grand livre : le supprimer effacerait des dossiers de facturation. Désactivez-le plutôt."
     },
     "organizations": {
       "title": "Organismes payeurs",

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isLedgerCreditCleared,
+  refundedAmountCad,
   sessionBilledTotalCents,
   SESSION_BILLED_TOTAL_EXPR,
 } from "@/lib/billing-totals";
@@ -94,5 +95,30 @@ describe("isLedgerCreditCleared", () => {
 
   it("adjustment and manual rows count as recorded", () => {
     expect(isLedgerCreditCleared({ paymentChannel: "none" }, null)).toBe(true);
+  });
+});
+
+/**
+ * The sales journal had no refund lines: a refunded card session stayed
+ * listed at its full amount.
+ */
+describe("refundedAmountCad", () => {
+  it("takes back what Stripe says was refunded", () => {
+    expect(refundedAmountCad({ payment: { status: "partially_refunded", refundedAmount: 50, price: 175 } }, 175)).toBe(50);
+    expect(refundedAmountCad({ payment: { status: "refunded", refundedAmount: 175, price: 175 } }, 175)).toBe(175);
+  });
+
+  it("a full refund recorded before Stripe's figure arrives takes back the whole price", () => {
+    expect(refundedAmountCad({ payment: { status: "refunded", price: 175 } }, 175)).toBe(175);
+  });
+
+  it("never more than was sold", () => {
+    expect(refundedAmountCad({ payment: { status: "refunded", refundedAmount: 200, price: 200 } }, 175)).toBe(175);
+  });
+
+  it("nothing for a session that was not refunded, or a partial refund with no amount yet", () => {
+    expect(refundedAmountCad({ payment: { status: "paid", refundedAmount: 50 } }, 175)).toBe(0);
+    expect(refundedAmountCad({ payment: { status: "partially_refunded" } }, 175)).toBe(0);
+    expect(refundedAmountCad(null, 175)).toBe(0);
   });
 });

@@ -944,7 +944,8 @@
       "resendInvite": "Resend invitation",
       "resendGuarantee": "Resend Banking Guarantee",
       "approveGuarantee": "Manually approve guarantee",
-      "paymentCovered": "Covered"
+      "paymentCovered": "Covered",
+      "deleteHasBillingHistory": "This profile has billed sessions, receipts or ledger lines — deleting it would erase billing records. Deactivate it instead."
     },
     "appointmentStatus": {
       "scheduled": "Scheduled",
@@ -1116,7 +1117,8 @@
       "reviewLicenseStatus_verified": "Verified",
       "reviewLicenseStatus_pending_review": "Pending review",
       "reviewLicenseStatus_rejected": "Rejected",
-      "reviewLicenseStatus_not_applicable": "Not applicable"
+      "reviewLicenseStatus_not_applicable": "Not applicable",
+      "deleteHasBillingHistory": "This profile has billed sessions, receipts or ledger lines — deleting it would erase billing records. Deactivate it instead."
     },
     "organizations": {
       "title": "Paying organizations",

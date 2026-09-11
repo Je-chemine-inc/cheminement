@@ -8,7 +8,11 @@
  */
 
 type AppointmentAmounts = {
-  payment?: { price?: number | null; status?: string | null } | null;
+  payment?: {
+    price?: number | null;
+    status?: string | null;
+    refundedAmount?: number | null;
+  } | null;
   thirdPartyBilling?: {
     orgAmountCents?: number | null;
     clientAmountCents?: number | null;
@@ -70,4 +74,22 @@ export function isLedgerCreditCleared(
     default:
       return true;
   }
+}
+
+/**
+ * How much of a card sale was refunded, in dollars — what the sales journal
+ * takes back on the refund's date. `refundedAmount` is Stripe's cumulative
+ * figure (the charge.refunded webhook writes it); a full refund recorded
+ * before that webhook arrives only has its status, so it takes back the whole
+ * price. Never more than was sold.
+ */
+export function refundedAmountCad(
+  apt: AppointmentAmounts | null | undefined,
+  soldCad: number,
+): number {
+  const p = apt?.payment;
+  if (p?.status !== "refunded" && p?.status !== "partially_refunded") return 0;
+  const amount =
+    p.refundedAmount ?? (p.status === "refunded" ? (p.price ?? soldCad) : 0);
+  return Math.max(0, Math.min(Number(amount) || 0, soldCad));
 }

@@ -143,6 +143,8 @@ export default function PatientDetailPage({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
+  // The server refuses to delete someone with billing history (409).
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Form states
@@ -316,6 +318,11 @@ export default function PatientDetailPage({
     setDeleting(true);
     try {
       const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+      if (res.status === 409) {
+        setDeleteBlocked(true);
+        setDeleting(false);
+        return;
+      }
       if (!res.ok) throw new Error();
       router.push("/admin/dashboard/patients");
     } catch {
@@ -888,7 +895,13 @@ export default function PatientDetailPage({
             <p className="text-sm font-light mb-4 text-red-800/80 dark:text-red-200/80">
               {t("deleteWarning")}
             </p>
-            <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+            <Dialog
+              open={deleteConfirmOpen}
+              onOpenChange={(open) => {
+                setDeleteConfirmOpen(open);
+                setDeleteBlocked(false);
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="destructive" className="w-full gap-2">
                   <Trash2 className="h-4 w-4" />
@@ -906,6 +919,11 @@ export default function PatientDetailPage({
                   onChange={(e) => setDeleteConfirmName(e.target.value)}
                   placeholder={t("typeFullNamePlaceholder")}
                 />
+                {deleteBlocked && (
+                  <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                    {t("deleteHasBillingHistory")}
+                  </p>
+                )}
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>{t("cancel")}</Button>
                   <Button variant="destructive" onClick={handleDelete} disabled={deleting || deleteConfirmName !== `${user.firstName} ${user.lastName}`}>

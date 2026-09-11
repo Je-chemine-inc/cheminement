@@ -18,6 +18,9 @@ import Message from "@/models/Message";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 
+/** Payment states in which money was taken for a session. */
+const PAYMENT_TAKEN_STATUSES = ["paid", "processing", "refunded", "partially_refunded"] as const;
+
 // GET /api/admin/users/[id] — Full user detail
 export async function GET(
   req: NextRequest,
@@ -379,6 +382,42 @@ export async function DELETE(
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // The cascade below erases the user's sessions and receipts — fiscal
+    // records — and, for a client, leaves each professional's ledger line for
+    // sessions that no longer exist: ten such lines were still owed to
+    // professionals, eight counted as revenue in the sales journal
+    // (2026-09-11). Someone with billing history is deactivated, not deleted
+    // (same rule as DELETE /api/appointments/[id]).
+    const [billedSessions, receipts, ledgerLines] = await Promise.all([
+      Appointment.countDocuments({
+        $and: [
+          { $or: [{ clientId: userObjectId }, { professionalId: userObjectId }] },
+          {
+            $or: [
+              { sessionCompletedAt: { $ne: null } },
+              { invoiceNumber: { $nin: [null, ""] } },
+              { "payment.status": { $in: [...PAYMENT_TAKEN_STATUSES] } },
+            ],
+          },
+        ],
+      }),
+      ClientReceipt.countDocuments({ clientId: userObjectId }),
+      ProfessionalLedgerEntry.countDocuments({ professionalId: userObjectId }),
+    ]);
+    if (billedSessions + receipts + ledgerLines > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This account has billed sessions, receipts or ledger lines. Deactivate it instead of deleting it.",
+          code: "HAS_BILLING_HISTORY",
+          billedSessions,
+          receipts,
+          ledgerLines,
+        },
+        { status: 409 },
+      );
+    }
 
     await Promise.all([
       User.deleteOne({ _id: userObjectId }),

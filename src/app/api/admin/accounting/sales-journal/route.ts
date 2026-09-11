@@ -3,11 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
-// Register the Appointment model so populate() resolves refs — without it the
-// export failed ("Schema hasn't been registered") until some other route had
-// loaded the model since the server started.
-import "@/models/Appointment";
-import { isLedgerCreditCleared } from "@/lib/billing-totals";
+// Also registers the Appointment model so populate() resolves refs — without
+// it the export failed ("Schema hasn't been registered") until some other
+// route had loaded the model since the server started.
+import Appointment from "@/models/Appointment";
+import { isLedgerCreditCleared, refundedAmountCad } from "@/lib/billing-totals";
+import { getBiweeklyCycleKey } from "@/lib/ledger-cycle";
 
 function csvEscape(s: string | number | undefined | null): string {
   if (s === undefined || s === null) return "";
@@ -23,6 +24,16 @@ function refId(ref: unknown): string {
   }
   return ref ? String(ref) : "";
 }
+
+const day = (d: Date | string | null | undefined) =>
+  d ? new Date(d).toISOString().slice(0, 10) : "";
+
+const nameOf = (ref: unknown) => {
+  const p = ref as { firstName?: string; lastName?: string } | null;
+  return p ? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() : "";
+};
+
+type JournalLine = { at: number; cells: Array<string | number | null | undefined> };
 
 /**
  * Journal des ventes (crédits séance) — export CSV pour comptable.
@@ -82,41 +93,78 @@ export async function GET(req: NextRequest) {
       "frais_plateforme_cad",
       "net_pro_cad",
       "canal_paiement",
+      "type_ligne",
     ].join(",");
 
-    const lines = cleared.map((r) => {
-      const pro = r.professionalId as unknown as {
-        firstName?: string;
-        lastName?: string;
-      } | null;
-      const apt = r.appointmentId as unknown as {
-        date?: Date;
-        sessionActNature?: string;
-      } | null;
-      const proName = pro
-        ? `${pro.firstName ?? ""} ${pro.lastName ?? ""}`.trim()
-        : "";
-      const sessionDate = apt?.date
-        ? new Date(apt.date).toISOString().slice(0, 10)
-        : "";
-      return [
-        csvEscape(
-          r.createdAt
-            ? new Date(r.createdAt).toISOString().slice(0, 10)
-            : "",
-        ),
-        csvEscape(r.cycleKey),
-        csvEscape(refId(r.professionalId)),
-        csvEscape(proName),
-        csvEscape(refId(r.appointmentId)),
-        csvEscape(sessionDate),
-        csvEscape(r.sessionActNature),
-        csvEscape(r.grossAmountCad),
-        csvEscape(r.platformFeeCad),
-        csvEscape(r.netToProfessionalCad),
-        csvEscape(r.paymentChannel),
-      ].join(",");
+    const sales: JournalLine[] = cleared.map((r) => {
+      const apt = r.appointmentId as unknown as { date?: Date } | null;
+      return {
+        at: r.createdAt ? new Date(r.createdAt).getTime() : 0,
+        cells: [
+          day(r.createdAt),
+          r.cycleKey,
+          refId(r.professionalId),
+          nameOf(r.professionalId),
+          refId(r.appointmentId),
+          day(apt?.date),
+          r.sessionActNature,
+          r.grossAmountCad,
+          r.platformFeeCad,
+          r.netToProfessionalCad,
+          r.paymentChannel,
+          "vente",
+        ],
+      };
     });
+
+    // Refunds: a card sale refunded during the year comes back as a negative
+    // line on the refund's date — Stripe's cumulative amount, at the latest
+    // refund. A refund never reduces the professional's ledger credit, so the
+    // clinic absorbs it: the whole amount comes off the platform's share.
+    const refundedSessions = await Appointment.find({
+      "payment.refundedAt": { $gte: start, $lt: end },
+      "payment.status": { $in: ["refunded", "partially_refunded"] },
+    })
+      .select("date payment.status payment.refundedAt payment.refundedAmount payment.price")
+      .lean();
+    const refundedCredits = refundedSessions.length
+      ? await ProfessionalLedgerEntry.find({
+          appointmentId: { $in: refundedSessions.map((a) => a._id) },
+          entryKind: "credit",
+          paymentChannel: "stripe",
+        })
+          .populate("professionalId", "firstName lastName email")
+          .lean()
+      : [];
+    const sessionOf = new Map(refundedSessions.map((a) => [String(a._id), a]));
+    const refunds: JournalLine[] = [];
+    for (const r of refundedCredits) {
+      const apt = sessionOf.get(refId(r.appointmentId));
+      const amount = apt ? refundedAmountCad(apt, r.grossAmountCad ?? 0) : 0;
+      if (!apt || amount <= 0) continue;
+      const at = apt.payment.refundedAt ? new Date(apt.payment.refundedAt) : new Date();
+      refunds.push({
+        at: at.getTime(),
+        cells: [
+          day(at),
+          getBiweeklyCycleKey(at),
+          refId(r.professionalId),
+          nameOf(r.professionalId),
+          refId(r.appointmentId),
+          day(apt.date),
+          r.sessionActNature,
+          -amount,
+          -amount,
+          0,
+          r.paymentChannel,
+          "remboursement",
+        ],
+      });
+    }
+
+    const lines = [...sales, ...refunds]
+      .sort((a, b) => a.at - b.at)
+      .map((l) => l.cells.map((c) => csvEscape(c)).join(","));
 
     const csv = [header, ...lines].join("\n");
     const bom = "\ufeff";

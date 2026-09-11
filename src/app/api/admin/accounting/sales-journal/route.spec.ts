@@ -12,13 +12,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => ({
   session: { user: { id: "admin1", role: "admin" } } as { user: { id: string; role: string } } | null,
   rows: [] as Array<Record<string, unknown>>,
+  // Sessions refunded during the exported year, as Appointment.find returns them.
+  refunded: [] as Array<Record<string, unknown>>,
+  refundQuery: { value: null as unknown },
   appointmentModelLoaded: false,
 }));
 
 // Loading the module is what registers the model populate() needs.
 vi.mock("@/models/Appointment", () => {
   h.appointmentModelLoaded = true;
-  return { default: {} };
+  return {
+    default: {
+      find: (filter: unknown) => {
+        h.refundQuery.value = filter;
+        const q = { select: () => q, lean: async () => h.refunded };
+        return q;
+      },
+    },
+  };
 });
 
 /** Keeps only the selected (dotted) paths of a populated document, like MongoDB. */
@@ -64,8 +75,17 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/models/ProfessionalLedgerEntry", () => ({
   default: {
-    find: () => {
+    find: (filter: Record<string, unknown>) => {
       const selects: Record<string, string> = {};
+      // The refund query asks for the credits of given sessions, on one channel.
+      const bySession = filter.appointmentId as { $in: unknown[] } | undefined;
+      const source = bySession
+        ? h.rows.filter(
+            (r) =>
+              r.paymentChannel === filter.paymentChannel &&
+              bySession.$in.map(String).includes(String((r.appointmentId as { _id: unknown })._id)),
+          )
+        : h.rows;
       const q = {
         populate: (path: string, select: string) => {
           selects[path] = select;
@@ -73,7 +93,7 @@ vi.mock("@/models/ProfessionalLedgerEntry", () => ({
         },
         sort: () => q,
         lean: async () =>
-          h.rows.map((r) => ({
+          source.map((r) => ({
             ...r,
             professionalId: project(r.professionalId, selects.professionalId),
             appointmentId: project(r.appointmentId, selects.appointmentId),
@@ -86,11 +106,12 @@ vi.mock("@/models/ProfessionalLedgerEntry", () => ({
 
 import { GET } from "./route";
 
-const credit = (key: string, paymentChannel: string, status: string) => ({
+const credit = (key: string, paymentChannel: string, status: string, createdAt = "2026-09-10T17:21:06Z") => ({
   _id: `ledger-${key}`,
   entryKind: "credit",
-  createdAt: new Date("2026-09-10T17:21:06Z"),
+  createdAt: new Date(createdAt),
   cycleKey: "2026-B19",
+  sessionActNature: "individual_psychotherapy",
   professionalId: { _id: "pro-1", firstName: "Nathalie", lastName: "Pro", email: "pro@example.com" },
   appointmentId: {
     _id: `apt-${key}`,
@@ -117,6 +138,20 @@ const exportCsv = async () => {
 beforeEach(() => {
   h.session = { user: { id: "admin1", role: "admin" } };
   h.rows = [];
+  h.refunded = [];
+  h.refundQuery.value = null;
+});
+
+const refundedSession = (key: string, payment: Record<string, unknown> = {}) => ({
+  _id: `apt-${key}`,
+  date: new Date("2026-09-09T12:00:00Z"),
+  payment: {
+    status: "refunded",
+    price: 175,
+    refundedAt: new Date("2026-09-20T15:00:00Z"),
+    refundedAmount: 175,
+    ...payment,
+  },
 });
 
 describe("GET /api/admin/accounting/sales-journal", () => {
@@ -159,5 +194,66 @@ describe("GET /api/admin/accounting/sales-journal", () => {
     expect(cells[3]).toBe("Nathalie Pro");
     expect(cells[4]).toBe("apt-card-paid");
     expect(lines.join("\n")).not.toContain("[object Object]");
+  });
+});
+
+/**
+ * The journal had no refund lines: a refunded card session stayed listed at
+ * its full amount. A refund never reduces the professional's ledger credit,
+ * so the clinic absorbs it — the refund line takes the amount off the
+ * platform's share and leaves the professional's at zero.
+ */
+describe("GET /api/admin/accounting/sales-journal — refunds", () => {
+  it("a refunded card sale comes back as a negative line on the refund's date", async () => {
+    h.rows = [credit("card-refunded", "stripe", "refunded")];
+    h.refunded = [refundedSession("card-refunded")];
+    const { lines } = await exportCsv();
+    expect(lines[0].split(",").at(-1)).toBe("type_ligne");
+    expect(lines).toHaveLength(3);
+    const sale = lines[1].split(",");
+    const refund = lines[2].split(",");
+    expect(sale.slice(7)).toEqual(["175", "25", "150", "stripe", "vente"]);
+    expect(refund[0]).toBe("2026-09-20");
+    expect(refund[1]).toBe("2026-B19");
+    expect(refund[2]).toBe("pro-1");
+    expect(refund[4]).toBe("apt-card-refunded");
+    expect(refund[5]).toBe("2026-09-09");
+    expect(refund.slice(7)).toEqual(["-175", "-175", "0", "stripe", "remboursement"]);
+  });
+
+  it("a partial refund takes back only what was refunded", async () => {
+    h.rows = [credit("card-partial", "stripe", "partially_refunded")];
+    h.refunded = [refundedSession("card-partial", { status: "partially_refunded", refundedAmount: 50 })];
+    const { lines } = await exportCsv();
+    expect(lines[2].split(",").slice(7)).toEqual(["-50", "-50", "0", "stripe", "remboursement"]);
+  });
+
+  it("an Interac session is given no refund line", async () => {
+    h.rows = [credit("interac-refunded", "transfer", "refunded")];
+    h.refunded = [refundedSession("interac-refunded")];
+    const { lines } = await exportCsv();
+    expect(lines.join("\n")).not.toContain("remboursement");
+  });
+
+  it("asks only for refunds made during the exported year", async () => {
+    await exportCsv();
+    const q = h.refundQuery.value as Record<string, { $gte?: Date; $lt?: Date; $in?: string[] }>;
+    expect(q["payment.refundedAt"].$gte).toEqual(new Date(2026, 0, 1));
+    expect(q["payment.refundedAt"].$lt).toEqual(new Date(2027, 0, 1));
+    expect(q["payment.status"].$in).toEqual(["refunded", "partially_refunded"]);
+  });
+
+  it("keeps sales and refunds in date order", async () => {
+    h.rows = [
+      credit("early", "stripe", "refunded", "2026-09-10T10:00:00Z"),
+      credit("late", "stripe", "paid", "2026-09-25T10:00:00Z"),
+    ];
+    h.refunded = [refundedSession("early")];
+    const { lines } = await exportCsv();
+    expect(lines.slice(1).map((l) => [l.split(",")[0], l.split(",").at(-1)])).toEqual([
+      ["2026-09-10", "vente"],
+      ["2026-09-20", "remboursement"],
+      ["2026-09-25", "vente"],
+    ]);
   });
 });
