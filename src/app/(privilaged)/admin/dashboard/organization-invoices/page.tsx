@@ -36,9 +36,10 @@ import {
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 import { OrganizationReceivablesPanel } from "@/components/admin/OrganizationReceivablesPanel";
 import { OrganizationFormDialog } from "@/components/admin/OrganizationFormDialog";
+import { OrganizationRefundDialog, type RefundTarget } from "@/components/admin/OrganizationRefundDialog";
 
 type Status = "draft" | "issuing" | "sent" | "partially_paid" | "paid" | "overdue" | "void" | "refunded";
-const FILTERS = ["open", "draft", "sent", "overdue", "partially_paid", "paid", "void"] as const;
+const FILTERS = ["open", "draft", "sent", "overdue", "partially_paid", "paid", "refunded", "void"] as const;
 const PAY_METHODS = ["interac", "cheque", "eft", "portal", "other"] as const;
 
 interface Line {
@@ -58,6 +59,7 @@ interface Invoice {
   status: Status;
   totalCents: number;
   paidCents: number;
+  creditedCents: number;
   balanceCents: number;
   issuedAt: string | null;
   dueAt: string | null;
@@ -66,7 +68,7 @@ interface Invoice {
   sendLog: {
     at: string;
     to: string[];
-    kind: "sent" | "resent" | "reminder" | "payment_received";
+    kind: "sent" | "resent" | "reminder" | "payment_received" | "refund_notice";
     withForm: boolean;
     withoutOwnForm: boolean;
   }[];
@@ -83,12 +85,31 @@ interface Invoice {
     sent: boolean;
   } | null;
   payments: {
+    id: string | null;
     amountCents: number;
     refundedCents: number;
     method: "card" | (typeof PAY_METHODS)[number];
     reference: string;
     receivedAt: string;
     source: "stripe" | "interac_reconciler" | "admin";
+    refundableCents: number;
+    refundVia: "stripe" | "outside";
+    refundBlocked: "NO_ID" | "DISPUTED" | "IN_PROGRESS" | "NOT_REFUNDABLE" | null;
+  }[];
+  refunds: {
+    id: string;
+    paymentId: string;
+    amountCents: number;
+    creditCents: number;
+    owed: "still" | "no_longer" | null;
+    via: "stripe" | "outside";
+    method: string | null;
+    reference: string;
+    reason: string;
+    status: "requested" | "pending" | "succeeded" | "failed";
+    failureReason: string;
+    refundedAt: string;
+    at: string;
   }[];
   paymentEvents: { at: string; kind: string; detail: string }[];
   reminders: { dueSentAt: string | null; followUpSentAt: string | null; overdueAlertSentAt: string | null };
@@ -161,6 +182,9 @@ export default function OrganizationInvoicesPage() {
   const [voidReason, setVoidReason] = useState("");
   const [paying, setPaying] = useState<Invoice | null>(null);
   const [pay, setPay] = useState({ amount: "", method: "cheque", reference: "", receivedOn: "" });
+  // One refund dialog at a time; the counter remounts it clean on every opening.
+  const [refunding, setRefunding] = useState<{ target: RefundTarget; n: number } | null>(null);
+  const [refundOpenings, setRefundOpenings] = useState(0);
 
   // The effect fetches; whoever wants fresh data bumps `reloadKey` (and
   // raises the loading flag itself). State is only set once the response is in.
@@ -247,6 +271,38 @@ export default function OrganizationInvoicesPage() {
     setWithoutForm(false);
     setSending({ inv, action });
   };
+
+  const openRefund = (inv: Invoice, p: Invoice["payments"][number]) => {
+    if (!p.id) return;
+    setRefundOpenings((n) => n + 1);
+    setRefunding({
+      n: refundOpenings + 1,
+      target: {
+        invoice: {
+          id: inv.id,
+          number: inv.number,
+          status: inv.status,
+          balanceCents: inv.balanceCents,
+          organizationName: inv.organizationName,
+        },
+        payment: {
+          id: p.id,
+          amountCents: p.amountCents,
+          refundedCents: p.refundedCents,
+          refundableCents: p.refundableCents,
+          method: p.method,
+          receivedAt: p.receivedAt,
+          refundVia: p.refundVia,
+        },
+      },
+    });
+  };
+
+  // Where a Stripe refund made from here stands (never re-sends it).
+  const checkRefund = (inv: Invoice, refundId: string) =>
+    act(`refund_check-${refundId}`, `/api/admin/organization-invoices/${inv.id}`, { action: "refund_check", refundId }, () =>
+      setNotice(t("refund.checkedNotice")),
+    );
 
   const removeForm = async (inv: Invoice) => {
     setBusy(`removeForm-${inv.id}`);
@@ -393,6 +449,16 @@ export default function OrganizationInvoicesPage() {
                             {t("overpaid", { amount: money(-inv.balanceCents) })}
                           </Badge>
                         )}
+                        {inv.creditedCents > 0 && (
+                          <Badge variant="outline" className="border-transparent bg-purple-100 text-purple-800">
+                            {t("refund.creditBadge", { amount: money(inv.creditedCents) })}
+                          </Badge>
+                        )}
+                        {inv.refunds.some((r) => r.status === "requested") && (
+                          <Badge variant="outline" className="border-transparent bg-red-100 text-red-800">
+                            {t("refund.unconfirmedBadge")}
+                          </Badge>
+                        )}
                         {formStale(inv) ? (
                           <Badge variant="outline" className="border-transparent bg-red-100 text-red-800">
                             {t("form.badgeStale")}
@@ -417,7 +483,7 @@ export default function OrganizationInvoicesPage() {
                         {t("linesCount", { count: inv.lines.length })}
                         {" · "}
                         {money(inv.totalCents)}
-                        {inv.paidCents > 0 ? ` · ${t("balance", { amount: money(inv.balanceCents) })}` : ""}
+                        {inv.paidCents > 0 || inv.creditedCents > 0 ? ` · ${t("balance", { amount: money(inv.balanceCents) })}` : ""}
                         {inv.dueAt ? ` · ${t("due", { date: new Date(inv.dueAt).toLocaleDateString("fr-CA") })}` : ""}
                       </span>
                     </span>
@@ -475,6 +541,13 @@ export default function OrganizationInvoicesPage() {
                           </Button>
                         )}
                       </>
+                    )}
+                    {/* Everything went back and nothing is owed: its sessions can go to another payer. */}
+                    {inv.status === "refunded" && inv.paidCents === 0 && (
+                      <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive"
+                        onClick={() => { setVoidReason(""); setVoiding(inv); }}>
+                        {t("void")}
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -542,16 +615,61 @@ export default function OrganizationInvoicesPage() {
                       <div className="pt-2">
                         <p className="font-medium">{t("paymentsTitle")}</p>
                         {inv.payments.map((p, i) => (
-                          <p key={i} className="text-muted-foreground">
-                            {t("paymentLine", {
-                              date: new Date(p.receivedAt).toLocaleDateString("fr-CA"),
-                              amount: money(p.amountCents),
-                              method: t(`methods.${p.method}`),
-                              source: t(`sources.${p.source}`),
-                            })}
-                            {p.reference ? ` · ${p.reference}` : ""}
-                            {p.refundedCents > 0 ? ` · ${t("refundedPart", { amount: money(p.refundedCents) })}` : ""}
-                          </p>
+                          <div key={p.id ?? i} className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-muted-foreground">
+                              {t("paymentLine", {
+                                date: new Date(p.receivedAt).toLocaleDateString("fr-CA"),
+                                amount: money(p.amountCents),
+                                method: t(`methods.${p.method}`),
+                                source: t(`sources.${p.source}`),
+                              })}
+                              {p.reference ? ` · ${p.reference}` : ""}
+                              {p.refundedCents > 0 ? ` · ${t("refundedPart", { amount: money(p.refundedCents) })}` : ""}
+                            </p>
+                            {p.refundableCents > 0 && (
+                              <button
+                                className="text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                                disabled={Boolean(p.refundBlocked)}
+                                title={p.refundBlocked ? t(`refund.blocked.${p.refundBlocked}`) : undefined}
+                                onClick={() => openRefund(inv, p)}
+                              >
+                                {t("refund.open")}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {inv.creditedCents > 0 && (
+                          <p className="text-muted-foreground">{t("refund.creditLine", { amount: money(inv.creditedCents) })}</p>
+                        )}
+                      </div>
+                    )}
+                    {inv.refunds.length > 0 && (
+                      <div className="pt-2">
+                        <p className="font-medium">{t("refund.listTitle")}</p>
+                        {inv.refunds.map((r) => (
+                          <div key={r.id} className="flex flex-wrap items-center justify-between gap-2">
+                            <p className={r.status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                              {t("refund.line", {
+                                date: new Date(r.refundedAt).toLocaleDateString("fr-CA"),
+                                amount: money(r.amountCents),
+                                via: r.via === "stripe" ? t("refund.viaStripeShort") : t(`methods.${r.method ?? "other"}`),
+                                status: t(`refund.statuses.${r.status}`),
+                              })}
+                              {r.owed ? ` · ${t(`refund.owedShort.${r.owed}`)}` : ""}
+                              {r.creditCents > 0 ? ` · ${t("refund.creditPart", { amount: money(r.creditCents) })}` : ""}
+                              {r.reference ? ` · ${r.reference}` : ""}
+                              {` · « ${r.reason} »`}
+                            </p>
+                            {r.via === "stripe" && (r.status === "requested" || r.status === "pending") && (
+                              <button
+                                className="text-primary hover:underline"
+                                disabled={busy === `refund_check-${r.id}`}
+                                onClick={() => void checkRefund(inv, r.id)}
+                              >
+                                {t("refund.check")}
+                              </button>
+                            )}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -691,6 +809,20 @@ export default function OrganizationInvoicesPage() {
           load();
         }}
       />
+
+      {/* Refund a payment */}
+      {refunding && (
+        <OrganizationRefundDialog
+          key={refunding.n}
+          target={refunding.target}
+          onClose={() => setRefunding(null)}
+          onDone={(_invoice, message) => {
+            setRefunding(null);
+            setNotice(message);
+            load();
+          }}
+        />
+      )}
 
       {/* Remove the form */}
       <Dialog open={Boolean(removingForm)} onOpenChange={(o) => !o && setRemovingForm(null)}>

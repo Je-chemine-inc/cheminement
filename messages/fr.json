@@ -1346,7 +1346,8 @@
         "overdue": "En retard",
         "partially_paid": "Payées en partie",
         "paid": "Payées",
-        "void": "Annulées"
+        "void": "Annulées",
+        "refunded": "Remboursées"
       },
       "statuses": {
         "draft": "Brouillon",
@@ -1422,7 +1423,8 @@
         "sent": "Envoyée",
         "resent": "Renvoyée",
         "reminder": "Rappel",
-        "payment_received": "Accusé de paiement"
+        "payment_received": "Accusé de paiement",
+        "refund_notice": "Avis de remboursement"
       },
       "payReceiptNote": "Un accusé de réception est envoyé à l’adresse de facturation de l’organisme.",
       "receivables": {
@@ -1489,7 +1491,8 @@
             "title": "Paiements à vérifier",
             "hint": "Trop-perçus, paiements contestés, remboursés ou reçus sur une facture annulée. Rien n’a été remboursé automatiquement."
           }
-        }
+        },
+        "refundUnconfirmed": "remboursement à vérifier"
       },
       "form": {
         "title": "Formulaire de l’organisme",
@@ -1534,6 +1537,75 @@
           "OWN_FORM_STALE": "Les séances ont changé depuis que le formulaire a été joint.",
           "OWN_FORM_UNAVAILABLE": "Le formulaire joint est illisible : joignez-le de nouveau.",
           "FAILED": "Le formulaire n’a pas pu être joint. Réessayez."
+        }
+      },
+      "refund": {
+        "open": "Rembourser",
+        "title": "Rembourser — facture {number}",
+        "paymentLine": "Paiement du {date} : {amount} · {method}",
+        "alreadyRefunded": "déjà remboursé : {amount}",
+        "refundable": "remboursable : {amount}",
+        "viaStripe": "Remboursé par Stripe sur la carte de l’organisme. Irréversible : l’argent quitte le compte de la clinique.",
+        "viaOutside": "Ce paiement a été reçu hors de la plateforme : faites le remboursement vous-même (virement, chèque…), puis inscrivez-le ici. Aucun argent ne bouge depuis cet écran.",
+        "amount": "Montant à rembourser",
+        "amountInvalid": "Entre 0,01 $ et {amount}.",
+        "overpaidPart": "Dont {amount} de trop-perçu : rendus sans autre choix.",
+        "owedQuestion": "L’organisme doit-il encore ce montant ?",
+        "owedStill": "Toujours dû",
+        "owedStillHelp": "Le solde revient à {balance} et les rappels reprennent.",
+        "owedNoLonger": "Plus dû",
+        "owedNoLongerHelp": "Un crédit de {credit} est enregistré ; le solde reste à {balance}.",
+        "method": "Remboursé par",
+        "date": "Date du remboursement",
+        "reference": "Référence (facultatif)",
+        "reason": "Raison (interne)",
+        "reasonPlaceholder": "Ex. : séance annulée par l’organisme",
+        "notify": "Aviser l’organisme par courriel (le montant et le solde, jamais la raison)",
+        "cancel": "Annuler",
+        "submitStripe": "Rembourser {amount}",
+        "submitOutside": "Inscrire le remboursement",
+        "refundedNotice": "Remboursement fait.",
+        "recordedNotice": "Remboursement inscrit.",
+        "checkedNotice": "Remboursement vérifié auprès de Stripe.",
+        "creditBadge": "crédit {amount}",
+        "unconfirmedBadge": "Remboursement à vérifier",
+        "creditLine": "Crédit accordé : {amount} (plus dû)",
+        "listTitle": "Remboursements",
+        "line": "{date} — {amount} · {via} · {status}",
+        "viaStripeShort": "par Stripe",
+        "statuses": {
+          "requested": "non confirmé par Stripe",
+          "pending": "en cours",
+          "succeeded": "fait",
+          "failed": "échoué"
+        },
+        "owedShort": {
+          "still": "toujours dû",
+          "no_longer": "plus dû"
+        },
+        "creditPart": "crédit {amount}",
+        "check": "Vérifier",
+        "blocked": {
+          "NO_ID": "Paiement inscrit avant qu’on puisse rembourser depuis cet écran.",
+          "DISPUTED": "L’organisme conteste un paiement auprès de sa banque.",
+          "IN_PROGRESS": "Un autre remboursement attend d’être vérifié.",
+          "NOT_REFUNDABLE": "Rien à rembourser sur ce paiement."
+        },
+        "errors": {
+          "INVALID_AMOUNT": "Le montant doit être positif.",
+          "REASON_REQUIRED": "Indiquez la raison du remboursement.",
+          "OWED_REQUIRED": "Dites si l’organisme doit encore ce montant.",
+          "METHOD_REQUIRED": "Indiquez comment l’argent a été rendu.",
+          "NOT_FOUND": "Facture introuvable.",
+          "PAYMENT_NOT_FOUND": "Ce paiement n’est pas sur la facture.",
+          "NOT_REFUNDABLE": "Rien à rembourser sur ce paiement.",
+          "REFUND_TOO_LARGE": "Plus que ce qui reste de ce paiement ({amount}).",
+          "DISPUTED": "L’organisme conteste un paiement auprès de sa banque : rien ne peut être remboursé d’ici là.",
+          "REFUND_IN_PROGRESS": "Un autre remboursement sur cette facture n’est pas encore confirmé : vérifiez-le d’abord.",
+          "CHANGED_MEANWHILE": "La facture a changé entre-temps. Fermez et réessayez.",
+          "REFUND_UNCONFIRMED": "Stripe n’a pas confirmé le remboursement. Dans une minute, utilisez « Vérifier » sur la facture avant de réessayer.",
+          "CHECK_TOO_SOON": "Stripe répond peut-être encore : vérifiez dans une minute.",
+          "FAILED": "Le remboursement n’a pas pu être fait. Réessayez."
         }
       }
     },
@@ -7161,6 +7233,7 @@
     "closedBody": "La facture {number} n’attend aucun paiement. Pour toute question, répondez au courriel qui vous l’a transmise.",
     "inProgress": "Un paiement pour cette facture est déjà en cours de traitement. Actualisez la page dans quelques minutes.",
     "errorGeneric": "Le paiement n’a pas pu être effectué. Réessayez ou choisissez le virement Interac.",
-    "additionalVerification": "Votre banque demande une vérification supplémentaire. Réessayez."
+    "additionalVerification": "Votre banque demande une vérification supplémentaire. Réessayez.",
+    "credit": "Crédit"
   }
 }

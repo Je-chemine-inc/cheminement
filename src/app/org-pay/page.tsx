@@ -24,6 +24,7 @@ interface InvoiceView {
   number: string;
   totalCents: number;
   paidCents: number;
+  creditedCents: number;
   balanceCents: number;
   dueAt: string | null;
   overdue: boolean;
@@ -270,16 +271,24 @@ function OrgPayContent() {
             {invoice.overdue ? ` · ${t("overdue")}` : ""}
           </span>
         </div>
-        {invoice.paidCents > 0 && (
+        {(invoice.paidCents > 0 || invoice.creditedCents > 0) && (
           <>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">{t("total")}</span>
               <span>{money(invoice.totalCents)}</span>
             </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">{t("paid")}</span>
-              <span>{money(invoice.paidCents)}</span>
-            </div>
+            {invoice.creditedCents > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">{t("credit")}</span>
+                <span>− {money(invoice.creditedCents)}</span>
+              </div>
+            )}
+            {invoice.paidCents > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">{t("paid")}</span>
+                <span>{money(invoice.paidCents)}</span>
+              </div>
+            )}
           </>
         )}
         <Separator />

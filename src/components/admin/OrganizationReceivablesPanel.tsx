@@ -36,7 +36,7 @@ interface Receivables {
     uninvoiced: Array<Session & { daysSinceClosure: number }>;
     capMismatch: Array<{ coverageId: string; clientId: string; clientName: string; organizationId: string; used: number; max: number | null; issues: string[]; staleSlots: number }>;
     negativeMargin: Array<Session & { marginCents: number }>;
-    paymentReview: Array<{ invoiceId: string; organizationId: string; number: string; status: string; balanceCents: number; disputed: boolean; lastEvent: string }>;
+    paymentReview: Array<{ invoiceId: string; organizationId: string; number: string; status: string; balanceCents: number; disputed: boolean; refundUnconfirmed?: boolean; lastEvent: string }>;
   };
 }
 
@@ -147,6 +147,7 @@ export function OrganizationReceivablesPanel({ reloadKey }: { reloadKey: number 
           {i.number} — {org(i.organizationId)} — {t(`invoiceStatus.${i.status}`)} —{" "}
           {i.balanceCents < 0 ? t("credit", { amount: money(-i.balanceCents) }) : money(i.balanceCents)}
           {i.disputed ? ` — ${t("disputed")}` : ""}
+          {i.refundUnconfirmed ? ` — ${t("refundUnconfirmed")}` : ""}
           {i.lastEvent ? <span className="block text-muted-foreground">{i.lastEvent}</span> : null}
         </li>
       )),

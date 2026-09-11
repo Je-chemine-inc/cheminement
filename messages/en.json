@@ -1346,7 +1346,8 @@
         "overdue": "Overdue",
         "partially_paid": "Partly paid",
         "paid": "Paid",
-        "void": "Voided"
+        "void": "Voided",
+        "refunded": "Refunded"
       },
       "statuses": {
         "draft": "Draft",
@@ -1422,7 +1423,8 @@
         "sent": "Sent",
         "resent": "Resent",
         "reminder": "Reminder",
-        "payment_received": "Payment receipt"
+        "payment_received": "Payment receipt",
+        "refund_notice": "Refund notice"
       },
       "payReceiptNote": "A receipt is emailed to the organization's billing address.",
       "receivables": {
@@ -1489,7 +1491,8 @@
             "title": "Payments to review",
             "hint": "Overpaid, disputed or refunded, or received on a void invoice. Nothing was refunded automatically."
           }
-        }
+        },
+        "refundUnconfirmed": "refund to check"
       },
       "form": {
         "title": "Organization’s form",
@@ -1534,6 +1537,75 @@
           "OWN_FORM_STALE": "The sessions changed since the form was attached.",
           "OWN_FORM_UNAVAILABLE": "The attached form cannot be read: attach it again.",
           "FAILED": "The form could not be attached. Try again."
+        }
+      },
+      "refund": {
+        "open": "Refund",
+        "title": "Refund — invoice {number}",
+        "paymentLine": "Payment of {date}: {amount} · {method}",
+        "alreadyRefunded": "already refunded: {amount}",
+        "refundable": "refundable: {amount}",
+        "viaStripe": "Refunded by Stripe to the organization’s card. Cannot be undone: the money leaves the clinic’s account.",
+        "viaOutside": "This payment came in outside the platform: make the refund yourself (transfer, cheque…), then record it here. No money moves from this screen.",
+        "amount": "Amount to refund",
+        "amountInvalid": "Between $0.01 and {amount}.",
+        "overpaidPart": "Of which {amount} is an overpayment: given back with no choice to make.",
+        "owedQuestion": "Does the organization still owe this amount?",
+        "owedStill": "Still owed",
+        "owedStillHelp": "The balance goes back to {balance} and reminders resume.",
+        "owedNoLonger": "No longer owed",
+        "owedNoLongerHelp": "A credit of {credit} is recorded; the balance stays at {balance}.",
+        "method": "Refunded by",
+        "date": "Refund date",
+        "reference": "Reference (optional)",
+        "reason": "Reason (internal)",
+        "reasonPlaceholder": "E.g. session cancelled by the organization",
+        "notify": "Tell the organization by email (the amount and the balance, never the reason)",
+        "cancel": "Cancel",
+        "submitStripe": "Refund {amount}",
+        "submitOutside": "Record the refund",
+        "refundedNotice": "Refund made.",
+        "recordedNotice": "Refund recorded.",
+        "checkedNotice": "Refund checked with Stripe.",
+        "creditBadge": "credit {amount}",
+        "unconfirmedBadge": "Refund to check",
+        "creditLine": "Credit granted: {amount} (no longer owed)",
+        "listTitle": "Refunds",
+        "line": "{date} — {amount} · {via} · {status}",
+        "viaStripeShort": "by Stripe",
+        "statuses": {
+          "requested": "not confirmed by Stripe",
+          "pending": "in progress",
+          "succeeded": "done",
+          "failed": "failed"
+        },
+        "owedShort": {
+          "still": "still owed",
+          "no_longer": "no longer owed"
+        },
+        "creditPart": "credit {amount}",
+        "check": "Check",
+        "blocked": {
+          "NO_ID": "Payment recorded before refunds could be made from this screen.",
+          "DISPUTED": "The organization disputes a payment with its bank.",
+          "IN_PROGRESS": "Another refund is waiting to be checked.",
+          "NOT_REFUNDABLE": "Nothing to refund on this payment."
+        },
+        "errors": {
+          "INVALID_AMOUNT": "The amount must be positive.",
+          "REASON_REQUIRED": "Give the reason for the refund.",
+          "OWED_REQUIRED": "Say whether the organization still owes this amount.",
+          "METHOD_REQUIRED": "Say how the money went back.",
+          "NOT_FOUND": "Invoice not found.",
+          "PAYMENT_NOT_FOUND": "This payment is not on the invoice.",
+          "NOT_REFUNDABLE": "Nothing to refund on this payment.",
+          "REFUND_TOO_LARGE": "More than what is left of this payment ({amount}).",
+          "DISPUTED": "The organization disputes a payment with its bank: nothing can be refunded meanwhile.",
+          "REFUND_IN_PROGRESS": "Another refund on this invoice is not confirmed yet: check it first.",
+          "CHANGED_MEANWHILE": "The invoice changed meanwhile. Close and try again.",
+          "REFUND_UNCONFIRMED": "Stripe did not confirm the refund. In a minute, use “Check” on the invoice before trying again.",
+          "CHECK_TOO_SOON": "Stripe may still be answering: check again in a minute.",
+          "FAILED": "The refund could not be made. Try again."
         }
       }
     },
@@ -7162,6 +7234,7 @@
     "closedBody": "Invoice {number} is not awaiting payment. For any question, reply to the email that sent it.",
     "inProgress": "A payment for this invoice is already being processed. Refresh the page in a few minutes.",
     "errorGeneric": "The payment could not be made. Try again, or pay by Interac e-Transfer.",
-    "additionalVerification": "Your bank asks for an extra verification. Please try again."
+    "additionalVerification": "Your bank asks for an extra verification. Please try again.",
+    "credit": "Credit"
   }
 }
