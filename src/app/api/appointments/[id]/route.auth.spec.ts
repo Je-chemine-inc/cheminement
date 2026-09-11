@@ -19,6 +19,8 @@ const h = vi.hoisted(() => {
   const canAccessAccount = vi.fn().mockResolvedValue(false);
   const findByIdAndUpdate = vi.fn();
   const findOneAndUpdate = vi.fn();
+  const findOneAndDelete = vi.fn();
+  const exists = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
   const makeQuery = (result: unknown) => ({
     populate() {
@@ -33,6 +35,8 @@ const h = vi.hoisted(() => {
     canAccessAccount,
     findByIdAndUpdate,
     findOneAndUpdate,
+    findOneAndDelete,
+    exists,
     store,
     makeQuery,
   };
@@ -59,6 +63,8 @@ vi.mock("@/models/Appointment", () => ({
     findById: () => h.makeQuery(h.store.appointment),
     findByIdAndUpdate: h.findByIdAndUpdate,
     findOneAndUpdate: h.findOneAndUpdate,
+    findOneAndDelete: h.findOneAndDelete,
+    exists: h.exists,
   },
 }));
 vi.mock("@/models/User", () => ({
@@ -91,7 +97,10 @@ vi.mock("@/lib/provision-guest-as-client", () => ({
   provisionGuestAsClient: vi.fn(),
 }));
 
-import { PATCH as apptPATCH } from "@/app/api/appointments/[id]/route";
+import {
+  PATCH as apptPATCH,
+  DELETE as apptDELETE,
+} from "@/app/api/appointments/[id]/route";
 import { sendCancellationNotification } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
@@ -148,10 +157,68 @@ describe("PATCH /api/appointments/[id] — ownership guard", () => {
   });
 
   it("allows a guardian of the client (200)", async () => {
+    // A guardian acts as the client, and the only thing a client does through
+    // this route is cancel. (This used to send `notes`, which clients may no
+    // longer write — see the body-narrowing block below.)
     h.canAccessAccount.mockResolvedValue(true);
-    const res = await callPatch({ notes: "from guardian" }, "client", OTHER_ID);
+    const res = await callPatch({ status: "cancelled" }, "client", OTHER_ID);
     expect(res.status).toBe(200);
     expect(h.findByIdAndUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PATCH /api/appointments/[id] — body narrowing", () => {
+  const writtenUpdate = () =>
+    h.findByIdAndUpdate.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+
+  it("refuses a client forging payment.status (was written straight to the DB)", async () => {
+    const res = await callPatch({ "payment.status": "paid" }, "client", CLIENT_ID);
+    expect(res.status).toBe(400);
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a MongoDB update operator in the body", async () => {
+    const res = await callPatch(
+      { $set: { "payment.status": "paid", "payment.price": 0 } },
+      "client",
+      CLIENT_ID,
+    );
+    expect(res.status).toBe(400);
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a client marking their own session completed", async () => {
+    const res = await callPatch({ status: "completed" }, "client", CLIENT_ID);
+    expect(res.status).toBe(403);
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not let a client overwrite the professional's session notes", async () => {
+    const res = await callPatch({ notes: "rewritten" }, "client", CLIENT_ID);
+    expect(res.status).toBe(400);
+    expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("strips a payment block the assigned professional sends alongside notes", async () => {
+    const res = await callPatch(
+      { notes: "call ahead", payment: { status: "paid" } },
+      "professional",
+      PRO_ID,
+    );
+    expect(res.status).toBe(200);
+    expect(writtenUpdate()).toEqual({ notes: "call ahead" });
+  });
+
+  it("still lets the assigned professional reschedule (date anchored server-side)", async () => {
+    const res = await callPatch(
+      { date: "2099-02-01", time: "09:00" },
+      "professional",
+      PRO_ID,
+    );
+    expect(res.status).toBe(200);
+    const update = writtenUpdate();
+    expect(update?.time).toBe("09:00");
+    expect(update?.date).toBeInstanceOf(Date);
   });
 });
 
@@ -201,5 +268,58 @@ describe("PATCH /api/appointments/[id] — professional refusing a demande", () 
     expect(h.findOneAndUpdate).not.toHaveBeenCalled();
     expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
     expect(routeAppointmentToProfessionals).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/appointments/[id]", () => {
+  const callDelete = (role: string, userId: string): Res => {
+    h.getServerSession.mockResolvedValueOnce({ user: { id: userId, role } });
+    return apptDELETE(
+      {} as never,
+      { params: Promise.resolve({ id: APPT_ID }) },
+    ) as unknown as Res;
+  };
+
+  it("refuses the appointment's own client (it used to hard-delete anything)", async () => {
+    const res = await callDelete("client", CLIENT_ID);
+    expect(res.status).toBe(403);
+    expect(h.findOneAndDelete).not.toHaveBeenCalled();
+  });
+
+  it("refuses the assigned professional", async () => {
+    const res = await callDelete("professional", PRO_ID);
+    expect(res.status).toBe(403);
+    expect(h.findOneAndDelete).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin delete an appointment with no billing history", async () => {
+    h.findOneAndDelete.mockResolvedValueOnce({ _id: APPT_ID });
+    const res = await callDelete("admin", OTHER_ID);
+    expect(res.status).toBe(200);
+    // The billing-history guard lives in the delete filter itself (atomic).
+    expect(h.findOneAndDelete).toHaveBeenCalledWith({
+      _id: APPT_ID,
+      sessionCompletedAt: null,
+      invoiceNumber: null,
+      fiscalReceiptIssuedAt: null,
+      "payment.status": {
+        $nin: ["paid", "processing", "refunded", "partially_refunded"],
+      },
+    });
+  });
+
+  it("refuses even an admin when the session has billing history (409)", async () => {
+    h.findOneAndDelete.mockResolvedValueOnce(null);
+    h.exists.mockResolvedValueOnce({ _id: APPT_ID });
+    const res = await callDelete("admin", OTHER_ID);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("APPOINTMENT_HAS_BILLING_HISTORY");
+  });
+
+  it("returns 404 when the appointment does not exist", async () => {
+    h.findOneAndDelete.mockResolvedValueOnce(null);
+    h.exists.mockResolvedValueOnce(null);
+    const res = await callDelete("admin", OTHER_ID);
+    expect(res.status).toBe(404);
   });
 });

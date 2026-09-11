@@ -23,6 +23,11 @@ import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { redactPaymentForProfessional } from "@/lib/redact-payment";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import {
+  pickAppointmentPatch,
+  toWriterRole,
+  type AppointmentPatchInput,
+} from "@/lib/appointment-writable-fields";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -40,6 +45,13 @@ function getBaseUrl(): string {
 //   uses the admin/pro endpoints (not gated here). The fee constant is kept
 //   in case admins want to apply it manually but is no longer auto-charged.
 const CANCELLATION_FEE_PERCENTAGE = 0.15;
+/** Payment states where money moved (or is moving) — such a row is never deleted. */
+const APPOINTMENT_PAYMENT_STATUSES_WITH_MONEY = [
+  "paid",
+  "processing",
+  "refunded",
+  "partially_refunded",
+];
 const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = 48;
 
 export async function GET(
@@ -117,7 +129,7 @@ export async function PATCH(
     await connectToDatabase();
 
     const { id } = await params;
-    const data = await req.json();
+    const rawBody: unknown = await req.json();
 
     // Get the appointment before update to check for status changes
     const oldAppointment = await Appointment.findById(id);
@@ -159,6 +171,26 @@ export async function PATCH(
     if (!authorized) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Narrow the body to what this caller may change. It used to be written
+    // unfiltered, so an authorized client could send
+    // `{ "$set": { "payment.status": "paid" } }` or overwrite the professional's
+    // session notes. Server-derived fields are added to `data` further down.
+    const picked = pickAppointmentPatch(rawBody, toWriterRole(role));
+    if (!picked.ok) {
+      return NextResponse.json({ error: picked.error }, { status: picked.status });
+    }
+    if (picked.dropped.length > 0) {
+      console.warn(
+        `[appointments/${id} PATCH] ignored fields for ${role}: ${picked.dropped.join(", ")}`,
+      );
+    }
+    const data: Omit<AppointmentPatchInput, "date"> & {
+      date?: string | Date | null;
+      professionalId?: string;
+      firstScheduledAt?: Date;
+      scheduledStartAt?: Date;
+    } = { ...picked.data };
 
     // Strict 48h cancellation rule: a client cannot self-cancel within 48h
     // of the appointment. Admin/pro keep the ability to mark it cancelled
@@ -700,13 +732,42 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // This route had no role or ownership check at all: any signed-in user could
+    // hard-delete any appointment by id — including closed, invoiced sessions
+    // already credited to the professional. No screen calls it (admins use the
+    // soft-cancel at /api/admin/appointments/[id]), so it is now admin-only.
+    if (session.user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await connectToDatabase();
 
     const { id } = await params;
 
-    const appointment = await Appointment.findByIdAndDelete(id);
+    // A session with billing history is part of the accounting record (invoice
+    // number, receipt, ledger credit) and must never disappear. The guard is in
+    // the delete filter itself, so a closure landing in the same instant can't
+    // slip through between a check and the delete.
+    const appointment = await Appointment.findOneAndDelete({
+      _id: id,
+      sessionCompletedAt: null,
+      invoiceNumber: null,
+      fiscalReceiptIssuedAt: null,
+      "payment.status": { $nin: APPOINTMENT_PAYMENT_STATUSES_WITH_MONEY },
+    });
 
     if (!appointment) {
+      const exists = await Appointment.exists({ _id: id });
+      if (exists) {
+        return NextResponse.json(
+          {
+            error:
+              "This appointment has billing history and cannot be deleted. Cancel it instead.",
+            code: "APPOINTMENT_HAS_BILLING_HISTORY",
+          },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
         { error: "Appointment not found" },
         { status: 404 },

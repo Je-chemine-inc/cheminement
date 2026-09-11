@@ -24,6 +24,7 @@ import {
   resolveReferralPatientIdentity,
 } from "@/lib/referral-patient-account";
 import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
+import { pickBookingIntake } from "@/lib/appointment-writable-fields";
 import {
   linkGuardian,
   isMinor,
@@ -146,7 +147,15 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    const data = await req.json();
+    // Only intake fields reach the appointment. The body used to be passed whole
+    // to `new Appointment(data)`, so a client could book with
+    // `payment: { status: "paid" }` and be emailed a receipt for an unpaid session.
+    const { data, dropped } = pickBookingIntake(await req.json());
+    if (dropped.length > 0) {
+      console.warn(
+        `[appointments POST] ignored non-intake fields: ${dropped.join(", ")}`,
+      );
+    }
 
     // This endpoint is the client booking funnel. Admins / professionals /
     // employees never have a clientId of their own; if they reach here, the
@@ -582,17 +591,22 @@ export async function POST(req: NextRequest) {
 
     // Persist preferred payment method on the user (visible profil + admin).
     // Defaults to "interac" if the client did not make any explicit choice.
-    const allowedPreferred = new Set([
+    const allowedPreferred = [
       "interac",
       "card",
       "direct_debit",
       "payment_plan",
-    ]);
-    const preferredFromForm =
-      typeof data.preferredPaymentMethod === "string" &&
-      allowedPreferred.has(data.preferredPaymentMethod)
-        ? data.preferredPaymentMethod
-        : null;
+    ] as const;
+    const isPreferredPaymentMethod = (
+      value: unknown,
+    ): value is (typeof allowedPreferred)[number] =>
+      typeof value === "string" &&
+      (allowedPreferred as readonly string[]).includes(value);
+    const preferredFromForm = isPreferredPaymentMethod(
+      data.preferredPaymentMethod,
+    )
+      ? data.preferredPaymentMethod
+      : null;
     try {
       const me = await User.findById(session.user.id).select(
         "preferredPaymentMethod",

@@ -297,3 +297,47 @@ describe("POST /api/appointments/guest — non-referral bookings are untouched",
     );
   });
 });
+
+describe("POST /api/appointments/guest — only intake fields reach the appointment", () => {
+  it("ignores forged billing and state fields a guest adds to the body", async () => {
+    const res = await call({
+      guestInfo: {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        email: "ada@example.com",
+        phone: "5145551234",
+        location: "Montréal",
+      },
+      notificationLocale: "fr",
+      bookingFor: "self",
+      type: "video",
+      therapyType: "solo",
+      needs: ["Anxiété"],
+      // Everything below used to be spread straight into the new appointment.
+      invoiceNumber: "JC-2026-999999",
+      sessionCompletedAt: "2026-09-01T12:00:00Z",
+      sessionOutcome: "completed",
+      fiscalReceiptIssuedAt: "2026-09-01T12:00:00Z",
+      postMeetingPaymentReminderSent: true,
+      "payment.status": "paid",
+    });
+
+    expect(res.status).toBe(201);
+    const apt = lastAppointment();
+    for (const forged of [
+      "invoiceNumber",
+      "sessionCompletedAt",
+      "sessionOutcome",
+      "fiscalReceiptIssuedAt",
+      "postMeetingPaymentReminderSent",
+      "payment.status",
+    ]) {
+      expect(apt).not.toHaveProperty([forged]);
+    }
+    // The route's own payment block is still what gets saved.
+    expect((apt.payment as Record<string, unknown>).status).not.toBe("paid");
+    // Real intake still arrives.
+    expect(apt.needs).toEqual(["Anxiété"]);
+    expect(apt.type).toBe("video");
+  });
+});

@@ -21,6 +21,7 @@ import {
   resolveReferralPatientIdentity,
 } from "@/lib/referral-patient-account";
 import type { IUser } from "@/models/User";
+import { pickBookingIntake } from "@/lib/appointment-writable-fields";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +30,19 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
 
     // Extract guest info and appointment data (notificationLocale = UI lang for emails only)
-    const { guestInfo, notificationLocale, ...appointmentData } = data;
+    const { guestInfo, notificationLocale, ...rawAppointmentData } = data;
+
+    // Only intake fields reach the appointment. `status`, `routingStatus` and
+    // `payment` were already overridden below, but every other root field —
+    // `invoiceNumber`, `sessionCompletedAt`, `fiscalReceiptIssuedAt`, … — was
+    // spread straight into the new document.
+    const { data: appointmentData, dropped } =
+      pickBookingIntake(rawAppointmentData);
+    if (dropped.length > 0) {
+      console.warn(
+        `[appointments/guest POST] ignored non-intake fields: ${dropped.join(", ")}`,
+      );
+    }
 
     if (!guestInfo) {
       return NextResponse.json(
