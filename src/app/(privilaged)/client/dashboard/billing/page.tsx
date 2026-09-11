@@ -33,6 +33,7 @@ import {
 import { AppointmentResponse } from "@/types/api";
 import { useLocaleFromQuery } from "@/lib/use-locale-from-query";
 import { buildReceiptNumber } from "@/lib/receipt-number";
+import { ClientCoverageSummary } from "@/components/billing/ClientCoverageSummary";
 
 interface PaymentMethod {
   id: string;
@@ -431,6 +432,9 @@ export default function ClientBillingPage() {
           </div>
         </div>
       </div>
+
+      {/* Spec 002: who pays, and covered sessions used (own account only). */}
+      {!accountId && <ClientCoverageSummary />}
 
       {/* Chosen Payment Method (always visible) */}
       {!accountId && (

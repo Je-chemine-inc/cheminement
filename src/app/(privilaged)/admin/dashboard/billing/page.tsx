@@ -50,6 +50,10 @@ interface Payment {
     kind: "client" | "organization" | "external";
     state: "confirmed" | "awaiting_decision";
     orgAmount: number;
+    organizationName?: string;
+    externalLabel?: string;
+    orgStatus?: "unbilled" | "invoiced" | "paid" | "void" | "refunded";
+    orgInvoiceNumber?: string;
   };
   paymentMethod?: string;
   invoiceUrl?: string;
@@ -92,6 +96,23 @@ export default function AdminBillingPage() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendFeedback, setResendFeedback] = useState<Record<string, "ok" | "error">>({});
   const t = useTranslations("Admin.billing");
+
+  // Spec 002: who pays this session — the client, an organization (and where
+  // its invoice stands), someone outside the platform, or not decided yet.
+  const payerLabel = (p: Payment) => {
+    if (!p.payer || p.payer.kind === "client") return t("payerClient");
+    if (p.payer.state === "awaiting_decision") return t("payerToDecide");
+    if (p.payer.kind === "external") {
+      return p.payer.externalLabel || p.payer.organizationName || t("payerExternalUnnamed");
+    }
+    return p.payer.organizationName || t("payerOrganizationUnnamed");
+  };
+  const payerDetail = (p: Payment) => {
+    if (!p.payer || p.payer.state === "awaiting_decision") return "";
+    if (p.payer.kind === "external") return t("payerExternal");
+    if (p.payer.kind !== "organization" || !p.payer.orgStatus) return "";
+    return t(`payerOrgStatus.${p.payer.orgStatus}`, { number: p.payer.orgInvoiceNumber || "—" });
+  };
 
   const activeFilterCount =
     (search ? 1 : 0) +
@@ -598,6 +619,13 @@ export default function AdminBillingPage() {
                             : t("sessionReference")}
                         </p>
                         <p className="font-medium text-foreground">{payment.invoiceNumber || payment.sessionId}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("payer")}</p>
+                        <p className="font-medium text-foreground">{payerLabel(payment)}</p>
+                        {payerDetail(payment) && (
+                          <p className="text-xs text-muted-foreground">{payerDetail(payment)}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">{t("clientPayment")}</p>

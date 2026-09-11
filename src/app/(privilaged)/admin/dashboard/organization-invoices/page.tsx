@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
+import { OrganizationReceivablesPanel } from "@/components/admin/OrganizationReceivablesPanel";
 
 type Status = "draft" | "issuing" | "sent" | "partially_paid" | "paid" | "overdue" | "void" | "refunded";
 const FILTERS = ["open", "draft", "sent", "overdue", "partially_paid", "paid", "void"] as const;
@@ -217,6 +218,9 @@ export default function OrganizationInvoicesPage() {
       {notice && (
         <div className="rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800">{notice}</div>
       )}
+
+      {/* What organizations owe by age, and what needs a person (phase 6) */}
+      <OrganizationReceivablesPanel reloadKey={reloadKey} />
 
       {/* What is owed and not invoiced yet */}
       <section className="rounded-xl border border-border/40 bg-card p-5 space-y-3">

@@ -1413,7 +1413,73 @@
         "reminder": "Rappel",
         "payment_received": "Accusé de paiement"
       },
-      "payReceiptNote": "Un accusé de réception est envoyé à l’adresse de facturation de l’organisme."
+      "payReceiptNote": "Un accusé de réception est envoyé à l’adresse de facturation de l’organisme.",
+      "receivables": {
+        "title": "Comptes à recevoir et anomalies",
+        "exportCsv": "Exporter (CSV)",
+        "noOpenBalance": "Aucun solde ouvert chez les organismes.",
+        "organization": "Organisme",
+        "buckets": {
+          "current": "Non échu",
+          "d1_30": "1–30 j",
+          "d31_60": "31–60 j",
+          "d61_90": "61–90 j",
+          "d90_plus": "90 j et +"
+        },
+        "total": "Total",
+        "invoicesCount": "{count, plural, one {# facture} other {# factures}}",
+        "anomaliesTitle": "{count, plural, one {# élément à vérifier} other {# éléments à vérifier}}",
+        "noAnomalies": "Aucune anomalie.",
+        "daysLate": "{days} j de retard",
+        "remindersSent": "{count, plural, =0 {aucun rappel envoyé} one {# rappel envoyé} other {# rappels envoyés}}",
+        "disputed": "contesté",
+        "forLovedOne": "{client} (pour {name})",
+        "closedDaysAgo": "clôturée il y a {days} j",
+        "margin": "marge {amount}",
+        "credit": "trop-perçu {amount}",
+        "capIssues": {
+          "over_cap": "plus de séances comptées que le plafond",
+          "exhausted_below_cap": "marquée épuisée avant le plafond",
+          "active_at_cap": "plafond atteint mais encore active",
+          "stale_slot": "{count, plural, one {# séance comptée qui ne l’utilise plus} other {# séances comptées qui ne l’utilisent plus}}"
+        },
+        "invoiceStatus": {
+          "draft": "brouillon",
+          "issuing": "envoi en cours",
+          "sent": "envoyée",
+          "overdue": "en retard",
+          "partially_paid": "payée en partie",
+          "paid": "payée",
+          "void": "annulée",
+          "refunded": "remboursée"
+        },
+        "groups": {
+          "overdue": {
+            "title": "Factures en retard",
+            "hint": "Échéance passée, solde encore dû. Les rappels partent seuls ; après 30 jours, c’est à vous de relancer."
+          },
+          "awaitingDecision": {
+            "title": "Payeur à décider",
+            "hint": "Séances clôturées pour lesquelles personne n’a décidé qui paie : rien n’a été facturé. Décidez-le dans le dossier du client."
+          },
+          "uninvoiced": {
+            "title": "Séances jamais facturées (35 jours et plus)",
+            "hint": "Un organisme doit ces séances depuis plus de 35 jours et aucune facture ne les contient. Préparez-la ci-dessous."
+          },
+          "capMismatch": {
+            "title": "Compteurs de séances incohérents",
+            "hint": "Le nombre de séances couvertes ne correspond pas aux séances réellement payées par l’organisme. Vérifiez la couverture dans le dossier du client."
+          },
+          "negativeMargin": {
+            "title": "Marges négatives (90 derniers jours)",
+            "hint": "Séances où l’organisme a payé moins que ce que le professionnel a reçu : la clinique a absorbé la différence."
+          },
+          "paymentReview": {
+            "title": "Paiements à vérifier",
+            "hint": "Trop-perçus, paiements contestés, remboursés ou reçus sur une facture annulée. Rien n’a été remboursé automatiquement."
+          }
+        }
+      }
     }
   },
   "AppointmentSelector": {
@@ -5502,7 +5568,24 @@
         "cancelled": "Annulé",
         "no-show": "Absence"
       },
-      "coveredByOrganization": "Cette séance est prise en charge par un tiers payeur — vous n’avez rien à payer."
+      "coveredByOrganization": "Cette séance est prise en charge par un tiers payeur — vous n’avez rien à payer.",
+      "coverage": {
+        "title": "Séances prises en charge par {org}",
+        "forLovedOne": "Pour {name}",
+        "forALovedOne": "Pour un proche",
+        "mode": {
+          "full": "Votre organisme paie vos séances : vous n’avez rien à régler.",
+          "split": "Votre organisme paie une partie de chaque séance ; le reste vous est facturé.",
+          "per_session": "Votre organisme peut prendre en charge certaines séances ; l’équipe le confirme séance par séance.",
+          "external": "Vos séances sont réglées directement par votre organisme, hors plateforme."
+        },
+        "used": "{used}/{max} séances utilisées",
+        "usedNoCap": "{used, plural, =0 {Aucune séance prise en charge pour l’instant} one {# séance prise en charge jusqu’ici} other {# séances prises en charge jusqu’ici}}",
+        "until": "jusqu’au {date}",
+        "exhausted": "Toutes les séances couvertes sont utilisées : vos prochaines séances vous seront facturées, sauf prolongation par votre organisme.",
+        "oneLeft": "Il vous reste une séance couverte.",
+        "lateCancelNote": "Une annulation tardive ou une absence vous reste facturée."
+      }
     },
     "guestPay": {
       "pendingTitle": "En attente de confirmation",
@@ -5926,7 +6009,20 @@
       "validationCard": "Carte validée",
       "validationInterac": "Dossier validé",
       "organizationShare": "Part de l’organisme",
-      "payerAwaitingDecision": "Payeur à confirmer"
+      "payerAwaitingDecision": "Payeur à confirmer",
+      "payer": "Payeur",
+      "payerClient": "Client",
+      "payerToDecide": "À décider",
+      "payerExternal": "Réglé hors plateforme",
+      "payerExternalUnnamed": "Tiers (hors plateforme)",
+      "payerOrganizationUnnamed": "Organisme",
+      "payerOrgStatus": {
+        "unbilled": "À facturer",
+        "invoiced": "Facturé — {number}",
+        "paid": "Payé — {number}",
+        "void": "Facture annulée — {number}",
+        "refunded": "Remboursé — {number}"
+      }
     },
     "accounting": {
       "title": "Comptabilité et cycles de paiement",
@@ -5984,7 +6080,10 @@
       "payoutCycleOptional": "Clé de cycle (optionnel, défaut : cycle actuel)",
       "payoutSubmit": "Enregistrer le débit",
       "payoutRecorded": "Débit enregistré.",
-      "payoutError": "Échec de l’enregistrement."
+      "payoutError": "Échec de l’enregistrement.",
+      "orgAnomaliesTitle": "Organismes payeurs",
+      "orgAnomaliesDesc": "Les soldes des organismes par ancienneté et leurs anomalies (factures en retard, payeur à décider, séances jamais facturées, compteurs de séances, marges négatives, paiements à vérifier) sont suivis dans « Factures aux organismes ».",
+      "orgAnomaliesLink": "Ouvrir le suivi des organismes"
     }
   },
   "Platform": {

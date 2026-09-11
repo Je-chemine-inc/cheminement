@@ -500,6 +500,25 @@ export default function AdminAccountingPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Spec 002: organization billing keeps its own list (billing admins). */}
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    {t("orgAnomaliesTitle")}
+                  </CardTitle>
+                  <CardDescription>{t("orgAnomaliesDesc")}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    href="/admin/dashboard/organization-invoices"
+                    className="text-sm font-medium text-primary underline underline-offset-2"
+                  >
+                    {t("orgAnomaliesLink")}
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
           )}
 

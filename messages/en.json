@@ -1413,7 +1413,73 @@
         "reminder": "Reminder",
         "payment_received": "Payment receipt"
       },
-      "payReceiptNote": "A receipt is emailed to the organization's billing address."
+      "payReceiptNote": "A receipt is emailed to the organization's billing address.",
+      "receivables": {
+        "title": "Receivables and anomalies",
+        "exportCsv": "Export (CSV)",
+        "noOpenBalance": "No open balance with any organization.",
+        "organization": "Organization",
+        "buckets": {
+          "current": "Not yet due",
+          "d1_30": "1–30 d",
+          "d31_60": "31–60 d",
+          "d61_90": "61–90 d",
+          "d90_plus": "90 d +"
+        },
+        "total": "Total",
+        "invoicesCount": "{count, plural, one {# invoice} other {# invoices}}",
+        "anomaliesTitle": "{count, plural, one {# item to check} other {# items to check}}",
+        "noAnomalies": "No anomalies.",
+        "daysLate": "{days} d late",
+        "remindersSent": "{count, plural, =0 {no reminder sent} one {# reminder sent} other {# reminders sent}}",
+        "disputed": "disputed",
+        "forLovedOne": "{client} (for {name})",
+        "closedDaysAgo": "closed {days} d ago",
+        "margin": "margin {amount}",
+        "credit": "overpaid {amount}",
+        "capIssues": {
+          "over_cap": "more sessions counted than the cap",
+          "exhausted_below_cap": "marked used up before the cap",
+          "active_at_cap": "cap reached but still active",
+          "stale_slot": "{count, plural, one {# counted session no longer uses it} other {# counted sessions no longer use it}}"
+        },
+        "invoiceStatus": {
+          "draft": "draft",
+          "issuing": "sending",
+          "sent": "sent",
+          "overdue": "overdue",
+          "partially_paid": "partly paid",
+          "paid": "paid",
+          "void": "void",
+          "refunded": "refunded"
+        },
+        "groups": {
+          "overdue": {
+            "title": "Overdue invoices",
+            "hint": "Past due, balance still owed. Reminders go out on their own; after 30 days, following up is yours."
+          },
+          "awaitingDecision": {
+            "title": "Payer to decide",
+            "hint": "Closed sessions nobody has decided who pays for: nothing was billed. Decide it in the client's file."
+          },
+          "uninvoiced": {
+            "title": "Sessions never invoiced (35 days or more)",
+            "hint": "An organization has owed these sessions for over 35 days and no invoice holds them. Prepare it below."
+          },
+          "capMismatch": {
+            "title": "Session counts that don't add up",
+            "hint": "The number of covered sessions does not match the sessions the organization actually paid for. Check the coverage in the client's file."
+          },
+          "negativeMargin": {
+            "title": "Negative margins (last 90 days)",
+            "hint": "Sessions where the organization paid less than the professional received: the clinic absorbed the difference."
+          },
+          "paymentReview": {
+            "title": "Payments to review",
+            "hint": "Overpaid, disputed or refunded, or received on a void invoice. Nothing was refunded automatically."
+          }
+        }
+      }
     }
   },
   "AppointmentSelector": {
@@ -5503,7 +5569,24 @@
         "cancelled": "Cancelled",
         "no-show": "No show"
       },
-      "coveredByOrganization": "This session is covered by a third-party payer — you have nothing to pay."
+      "coveredByOrganization": "This session is covered by a third-party payer — you have nothing to pay.",
+      "coverage": {
+        "title": "Sessions covered by {org}",
+        "forLovedOne": "For {name}",
+        "forALovedOne": "For a loved one",
+        "mode": {
+          "full": "Your organization pays for your sessions: you have nothing to pay.",
+          "split": "Your organization pays part of each session; the rest is billed to you.",
+          "per_session": "Your organization may cover some sessions; the team confirms it session by session.",
+          "external": "Your sessions are paid directly by your organization, outside the platform."
+        },
+        "used": "{used}/{max} sessions used",
+        "usedNoCap": "{used, plural, =0 {No session covered yet} one {# session covered so far} other {# sessions covered so far}}",
+        "until": "until {date}",
+        "exhausted": "All covered sessions are used: your next sessions will be billed to you, unless your organization extends it.",
+        "oneLeft": "You have one covered session left.",
+        "lateCancelNote": "A late cancellation or a no-show is still billed to you."
+      }
     },
     "guestPay": {
       "pendingTitle": "Awaiting confirmation",
@@ -5927,7 +6010,20 @@
       "validationCard": "Card validated",
       "validationInterac": "Validated record",
       "organizationShare": "Organization share",
-      "payerAwaitingDecision": "Payer to confirm"
+      "payerAwaitingDecision": "Payer to confirm",
+      "payer": "Payer",
+      "payerClient": "Client",
+      "payerToDecide": "To decide",
+      "payerExternal": "Paid outside the platform",
+      "payerExternalUnnamed": "Third party (outside the platform)",
+      "payerOrganizationUnnamed": "Organization",
+      "payerOrgStatus": {
+        "unbilled": "To invoice",
+        "invoiced": "Invoiced — {number}",
+        "paid": "Paid — {number}",
+        "void": "Invoice voided — {number}",
+        "refunded": "Refunded — {number}"
+      }
     },
     "accounting": {
       "title": "Accounting & payment cycles",
@@ -5985,7 +6081,10 @@
       "payoutCycleOptional": "Cycle key (optional, default: current cycle)",
       "payoutSubmit": "Save debit",
       "payoutRecorded": "Debit recorded.",
-      "payoutError": "Save failed."
+      "payoutError": "Save failed.",
+      "orgAnomaliesTitle": "Paying organizations",
+      "orgAnomaliesDesc": "Organizations' balances by age and their anomalies (overdue invoices, payer to decide, sessions never invoiced, session counts, negative margins, payments to review) are tracked in “Organization invoices”.",
+      "orgAnomaliesLink": "Open organization tracking"
     }
   },
   "Platform": {

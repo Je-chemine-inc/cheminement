@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User from "@/models/User";
+import Organization from "@/models/Organization";
+import OrganizationInvoice from "@/models/OrganizationInvoice";
 import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -108,6 +110,25 @@ export async function GET(req: NextRequest) {
 
     const total = await Appointment.countDocuments(query);
 
+    // Spec 002 phase 6: name the payer — the organization, and the invoice the
+    // session went out on. Two batched lookups for the page, never per row.
+    const orgIds = appointments
+      .map((a) => a.thirdPartyBilling?.organizationId)
+      .filter((id): id is NonNullable<typeof id> => Boolean(id));
+    const invoiceIds = appointments
+      .map((a) => a.thirdPartyBilling?.orgInvoiceId)
+      .filter((id): id is NonNullable<typeof id> => Boolean(id));
+    const [orgs, orgInvoices] = await Promise.all([
+      orgIds.length
+        ? Organization.find({ _id: { $in: orgIds } }).select("name").lean()
+        : Promise.resolve([]),
+      invoiceIds.length
+        ? OrganizationInvoice.find({ _id: { $in: invoiceIds } }).select("number status").lean()
+        : Promise.resolve([]),
+    ]);
+    const orgNameOf = new Map(orgs.map((o) => [String(o._id), o.name]));
+    const invoiceOf = new Map(orgInvoices.map((i) => [String(i._id), i]));
+
     const payments = appointments.map((appointment) => {
       const client = appointment.clientId as {
         _id?: { toString: () => string };
@@ -186,6 +207,14 @@ export async function GET(req: NextRequest) {
               kind: appointment.thirdPartyBilling.kind,
               state: appointment.thirdPartyBilling.state,
               orgAmount: (appointment.thirdPartyBilling.orgAmountCents ?? 0) / 100,
+              organizationName: appointment.thirdPartyBilling.organizationId
+                ? (orgNameOf.get(String(appointment.thirdPartyBilling.organizationId)) ?? "")
+                : "",
+              externalLabel: appointment.thirdPartyBilling.externalPayerLabel ?? "",
+              orgStatus: appointment.thirdPartyBilling.orgStatus,
+              orgInvoiceNumber: appointment.thirdPartyBilling.orgInvoiceId
+                ? (invoiceOf.get(String(appointment.thirdPartyBilling.orgInvoiceId))?.number ?? "")
+                : "",
             }
           : undefined,
         paymentMethod: appointment.payment?.method ?? undefined,
