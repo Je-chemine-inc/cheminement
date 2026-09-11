@@ -79,4 +79,15 @@ describe("the organization's PDF", () => {
     expect(formatMoney(12050, "fr")).toBe("120,50 $");
     expect(formatMoney(12050, "en")).toBe("$120.50");
   });
+
+  it("shows a credit (a refund marked « plus dû ») as taken off, so the lines add up", () => {
+    const pdf = textOf(
+      buildOrganizationInvoicePdfBuffer(input({ totalCents: 18000, creditedCents: 5000, paidCents: 13000, balanceCents: 0 })),
+    );
+    expect(pdf).toMatch(/Cr.dit/);
+    expect(pdf).toContain("-50,00 $");
+    const without = textOf(buildOrganizationInvoicePdfBuffer(input()));
+    expect(without).not.toMatch(/Cr.dit/);
+    expect(without).not.toContain("-50,00 $");
+  });
 });

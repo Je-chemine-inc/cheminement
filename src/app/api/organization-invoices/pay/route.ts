@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     if (!isPayTokenShaped(token)) return NextResponse.json(NOT_FOUND, { status: 404 });
     await connectToDatabase();
     const inv = await OrganizationInvoice.findOne({ payToken: token })
-      .select("organizationId number status totalCents paidCents balanceCents dueAt")
+      .select("organizationId number status totalCents paidCents creditedCents balanceCents dueAt")
       .lean();
     if (!inv) return NextResponse.json(NOT_FOUND, { status: 404 });
     const org = await Organization.findById(inv.organizationId).select("name language").lean();

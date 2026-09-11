@@ -140,6 +140,32 @@ export function agingCsv(
 type Person = { _id: unknown; firstName?: string; lastName?: string } | null;
 const nameOfPerson = (p: Person) => (p ? `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim() : "");
 
+/** A Stripe refund still unconfirmed after this long needs someone to press « Vérifier ». */
+const REFUND_CHECK_AFTER_MS = 15 * 60_000;
+
+/**
+ * Invoices whose money a person must look at: an overpayment (money to give
+ * back), a chargeback, money kept on a void invoice, a refund Stripe never
+ * confirmed. A fully refunded invoice is a normal, closed state — not listed.
+ */
+export function paymentReviewFilter(now: Date): Record<string, unknown> {
+  return {
+    $or: [
+      { balanceCents: { $lt: 0 } },
+      { disputed: true },
+      { status: "void", paidCents: { $gt: 0 } },
+      // Cannot happen once the status is synced (a full refund still owed goes
+      // back to awaiting payment) — listed if it ever does.
+      { status: "refunded", balanceCents: { $gt: 0 } },
+      {
+        refunds: {
+          $elemMatch: { status: "requested", at: { $lt: new Date(now.getTime() - REFUND_CHECK_AFTER_MS) } },
+        },
+      },
+    ],
+  };
+}
+
 /** Everything the "Suivi" panel shows, in one pass. */
 export async function loadOrganizationReceivables(now: Date = new Date()) {
   await connectToDatabase();
@@ -168,15 +194,8 @@ export async function loadOrganizationReceivables(now: Date = new Date()) {
       disputed: Boolean(i.disputed),
     }));
 
-  const toReview = await OrganizationInvoice.find({
-    $or: [
-      { balanceCents: { $lt: 0 } },
-      { disputed: true },
-      { status: "refunded" },
-      { status: "void", paidCents: { $gt: 0 } },
-    ],
-  })
-    .select("organizationId number status balanceCents paidCents disputed paymentEvents")
+  const toReview = await OrganizationInvoice.find(paymentReviewFilter(now))
+    .select("organizationId number status balanceCents paidCents disputed paymentEvents refunds.status")
     .limit(LIST_LIMIT)
     .lean();
   const paymentReview = toReview.map((i) => ({
@@ -187,6 +206,7 @@ export async function loadOrganizationReceivables(now: Date = new Date()) {
     balanceCents: i.balanceCents,
     paidCents: i.paidCents,
     disputed: Boolean(i.disputed),
+    refundUnconfirmed: (i.refunds ?? []).some((r) => r.status === "requested"),
     lastEvent: i.paymentEvents?.at(-1)?.detail ?? "",
   }));
 

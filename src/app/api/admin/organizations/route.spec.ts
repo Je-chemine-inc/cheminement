@@ -60,6 +60,10 @@ vi.mock("@/lib/organization-invoice", () => ({
 vi.mock("@/lib/organization-invoice-card", () => ({
   cancelOpenOrganizationPaymentIntent: () => h.touched(),
 }));
+vi.mock("@/lib/organization-invoice-refund", () => ({
+  refundOrganizationPayment: () => h.touched(),
+  checkOrganizationRefund: () => h.touched(),
+}));
 // Phase 7: the organization's own form on an invoice.
 vi.mock("@/models/StoredFile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/models/StoredFile")>()),

@@ -107,6 +107,44 @@ describe("sendOrganizationInvoiceEmail — the organization's own form", () => {
   });
 });
 
+describe("sendOrganizationRefundEmail", () => {
+  const send = async (over: Record<string, unknown> = {}) => {
+    const mod = await import("@/lib/notifications");
+    return mod.sendOrganizationRefundEmail({
+      to: "factu@pae.ca",
+      organizationName: "PAE Desjardins",
+      number: "JCO-2026-000007",
+      amountCents: 5000,
+      via: "card",
+      pending: false,
+      balanceCents: 0,
+      payUrl: null,
+      locale: "fr",
+      ...over,
+    });
+  };
+
+  it("says how much went back and how, under its own email type", async () => {
+    await send();
+    const [mail] = h.sent;
+    expect(mail.tags).toEqual(["organization_refund"]);
+    expect(mail.html).toContain("50,00 $");
+    expect(mail.html).toContain("carte qui a servi au paiement");
+    expect(mail.html).toContain("Rien ne reste à régler");
+  });
+
+  it("when money is owed again, gives the balance and the pay link", async () => {
+    await send({ balanceCents: 5000, payUrl: "https://x/org-pay?token=t" });
+    expect(h.sent[0].html).toContain("Il reste 50,00 $ à régler");
+    expect(h.sent[0].html).toContain("https://x/org-pay?token=t");
+  });
+
+  it("a refund made outside the platform, in English", async () => {
+    await send({ via: "outside", locale: "en" });
+    expect(h.sent[0].html).toContain("made outside the platform");
+  });
+});
+
 describe("sendAdminOrganizationInvoicesReview — drafts waiting for a form", () => {
   const review = async (needsOwnForm: boolean) => {
     const mod = await import("@/lib/notifications");

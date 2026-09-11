@@ -755,6 +755,7 @@ const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
   "organization_statement",
   "organization_payment_reminder",
   "organization_payment_received",
+  "organization_refund",
 ]);
 
 /** True when replies to this email type should route to the payment inbox. */
@@ -7042,6 +7043,77 @@ export async function sendOrganizationPaymentReceivedEmail(data: {
   return sendEmail(
     { to: data.to, subject: `${title} — Je chemine`, html, text },
     "organization_payment_received",
+  );
+}
+
+/**
+ * An admin refunded an organization from the invoice screen. The amount, how
+ * it goes back and what remains due — never the reason (internal), never a
+ * patient's name.
+ */
+export async function sendOrganizationRefundEmail(data: {
+  to: string;
+  organizationName: string;
+  number: string;
+  amountCents: number;
+  /** "card": back on the card that paid; "outside": sent another way. */
+  via: "card" | "outside";
+  /** Stripe accepted it but the money is still on its way. */
+  pending: boolean;
+  balanceCents: number;
+  payUrl?: string | null;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const amount = orgMoney(data.amountCents, lang);
+  const balance = orgMoney(data.balanceCents, lang);
+  const org = escapeHtml(data.organizationName);
+  const owing = data.balanceCents > 0;
+  const title = lang === "fr" ? `Remboursement — facture ${data.number}` : `Refund — invoice ${data.number}`;
+  const how =
+    data.via === "card"
+      ? lang === "fr"
+        ? "Le montant est rendu sur la carte qui a servi au paiement ; il apparaît habituellement sur le relevé sous 5 à 10 jours ouvrables."
+        : "It goes back to the card used for the payment and usually shows on the statement within 5 to 10 business days."
+      : lang === "fr"
+        ? "Ce remboursement a été fait hors de la plateforme (virement, chèque ou autre)."
+        : "This refund was made outside the platform (transfer, cheque or other).";
+  const intro =
+    lang === "fr"
+      ? `Nous avons remboursé ${amount} à ${org} sur la facture ${data.number}. ${how} ${owing ? `Il reste ${balance} à régler sur cette facture.` : "Rien ne reste à régler sur cette facture."}`
+      : `We refunded ${amount} to ${org} on invoice ${data.number}. ${how} ${owing ? `${balance} remains outstanding on this invoice.` : "Nothing remains outstanding on this invoice."}`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: lang === "fr" ? "Bonjour," : "Hello,",
+    intro,
+    details: [
+      { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
+      { label: lang === "fr" ? "Montant remboursé" : "Amount refunded", value: amount },
+      ...(data.pending
+        ? [{ label: lang === "fr" ? "État" : "Status", value: lang === "fr" ? "en cours" : "in progress" }]
+        : []),
+      { label: lang === "fr" ? "Solde restant" : "Remaining balance", value: balance },
+    ],
+    ...(owing && data.payUrl
+      ? { button: { text: lang === "fr" ? "Payer en ligne" : "Pay online", url: data.payUrl } }
+      : {}),
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      title,
+      `${data.organizationName} — ${amount} — ${lang === "fr" ? "solde" : "balance"} ${balance}`,
+      how,
+      owing && data.payUrl ? data.payUrl : "",
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.to, subject: `${title} — Je chemine`, html, text },
+    "organization_refund",
   );
 }
 

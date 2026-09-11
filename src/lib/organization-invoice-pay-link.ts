@@ -63,6 +63,7 @@ export function publicInvoiceView(
     status: OrganizationInvoiceStatus;
     totalCents: number;
     paidCents: number;
+    creditedCents?: number | null;
     balanceCents: number;
     dueAt?: Date | null;
   },
@@ -80,6 +81,8 @@ export function publicInvoiceView(
     number: inv.number ?? "",
     totalCents: inv.totalCents,
     paidCents: inv.paidCents,
+    // What a refund marked « plus dû » took off the invoice.
+    creditedCents: inv.creditedCents ?? 0,
     balanceCents: Math.max(0, inv.balanceCents),
     dueAt: inv.dueAt ?? null,
     overdue: state === "awaiting" && Boolean(inv.dueAt && new Date(inv.dueAt) < now),

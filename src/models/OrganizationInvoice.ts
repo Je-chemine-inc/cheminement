@@ -54,6 +54,12 @@ export interface IOrganizationInvoiceLine {
 }
 
 export interface IOrganizationInvoicePayment {
+  /**
+   * The row's own id, so a refund can name it. Set explicitly when the row is
+   * written — never a schema default, which would invent a different id each
+   * time a row without one is loaded.
+   */
+  paymentId?: mongoose.Types.ObjectId;
   amountCents: number;
   method: (typeof ORGANIZATION_PAYMENT_METHODS)[number];
   reference?: string;
@@ -61,9 +67,47 @@ export interface IOrganizationInvoicePayment {
   source: "stripe" | "interac_reconciler" | "admin";
   /** Stripe intent id, Interac transfer id… — makes a replayed settlement a no-op. */
   externalRef?: string;
-  /** Card payments only: how much of it Stripe has refunded so far (cents). */
+  /**
+   * How much of it went back (cents): Stripe's cumulative refunded amount for a
+   * Stripe payment, the sum of the refunds recorded by hand otherwise.
+   */
   refundedCents?: number;
   recordedBy?: mongoose.Types.ObjectId;
+}
+
+/**
+ * A refund an admin made from the invoice screen (organization billing).
+ * Through Stripe for a Stripe payment; recorded by hand ("outside") for
+ * Interac, cheque, EFT. `creditCents` is the part the organization no longer
+ * owes (« plus dû »); the rest, when there is a rest, is owed again
+ * (« toujours dû »). The part that only returned an overpayment is neither.
+ */
+export interface IOrganizationInvoiceRefund {
+  refundId: mongoose.Types.ObjectId;
+  paymentId: mongoose.Types.ObjectId;
+  amountCents: number;
+  creditCents: number;
+  /** Absent when there was no choice to make (overpayment, void invoice). */
+  owed?: "still" | "no_longer";
+  via: "stripe" | "outside";
+  /** How the money went back, for a refund made outside the platform. */
+  method?: "interac" | "cheque" | "eft" | "other";
+  reference?: string;
+  /** Internal: why. Never sent to the organization. */
+  reason: string;
+  /**
+   * requested — written before Stripe is asked, so a crash leaves a trace;
+   * pending — Stripe accepted it, the money is on its way (bank debits);
+   * succeeded / failed — final (a card refund can still fail after success).
+   */
+  status: "requested" | "pending" | "succeeded" | "failed";
+  failureReason?: string;
+  /** From the admin's dialog: the same click twice refunds once. */
+  requestKey: string;
+  stripeRefundId?: string;
+  refundedAt: Date;
+  at: Date;
+  byUserId: mongoose.Types.ObjectId;
 }
 
 /**
@@ -101,7 +145,7 @@ export interface IOrganizationInvoiceSendLogEntry {
   at: Date;
   to: string[];
   byUserId?: mongoose.Types.ObjectId;
-  kind: "sent" | "resent" | "reminder" | "payment_received";
+  kind: "sent" | "resent" | "reminder" | "payment_received" | "refund_notice";
   /** The organization's form as it went out, under its outgoing name. */
   attachment?: {
     fileId: mongoose.Types.ObjectId;
@@ -125,6 +169,12 @@ export interface IOrganizationInvoice extends Document {
   lines: IOrganizationInvoiceLine[];
   totalCents: number;
   paidCents: number;
+  /**
+   * What the organization no longer owes after refunds marked « plus dû ».
+   * Always recomputed from `refunds`, never incremented. The single rule:
+   * balanceCents = totalCents − creditedCents − paidCents.
+   */
+  creditedCents: number;
   balanceCents: number;
   billTo?: {
     name: string;
@@ -151,6 +201,7 @@ export interface IOrganizationInvoice extends Document {
    */
   interacReferenceCode?: string;
   payments: IOrganizationInvoicePayment[];
+  refunds: IOrganizationInvoiceRefund[];
   reminders?: {
     dueSentAt?: Date;
     followUpSentAt?: Date;
@@ -188,6 +239,8 @@ const LineSchema = new Schema<IOrganizationInvoiceLine>(
 
 const PaymentSchema = new Schema<IOrganizationInvoicePayment>(
   {
+    // No default: see the interface.
+    paymentId: { type: Schema.Types.ObjectId },
     amountCents: { type: Number, required: true },
     method: { type: String, enum: ORGANIZATION_PAYMENT_METHODS, required: true },
     reference: String,
@@ -200,6 +253,32 @@ const PaymentSchema = new Schema<IOrganizationInvoicePayment>(
     externalRef: String,
     refundedCents: { type: Number, min: 0 },
     recordedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false },
+);
+
+const RefundSchema = new Schema<IOrganizationInvoiceRefund>(
+  {
+    refundId: { type: Schema.Types.ObjectId, required: true },
+    paymentId: { type: Schema.Types.ObjectId, required: true },
+    amountCents: { type: Number, required: true, min: 1 },
+    creditCents: { type: Number, required: true, min: 0 },
+    owed: { type: String, enum: ["still", "no_longer"] },
+    via: { type: String, enum: ["stripe", "outside"], required: true },
+    method: { type: String, enum: ["interac", "cheque", "eft", "other"] },
+    reference: { type: String, maxlength: 120 },
+    reason: { type: String, required: true, maxlength: 500 },
+    status: {
+      type: String,
+      enum: ["requested", "pending", "succeeded", "failed"],
+      required: true,
+    },
+    failureReason: { type: String, maxlength: 200 },
+    requestKey: { type: String, required: true },
+    stripeRefundId: String,
+    refundedAt: { type: Date, required: true },
+    at: { type: Date, required: true },
+    byUserId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { _id: false },
 );
@@ -250,7 +329,7 @@ const SendLogSchema = new Schema<IOrganizationInvoiceSendLogEntry>(
     byUserId: { type: Schema.Types.ObjectId, ref: "User" },
     kind: {
       type: String,
-      enum: ["sent", "resent", "reminder", "payment_received"],
+      enum: ["sent", "resent", "reminder", "payment_received", "refund_notice"],
       required: true,
     },
     attachment: { type: SentAttachmentSchema, default: undefined },
@@ -282,6 +361,7 @@ const OrganizationInvoiceSchema = new Schema<IOrganizationInvoice>(
     lines: { type: [LineSchema], default: [] },
     totalCents: { type: Number, default: 0, min: 0 },
     paidCents: { type: Number, default: 0 },
+    creditedCents: { type: Number, default: 0, min: 0 },
     balanceCents: { type: Number, default: 0 },
     billTo: {
       name: String,
@@ -297,6 +377,7 @@ const OrganizationInvoiceSchema = new Schema<IOrganizationInvoice>(
     stripePaymentIntentId: String,
     interacReferenceCode: String,
     payments: { type: [PaymentSchema], default: [] },
+    refunds: { type: [RefundSchema], default: [] },
     reminders: {
       dueSentAt: Date,
       followUpSentAt: Date,

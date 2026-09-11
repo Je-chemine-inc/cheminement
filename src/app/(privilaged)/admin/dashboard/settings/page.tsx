@@ -197,6 +197,12 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l’adresse de facturation d’un organisme quand son paiement est reçu — par carte, par virement Interac ou inscrit à la main. Indique le solde restant.",
     category: "Paiements",
   },
+  organization_refund: {
+    name: "Remboursement (organisme)",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme quand un administrateur le rembourse depuis « Factures aux organismes » (case cochée par défaut). Montant, façon dont il est rendu et solde restant, avec le lien de paiement s’il reste un montant dû. Jamais la raison, aucun nom de client.",
+    category: "Paiements",
+  },
   admin_organization_invoice_overdue: {
     name: "Alerte équipe — factures aux organismes en retard",
     description:

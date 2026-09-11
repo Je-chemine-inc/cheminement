@@ -65,6 +65,9 @@ vi.mock("@/lib/notifications", () => ({
 
 import {
   flagOrganizationInvoiceDispute,
+  markOrganizationRefundStatus,
+  openOrganizationStripeRefund,
+  recordOrganizationOutsideRefund,
   recordOrganizationPayment,
   recordOrganizationStripeRefund,
   recordReceivedOrganizationMoney,
@@ -114,17 +117,29 @@ beforeEach(() => {
 });
 
 describe("syncInvoiceStatus", () => {
-  it("sets each status only while the balance still says so", async () => {
+  it("sets each status only while the money still says so", async () => {
     h.written = {};
     await syncInvoiceStatus(INV, NOW);
     const filters = updatesOf().map(([f, u]) => [f, (u.$set as Doc).status]);
     expect(filters).toEqual([
       [expect.objectContaining({ paidCents: { $gt: 0 }, balanceCents: { $lte: 0 } }), "paid"],
       [expect.objectContaining({ paidCents: { $gt: 0 }, balanceCents: { $gt: 0 } }), "partially_paid"],
-      [expect.objectContaining({ paidCents: { $lte: 0 } }), "refunded"],
+      // All went back and nothing is owed: closed.
+      [expect.objectContaining({ paidCents: { $lte: 0 }, balanceCents: { $lte: 0 } }), "refunded"],
+      // All went back and it is owed again (« toujours dû »): awaiting payment,
+      // overdue once past its due date.
+      [expect.objectContaining({ paidCents: { $lte: 0 }, balanceCents: { $gt: 0 }, dueAt: { $lt: NOW } }), "overdue"],
+      [expect.objectContaining({ paidCents: { $lte: 0 }, balanceCents: { $gt: 0 } }), "sent"],
     ]);
     // Never touches a void, draft or issuing invoice.
-    expect((updatesOf()[0][0].status as { $in: string[] }).$in).not.toContain("void");
+    for (const [f] of updatesOf()) {
+      const statuses = (f.status as { $in: string[] }).$in;
+      expect(statuses).not.toContain("void");
+      expect(statuses).not.toContain("draft");
+      expect(statuses).not.toContain("issuing");
+    }
+    // Only an invoice that had money goes back to awaiting payment.
+    expect((updatesOf()[4][0].status as { $in: string[] }).$in).toEqual(["partially_paid", "paid", "refunded"]);
   });
 
   it("marks the sessions paid when the invoice is, and walks them back when it is not", async () => {
@@ -138,8 +153,18 @@ describe("syncInvoiceStatus", () => {
     h.statusAfter = "partially_paid";
     await syncInvoiceStatus(INV, NOW);
     expect(h.aptUpdateMany).toHaveBeenLastCalledWith(
-      { "thirdPartyBilling.orgInvoiceId": INV, "thirdPartyBilling.orgStatus": "paid" },
+      { "thirdPartyBilling.orgInvoiceId": INV, "thirdPartyBilling.orgStatus": { $in: ["paid", "refunded"] } },
       { $set: { "thirdPartyBilling.orgStatus": "invoiced" }, $unset: { "thirdPartyBilling.orgPaidAt": 1 } },
+    );
+  });
+
+  it("an invoice closed by its refunds marks its sessions refunded", async () => {
+    h.written = {};
+    h.statusAfter = "refunded";
+    await syncInvoiceStatus(INV, NOW);
+    expect(h.aptUpdateMany).toHaveBeenLastCalledWith(
+      { "thirdPartyBilling.orgInvoiceId": INV, "thirdPartyBilling.orgStatus": { $in: ["paid", "invoiced"] } },
+      { $set: { "thirdPartyBilling.orgStatus": "refunded" }, $unset: { "thirdPartyBilling.orgPaidAt": 1 } },
     );
   });
 });
@@ -333,5 +358,141 @@ describe("refunds and chargebacks on a card payment", () => {
     expect(await flagOrganizationInvoiceDispute("pi_1", NOW)).toBe("flagged");
     expect(updatesOf()[0]).toEqual([{ _id: INV }, { $set: { disputed: true } }]);
     expect(h.review).toHaveBeenCalledWith(expect.objectContaining({ kind: "dispute" }));
+  });
+});
+
+/**
+ * Refunds from the invoice screen: each payment row has an id a refund can
+ * name; credits (« plus dû ») are part of what is owed; the team hears only
+ * about refunds it did not make there.
+ */
+describe("refunds from the invoice screen", () => {
+  const P1 = new mongoose.Types.ObjectId("0123456789abcdef01234599");
+  const adminRefund = (over: Doc = {}): Doc => ({
+    refundId: new mongoose.Types.ObjectId(),
+    paymentId: P1,
+    amountCents: 5000,
+    creditCents: 0,
+    via: "stripe",
+    status: "succeeded",
+    requestKey: "key-1",
+    ...over,
+  });
+
+  it("every payment row gets its own id, whoever records it", async () => {
+    await recordOrganizationPayment({ invoiceId: String(INV), amountCents: 1000, method: "cheque", source: "admin", byUserId: ADMIN, now: NOW });
+    await recordReceivedOrganizationMoney({ invoiceId: String(INV), amountCents: 1000, method: "card", source: "stripe", externalRef: "pi_z", now: NOW });
+    for (const [, update] of h.fou.mock.calls as unknown as Array<[Doc, { $push: { payments: Doc } }]>) {
+      expect(update.$push.payments.paymentId).toBeInstanceOf(mongoose.Types.ObjectId);
+    }
+  });
+
+  it("what is owed counts credits, and a failed refund's credit does not count", async () => {
+    h.byIntent = sent({ status: "paid", paidCents: 18000, balanceCents: 0, payments: [{ paymentId: P1, externalRef: "pi_1", amountCents: 18000, refundedCents: 0 }] });
+    await recordOrganizationStripeRefund({ paymentIntentId: "pi_1", refundedCents: 5000, now: NOW });
+    const pipeline = JSON.stringify(updatesOf()[1][1]);
+    expect(pipeline).toContain("$$r.creditCents");
+    expect(pipeline).toContain('"$ne":["$$r.status","failed"]');
+    expect(pipeline).toContain('"$add":["$creditedCents","$paidCents"]');
+  });
+
+  it("a refund the screen made — the webhook landing first or after — alerts nobody", async () => {
+    h.byIntent = sent({
+      status: "paid",
+      paidCents: 18000,
+      balanceCents: 0,
+      payments: [{ paymentId: P1, externalRef: "pi_1", amountCents: 18000, refundedCents: 0 }],
+      refunds: [adminRefund({ status: "requested" })],
+    });
+    expect(await recordOrganizationStripeRefund({ paymentIntentId: "pi_1", refundedCents: 5000, now: NOW })).toBe("recorded");
+    expect(pushedEvents()).toEqual([]);
+    expect(h.review).not.toHaveBeenCalled();
+  });
+
+  it("a refund made in the Stripe dashboard alerts the team for that amount only", async () => {
+    h.byIntent = sent({
+      status: "paid",
+      paidCents: 13000,
+      balanceCents: 0,
+      payments: [{ paymentId: P1, externalRef: "pi_1", amountCents: 18000, refundedCents: 5000 }],
+      refunds: [adminRefund()],
+    });
+    await recordOrganizationStripeRefund({ paymentIntentId: "pi_1", refundedCents: 7000, now: NOW });
+    expect(pushedEvents()).toHaveLength(1);
+    expect(String(pushedEvents()[0].detail)).toContain("20,00 $");
+    expect(String(pushedEvents()[0].detail)).toContain("hors de l’écran des factures");
+  });
+
+  it("a refund that failed always alerts the team", async () => {
+    h.byIntent = sent({
+      payments: [{ paymentId: P1, externalRef: "pi_1", amountCents: 18000, refundedCents: 5000 }],
+      refunds: [adminRefund({ status: "failed" })],
+    });
+    await recordOrganizationStripeRefund({ paymentIntentId: "pi_1", refundedCents: 0, exact: true, now: NOW });
+    expect(String(pushedEvents()[0].detail)).toContain("a échoué");
+  });
+
+  it("an outside refund is one conditional write, on the payment as the admin saw it", async () => {
+    h.fou.mockImplementation(() => ({ ...h.invoice }));
+    const row = adminRefund({ via: "outside", method: "cheque", requestKey: "key-2" });
+    const r = await recordOrganizationOutsideRefund({
+      invoiceId: INV,
+      paymentId: P1,
+      expected: { status: "paid", balanceCents: 0, refundedCents: 0 },
+      row: row as never,
+      now: NOW,
+    });
+    expect(r).toBe("recorded");
+    const [filter, update, opts] = h.fou.mock.calls[0] as [Doc, Doc, Doc];
+    expect(filter).toMatchObject({
+      _id: INV,
+      status: "paid",
+      balanceCents: 0,
+      payments: { $elemMatch: { paymentId: P1, source: { $ne: "stripe" }, refundedCents: { $in: [null, 0] } } },
+      refunds: { $not: { $elemMatch: { status: "requested" } } },
+      "refunds.requestKey": { $ne: "key-2" },
+    });
+    expect(update).toEqual({ $inc: { "payments.$[p].refundedCents": 5000 }, $push: { refunds: row } });
+    expect(opts).toMatchObject({ arrayFilters: [{ "p.paymentId": P1 }] });
+  });
+
+  it("the same outside refund twice records once; a changed invoice records nothing", async () => {
+    h.fou.mockReturnValue(null);
+    const row = adminRefund({ via: "outside", requestKey: "key-3" });
+    h.invoice = sent({ refunds: [row] });
+    const args = { invoiceId: INV, paymentId: P1, expected: { status: "sent", balanceCents: 18000, refundedCents: 0 }, row: row as never };
+    expect(await recordOrganizationOutsideRefund(args)).toBe("replay");
+    h.invoice = sent({ refunds: [] });
+    expect(await recordOrganizationOutsideRefund(args)).toBe("changed");
+  });
+
+  it("a Stripe refund row opens only on a Stripe payment, not disputed, with no other refund unconfirmed", async () => {
+    const row = adminRefund({ status: "requested", requestKey: "key-4" });
+    await openOrganizationStripeRefund({ invoiceId: INV, paymentId: P1, expected: { status: "paid", balanceCents: 0 }, row: row as never });
+    const [filter, update] = updatesOf()[0];
+    expect(filter).toMatchObject({
+      status: "paid",
+      balanceCents: 0,
+      disputed: { $ne: true },
+      payments: { $elemMatch: { paymentId: P1, source: "stripe" } },
+      refunds: { $not: { $elemMatch: { status: "requested" } } },
+      "refunds.requestKey": { $ne: "key-4" },
+    });
+    expect(update).toEqual({ $push: { refunds: row } });
+  });
+
+  it("a refund row moves only forward, and a failed one gives its credit back", async () => {
+    const REF = new mongoose.Types.ObjectId();
+    await markOrganizationRefundStatus({ invoiceId: INV, refundId: REF, status: "succeeded", stripeRefundId: "re_1" });
+    const [filter, update] = updatesOf()[0];
+    expect(filter).toMatchObject({ refunds: { $elemMatch: { refundId: REF, status: { $in: ["requested", "pending"] } } } });
+    expect(update).toEqual({ $set: { "refunds.$[r].status": "succeeded", "refunds.$[r].stripeRefundId": "re_1" } });
+    expect(updatesOf()).toHaveLength(1);
+
+    h.invUpdateOne.mockClear();
+    await markOrganizationRefundStatus({ invoiceId: INV, refundId: REF, status: "failed", failureReason: "insufficient_funds" });
+    expect((updatesOf()[0][0].refunds as Doc).$elemMatch).toMatchObject({ status: { $in: ["requested", "pending", "succeeded"] } });
+    // The recompute follows: the failed refund's credit no longer counts.
+    expect(Array.isArray(updatesOf()[1][1])).toBe(true);
   });
 });

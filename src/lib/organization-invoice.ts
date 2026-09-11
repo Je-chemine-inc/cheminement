@@ -318,7 +318,7 @@ export async function renderInvoicePdf(
   inv: Pick<
     IOrganizationInvoice,
     "kind" | "number" | "issuedAt" | "dueAt" | "periodKey" | "billTo" | "lines" | "totalCents" | "paidCents" | "balanceCents" | "printedNote"
-  >,
+  > & { creditedCents?: number },
   language: "fr" | "en",
 ): Promise<Buffer> {
   const contact = await getPlatformContactInfo();
@@ -353,6 +353,7 @@ export async function renderInvoicePdf(
     })),
     totalCents: inv.totalCents,
     paidCents: inv.paidCents,
+    creditedCents: inv.creditedCents ?? 0,
     balanceCents: inv.balanceCents,
     interacEmail: interacEmail || null,
     printedNote: inv.printedNote ?? null,
@@ -593,7 +594,9 @@ async function releaseSessions(invoiceId: mongoose.Types.ObjectId) {
 /**
  * Discard a draft (nothing left the platform, no number used) or void an
  * issued invoice: its sessions become billable again, its number is kept.
- * Refused once money was received — record a refund instead.
+ * Refused while money is kept on it — refund first. A fully refunded invoice
+ * can be voided (its sessions go to another payer); one with a refund not yet
+ * settled cannot.
  */
 export async function voidInvoice(args: {
   invoiceId: string;
@@ -612,7 +615,10 @@ export async function voidInvoice(args: {
     await discardUnsentForm(gone);
     return { ok: true, invoice: null };
   }
-  if (!["issuing", "sent", "overdue"].includes(inv.status) || inv.paidCents > 0) {
+  if ((inv.refunds ?? []).some((r) => r.status === "requested" || r.status === "pending")) {
+    return refuse(409, "REFUND_IN_PROGRESS", "A refund on this invoice is not settled yet.");
+  }
+  if (!["issuing", "sent", "overdue", "refunded"].includes(inv.status) || inv.paidCents > 0) {
     return refuse(409, "CANNOT_VOID", "An invoice with a payment on it cannot be voided.");
   }
   const voided = await OrganizationInvoice.findOneAndUpdate(

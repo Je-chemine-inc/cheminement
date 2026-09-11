@@ -21,6 +21,8 @@ describe("isPaymentEmailType", () => {
       "payment_guarantee_day1_reminder",
       "payment_guarantee_day2_reminder",
       "payment_guarantee_48h_client",
+      // An organization's accounts-payable replies about its refund.
+      "organization_refund",
     ];
     for (const t of paymentTypes) {
       expect(isPaymentEmailType(t), t).toBe(true);

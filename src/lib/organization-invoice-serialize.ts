@@ -1,6 +1,7 @@
 import type { IOrganization } from "@/models/Organization";
 import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
 import { isFormEditable, linesFingerprint } from "@/lib/organization-invoice-form";
+import { refundabilityOf } from "@/lib/organization-invoice-money";
 
 type Lean<T> = Omit<T, keyof import("mongoose").Document> & { _id: unknown };
 
@@ -25,6 +26,7 @@ export function serializeInvoice(
     status: inv.status,
     totalCents: inv.totalCents,
     paidCents: inv.paidCents,
+    creditedCents: inv.creditedCents ?? 0,
     balanceCents: inv.balanceCents,
     issuedAt: inv.issuedAt ?? null,
     dueAt: inv.dueAt ?? null,
@@ -38,13 +40,37 @@ export function serializeInvoice(
       durationMinutes: l.durationMinutes ?? null,
       amountCents: l.amountCents,
     })),
-    payments: (inv.payments ?? []).map((p) => ({
-      amountCents: p.amountCents,
-      refundedCents: p.refundedCents ?? 0,
-      method: p.method,
-      reference: p.reference ?? "",
-      receivedAt: p.receivedAt,
-      source: p.source,
+    payments: (inv.payments ?? []).map((p) => {
+      const refund = refundabilityOf(inv, p);
+      return {
+        // Null on a row written before rows had ids: it cannot be refunded here.
+        id: p.paymentId ? String(p.paymentId) : null,
+        amountCents: p.amountCents,
+        refundedCents: p.refundedCents ?? 0,
+        method: p.method,
+        reference: p.reference ?? "",
+        receivedAt: p.receivedAt,
+        source: p.source,
+        refundableCents: refund.refundableCents,
+        refundVia: refund.via,
+        refundBlocked: refund.blocked,
+      };
+    }),
+    // What the admin screen refunded. The Stripe refund id and the request key stay here.
+    refunds: (inv.refunds ?? []).map((r) => ({
+      id: String(r.refundId),
+      paymentId: String(r.paymentId),
+      amountCents: r.amountCents,
+      creditCents: r.creditCents,
+      owed: r.owed ?? null,
+      via: r.via,
+      method: r.method ?? null,
+      reference: r.reference ?? "",
+      reason: r.reason,
+      status: r.status,
+      failureReason: r.failureReason ?? "",
+      refundedAt: r.refundedAt,
+      at: r.at,
     })),
     sendLog: sendLog.map((s) => ({
       at: s.at,

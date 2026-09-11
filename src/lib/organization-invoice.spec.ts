@@ -333,6 +333,19 @@ describe("voidInvoice", () => {
     expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "CANNOT_VOID" });
     expect(h.aptUpdateMany).not.toHaveBeenCalled();
   });
+
+  it("voids an invoice whose money all went back, so its sessions can go to another payer", async () => {
+    h.invoice = { ...h.invoice, status: "refunded", paidCents: 0, number: "JCO-2026-000007" };
+    const r = await voidInvoice({ invoiceId: String(INV), reason: "Pas couvert", byUserId: ADMIN, now: NOW });
+    expect(r.ok).toBe(true);
+    expect(h.invFindOneAndUpdate.mock.calls[0][0]).toMatchObject({ status: "refunded", paidCents: 0 });
+  });
+
+  it("refuses while a refund is not settled yet", async () => {
+    h.invoice = { ...h.invoice, status: "sent", number: "JCO-2026-000007", refunds: [{ status: "pending" }] };
+    expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "REFUND_IN_PROGRESS" });
+    expect(h.invFindOneAndUpdate).not.toHaveBeenCalled();
+  });
 });
 
 /**

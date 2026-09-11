@@ -90,3 +90,52 @@ describe("serializeInvoice — the organization's form", () => {
     expect(serializeInvoice(invoice({ status: "paid" }), org as never).attachmentEditable).toBe(false);
   });
 });
+
+describe("serializeInvoice — refunds", () => {
+  const PAY = new mongoose.Types.ObjectId("0123456789abcdef01234591");
+  const refunded = () =>
+    invoice({
+      status: "paid",
+      totalCents: 9000,
+      paidCents: 4000,
+      creditedCents: 5000,
+      balanceCents: 0,
+      payments: [
+        { paymentId: PAY, amountCents: 9000, refundedCents: 5000, method: "card", source: "stripe", receivedAt: new Date(), reference: "pi_1", externalRef: "pi_1" },
+        { amountCents: 100, method: "cheque", source: "admin", receivedAt: new Date() },
+      ],
+      refunds: [
+        {
+          refundId: new mongoose.Types.ObjectId(),
+          paymentId: PAY,
+          amountCents: 5000,
+          creditCents: 5000,
+          owed: "no_longer",
+          via: "stripe",
+          reason: "Séance annulée",
+          status: "succeeded",
+          requestKey: "secret-request-key",
+          stripeRefundId: "re_secret",
+          refundedAt: new Date(),
+          at: new Date(),
+          byUserId: new mongoose.Types.ObjectId(),
+        },
+      ],
+    });
+
+  it("each payment says what can still be refunded, and how", () => {
+    const s = serializeInvoice(refunded(), org as never);
+    expect(s.creditedCents).toBe(5000);
+    expect(s.payments[0]).toMatchObject({ id: String(PAY), refundableCents: 4000, refundVia: "stripe", refundBlocked: null });
+    // A row from before rows had ids cannot be refunded from the screen.
+    expect(s.payments[1]).toMatchObject({ id: null, refundVia: "outside", refundBlocked: "NO_ID" });
+  });
+
+  it("shows the refunds, never Stripe's refund id or the request key", () => {
+    const s = serializeInvoice(refunded(), org as never);
+    expect(s.refunds[0]).toMatchObject({ amountCents: 5000, creditCents: 5000, owed: "no_longer", via: "stripe", status: "succeeded", reason: "Séance annulée" });
+    const json = JSON.stringify(s);
+    expect(json).not.toContain("re_secret");
+    expect(json).not.toContain("secret-request-key");
+  });
+});

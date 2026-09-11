@@ -16,6 +16,12 @@
  *  4. Nothing throws on a terminal condition ("no such invoice"): the Stripe
  *     webhook would release its claim and retry a hopeless event forever.
  *     Database errors still throw, and a retry is safe by rule 1.
+ *  5. What is owed: balance = total − credited − paid, where paid is every
+ *     payment less what went back and credited is the part of refunds marked
+ *     « plus dû ». Recomputed in one write (`recomputeInvoiceMoney`) whenever a
+ *     refund changes; the rules are in organization-invoice-money.ts.
+ *  6. The team is emailed only about refunds it did not make from the invoice
+ *     screen (a refund made in the Stripe dashboard, a refund that failed).
  */
 import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
@@ -24,8 +30,10 @@ import Organization from "@/models/Organization";
 import OrganizationInvoice, {
   type IOrganizationInvoice,
   type IOrganizationInvoicePaymentEvent,
+  type IOrganizationInvoiceRefund,
 } from "@/models/OrganizationInvoice";
 import type { InvoiceResult } from "@/lib/organization-invoice";
+import { explainedAdminRefundCents } from "@/lib/organization-invoice-money";
 import {
   AWAITING_PAYMENT_STATUSES,
   ensurePayToken,
@@ -46,6 +54,15 @@ export function isOrganizationInvoiceIntent(pi: {
   return pi.metadata?.type === ORGANIZATION_INVOICE_PAYMENT_TYPE;
 }
 
+/** On a Stripe refund made from the invoice screen (charge.refund.updated). */
+export const ORGANIZATION_REFUND_TYPE = "organization_invoice_refund";
+
+export function isOrganizationInvoiceRefund(refund: {
+  metadata?: Record<string, string> | null;
+}): boolean {
+  return refund.metadata?.type === ORGANIZATION_REFUND_TYPE;
+}
+
 type PaymentMethod = IOrganizationInvoice["payments"][number]["method"];
 type PaymentSource = IOrganizationInvoice["payments"][number]["source"];
 type Lean = Omit<IOrganizationInvoice, keyof mongoose.Document> & { _id: mongoose.Types.ObjectId };
@@ -55,9 +72,18 @@ const MONEY_STATUSES = [...AWAITING_PAYMENT_STATUSES, "paid", "refunded"];
 
 const oid = (id: unknown) => new mongoose.Types.ObjectId(String(id));
 
+/** Invoices that went back to awaiting payment after their money went back. */
+const WAS_PAID = ["partially_paid", "paid", "refunded"];
+
 /**
- * Put the status in line with the balance, then the sessions in line with the
- * status. Each write re-checks the balance it relies on.
+ * Put the status in line with the money, then the sessions in line with the
+ * status. Each write re-checks what it relies on:
+ *   paid > 0, nothing owed           → paid
+ *   paid > 0, something owed         → partially_paid
+ *   nothing kept, nothing owed       → refunded (closed: all went back, all credited)
+ *   nothing kept, owed again         → overdue past the due date, sent before it
+ * The last one is « toujours dû »: a full refund puts the invoice back to
+ * awaiting payment, and reminders resume.
  */
 export async function syncInvoiceStatus(invoiceId: unknown, now: Date = new Date()) {
   const _id = oid(invoiceId);
@@ -69,10 +95,17 @@ export async function syncInvoiceStatus(invoiceId: unknown, now: Date = new Date
     { _id, status: { $in: MONEY_STATUSES }, paidCents: { $gt: 0 }, balanceCents: { $gt: 0 } },
     { $set: { status: "partially_paid" } },
   );
-  // Everything that was paid went back.
   await OrganizationInvoice.updateOne(
-    { _id, status: { $in: ["partially_paid", "paid"] }, paidCents: { $lte: 0 } },
+    { _id, status: { $in: ["partially_paid", "paid"] }, paidCents: { $lte: 0 }, balanceCents: { $lte: 0 } },
     { $set: { status: "refunded" } },
+  );
+  await OrganizationInvoice.updateOne(
+    { _id, status: { $in: WAS_PAID }, paidCents: { $lte: 0 }, balanceCents: { $gt: 0 }, dueAt: { $lt: now } },
+    { $set: { status: "overdue" } },
+  );
+  await OrganizationInvoice.updateOne(
+    { _id, status: { $in: WAS_PAID }, paidCents: { $lte: 0 }, balanceCents: { $gt: 0 } },
+    { $set: { status: "sent" } },
   );
   const fresh = await OrganizationInvoice.findById(_id).select("status").lean();
   if (fresh?.status === "paid") {
@@ -80,13 +113,62 @@ export async function syncInvoiceStatus(invoiceId: unknown, now: Date = new Date
       { "thirdPartyBilling.orgInvoiceId": _id, "thirdPartyBilling.orgStatus": { $ne: "paid" } },
       { $set: { "thirdPartyBilling.orgStatus": "paid", "thirdPartyBilling.orgPaidAt": now } },
     );
+  } else if (fresh?.status === "refunded") {
+    await Appointment.updateMany(
+      { "thirdPartyBilling.orgInvoiceId": _id, "thirdPartyBilling.orgStatus": { $in: ["paid", "invoiced"] } },
+      { $set: { "thirdPartyBilling.orgStatus": "refunded" }, $unset: { "thirdPartyBilling.orgPaidAt": 1 } },
+    );
   } else if (fresh && MONEY_STATUSES.includes(fresh.status)) {
     await Appointment.updateMany(
-      { "thirdPartyBilling.orgInvoiceId": _id, "thirdPartyBilling.orgStatus": "paid" },
+      { "thirdPartyBilling.orgInvoiceId": _id, "thirdPartyBilling.orgStatus": { $in: ["paid", "refunded"] } },
       { $set: { "thirdPartyBilling.orgStatus": "invoiced" }, $unset: { "thirdPartyBilling.orgPaidAt": 1 } },
     );
   }
   return fresh?.status ?? null;
+}
+
+/**
+ * Paid, credited and balance recomputed from the payments and refunds as they
+ * are now — one atomic write, so two changes landing together agree.
+ */
+export async function recomputeInvoiceMoney(invoiceId: unknown) {
+  await OrganizationInvoice.updateOne({ _id: oid(invoiceId) }, [
+    {
+      $set: {
+        paidCents: {
+          $sum: {
+            $map: {
+              input: "$payments",
+              as: "p",
+              in: { $subtract: ["$$p.amountCents", { $ifNull: ["$$p.refundedCents", 0] }] },
+            },
+          },
+        },
+        creditedCents: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: { $ifNull: ["$refunds", []] },
+                  as: "r",
+                  cond: { $ne: ["$$r.status", "failed"] },
+                },
+              },
+              as: "r",
+              in: { $ifNull: ["$$r.creditCents", 0] },
+            },
+          },
+        },
+      },
+    },
+    { $set: { balanceCents: { $subtract: ["$totalCents", { $add: ["$creditedCents", "$paidCents"] }] } } },
+  ]);
+}
+
+/** Recompute the money, then the status that follows from it. Idempotent. */
+export async function refreshInvoiceMoney(invoiceId: unknown, now: Date = new Date()) {
+  await recomputeInvoiceMoney(invoiceId);
+  return syncInvoiceStatus(invoiceId, now);
 }
 
 function paymentRow(args: {
@@ -99,6 +181,8 @@ function paymentRow(args: {
   byUserId?: string | null;
 }) {
   return {
+    // Its own id, so a refund can name it (never a schema default).
+    paymentId: new mongoose.Types.ObjectId(),
     amountCents: args.amountCents,
     method: args.method,
     ...(args.reference ? { reference: args.reference.slice(0, 120) } : {}),
@@ -349,9 +433,13 @@ export async function isOrganizationInvoicePayment(paymentIntentId: string): Pro
 }
 
 /**
- * A refund on a card payment. `exact` sets the refunded amount as given (a
- * refund that failed gives money back to the charge); otherwise it only ever
- * grows, so an old event delivered late cannot undo a newer one.
+ * A refund on a card payment, as Stripe reports it (`charge.refunded`, or the
+ * admin screen right after it asked Stripe). `exact` sets the refunded amount
+ * as given (a refund that failed gives money back to the charge); otherwise it
+ * only ever grows, so an old event delivered late cannot undo a newer one.
+ *
+ * The team is told only about the part the invoice screen did not ask for — a
+ * refund made in the Stripe dashboard — and about every failure.
  */
 export async function recordOrganizationStripeRefund(args: {
   paymentIntentId: string;
@@ -374,33 +462,152 @@ export async function recordOrganizationStripeRefund(args: {
       ? { $set: { "payments.$.refundedCents": target } }
       : { $max: { "payments.$.refundedCents": target } },
   );
-  // Paid and balance come from the payments as they now are — one atomic write.
-  await OrganizationInvoice.updateOne({ _id: inv._id }, [
+  await refreshInvoiceMoney(inv._id, now);
+
+  const number = inv.number ?? "—";
+  if (target < before) {
+    await flagForReview(
+      inv as Lean,
+      "refund",
+      `Un remboursement Stripe a échoué sur la facture ${number} (paiement ${args.paymentIntentId}) : ${money(before - target)} sont revenus. Le solde a été ajusté.`,
+      now,
+    );
+    return "recorded";
+  }
+  const explained = explainedAdminRefundCents(inv.refunds, row.paymentId);
+  const unexplained = Math.max(0, target - Math.max(before, explained));
+  if (unexplained > 0) {
+    await flagForReview(
+      inv as Lean,
+      "refund",
+      `Remboursement Stripe de ${money(unexplained)} sur la facture ${number} (paiement ${args.paymentIntentId}), fait hors de l’écran des factures : ce montant est de nouveau dû et les rappels reprendront. Pour un remboursement qui n’est plus dû, passez par « Rembourser » dans « Factures aux organismes ».`,
+      now,
+    );
+  }
+  return "recorded";
+}
+
+type RefundRow = IOrganizationInvoiceRefund;
+type Expected = { status: string; balanceCents: number };
+
+/**
+ * A refund made outside the platform (Interac sent back, a cheque…): recorded
+ * in one conditional write, only while the invoice and that payment are as the
+ * admin saw them. Stripe is never called. The same `requestKey` twice records
+ * once ("replay").
+ */
+export async function recordOrganizationOutsideRefund(args: {
+  invoiceId: unknown;
+  paymentId: mongoose.Types.ObjectId;
+  expected: Expected & { refundedCents: number };
+  row: RefundRow;
+  now?: Date;
+}): Promise<"recorded" | "replay" | "changed"> {
+  const _id = oid(args.invoiceId);
+  const updated = await OrganizationInvoice.findOneAndUpdate(
     {
-      $set: {
-        paidCents: {
-          $sum: {
-            $map: {
-              input: "$payments",
-              as: "p",
-              in: { $subtract: ["$$p.amountCents", { $ifNull: ["$$p.refundedCents", 0] }] },
-            },
-          },
+      _id,
+      status: args.expected.status,
+      balanceCents: args.expected.balanceCents,
+      payments: {
+        $elemMatch: {
+          paymentId: args.paymentId,
+          source: { $ne: "stripe" },
+          refundedCents: args.expected.refundedCents === 0 ? { $in: [null, 0] } : args.expected.refundedCents,
         },
       },
+      refunds: { $not: { $elemMatch: { status: "requested" } } },
+      "refunds.requestKey": { $ne: args.row.requestKey },
     },
-    { $set: { balanceCents: { $subtract: ["$totalCents", "$paidCents"] } } },
-  ]);
-  await syncInvoiceStatus(inv._id, now);
-  await flagForReview(
-    inv as Lean,
-    "refund",
-    target > before
-      ? `Remboursement Stripe de ${money(target - before)} sur la facture ${inv.number ?? "—"} (paiement ${args.paymentIntentId}). Le solde dû a été ajusté.`
-      : `Un remboursement Stripe a échoué sur la facture ${inv.number ?? "—"} (paiement ${args.paymentIntentId}) : ${money(before - target)} sont revenus. Le solde a été ajusté.`,
-    now,
-  );
+    {
+      $inc: { "payments.$[p].refundedCents": args.row.amountCents },
+      $push: { refunds: args.row },
+    },
+    { new: true, arrayFilters: [{ "p.paymentId": args.paymentId }] },
+  ).lean();
+  if (!updated) {
+    const again = await OrganizationInvoice.findById(_id).select("refunds").lean();
+    return again?.refunds?.some((r) => r.requestKey === args.row.requestKey) ? "replay" : "changed";
+  }
+  await refreshInvoiceMoney(_id, args.now);
   return "recorded";
+}
+
+/**
+ * Step one of a Stripe refund: the row exists before Stripe is asked, so a
+ * crash in between leaves a trace to check. Its credit is counted from the
+ * next recompute on — Stripe may already have made the refund.
+ */
+export async function openOrganizationStripeRefund(args: {
+  invoiceId: unknown;
+  paymentId: mongoose.Types.ObjectId;
+  expected: Expected;
+  row: RefundRow;
+}): Promise<"opened" | "replay" | "changed"> {
+  const _id = oid(args.invoiceId);
+  const r = await OrganizationInvoice.updateOne(
+    {
+      _id,
+      status: args.expected.status,
+      balanceCents: args.expected.balanceCents,
+      disputed: { $ne: true },
+      payments: { $elemMatch: { paymentId: args.paymentId, source: "stripe" } },
+      refunds: { $not: { $elemMatch: { status: "requested" } } },
+      "refunds.requestKey": { $ne: args.row.requestKey },
+    },
+    { $push: { refunds: args.row } },
+  );
+  if (r.modifiedCount === 1) return "opened";
+  const again = await OrganizationInvoice.findById(_id).select("refunds").lean();
+  return again?.refunds?.some((x) => x.requestKey === args.row.requestKey) ? "replay" : "changed";
+}
+
+/** Which way a refund row may move. A card refund can still fail after it succeeded. */
+const REFUND_STATUS_FROM: Record<"pending" | "succeeded" | "failed", RefundRow["status"][]> = {
+  pending: ["requested"],
+  succeeded: ["requested", "pending"],
+  failed: ["requested", "pending", "succeeded"],
+};
+
+/** Move a refund row on; a failed one loses its credit (recomputed). */
+export async function markOrganizationRefundStatus(args: {
+  invoiceId: unknown;
+  refundId: unknown;
+  status: "pending" | "succeeded" | "failed";
+  stripeRefundId?: string;
+  failureReason?: string;
+  now?: Date;
+}): Promise<boolean> {
+  const _id = oid(args.invoiceId);
+  const refundId = oid(args.refundId);
+  const r = await OrganizationInvoice.updateOne(
+    { _id, refunds: { $elemMatch: { refundId, status: { $in: REFUND_STATUS_FROM[args.status] } } } },
+    {
+      $set: {
+        "refunds.$[r].status": args.status,
+        ...(args.stripeRefundId ? { "refunds.$[r].stripeRefundId": args.stripeRefundId } : {}),
+        ...(args.failureReason ? { "refunds.$[r].failureReason": args.failureReason.slice(0, 200) } : {}),
+      },
+    },
+    { arrayFilters: [{ "r.refundId": refundId }] },
+  );
+  if (r.modifiedCount !== 1) return false;
+  if (args.status === "failed") await refreshInvoiceMoney(_id, args.now);
+  return true;
+}
+
+/** Stripe refused outright: the requested row goes, as if never asked. */
+export async function dropOrganizationStripeRefundRequest(args: {
+  invoiceId: unknown;
+  refundId: unknown;
+  now?: Date;
+}) {
+  const _id = oid(args.invoiceId);
+  await OrganizationInvoice.updateOne(
+    { _id },
+    { $pull: { refunds: { refundId: oid(args.refundId), status: "requested" } } },
+  );
+  await refreshInvoiceMoney(_id, args.now);
 }
 
 /** A chargeback on a card payment: flagged, reminders stop, the team is told. */

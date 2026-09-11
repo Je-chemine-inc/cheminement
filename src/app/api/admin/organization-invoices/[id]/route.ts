@@ -14,7 +14,11 @@ import {
 } from "@/lib/organization-invoice";
 import { serializeInvoice } from "@/lib/organization-invoice-serialize";
 import { cancelOpenOrganizationPaymentIntent } from "@/lib/organization-invoice-card";
+import { checkOrganizationRefund, refundOrganizationPayment } from "@/lib/organization-invoice-refund";
 import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
+
+/** The key the refund dialog mints when it opens: the same click twice refunds once. */
+const REQUEST_KEY = /^[A-Za-z0-9_-]{8,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -60,7 +64,11 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
  *  organization that requires its own form without it (recorded);
  *  `{ action: "refresh" }` rebuild a draft;
  *  `{ action: "void", reason }` (a draft is discarded);
- *  `{ action: "pay", amount, method, reference?, receivedOn? }` money received.
+ *  `{ action: "pay", amount, method, reference?, receivedOn? }` money received;
+ *  `{ action: "refund", paymentId, amount, owed?, reason, requestKey, notify?,
+ *     method?, reference?, refundedOn? }` refund a payment — through Stripe for
+ *  a card, recorded as made outside for the rest;
+ *  `{ action: "refund_check", refundId }` where a Stripe refund stands.
  */
 export async function POST(req: NextRequest, { params }: Ctx) {
   const gate = await requireBillingAdmin();
@@ -121,9 +129,53 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         if (result.ok) await cancelOpenOrganizationPaymentIntent(id);
         return respond(result);
       }
+      case "refund": {
+        const cents = parseDollarsToCents(body.amount);
+        if (!cents || Number.isNaN(cents)) {
+          return NextResponse.json({ error: "amount: dollars to refund", code: "INVALID_AMOUNT" }, { status: 400 });
+        }
+        if (typeof body.paymentId !== "string" || !mongoose.Types.ObjectId.isValid(body.paymentId)) {
+          return NextResponse.json({ error: "paymentId", code: "PAYMENT_NOT_FOUND" }, { status: 400 });
+        }
+        if (typeof body.requestKey !== "string" || !REQUEST_KEY.test(body.requestKey)) {
+          return NextResponse.json({ error: "requestKey" }, { status: 400 });
+        }
+        const owed = body.owed === "still" || body.owed === "no_longer" ? body.owed : null;
+        const refundedAt = parseDay(body.refundedOn, "start");
+        if (refundedAt && Number.isNaN(refundedAt.getTime())) {
+          return NextResponse.json({ error: "refundedOn: YYYY-MM-DD" }, { status: 400 });
+        }
+        return respond(
+          await refundOrganizationPayment({
+            invoiceId: id,
+            paymentId: body.paymentId,
+            amountCents: cents,
+            owed,
+            reason: typeof body.reason === "string" ? body.reason : "",
+            requestKey: body.requestKey,
+            // On unless explicitly unticked.
+            notify: body.notify !== false,
+            byUserId,
+            outside:
+              typeof body.method === "string"
+                ? {
+                    method: body.method,
+                    reference: typeof body.reference === "string" ? body.reference : undefined,
+                    refundedAt: refundedAt ?? undefined,
+                  }
+                : null,
+          }),
+        );
+      }
+      case "refund_check": {
+        if (typeof body.refundId !== "string") {
+          return NextResponse.json({ error: "refundId" }, { status: 400 });
+        }
+        return respond(await checkOrganizationRefund({ invoiceId: id, refundId: body.refundId }));
+      }
       default:
         return NextResponse.json(
-          { error: "action: send, resend, refresh, void or pay" },
+          { error: "action: send, resend, refresh, void, pay, refund or refund_check" },
           { status: 400 },
         );
     }

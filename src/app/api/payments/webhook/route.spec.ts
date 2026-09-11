@@ -36,6 +36,7 @@ const h = vi.hoisted(() => ({
   orgRefund: vi.fn(),
   orgDispute: vi.fn(),
   orgIsPayment: vi.fn(),
+  orgRefundStatus: vi.fn(),
   chargeRetrieve: vi.fn(),
 }));
 
@@ -57,8 +58,11 @@ vi.mock("@/lib/stripe", () => ({
 vi.mock("@/lib/organization-invoice-settlement", () => ({
   isOrganizationInvoiceIntent: (pi: { metadata?: Record<string, string> }) =>
     pi.metadata?.type === "organization_invoice",
+  isOrganizationInvoiceRefund: (r: { metadata?: Record<string, string> }) =>
+    r.metadata?.type === "organization_invoice_refund",
   settleOrganizationInvoiceIntent: h.orgSettle,
   recordOrganizationStripeRefund: h.orgRefund,
+  markOrganizationRefundStatus: h.orgRefundStatus,
   flagOrganizationInvoiceDispute: h.orgDispute,
   isOrganizationInvoicePayment: h.orgIsPayment,
 }));
@@ -509,6 +513,57 @@ describe("an organization paying its invoice (spec 002)", () => {
     expect(h.chargeRetrieve).toHaveBeenCalledWith("ch_org");
     expect(h.orgRefund).toHaveBeenCalledWith({ paymentIntentId: "pi_org_1", refundedCents: 0, exact: true });
     expect(h.apptFindOne).not.toHaveBeenCalled();
+  });
+
+  describe("a refund made from the invoice screen follows Stripe", () => {
+    const orgRefund = (status: string) => ({
+      id: "re_screen",
+      status,
+      payment_intent: "pi_org_1",
+      charge: "ch_org",
+      failure_reason: status === "failed" ? "insufficient_funds" : undefined,
+      metadata: {
+        type: "organization_invoice_refund",
+        organizationInvoiceId: "0123456789abcdef0123456e",
+        organizationRefundId: "0123456789abcdef012345aa",
+      },
+    });
+
+    it.each([
+      ["succeeded", "succeeded"],
+      ["pending", "pending"],
+      ["canceled", "failed"],
+    ])("%s → its row is %s", async (stripeStatus, rowStatus) => {
+      h.constructEvent.mockReturnValue(event("charge.refund.updated", orgRefund(stripeStatus), `evt_${stripeStatus}`));
+      await POST(req());
+      expect(h.orgRefundStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceId: "0123456789abcdef0123456e",
+          refundId: "0123456789abcdef012345aa",
+          status: rowStatus,
+          stripeRefundId: "re_screen",
+        }),
+      );
+      expect(h.apptFindOne).not.toHaveBeenCalled();
+      expect(h.entFindOne).not.toHaveBeenCalled();
+    });
+
+    it("a failure also sets the charge's refunded total as Stripe now has it", async () => {
+      h.chargeRetrieve.mockResolvedValue({ id: "ch_org", amount_refunded: 0 });
+      h.constructEvent.mockReturnValue(event("charge.refund.updated", orgRefund("failed")));
+      await POST(req());
+      expect(h.orgRefundStatus).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", failureReason: "insufficient_funds" }));
+      expect(h.orgRefund).toHaveBeenCalledWith({ paymentIntentId: "pi_org_1", refundedCents: 0, exact: true });
+    });
+
+    it("a malformed id is ignored, not retried forever", async () => {
+      h.constructEvent.mockReturnValue(
+        event("charge.refund.updated", { ...orgRefund("succeeded"), metadata: { type: "organization_invoice_refund", organizationInvoiceId: "x", organizationRefundId: "y" } }),
+      );
+      const res = await POST(req());
+      expect(res.status).toBe(200);
+      expect(h.orgRefundStatus).not.toHaveBeenCalled();
+    });
   });
 
   it("an appointment payment is never taken for an organization's", async () => {

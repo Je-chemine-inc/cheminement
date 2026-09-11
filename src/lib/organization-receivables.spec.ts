@@ -8,6 +8,7 @@ import {
   buildAging,
   capIssuesFor,
   daysPastDue,
+  paymentReviewFilter,
 } from "@/lib/organization-receivables";
 
 /**
@@ -17,6 +18,25 @@ import {
 
 const NOW = new Date("2026-10-31T16:00:00Z");
 const ago = (days: number) => new Date(NOW.getTime() - days * 86_400_000);
+
+describe("paymentReviewFilter — money a person must look at", () => {
+  const branches = paymentReviewFilter(NOW).$or as Array<Record<string, unknown>>;
+
+  it("an overpayment, a chargeback, money on a void invoice, a refund Stripe never confirmed", () => {
+    expect(branches).toContainEqual({ balanceCents: { $lt: 0 } });
+    expect(branches).toContainEqual({ disputed: true });
+    expect(branches).toContainEqual({ status: "void", paidCents: { $gt: 0 } });
+    expect(branches).toContainEqual({
+      refunds: { $elemMatch: { status: "requested", at: { $lt: new Date(NOW.getTime() - 15 * 60_000) } } },
+    });
+  });
+
+  it("an invoice closed by its refunds is not a problem to review", () => {
+    // Refunds are made from the screen now: « refunded » is a normal closed state.
+    expect(branches).not.toContainEqual({ status: "refunded" });
+    expect(branches).toContainEqual({ status: "refunded", balanceCents: { $gt: 0 } });
+  });
+});
 
 describe("agingBucket", () => {
   it("puts a balance in the right age bracket, boundaries included", () => {

@@ -43,6 +43,8 @@ export type EmailNotificationType =
   // Spec 002 phase 5: getting paid by an organization.
   | "organization_payment_reminder"
   | "organization_payment_received"
+  // A refund an admin made to an organization from the invoice screen.
+  | "organization_refund"
   | "admin_organization_invoice_overdue"
   | "admin_organization_payment_review"
   | "interac_transfer_instructions"
@@ -336,6 +338,10 @@ const defaultEmailTemplates: Record<
   organization_payment_received: {
     enabled: true,
     subject: "Paiement reçu — Je chemine",
+  },
+  organization_refund: {
+    enabled: true,
+    subject: "Remboursement — Je chemine",
   },
   admin_organization_invoice_overdue: {
     enabled: true,

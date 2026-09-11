@@ -39,6 +39,8 @@ export type OrganizationInvoicePdfInput = {
   lines: OrganizationInvoicePdfLine[];
   totalCents: number;
   paidCents: number;
+  /** What the organization no longer owes after a refund (« plus dû »). */
+  creditedCents?: number;
   balanceCents: number;
   /** Interac deposit address; the invoice number is the transfer note. */
   interacEmail?: string | null;
@@ -61,6 +63,7 @@ const T = {
     duration: "Durée",
     amount: "Montant",
     total: "Total",
+    credit: "Crédit",
     paid: "Payé",
     balance: "Solde dû",
     minutes: "min",
@@ -88,6 +91,7 @@ const T = {
     duration: "Length",
     amount: "Amount",
     total: "Total",
+    credit: "Credit",
     paid: "Paid",
     balance: "Balance due",
     minutes: "min",
@@ -267,6 +271,8 @@ export function buildOrganizationInvoicePdfBuffer(input: OrganizationInvoicePdfI
   y += 4;
   doc.setFontSize(10);
   const totals: Array<[string, number, boolean]> = [[t.total, input.totalCents, false]];
+  // Shown as taken off, so the lines still add up: total − credit − paid = balance.
+  if ((input.creditedCents ?? 0) > 0) totals.push([t.credit, -(input.creditedCents ?? 0), false]);
   if (input.paidCents > 0) totals.push([t.paid, input.paidCents, false]);
   totals.push([t.balance, input.balanceCents, true]);
   for (const [label, cents, bold] of totals) {

@@ -34,9 +34,13 @@ import {
   flagOrganizationInvoiceDispute,
   isOrganizationInvoiceIntent,
   isOrganizationInvoicePayment,
+  isOrganizationInvoiceRefund,
+  markOrganizationRefundStatus,
   recordOrganizationStripeRefund,
   settleOrganizationInvoiceIntent,
 } from "@/lib/organization-invoice-settlement";
+
+const OBJECT_ID = /^[a-f0-9]{24}$/;
 
 // Disable body parsing, need raw body for webhook signature verification
 export const runtime = "nodejs";
@@ -566,15 +570,52 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
  * "refunded" must be reverted to "paid" (and its voided receipt restored).
  */
 async function handleRefundUpdated(refund: Stripe.Refund) {
+  const paymentIntentId =
+    typeof refund.payment_intent === "string"
+      ? refund.payment_intent
+      : refund.payment_intent?.id;
+
+  // A refund made from the organization invoice screen: its row follows Stripe
+  // (a bank refund goes pending → succeeded; any refund can fail). Before the
+  // status guard below, which only lets failures through.
+  if (isOrganizationInvoiceRefund(refund)) {
+    const invoiceId = refund.metadata?.organizationInvoiceId ?? "";
+    const refundId = refund.metadata?.organizationRefundId ?? "";
+    const status =
+      refund.status === "succeeded"
+        ? "succeeded"
+        : refund.status === "failed" || refund.status === "canceled"
+          ? "failed"
+          : "pending";
+    if (OBJECT_ID.test(invoiceId) && OBJECT_ID.test(refundId)) {
+      await markOrganizationRefundStatus({
+        invoiceId,
+        refundId,
+        status,
+        stripeRefundId: refund.id,
+        ...(status === "failed" ? { failureReason: refund.failure_reason ?? refund.status ?? "failed" } : {}),
+      });
+    }
+    if (status === "failed" && paymentIntentId) {
+      // The money came back to the charge: its refunded total as Stripe now has it.
+      const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId);
+        await recordOrganizationStripeRefund({
+          paymentIntentId,
+          refundedCents: charge.amount_refunded,
+          exact: true,
+        });
+      }
+    }
+    return;
+  }
+
   if (refund.status !== "failed" && refund.status !== "canceled") {
     return;
   }
   console.warn(`Refund ${refund.id} ${refund.status}`);
 
-  const paymentIntentId =
-    typeof refund.payment_intent === "string"
-      ? refund.payment_intent
-      : refund.payment_intent?.id;
   if (!paymentIntentId) return;
 
   // The refund never completed, so the money stayed with us and access is
