@@ -32,6 +32,11 @@ const h = vi.hoisted(() => ({
   dispute: vi.fn(),
   sendAccessEmail: vi.fn(),
   entryFindOne: vi.fn(),
+  orgSettle: vi.fn(),
+  orgRefund: vi.fn(),
+  orgDispute: vi.fn(),
+  orgIsPayment: vi.fn(),
+  chargeRetrieve: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
@@ -44,7 +49,18 @@ vi.mock("next/server", () => ({
 }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/stripe", () => ({
-  stripe: { webhooks: { constructEvent: h.constructEvent } },
+  stripe: {
+    webhooks: { constructEvent: h.constructEvent },
+    charges: { retrieve: h.chargeRetrieve },
+  },
+}));
+vi.mock("@/lib/organization-invoice-settlement", () => ({
+  isOrganizationInvoiceIntent: (pi: { metadata?: Record<string, string> }) =>
+    pi.metadata?.type === "organization_invoice",
+  settleOrganizationInvoiceIntent: h.orgSettle,
+  recordOrganizationStripeRefund: h.orgRefund,
+  flagOrganizationInvoiceDispute: h.orgDispute,
+  isOrganizationInvoicePayment: h.orgIsPayment,
 }));
 vi.mock("@/models/StripeWebhookEvent", () => ({
   default: {
@@ -124,6 +140,11 @@ beforeEach(() => {
   h.restore.mockResolvedValue({ restored: true, accessToken: "tok" });
   h.sendAccessEmail.mockResolvedValue(true);
   h.entryFindOne.mockResolvedValue({ title: "Gérer son stress" });
+  h.orgSettle.mockResolvedValue({ outcome: "applied", invoice: {} });
+  h.orgRefund.mockResolvedValue("not_found");
+  h.orgDispute.mockResolvedValue("not_found");
+  h.orgIsPayment.mockResolvedValue(false);
+  h.chargeRetrieve.mockResolvedValue({ id: "ch_org", amount_refunded: 0 });
   process.env.NEXTAUTH_URL = "https://www.jechemine.ca";
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -397,6 +418,108 @@ describe("refunds and disputes", () => {
 
     expect(h.restore).not.toHaveBeenCalled();
     expect(h.entFindOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("an organization paying its invoice (spec 002)", () => {
+  const orgPi = (over: Record<string, unknown> = {}) => ({
+    id: "pi_org_1",
+    amount: 18000,
+    amount_received: 18000,
+    metadata: { type: "organization_invoice", organizationInvoiceId: "inv1", invoiceNumber: "JCO-2026-000007" },
+    ...over,
+  });
+
+  it("records the payment and never looks for an appointment", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", orgPi()));
+
+    const res = await POST(req());
+
+    expect(res.status).toBe(200);
+    expect(h.orgSettle).toHaveBeenCalledTimes(1);
+    expect(h.orgSettle.mock.calls[0][0]).toMatchObject({ id: "pi_org_1" });
+    // Proves the branch sits BEFORE the appointmentId bail and returns.
+    expect(h.apptFindById).not.toHaveBeenCalled();
+    expect(h.grant).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the invoice is gone — Stripe must not retry forever", async () => {
+    h.orgSettle.mockResolvedValue({ outcome: "not_found" });
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", orgPi()));
+
+    const res = await POST(req());
+
+    expect(res.status).toBe(200);
+    expect(h.webhookEventDeleteOne).not.toHaveBeenCalled();
+  });
+
+  it("releases the claim when recording fails, so the retry records it", async () => {
+    h.orgSettle.mockRejectedValue(new Error("mongo down"));
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", orgPi()));
+
+    const res = await POST(req());
+
+    expect(res.status).toBe(500);
+    expect(h.webhookEventDeleteOne).toHaveBeenCalledWith({ eventId: EVENT_ID });
+  });
+
+  it("a declined or abandoned card touches neither the invoice nor an appointment", async () => {
+    for (const type of ["payment_intent.payment_failed", "payment_intent.canceled"]) {
+      h.constructEvent.mockReturnValue(event(type, orgPi(), `evt_${type}`));
+      await POST(req());
+    }
+    expect(h.orgSettle).not.toHaveBeenCalled();
+    expect(h.apptFindById).not.toHaveBeenCalled();
+    expect(h.markFailed).not.toHaveBeenCalled();
+  });
+
+  it("a refund adjusts the invoice and emails no client", async () => {
+    h.orgRefund.mockResolvedValue("recorded");
+    h.constructEvent.mockReturnValue(
+      event("charge.refunded", { id: "ch_org", payment_intent: "pi_org_1", amount: 18000, amount_refunded: 5000 }),
+    );
+
+    await POST(req());
+
+    expect(h.orgRefund).toHaveBeenCalledWith({ paymentIntentId: "pi_org_1", refundedCents: 5000 });
+    expect(h.apptFindOne).not.toHaveBeenCalled();
+  });
+
+  it("a chargeback flags the invoice, not an appointment", async () => {
+    h.orgDispute.mockResolvedValue("flagged");
+    h.constructEvent.mockReturnValue(
+      event("charge.dispute.created", { id: "dp_org", payment_intent: "pi_org_1" }),
+    );
+
+    await POST(req());
+
+    expect(h.orgDispute).toHaveBeenCalledWith("pi_org_1");
+    expect(h.apptFindOne).not.toHaveBeenCalled();
+  });
+
+  it("a failed refund sets the refunded amount from Stripe's charge, not a guess", async () => {
+    h.orgIsPayment.mockResolvedValue(true);
+    h.chargeRetrieve.mockResolvedValue({ id: "ch_org", amount_refunded: 0 });
+    h.constructEvent.mockReturnValue(
+      event("charge.refund.updated", { id: "re_org", status: "failed", payment_intent: "pi_org_1", charge: "ch_org" }),
+    );
+
+    await POST(req());
+
+    expect(h.chargeRetrieve).toHaveBeenCalledWith("ch_org");
+    expect(h.orgRefund).toHaveBeenCalledWith({ paymentIntentId: "pi_org_1", refundedCents: 0, exact: true });
+    expect(h.apptFindOne).not.toHaveBeenCalled();
+  });
+
+  it("an appointment payment is never taken for an organization's", async () => {
+    h.constructEvent.mockReturnValue(
+      event("payment_intent.succeeded", { id: "pi_appt", metadata: { appointmentId: "appt1" } }),
+    );
+
+    await POST(req());
+
+    expect(h.orgSettle).not.toHaveBeenCalled();
+    expect(h.apptFindById).toHaveBeenCalledWith("appt1");
   });
 });
 

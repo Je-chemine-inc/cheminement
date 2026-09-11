@@ -26,7 +26,10 @@ const h = vi.hoisted(() => ({
   review: vi.fn(),
   invUpdateOne: vi.fn(async (..._args: unknown[]) => ({ modifiedCount: 1 })),
   invUpdateMany: vi.fn(async () => ({ modifiedCount: 0 })),
+  dunning: vi.fn(async () => ({ reminders: 0, followUps: 0, reminderFailures: 0, teamAlerts: 0 })),
 }));
+
+vi.mock("@/lib/organization-dunning", () => ({ runOrganizationDunning: h.dunning }));
 
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/lib/session-payer-plan", () => ({ isOrganizationBillingEnabled: async () => h.enabled }));
@@ -151,5 +154,16 @@ describe("runOrganizationBilling", () => {
       { status: "sent", dueAt: { $lt: NOW } },
       { $set: { status: "overdue" } },
     );
+  });
+
+  it("chases unpaid invoices every run — and not at all while the switch is off", async () => {
+    const r = await runOrganizationBilling(NOW);
+    expect(h.dunning).toHaveBeenCalledWith(NOW);
+    expect(r.dunning).toMatchObject({ reminders: 0 });
+
+    h.dunning.mockClear();
+    h.enabled = false;
+    await runOrganizationBilling(NOW);
+    expect(h.dunning).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,10 @@
  *             every disclosure (Loi 25).
  *   partially_paid / paid, or void (sessions released, number kept).
  *
+ * Issuing also mints the pay token behind the organization's pay link
+ * (phase 5). Money received — card, Interac, by hand — is recorded by
+ * organization-invoice-settlement.ts; reminders by organization-dunning.ts.
+ *
  * Nothing is sent without the client's consent on every line (`blockedLines`),
  * and there is no override.
  */
@@ -34,6 +38,14 @@ import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { sendOrganizationInvoiceEmail } from "@/lib/notifications";
+import {
+  ensurePayToken,
+  newPayToken,
+  organizationPayUrl,
+} from "@/lib/organization-invoice-pay-link";
+
+// Money received lives with the rest of the settlement code (phase 5).
+export { recordOrganizationPayment } from "@/lib/organization-invoice-settlement";
 
 export type InvoiceResult<T = IOrganizationInvoice> =
   | { ok: true; invoice: T }
@@ -329,6 +341,8 @@ async function deliver(
 ): Promise<string[]> {
   const language = org.language === "en" ? "en" : "fr";
   const pdf = await renderInvoicePdf(inv, language);
+  const token = inv.payToken ?? (await ensurePayToken(inv._id));
+  const interacEmail = await getInteracDepositEmail().catch(() => "");
   const reached: string[] = [];
   for (const to of inv.billTo?.emails ?? []) {
     const ok = await sendOrganizationInvoiceEmail({
@@ -341,6 +355,8 @@ async function deliver(
       dueAt: inv.dueAt ?? null,
       periodKey: inv.periodKey ?? null,
       pdf,
+      payUrl: token && inv.balanceCents > 0 ? organizationPayUrl(token, language) : null,
+      interacEmail: interacEmail || null,
       locale: language,
     }).catch((e) => {
       console.error("[organization-invoice] send failed:", e);
@@ -434,6 +450,7 @@ export async function issueAndSend(args: {
           dueAt: addDays(now, terms),
           paymentTermsDays: terms,
           billTo: billToOf(org),
+          payToken: newPayToken(),
         },
       },
     );
@@ -552,80 +569,6 @@ export async function voidInvoice(args: {
   if (!voided) return refuse(409, "CHANGED_MEANWHILE", "This invoice changed meanwhile.");
   await releaseSessions(inv._id as mongoose.Types.ObjectId);
   return { ok: true, invoice: voided };
-}
-
-/**
- * Record money received from the organization (cheque, EFT, portal…).
- * Idempotent on `externalRef`; never more than the balance.
- */
-export async function recordOrganizationPayment(args: {
-  invoiceId: string;
-  amountCents: number;
-  method: IOrganizationInvoice["payments"][number]["method"];
-  reference?: string;
-  receivedAt?: Date;
-  externalRef?: string;
-  source: "stripe" | "interac_reconciler" | "admin";
-  byUserId?: string | null;
-  now?: Date;
-}): Promise<InvoiceResult> {
-  const now = args.now ?? new Date();
-  await connectToDatabase();
-  if (!Number.isInteger(args.amountCents) || args.amountCents <= 0) {
-    return refuse(400, "INVALID_AMOUNT", "The amount must be positive.");
-  }
-  const inv = await OrganizationInvoice.findById(args.invoiceId).lean();
-  if (!inv) return refuse(404, "NOT_FOUND", "Invoice not found");
-  if (args.externalRef && inv.payments.some((p) => p.externalRef === args.externalRef)) {
-    return { ok: true, invoice: inv as unknown as IOrganizationInvoice };
-  }
-  if (!["sent", "overdue", "partially_paid"].includes(inv.status)) {
-    return refuse(409, "NOT_PAYABLE", "This invoice is not awaiting payment.");
-  }
-  if (args.amountCents > inv.balanceCents) {
-    return refuse(409, "OVERPAYMENT", "The amount is more than the balance due.", {
-      balanceCents: inv.balanceCents,
-    });
-  }
-
-  const updated = await OrganizationInvoice.findOneAndUpdate(
-    {
-      _id: inv._id,
-      status: { $in: ["sent", "overdue", "partially_paid"] },
-      balanceCents: { $gte: args.amountCents },
-      ...(args.externalRef ? { "payments.externalRef": { $ne: args.externalRef } } : {}),
-    },
-    {
-      $push: {
-        payments: {
-          amountCents: args.amountCents,
-          method: args.method,
-          ...(args.reference ? { reference: args.reference.slice(0, 120) } : {}),
-          receivedAt: args.receivedAt ?? now,
-          source: args.source,
-          ...(args.externalRef ? { externalRef: args.externalRef } : {}),
-          ...(args.byUserId ? { recordedBy: new mongoose.Types.ObjectId(args.byUserId) } : {}),
-        },
-      },
-      $inc: { paidCents: args.amountCents, balanceCents: -args.amountCents },
-    },
-    { new: true },
-  );
-  if (!updated) return refuse(409, "CHANGED_MEANWHILE", "This invoice changed meanwhile.");
-
-  const paid = updated.balanceCents <= 0;
-  await OrganizationInvoice.updateOne(
-    { _id: updated._id },
-    { $set: { status: paid ? "paid" : "partially_paid" } },
-  );
-  if (paid) {
-    await Appointment.updateMany(
-      { "thirdPartyBilling.orgInvoiceId": updated._id },
-      { $set: { "thirdPartyBilling.orgStatus": "paid", "thirdPartyBilling.orgPaidAt": now } },
-    );
-  }
-  updated.status = paid ? "paid" : "partially_paid";
-  return { ok: true, invoice: updated };
 }
 
 /** Per organization: how many sessions wait to be invoiced, and for how much. */

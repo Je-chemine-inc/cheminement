@@ -36,8 +36,17 @@ import { readLabelledField } from "@/lib/interac-field";
 /** Only these senders are trusted. Anyone can forge a body; the mailbox is the gate. */
 const INTERAC_SENDER_RE = /@payments\.interac\.ca$/i;
 
-/** The platform's own per-appointment reference, e.g. INT-9126-0AE49D. */
-export const REFERENCE_CODE_RE = /INT-[0-9A-F]{4}-[0-9A-F]{6}/i;
+/**
+ * The references the platform asks a payer to write on a transfer: a client's
+ * per-appointment code (INT-9126-0AE49D), or an organization's invoice number
+ * (JCO-2026-000007, spec 002). The reconciler branches on the prefix.
+ */
+export const REFERENCE_CODE_RE = /INT-[0-9A-F]{4}-[0-9A-F]{6}|JCO-\d{4}-\d{6,9}/i;
+
+/** True for an organization invoice number (JCO-…), false for a client INT- code. */
+export function isOrganizationInvoiceReference(code: string | null | undefined): boolean {
+  return /^JCO-/i.test(code ?? "");
+}
 
 export interface RawInteracEmail {
   from?: string | null;
@@ -54,7 +63,7 @@ export interface ParsedInteracNotification {
   payerName: string | null;
   /** The sender's free-text memo, when they wrote one. */
   memo: string | null;
-  /** Our INT- code, if the memo (or anywhere in the mail) carries it. */
+  /** Our INT- code or JCO- invoice number, if the memo (or anywhere in the mail) carries it. */
   referenceCode: string | null;
 }
 

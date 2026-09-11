@@ -30,6 +30,13 @@ import {
 } from "@/lib/payment-settlement";
 import { issueFiscalReceipt } from "@/lib/session-post-closure";
 import { markClientPaymentGuaranteeGreen } from "@/lib/payment-guarantee";
+import {
+  flagOrganizationInvoiceDispute,
+  isOrganizationInvoiceIntent,
+  isOrganizationInvoicePayment,
+  recordOrganizationStripeRefund,
+  settleOrganizationInvoiceIntent,
+} from "@/lib/organization-invoice-settlement";
 
 // Disable body parsing, need raw body for webhook signature verification
 export const runtime = "nodejs";
@@ -182,6 +189,15 @@ async function handlePaymentIntentSucceeded(
     return;
   }
 
+  // An organization paying its invoice from the pay link (spec 002). No
+  // appointmentId either: settled here, before the bail below, or the money
+  // arrives and nothing records it. Replays are no-ops (keyed on the intent).
+  if (isOrganizationInvoiceIntent(paymentIntent)) {
+    const { outcome } = await settleOrganizationInvoiceIntent(paymentIntent);
+    console.log("[organization-invoice] payment outcome:", outcome, paymentIntent.id);
+    return;
+  }
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -295,6 +311,9 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
     return;
   }
 
+  // A declined organization card: nothing to record, the pay link stays usable.
+  if (isOrganizationInvoiceIntent(paymentIntent)) return;
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -365,6 +384,9 @@ async function handlePaymentIntentCanceled(
     return;
   }
 
+  // An abandoned organization card payment: the next visit starts a new one.
+  if (isOrganizationInvoiceIntent(paymentIntent)) return;
+
   const appointmentId = paymentIntent.metadata.appointmentId;
 
   if (!appointmentId) {
@@ -400,6 +422,17 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   if (refundedEntitlement) {
     const outcome = await revokeResourceEntitlement(refundedEntitlement, charge);
     console.log("[resource] refund outcome:", outcome, paymentIntentId);
+    return;
+  }
+
+  // An organization's card payment (spec 002): the balance goes back up and
+  // the team is told. Not an appointment, so never email a client about it.
+  const orgRefund = await recordOrganizationStripeRefund({
+    paymentIntentId,
+    refundedCents: charge.amount_refunded,
+  });
+  if (orgRefund !== "not_found") {
+    console.log("[organization-invoice] refund outcome:", orgRefund, paymentIntentId);
     return;
   }
 
@@ -507,6 +540,11 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
     return;
   }
 
+  if ((await flagOrganizationInvoiceDispute(paymentIntentId)) === "flagged") {
+    console.warn(`[organization-invoice] payment ${paymentIntentId} disputed`);
+    return;
+  }
+
   const appointment = await Appointment.findOne({
     "payment.stripePaymentIntentId": paymentIntentId,
   });
@@ -548,6 +586,21 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
   if (reversedEntitlement) {
     const { restored } = await restoreResourceEntitlement(reversedEntitlement);
     console.log("[resource] refund reversal restored:", restored, paymentIntentId);
+    return;
+  }
+
+  // An organization's refund that failed: the money came back, so the charge's
+  // refunded total (asked of Stripe, not guessed) is set as it now stands.
+  if (await isOrganizationInvoicePayment(paymentIntentId)) {
+    const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
+    if (chargeId) {
+      const charge = await stripe.charges.retrieve(chargeId);
+      await recordOrganizationStripeRefund({
+        paymentIntentId,
+        refundedCents: charge.amount_refunded,
+        exact: true,
+      });
+    }
     return;
   }
 

@@ -144,3 +144,72 @@ export function decideInteracReconciliation(
       ".",
   };
 }
+
+/** An organization invoice named by its number (JCO-…), as the reconciler found it. */
+export interface OrganizationInvoiceFacts {
+  number: string;
+  status?: string | null;
+  balanceCents?: number | null;
+}
+
+/** Statuses in which an organization still owes money (see organization-invoice-pay-link). */
+const ORG_AWAITING = ["sent", "overdue", "partially_paid"];
+
+/**
+ * The same rule for an organization's transfer (spec 002): it settles only when
+ * it pays the invoice's balance to the cent. A partial or surplus transfer, or
+ * one on a void or paid invoice, is left to a person.
+ */
+export function decideOrganizationInteracReconciliation(
+  transfer: TransferFacts,
+  invoice: OrganizationInvoiceFacts | null,
+): ReconciliationDecision {
+  const ref = transfer.referenceCode ?? "—";
+  if (!invoice) {
+    return {
+      action: "review",
+      reason: "unknown_reference",
+      detail: `Facture ${ref} inconnue — aucune facture à un organisme ne porte ce numéro.`,
+    };
+  }
+  if (invoice.status === "void") {
+    return {
+      action: "review",
+      reason: "cancelled",
+      detail: `La facture ${ref} est annulée — rien n'est dû ; un remboursement est peut-être à faire.`,
+    };
+  }
+  if (invoice.status === "paid") {
+    return {
+      action: "review",
+      reason: "already_paid",
+      detail: `La facture ${ref} est déjà réglée — virement possiblement en double.`,
+    };
+  }
+  const balance = typeof invoice.balanceCents === "number" ? invoice.balanceCents : 0;
+  if (!ORG_AWAITING.includes(invoice.status ?? "") || balance <= 0) {
+    return {
+      action: "review",
+      reason: "no_amount_due",
+      detail: `La facture ${ref} (${invoice.status ?? "—"}) n'attend aucun paiement.`,
+    };
+  }
+  if (cents(transfer.amountCad) !== balance) {
+    const diff = transfer.amountCad - balance / 100;
+    return {
+      action: "review",
+      reason: "amount_mismatch",
+      detail:
+        `Montant reçu ${money(transfer.amountCad)} ≠ solde dû ${money(balance / 100)} ` +
+        `pour ${ref} (${diff > 0 ? "surplus" : "manque"} ${money(Math.abs(diff))}).`,
+    };
+  }
+  return {
+    action: "settle",
+    reason: "matched",
+    detail:
+      `Virement Interac de ${money(transfer.amountCad)} associé automatiquement à la facture ${ref}` +
+      (transfer.payerName ? ` (envoyé par ${transfer.payerName})` : "") +
+      ".",
+  };
+}

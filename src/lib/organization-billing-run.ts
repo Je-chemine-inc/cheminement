@@ -10,6 +10,8 @@
  *   3. One review email for drafts nobody was told about yet, claimed per
  *      draft before sending and given back if the email fails.
  *   4. Sent invoices past their due date become "overdue".
+ *   5. Payment reminders to organizations and the 30-day team alert
+ *      (organization-dunning.ts), each claimed before it is sent.
  *
  * Does nothing at all while the organization-billing switch is off.
  */
@@ -29,6 +31,7 @@ import {
   unbilledSummary,
 } from "@/lib/organization-invoice";
 import { sendAdminOrganizationInvoicesReview } from "@/lib/notifications";
+import { runOrganizationDunning, type DunningRunResult } from "@/lib/organization-dunning";
 
 export type OrganizationBillingRunResult = {
   skipped?: "switch_off";
@@ -39,6 +42,7 @@ export type OrganizationBillingRunResult = {
   autoSendRefused: number;
   reviewAlerts: number;
   markedOverdue: number;
+  dunning?: DunningRunResult;
 };
 
 export async function runOrganizationBilling(
@@ -152,5 +156,6 @@ export async function runOrganizationBilling(
     { $set: { status: "overdue" } },
   );
   result.markedOverdue = overdue.modifiedCount;
+  result.dunning = await runOrganizationDunning(now);
   return result;
 }

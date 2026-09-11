@@ -185,6 +185,30 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l’adresse de facturation d’un organisme payeur, avec le relevé PDF du mois. Le courriel ne nomme aucun client ; le PDF, oui — il n’est envoyé qu’avec le consentement de chaque client.",
     category: "Paiements",
   },
+  organization_payment_reminder: {
+    name: "Rappel de paiement à un organisme",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme quand une facture arrive à échéance, puis 14 jours plus tard si elle est toujours impayée (jours ouvrables, 8 h – 18 h). Numéro et solde seulement : aucun nom de client, aucun PDF.",
+    category: "Paiements",
+  },
+  organization_payment_received: {
+    name: "Paiement reçu (organisme)",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme quand son paiement est reçu — par carte, par virement Interac ou inscrit à la main. Indique le solde restant.",
+    category: "Paiements",
+  },
+  admin_organization_invoice_overdue: {
+    name: "Alerte équipe — factures aux organismes en retard",
+    description:
+      "Envoyé à l’équipe quand des factures à des organismes sont impayées 30 jours après l’échéance, une fois les deux rappels partis. Ne nomme aucun client.",
+    category: "Alertes administratives",
+  },
+  admin_organization_payment_review: {
+    name: "Alerte équipe — paiement d’organisme à vérifier",
+    description:
+      "Envoyé à l’équipe quand un paiement d’organisme demande une décision : paiement en trop, paiement sur une facture annulée, remboursement ou contestation. Rien n’est remboursé automatiquement.",
+    category: "Alertes administratives",
+  },
   admin_coverage_cap_warning: {
     name: "Alerte équipe — une séance couverte restante",
     description:

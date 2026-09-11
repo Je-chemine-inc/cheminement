@@ -1387,9 +1387,33 @@
         "cheque": "Chèque",
         "eft": "Virement bancaire (TEF)",
         "portal": "Portail de l’organisme",
-        "other": "Autre"
+        "other": "Autre",
+        "card": "Carte (lien de paiement)"
       },
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "disputed": "Contesté",
+      "overpaid": "Trop-perçu {amount}",
+      "paymentsTitle": "Paiements",
+      "paymentLine": "{date} — {amount} · {method} · {source}",
+      "refundedPart": "remboursé : {amount}",
+      "sources": {
+        "stripe": "en ligne",
+        "interac_reconciler": "rapproché automatiquement",
+        "admin": "inscrit à la main"
+      },
+      "remindersTitle": "Relances",
+      "reminderDue": "rappel à l’échéance le {date}",
+      "reminderFollowUp": "second rappel le {date}",
+      "reminderTeam": "équipe alertée le {date}",
+      "remindersNone": "aucune relance envoyée",
+      "eventsTitle": "À vérifier",
+      "logKinds": {
+        "sent": "Envoyée",
+        "resent": "Renvoyée",
+        "reminder": "Rappel",
+        "payment_received": "Accusé de paiement"
+      },
+      "payReceiptNote": "Un accusé de réception est envoyé à l’adresse de facturation de l’organisme."
     }
   },
   "AppointmentSelector": {
@@ -6943,5 +6967,35 @@
       "person": "Tiers payeur",
       "other": "Tiers payeur"
     }
+  },
+  "OrgPay": {
+    "title": "Paiement de facture",
+    "invalidTitle": "Lien de paiement invalide",
+    "invalidBody": "Ce lien de paiement est invalide ou n’existe plus. Utilisez le lien du dernier courriel reçu, ou écrivez-nous.",
+    "loadFailed": "La facture n’a pas pu être chargée. Réessayez dans un instant.",
+    "invoiceNumber": "Facture",
+    "dueDate": "Échéance",
+    "overdue": "en retard",
+    "total": "Montant de la facture",
+    "paid": "Déjà payé",
+    "balance": "Solde à payer",
+    "cardTitle": "Payer par carte",
+    "payAmount": "Payer {amount} par carte",
+    "preparing": "Préparation…",
+    "processing": "Paiement en cours…",
+    "cardFootnote": "Paiement sécurisé par Stripe. Je chemine ne conserve aucune donnée de carte.",
+    "interacTitle": "Ou par virement Interac",
+    "interacBody": "Envoyez {amount} à {email} en inscrivant « <ref>{number}</ref> » comme message. Le virement est associé à la facture automatiquement.",
+    "otherMethods": "Chèque ou virement bancaire : indiquez le numéro de facture {number}.",
+    "successTitle": "Paiement reçu",
+    "successBody": "Merci. Un accusé de réception sera envoyé à l’adresse de facturation de {org}.",
+    "processingBody": "Votre paiement est en cours de traitement. Un accusé de réception suivra dès qu’il sera confirmé.",
+    "paidTitle": "Facture réglée",
+    "paidBody": "La facture {number} est entièrement payée. Merci !",
+    "closedTitle": "Aucun paiement attendu",
+    "closedBody": "La facture {number} n’attend aucun paiement. Pour toute question, répondez au courriel qui vous l’a transmise.",
+    "inProgress": "Un paiement pour cette facture est déjà en cours de traitement. Actualisez la page dans quelques minutes.",
+    "errorGeneric": "Le paiement n’a pas pu être effectué. Réessayez ou choisissez le virement Interac.",
+    "additionalVerification": "Votre banque demande une vérification supplémentaire. Réessayez."
   }
 }

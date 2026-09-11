@@ -13,6 +13,7 @@ import {
   type InvoiceResult,
 } from "@/lib/organization-invoice";
 import { serializeInvoice } from "@/lib/organization-invoice-serialize";
+import { cancelOpenOrganizationPaymentIntent } from "@/lib/organization-invoice-card";
 import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -75,7 +76,10 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         return respond(await refreshDraft(id));
       case "void": {
         const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-        return respond(await voidInvoice({ invoiceId: id, reason, byUserId }));
+        const result = await voidInvoice({ invoiceId: id, reason, byUserId });
+        // A card payment the organization started must not go through now.
+        if (result.ok) await cancelOpenOrganizationPaymentIntent(id);
+        return respond(result);
       }
       case "pay": {
         const cents = parseDollarsToCents(body.amount);
@@ -97,17 +101,18 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         if (receivedAt && Number.isNaN(receivedAt.getTime())) {
           return NextResponse.json({ error: "receivedOn: YYYY-MM-DD" }, { status: 400 });
         }
-        return respond(
-          await recordOrganizationPayment({
-            invoiceId: id,
-            amountCents: cents,
-            method: method as IOrganizationInvoice["payments"][number]["method"],
-            reference: typeof body.reference === "string" ? body.reference.trim() : undefined,
-            receivedAt: receivedAt ?? undefined,
-            source: "admin",
-            byUserId,
-          }),
-        );
+        const result = await recordOrganizationPayment({
+          invoiceId: id,
+          amountCents: cents,
+          method: method as IOrganizationInvoice["payments"][number]["method"],
+          reference: typeof body.reference === "string" ? body.reference.trim() : undefined,
+          receivedAt: receivedAt ?? undefined,
+          source: "admin",
+          byUserId,
+        });
+        // The balance moved: a card payment started for the old amount goes.
+        if (result.ok) await cancelOpenOrganizationPaymentIntent(id);
+        return respond(result);
       }
       default:
         return NextResponse.json(

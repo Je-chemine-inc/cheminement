@@ -61,7 +61,20 @@ export interface IOrganizationInvoicePayment {
   source: "stripe" | "interac_reconciler" | "admin";
   /** Stripe intent id, Interac transfer id… — makes a replayed settlement a no-op. */
   externalRef?: string;
+  /** Card payments only: how much of it Stripe has refunded so far (cents). */
+  refundedCents?: number;
   recordedBy?: mongoose.Types.ObjectId;
+}
+
+/**
+ * Something about the money on this invoice a person should look at: an
+ * overpayment, money received on a void invoice, a refund, a chargeback.
+ * Recorded as it happens; the admin is emailed each time.
+ */
+export interface IOrganizationInvoicePaymentEvent {
+  at: Date;
+  kind: "overpaid" | "not_payable" | "refund" | "dispute";
+  detail: string;
 }
 
 export interface IOrganizationInvoiceSendLogEntry {
@@ -93,9 +106,20 @@ export interface IOrganizationInvoice extends Document {
   issuedAt?: Date;
   dueAt?: Date;
   paymentTermsDays?: number;
+  /**
+   * The organization's pay link (/org-pay?token=…), minted when the invoice is
+   * issued. Good for as long as the invoice is awaiting payment; the page shows
+   * no patient's name. `payTokenExpiresAt` is not used.
+   */
   payToken?: string;
   payTokenExpiresAt?: Date;
+  /** The latest card payment started from the pay link. */
   stripePaymentIntentId?: string;
+  /**
+   * Not used: an organization writes the invoice NUMBER (JCO-…) on an Interac
+   * transfer — the reference the PDF already asks for — so there is one
+   * reference per invoice, not two.
+   */
   interacReferenceCode?: string;
   payments: IOrganizationInvoicePayment[];
   reminders?: {
@@ -104,6 +128,7 @@ export interface IOrganizationInvoice extends Document {
     overdueAlertSentAt?: Date;
   };
   reviewAlertSentAt?: Date;
+  paymentEvents: IOrganizationInvoicePaymentEvent[];
   sendLog: IOrganizationInvoiceSendLogEntry[];
   internalNotes?: string;
   printedNote?: string;
@@ -144,7 +169,21 @@ const PaymentSchema = new Schema<IOrganizationInvoicePayment>(
       required: true,
     },
     externalRef: String,
+    refundedCents: { type: Number, min: 0 },
     recordedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false },
+);
+
+const PaymentEventSchema = new Schema<IOrganizationInvoicePaymentEvent>(
+  {
+    at: { type: Date, required: true },
+    kind: {
+      type: String,
+      enum: ["overpaid", "not_payable", "refund", "dispute"],
+      required: true,
+    },
+    detail: { type: String, maxlength: 500 },
   },
   { _id: false },
 );
@@ -207,6 +246,7 @@ const OrganizationInvoiceSchema = new Schema<IOrganizationInvoice>(
       overdueAlertSentAt: Date,
     },
     reviewAlertSentAt: Date,
+    paymentEvents: { type: [PaymentEventSchema], default: [] },
     sendLog: { type: [SendLogSchema], default: [] },
     internalNotes: { type: String, maxlength: 4000 },
     printedNote: { type: String, maxlength: 1000 },
@@ -234,6 +274,8 @@ OrganizationInvoiceSchema.index(
   { interacReferenceCode: 1 },
   whenString("interacReferenceCode"),
 );
+// Refund and dispute webhooks find the invoice by the card payment's intent id.
+OrganizationInvoiceSchema.index({ "payments.externalRef": 1 });
 OrganizationInvoiceSchema.index({ organizationId: 1, status: 1, issuedAt: -1 });
 OrganizationInvoiceSchema.index({ status: 1, dueAt: 1 });
 

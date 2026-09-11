@@ -59,7 +59,18 @@ interface Invoice {
   dueAt: string | null;
   billToEmails: string[];
   lines: Line[];
-  sendLog: { at: string; to: string[]; kind: string }[];
+  sendLog: { at: string; to: string[]; kind: "sent" | "resent" | "reminder" | "payment_received" }[];
+  payments: {
+    amountCents: number;
+    refundedCents: number;
+    method: "card" | (typeof PAY_METHODS)[number];
+    reference: string;
+    receivedAt: string;
+    source: "stripe" | "interac_reconciler" | "admin";
+  }[];
+  paymentEvents: { at: string; kind: string; detail: string }[];
+  reminders: { dueSentAt: string | null; followUpSentAt: string | null; overdueAlertSentAt: string | null };
+  disputed: boolean;
 }
 interface Unbilled {
   organizationId: string;
@@ -288,6 +299,14 @@ export default function OrganizationInvoicesPage() {
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{inv.number ?? t("draftLabel")}</span>
                         <Badge variant="outline" className={`border-transparent ${STATUS_STYLE[inv.status]}`}>{t(`statuses.${inv.status}`)}</Badge>
+                        {inv.disputed && (
+                          <Badge variant="outline" className="border-transparent bg-red-100 text-red-800">{t("disputed")}</Badge>
+                        )}
+                        {inv.balanceCents < 0 && (
+                          <Badge variant="outline" className="border-transparent bg-amber-100 text-amber-800">
+                            {t("overpaid", { amount: money(-inv.balanceCents) })}
+                          </Badge>
+                        )}
                       </span>
                       <span className="block text-sm">{inv.organizationName}</span>
                       <span className="block text-xs text-muted-foreground">
@@ -358,10 +377,49 @@ export default function OrganizationInvoicesPage() {
                         <span className="font-mono">{money(l.amountCents)}</span>
                       </div>
                     ))}
+                    {inv.payments.length > 0 && (
+                      <div className="pt-2">
+                        <p className="font-medium">{t("paymentsTitle")}</p>
+                        {inv.payments.map((p, i) => (
+                          <p key={i} className="text-muted-foreground">
+                            {t("paymentLine", {
+                              date: new Date(p.receivedAt).toLocaleDateString("fr-CA"),
+                              amount: money(p.amountCents),
+                              method: t(`methods.${p.method}`),
+                              source: t(`sources.${p.source}`),
+                            })}
+                            {p.reference ? ` · ${p.reference}` : ""}
+                            {p.refundedCents > 0 ? ` · ${t("refundedPart", { amount: money(p.refundedCents) })}` : ""}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {inv.number && inv.status !== "void" && (
+                      <p className="pt-2 text-muted-foreground">
+                        <span className="font-medium text-foreground">{t("remindersTitle")} : </span>
+                        {[
+                          inv.reminders.dueSentAt && t("reminderDue", { date: new Date(inv.reminders.dueSentAt).toLocaleDateString("fr-CA") }),
+                          inv.reminders.followUpSentAt && t("reminderFollowUp", { date: new Date(inv.reminders.followUpSentAt).toLocaleDateString("fr-CA") }),
+                          inv.reminders.overdueAlertSentAt && t("reminderTeam", { date: new Date(inv.reminders.overdueAlertSentAt).toLocaleDateString("fr-CA") }),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || t("remindersNone")}
+                      </p>
+                    )}
+                    {inv.paymentEvents.length > 0 && (
+                      <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900">
+                        <p className="font-medium">{t("eventsTitle")}</p>
+                        {inv.paymentEvents.map((e, i) => (
+                          <p key={i}>
+                            {new Date(e.at).toLocaleString("fr-CA")} — {e.detail}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     {inv.sendLog.length > 0 && (
                       <p className="pt-2 text-muted-foreground">
                         {inv.sendLog
-                          .map((s) => t("sentTo", { date: new Date(s.at).toLocaleString("fr-CA"), to: s.to.join(", ") }))
+                          .map((s) => `${t(`logKinds.${s.kind}`)} : ${t("sentTo", { date: new Date(s.at).toLocaleString("fr-CA"), to: s.to.join(", ") })}`)
                           .join(" · ")}
                       </p>
                     )}
@@ -487,6 +545,7 @@ export default function OrganizationInvoicesPage() {
               <Input type="date" value={pay.receivedOn} onChange={(e) => setPay({ ...pay, receivedOn: e.target.value })} />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">{t("payReceiptNote")}</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaying(null)}>{t("cancel")}</Button>
             <Button

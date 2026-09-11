@@ -7,7 +7,10 @@
  * production paiement@ mailbox.
  */
 import { describe, it, expect } from "vitest";
-import { decideInteracReconciliation } from "./interac-reconciliation";
+import {
+  decideInteracReconciliation,
+  decideOrganizationInteracReconciliation,
+} from "./interac-reconciliation";
 
 const CODE = "INT-9126-0AE49D";
 const unpaid = { paymentStatus: "pending", priceCad: 150, appointmentStatus: "scheduled" };
@@ -139,5 +142,28 @@ describe("decideInteracReconciliation", () => {
     );
     expect(d.action).toBe("review");
     expect(d.reason).toBe("amount_mismatch");
+  });
+});
+
+describe("decideOrganizationInteracReconciliation (spec 002)", () => {
+  const REF = "JCO-2026-000007";
+  const open = { number: REF, status: "sent", balanceCents: 18000 };
+  const decide = (amountCad: number, invoice: Parameters<typeof decideOrganizationInteracReconciliation>[1]) =>
+    decideOrganizationInteracReconciliation({ amountCad, referenceCode: REF, payerName: "PAE DESJARDINS" }, invoice);
+
+  it("settles only the exact balance, to the cent", () => {
+    expect(decide(180, open)).toMatchObject({ action: "settle", reason: "matched" });
+    expect(decide(180, { ...open, status: "partially_paid", balanceCents: 9000 }).action).toBe("review");
+    expect(decide(90, { ...open, status: "partially_paid", balanceCents: 9000 }).action).toBe("settle");
+    expect(decide(179.99, open)).toMatchObject({ action: "review", reason: "amount_mismatch" });
+    expect(decide(200, open).detail).toContain("surplus");
+  });
+
+  it("hands everything else to a person", () => {
+    expect(decide(180, null).reason).toBe("unknown_reference");
+    expect(decide(180, { ...open, status: "void" }).reason).toBe("cancelled");
+    expect(decide(180, { ...open, status: "paid", balanceCents: 0 }).reason).toBe("already_paid");
+    expect(decide(180, { ...open, status: "issuing" }).reason).toBe("no_amount_due");
+    expect(decide(180, { ...open, status: "refunded" }).reason).toBe("no_amount_due");
   });
 });

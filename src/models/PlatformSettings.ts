@@ -40,6 +40,11 @@ export type EmailNotificationType =
   | "organization_invoice"
   | "admin_organization_statement_review"
   | "organization_statement"
+  // Spec 002 phase 5: getting paid by an organization.
+  | "organization_payment_reminder"
+  | "organization_payment_received"
+  | "admin_organization_invoice_overdue"
+  | "admin_organization_payment_review"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_day2_reminder"
@@ -323,6 +328,22 @@ const defaultEmailTemplates: Record<
   organization_statement: {
     enabled: true,
     subject: "Relevé de facturation — Je chemine",
+  },
+  organization_payment_reminder: {
+    enabled: true,
+    subject: "Rappel de paiement — Je chemine",
+  },
+  organization_payment_received: {
+    enabled: true,
+    subject: "Paiement reçu — Je chemine",
+  },
+  admin_organization_invoice_overdue: {
+    enabled: true,
+    subject: "Factures aux organismes en retard — Je chemine",
+  },
+  admin_organization_payment_review: {
+    enabled: true,
+    subject: "Paiement d’organisme à vérifier — Je chemine",
   },
   interac_transfer_instructions: {
     enabled: true,

@@ -16,6 +16,15 @@ const h = vi.hoisted(() => ({
   appointment: null as Record<string, unknown> | null,
   settle: vi.fn(),
   updates: [] as Array<{ id: unknown; $set: Record<string, string> }>,
+  orgInvoice: null as Record<string, unknown> | null,
+  orgRecord: vi.fn(),
+}));
+
+vi.mock("@/models/OrganizationInvoice", () => ({
+  default: { findOne: () => ({ select: () => ({ lean: async () => h.orgInvoice }) }) },
+}));
+vi.mock("@/lib/organization-invoice-settlement", () => ({
+  recordReceivedOrganizationMoney: (...a: unknown[]) => h.orgRecord(...a),
 }));
 
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
@@ -73,6 +82,66 @@ beforeEach(() => {
   h.updates.length = 0;
   h.appointment = null;
   h.settle.mockResolvedValue({ found: true, alreadyPaid: false, payment: {} });
+  h.orgInvoice = null;
+  h.orgRecord.mockReset();
+  h.orgRecord.mockResolvedValue({ outcome: "applied", invoice: {} });
+});
+
+describe("an organization's transfer (spec 002)", () => {
+  const ORG_INV_ID = "0123456789abcdef0123456e";
+  const REF = "JCO-2026-000007";
+
+  it("settles the exact balance through the organization recorder, keyed on Interac's reference", async () => {
+    h.messages.push(notification("180,00", `PAE ${REF}`));
+    h.orgInvoice = { _id: ORG_INV_ID, number: REF, status: "sent", balanceCents: 18000 };
+
+    const run = await runInteracReconciliation();
+
+    expect(run.settled).toBe(1);
+    expect(h.settle).not.toHaveBeenCalled();
+    expect(h.orgRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoiceId: ORG_INV_ID,
+        amountCents: 18000,
+        method: "interac",
+        source: "interac_reconciler",
+        externalRef: "interac:C1AVzjTtqRCM",
+      }),
+    );
+    expect(h.updates[0].$set["metadata.interac_organizationInvoiceId"]).toBe(ORG_INV_ID);
+  });
+
+  it("leaves a partial transfer to a person", async () => {
+    h.messages.push(notification("90,00", `PAE ${REF}`));
+    h.orgInvoice = { _id: ORG_INV_ID, number: REF, status: "sent", balanceCents: 18000 };
+
+    const run = await runInteracReconciliation();
+
+    expect(run.review).toBe(1);
+    expect(h.orgRecord).not.toHaveBeenCalled();
+    expect(run.outcomes[0].reason).toBe("amount_mismatch");
+  });
+
+  it("an unknown invoice number is never matched to a session", async () => {
+    h.messages.push(notification("180,00", REF));
+    h.appointment = appointmentFor(180);
+
+    const run = await runInteracReconciliation();
+
+    expect(run.outcomes[0].reason).toBe("unknown_reference");
+    expect(h.settle).not.toHaveBeenCalled();
+    expect(h.orgRecord).not.toHaveBeenCalled();
+  });
+
+  it("counts a race the recorder had to hand to a person as a review", async () => {
+    h.messages.push(notification("180,00", REF));
+    h.orgInvoice = { _id: ORG_INV_ID, number: REF, status: "sent", balanceCents: 18000 };
+    h.orgRecord.mockResolvedValue({ outcome: "needs_review", reason: "overpaid", invoice: {} });
+
+    const run = await runInteracReconciliation();
+
+    expect(run).toMatchObject({ settled: 0, review: 1 });
+  });
 });
 
 describe("runInteracReconciliation", () => {

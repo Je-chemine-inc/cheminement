@@ -57,6 +57,9 @@ vi.mock("@/lib/organization-invoice", () => ({
   unbilledSummary: () => h.touched(),
   renderInvoicePdf: () => h.touched(),
 }));
+vi.mock("@/lib/organization-invoice-card", () => ({
+  cancelOpenOrganizationPaymentIntent: () => h.touched(),
+}));
 vi.mock("@/lib/coverage-admin", () => ({
   createCoverage: () => h.touched(),
   updateCoverageTerms: () => h.touched(),

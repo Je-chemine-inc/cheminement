@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isInteracNotificationSender,
+  isOrganizationInvoiceReference,
   parseFrenchAmount,
   parseInteracNotification,
 } from "./interac-notification";
@@ -162,5 +163,50 @@ describe("parseInteracNotification — real production notifications", () => {
     const p = parseInteracNotification(interac(WITH_MEMO.replace(/\n/g, "\r\n")))!;
     expect(p.referenceCode).toBe("INT-9126-0AE49D");
     expect(p.amountCad).toBe(25);
+  });
+});
+
+describe("an organization's transfer (spec 002)", () => {
+  const orgBody = (memo: string) =>
+    [
+      "Bonjour JE CHEMINE INC.,",
+      "",
+      "Les fonds ont été déposés!",
+      "180,00 $",
+      "",
+      "Précisions sur le virement",
+      "",
+      "Message :",
+      memo,
+      "",
+      "Date : 15 octobre 2026",
+      "Numéro de référence : CA9XyzOrg123",
+      "Envoyé par : PAE DESJARDINS",
+      "Montant : 180,00 $ (CAD)",
+    ].join("\n");
+
+  it("reads the invoice number an organization writes as the message", () => {
+    const parsed = parseInteracNotification({
+      from: "notify@payments.interac.ca",
+      subject: "Virement Interac",
+      text: orgBody("Facture jco-2026-000007 PAE"),
+    });
+    expect(parsed?.referenceCode).toBe("JCO-2026-000007");
+    expect(parsed?.amountCad).toBe(180);
+    expect(isOrganizationInvoiceReference(parsed?.referenceCode)).toBe(true);
+  });
+
+  it("never reads a client's fiscal invoice number (JC-) as an organization's", () => {
+    const parsed = parseInteracNotification({
+      from: "notify@payments.interac.ca",
+      subject: "Virement Interac",
+      text: orgBody("JC-2026-000123"),
+    });
+    expect(parsed?.referenceCode).toBeNull();
+  });
+
+  it("keeps treating an INT- code as a client's", () => {
+    expect(isOrganizationInvoiceReference("INT-9126-0AE49D")).toBe(false);
+    expect(isOrganizationInvoiceReference(null)).toBe(false);
   });
 });

@@ -83,7 +83,6 @@ vi.mock("@/lib/notifications", () => ({ sendOrganizationInvoiceEmail: h.send }))
 
 import {
   issueAndSend,
-  recordOrganizationPayment,
   voidInvoice,
 } from "@/lib/organization-invoice";
 
@@ -173,6 +172,10 @@ describe("issueAndSend", () => {
     const set = (numbered[1] as { $set: Record<string, unknown> }).$set;
     expect(set.dueAt).toEqual(new Date(NOW.getTime() + 30 * 86_400_000));
     expect(set.billTo).toMatchObject({ name: "PAE Desjardins", emails: ["factu@pae.ca", "rh@pae.ca"] });
+    expect(set.payToken).toMatch(/^[a-f0-9]{64}$/);
+    const email = h.send.mock.calls[0][0] as { payUrl: string; interacEmail: string };
+    expect(email.payUrl).toContain(`/org-pay?token=${set.payToken as string}&lang=fr`);
+    expect(email.interacEmail).toBe("paiement@jechemine.ca");
 
     const sent = h.invFindOneAndUpdate.mock.calls.at(-1)![1] as { $set: Record<string, unknown>; $push: { sendLog: Record<string, unknown> } };
     expect(sent.$set.status).toBe("sent");
@@ -253,54 +256,6 @@ describe("voidInvoice", () => {
   it("refuses once money was received", async () => {
     h.invoice = { ...h.invoice, status: "partially_paid", paidCents: 5000 };
     expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "CANNOT_VOID" });
-    expect(h.aptUpdateMany).not.toHaveBeenCalled();
-  });
-});
-
-describe("recordOrganizationPayment", () => {
-  beforeEach(() => {
-    h.invoice = { ...h.invoice, status: "sent", number: "JCO-2026-000007" };
-  });
-  const pay = (amountCents: number, externalRef?: string) =>
-    recordOrganizationPayment({
-      invoiceId: String(INV),
-      amountCents,
-      method: "cheque",
-      source: "admin",
-      externalRef,
-      byUserId: ADMIN,
-      now: NOW,
-    });
-
-  it("never takes more than the balance", async () => {
-    expect(await pay(18001)).toMatchObject({ code: "OVERPAYMENT" });
-    expect(h.invFindOneAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it("is a no-op for a payment already recorded (same external reference)", async () => {
-    h.invoice = { ...h.invoice, payments: [{ externalRef: "pi_1", amountCents: 18000 }] };
-    expect(await pay(18000, "pi_1")).toMatchObject({ ok: true });
-    expect(h.invFindOneAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it("a full payment marks the invoice and its sessions paid", async () => {
-    h.invFindOneAndUpdate.mockResolvedValueOnce({ ...h.invoice, paidCents: 18000, balanceCents: 0 });
-    const r = await pay(18000);
-    expect(r.ok).toBe(true);
-    const [filter, update] = h.invFindOneAndUpdate.mock.calls[0] as [Record<string, unknown>, { $inc: Record<string, number> }];
-    expect(filter).toMatchObject({ balanceCents: { $gte: 18000 } });
-    expect(update.$inc).toEqual({ paidCents: 18000, balanceCents: -18000 });
-    expect(h.invUpdateOne).toHaveBeenCalledWith({ _id: INV }, { $set: { status: "paid" } });
-    expect(h.aptUpdateMany).toHaveBeenCalledWith(
-      { "thirdPartyBilling.orgInvoiceId": INV },
-      { $set: { "thirdPartyBilling.orgStatus": "paid", "thirdPartyBilling.orgPaidAt": NOW } },
-    );
-  });
-
-  it("a partial payment leaves the sessions invoiced", async () => {
-    h.invFindOneAndUpdate.mockResolvedValueOnce({ ...h.invoice, paidCents: 9000, balanceCents: 9000 });
-    await pay(9000);
-    expect(h.invUpdateOne).toHaveBeenCalledWith({ _id: INV }, { $set: { status: "partially_paid" } });
     expect(h.aptUpdateMany).not.toHaveBeenCalled();
   });
 });

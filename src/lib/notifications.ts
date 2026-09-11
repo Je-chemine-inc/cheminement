@@ -749,6 +749,11 @@ const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
   "client_coverage_confirmed",
   "client_coverage_cap_warning",
   "client_coverage_exhausted",
+  // An organization's accounts-payable replies about an invoice go there too.
+  "organization_invoice",
+  "organization_statement",
+  "organization_payment_reminder",
+  "organization_payment_received",
 ]);
 
 /** True when replies to this email type should route to the payment inbox. */
@@ -6727,6 +6732,34 @@ export async function sendAdminCoverageCapWarning(data: {
   return sent;
 }
 
+// --- Spec 002: emails to an organization's billing address -------------------
+
+const orgMoney = (cents: number, lang: "fr" | "en") =>
+  lang === "fr"
+    ? `${(cents / 100).toFixed(2).replace(".", ",")} $`
+    : `$${(cents / 100).toFixed(2)}`;
+
+const orgDate = (date: Date | null | undefined, lang: "fr" | "en") =>
+  date
+    ? new Intl.DateTimeFormat(lang === "fr" ? "fr-CA" : "en-CA", {
+        timeZone: "America/Toronto",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(new Date(date))
+    : "—";
+
+/** The invoice number is the Interac message — one reference per invoice. */
+const orgInteracLine = (email: string, number: string, lang: "fr" | "en") =>
+  lang === "fr"
+    ? `Virement Interac à ${email}, avec le message « ${number} ».`
+    : `Interac e-Transfer to ${email}, with “${number}” as the message.`;
+
+const orgInteracBox = (email: string, number: string, lang: "fr" | "en") => ({
+  title: lang === "fr" ? "Payer par virement Interac" : "Pay by Interac e-Transfer",
+  content: escapeHtml(orgInteracLine(email, number, lang)),
+});
+
 /**
  * Spec 002: an invoice or statement to an organization's billing address.
  * The body names no patient — only the organization, the number, the amounts
@@ -6743,22 +6776,16 @@ export async function sendOrganizationInvoiceEmail(data: {
   dueAt: Date | null;
   periodKey: string | null;
   pdf: Buffer;
+  /** The pay link (card), when a balance is due. */
+  payUrl?: string | null;
+  /** Interac deposit address; the invoice number is the transfer message. */
+  interacEmail?: string | null;
   locale?: "fr" | "en";
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
-  const money = (cents: number) =>
-    lang === "fr"
-      ? `${(cents / 100).toFixed(2).replace(".", ",")} $`
-      : `$${(cents / 100).toFixed(2)}`;
-  const due = data.dueAt
-    ? new Intl.DateTimeFormat(lang === "fr" ? "fr-CA" : "en-CA", {
-        timeZone: "America/Toronto",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(new Date(data.dueAt))
-    : "—";
+  const money = (cents: number) => orgMoney(cents, lang);
+  const due = orgDate(data.dueAt, lang);
   const statement = data.kind === "statement";
   const title = statement
     ? lang === "fr" ? "Relevé de facturation" : "Billing statement"
@@ -6780,6 +6807,12 @@ export async function sendOrganizationInvoiceEmail(data: {
       { label: lang === "fr" ? "Solde dû" : "Balance due", value: money(data.balanceCents) },
       { label: lang === "fr" ? "Échéance" : "Due date", value: due },
     ],
+    ...(data.payUrl
+      ? { button: { text: lang === "fr" ? "Payer par carte" : "Pay by card", url: data.payUrl } }
+      : {}),
+    ...(data.interacEmail
+      ? { infoBox: orgInteracBox(data.interacEmail, data.number, lang) }
+      : {}),
     branding,
     lang,
   });
@@ -6788,6 +6821,8 @@ export async function sendOrganizationInvoiceEmail(data: {
       `${title} ${data.number}`,
       `${data.organizationName} — ${money(data.balanceCents)} — ${due}`,
       lang === "fr" ? "Le document est joint à ce courriel." : "The document is attached to this email.",
+      data.payUrl ? `${lang === "fr" ? "Payer par carte" : "Pay by card"} : ${data.payUrl}` : "",
+      data.interacEmail ? orgInteracLine(data.interacEmail, data.number, lang) : "",
     ],
     lang,
   );
@@ -6857,6 +6892,225 @@ export async function sendAdminOrganizationInvoicesReview(data: {
       "admin_organization_statement_review",
     ).catch((e) => {
       console.error("sendAdminOrganizationInvoicesReview:", e);
+      return false;
+    });
+    sent = sent || ok;
+  }
+  return sent;
+}
+
+/**
+ * Spec 002: a payment reminder to an organization — at the due date, then 14
+ * days later. Number, balance and due date only: no patient's name, no PDF.
+ */
+export async function sendOrganizationPaymentReminderEmail(data: {
+  to: string;
+  stage: "due" | "follow_up";
+  organizationName: string;
+  number: string;
+  balanceCents: number;
+  dueAt: Date | null;
+  payUrl?: string | null;
+  interacEmail?: string | null;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const balance = orgMoney(data.balanceCents, lang);
+  const due = orgDate(data.dueAt, lang);
+  const org = escapeHtml(data.organizationName);
+  const followUp = data.stage === "follow_up";
+  const title =
+    lang === "fr"
+      ? followUp ? `Facture ${data.number} en retard` : `Facture ${data.number} à échéance`
+      : followUp ? `Invoice ${data.number} is overdue` : `Invoice ${data.number} is due`;
+  const intro =
+    lang === "fr"
+      ? followUp
+        ? `La facture ${data.number} adressée à ${org} était payable le ${due}. Un solde de ${balance} reste à régler. Si le paiement est déjà parti, merci de ne pas tenir compte de ce rappel.`
+        : `La facture ${data.number} adressée à ${org} arrive à échéance le ${due}. Solde à régler : ${balance}. Si le paiement est déjà parti, merci de ne pas tenir compte de ce rappel.`
+      : followUp
+        ? `Invoice ${data.number} for ${org} was due on ${due}. A balance of ${balance} is outstanding. If the payment is already on its way, please disregard this reminder.`
+        : `Invoice ${data.number} for ${org} is due on ${due}. Balance due: ${balance}. If the payment is already on its way, please disregard this reminder.`;
+  const html = buildEmailHtml({
+    title,
+    theme: followUp ? "warning" : "info",
+    greeting: lang === "fr" ? "Bonjour," : "Hello,",
+    intro,
+    details: [
+      { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
+      { label: lang === "fr" ? "Solde dû" : "Balance due", value: balance },
+      { label: lang === "fr" ? "Échéance" : "Due date", value: due },
+    ],
+    ...(data.payUrl
+      ? { button: { text: lang === "fr" ? "Payer par carte" : "Pay by card", url: data.payUrl } }
+      : {}),
+    ...(data.interacEmail ? { infoBox: orgInteracBox(data.interacEmail, data.number, lang) } : {}),
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      title,
+      `${data.organizationName} — ${balance} — ${due}`,
+      data.payUrl ? `${lang === "fr" ? "Payer par carte" : "Pay by card"} : ${data.payUrl}` : "",
+      data.interacEmail ? orgInteracLine(data.interacEmail, data.number, lang) : "",
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.to, subject: `${title} — Je chemine`, html, text },
+    "organization_payment_reminder",
+  );
+}
+
+/** Spec 002: the organization's payment arrived (card, Interac or recorded by hand). */
+export async function sendOrganizationPaymentReceivedEmail(data: {
+  to: string;
+  organizationName: string;
+  number: string;
+  amountCents: number;
+  balanceCents: number;
+  payUrl?: string | null;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const amount = orgMoney(data.amountCents, lang);
+  const balance = orgMoney(data.balanceCents, lang);
+  const org = escapeHtml(data.organizationName);
+  const settled = data.balanceCents <= 0;
+  const title = lang === "fr" ? `Paiement reçu — facture ${data.number}` : `Payment received — invoice ${data.number}`;
+  const intro =
+    lang === "fr"
+      ? `Nous avons bien reçu ${amount} de ${org} pour la facture ${data.number}. ${settled ? "La facture est entièrement réglée. Merci !" : `Il reste ${balance} à régler.`}`
+      : `We received ${amount} from ${org} for invoice ${data.number}. ${settled ? "The invoice is paid in full. Thank you!" : `${balance} remains outstanding.`}`;
+  const html = buildEmailHtml({
+    title,
+    theme: "success",
+    greeting: lang === "fr" ? "Bonjour," : "Hello,",
+    intro,
+    details: [
+      { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
+      { label: lang === "fr" ? "Montant reçu" : "Amount received", value: amount },
+      { label: lang === "fr" ? "Solde restant" : "Remaining balance", value: balance },
+    ],
+    ...(!settled && data.payUrl
+      ? { button: { text: lang === "fr" ? "Payer le solde par carte" : "Pay the balance by card", url: data.payUrl } }
+      : {}),
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      title,
+      `${data.organizationName} — ${amount} — ${lang === "fr" ? "solde" : "balance"} ${balance}`,
+      !settled && data.payUrl ? data.payUrl : "",
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.to, subject: `${title} — Je chemine`, html, text },
+    "organization_payment_received",
+  );
+}
+
+/**
+ * Spec 002: organization invoices 30 days past due. One email per run listing
+ * them — organization, number, balance, days late; never a patient's name.
+ */
+export async function sendAdminOrganizationInvoicesOverdue(data: {
+  items: Array<{ organizationName: string; number: string; balanceCents: number; daysLate: number }>;
+}): Promise<boolean> {
+  if (data.items.length === 0) return false;
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn("[admin_organization_invoice_overdue] No admin recipients — set adminAlertEmail.");
+    return false;
+  }
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = `${base}/admin/dashboard/organization-invoices`;
+  const describe = (i: (typeof data.items)[number]) =>
+    `${i.number} — ${i.organizationName} — ${orgMoney(i.balanceCents, "fr")} — ${i.daysLate} jours de retard`;
+
+  const html = buildEmailHtml({
+    title: "Factures aux organismes en retard",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `${data.items.length} facture(s) à des organismes sont impayées 30 jours après l’échéance. Les deux rappels automatiques sont partis ; la suite (appel, mise en demeure, radiation) est à décider par une personne.`,
+    details: data.items.map((i, n) => ({ label: `#${n + 1}`, value: escapeHtml(describe(i)), stacked: true })),
+    button: { text: "Voir les factures", url },
+    branding,
+  });
+  const text = buildEmailText(["Factures aux organismes en retard", ...data.items.map(describe), url]);
+  let sent = false;
+  for (const to of adminEmails) {
+    const ok = await sendEmail(
+      { to, subject: `Factures aux organismes en retard (${data.items.length})`, html, text },
+      "admin_organization_invoice_overdue",
+    ).catch((e) => {
+      console.error("sendAdminOrganizationInvoicesOverdue:", e);
+      return false;
+    });
+    sent = sent || ok;
+  }
+  return sent;
+}
+
+/**
+ * Spec 002: money from an organization a person must look at — an
+ * overpayment, a payment on a void invoice, a refund, a chargeback. Nothing
+ * was refunded automatically.
+ */
+export async function sendAdminOrganizationPaymentReview(data: {
+  invoiceNumber: string;
+  organizationName: string;
+  kind: "overpaid" | "not_payable" | "refund" | "dispute";
+  detail: string;
+}): Promise<boolean> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn("[admin_organization_payment_review] No admin recipients — set adminAlertEmail.");
+    return false;
+  }
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = `${base}/admin/dashboard/organization-invoices`;
+  const heading = {
+    overpaid: "Paiement en trop",
+    not_payable: "Paiement sur une facture qui n’attendait rien",
+    refund: "Remboursement enregistré",
+    dispute: "Paiement contesté",
+  }[data.kind];
+  const html = buildEmailHtml({
+    title: `${heading} — ${escapeHtml(data.invoiceNumber)}`,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: escapeHtml(data.detail),
+    details: [
+      { label: "Facture", value: escapeHtml(data.invoiceNumber) },
+      { label: "Organisme", value: escapeHtml(data.organizationName) },
+    ],
+    button: { text: "Voir les factures", url },
+    branding,
+  });
+  const text = buildEmailText([`${heading} — ${data.invoiceNumber}`, data.organizationName, data.detail, url]);
+  let sent = false;
+  for (const to of adminEmails) {
+    const ok = await sendEmail(
+      { to, subject: `${heading} — ${data.invoiceNumber}`, html, text },
+      "admin_organization_payment_review",
+    ).catch((e) => {
+      console.error("sendAdminOrganizationPaymentReview:", e);
       return false;
     });
     sent = sent || ok;

@@ -37,12 +37,21 @@ export function serializeInvoice(
     })),
     payments: (inv.payments ?? []).map((p) => ({
       amountCents: p.amountCents,
+      refundedCents: p.refundedCents ?? 0,
       method: p.method,
       reference: p.reference ?? "",
       receivedAt: p.receivedAt,
       source: p.source,
     })),
     sendLog: (inv.sendLog ?? []).map((s) => ({ at: s.at, to: s.to, kind: s.kind })),
+    paymentEvents: (inv.paymentEvents ?? []).map((e) => ({ at: e.at, kind: e.kind, detail: e.detail })),
+    reminders: {
+      dueSentAt: inv.reminders?.dueSentAt ?? null,
+      followUpSentAt: inv.reminders?.followUpSentAt ?? null,
+      overdueAlertSentAt: inv.reminders?.overdueAlertSentAt ?? null,
+    },
+    disputed: Boolean(inv.disputed),
+    hasPayLink: Boolean(inv.payToken),
     voidReason: inv.voidReason ?? "",
     createdAt: inv.createdAt,
   };

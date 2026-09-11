@@ -1387,9 +1387,33 @@
         "cheque": "Cheque",
         "eft": "Bank transfer (EFT)",
         "portal": "Organization's portal",
-        "other": "Other"
+        "other": "Other",
+        "card": "Card (pay link)"
       },
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "disputed": "Disputed",
+      "overpaid": "Overpaid {amount}",
+      "paymentsTitle": "Payments",
+      "paymentLine": "{date} — {amount} · {method} · {source}",
+      "refundedPart": "refunded: {amount}",
+      "sources": {
+        "stripe": "online",
+        "interac_reconciler": "matched automatically",
+        "admin": "recorded by hand"
+      },
+      "remindersTitle": "Reminders",
+      "reminderDue": "due-date reminder on {date}",
+      "reminderFollowUp": "second reminder on {date}",
+      "reminderTeam": "team alerted on {date}",
+      "remindersNone": "no reminder sent",
+      "eventsTitle": "Needs a look",
+      "logKinds": {
+        "sent": "Sent",
+        "resent": "Resent",
+        "reminder": "Reminder",
+        "payment_received": "Payment receipt"
+      },
+      "payReceiptNote": "A receipt is emailed to the organization's billing address."
     }
   },
   "AppointmentSelector": {
@@ -6944,5 +6968,35 @@
       "person": "Third-party payer",
       "other": "Third-party payer"
     }
+  },
+  "OrgPay": {
+    "title": "Invoice payment",
+    "invalidTitle": "Invalid payment link",
+    "invalidBody": "This payment link is invalid or no longer exists. Use the link in the latest email you received, or write to us.",
+    "loadFailed": "The invoice could not be loaded. Try again in a moment.",
+    "invoiceNumber": "Invoice",
+    "dueDate": "Due date",
+    "overdue": "overdue",
+    "total": "Invoice amount",
+    "paid": "Already paid",
+    "balance": "Balance to pay",
+    "cardTitle": "Pay by card",
+    "payAmount": "Pay {amount} by card",
+    "preparing": "Preparing…",
+    "processing": "Processing payment…",
+    "cardFootnote": "Secure payment by Stripe. Je chemine keeps no card details.",
+    "interacTitle": "Or by Interac e-Transfer",
+    "interacBody": "Send {amount} to {email} with “<ref>{number}</ref>” as the message. The transfer is matched to the invoice automatically.",
+    "otherMethods": "Cheque or bank transfer: quote invoice number {number}.",
+    "successTitle": "Payment received",
+    "successBody": "Thank you. A receipt will be sent to {org}’s billing address.",
+    "processingBody": "Your payment is being processed. A receipt will follow as soon as it is confirmed.",
+    "paidTitle": "Invoice paid",
+    "paidBody": "Invoice {number} is paid in full. Thank you!",
+    "closedTitle": "No payment due",
+    "closedBody": "Invoice {number} is not awaiting payment. For any question, reply to the email that sent it.",
+    "inProgress": "A payment for this invoice is already being processed. Refresh the page in a few minutes.",
+    "errorGeneric": "The payment could not be made. Try again, or pay by Interac e-Transfer.",
+    "additionalVerification": "Your bank asks for an extra verification. Please try again."
   }
 }

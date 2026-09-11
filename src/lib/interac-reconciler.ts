@@ -22,12 +22,19 @@
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import ExternalMessage from "@/models/ExternalMessage";
-import { parseInteracNotification } from "@/lib/interac-notification";
+import OrganizationInvoice from "@/models/OrganizationInvoice";
+import {
+  isOrganizationInvoiceReference,
+  parseInteracNotification,
+  type ParsedInteracNotification,
+} from "@/lib/interac-notification";
 import {
   decideInteracReconciliation,
+  decideOrganizationInteracReconciliation,
   type ReconciliationReason,
 } from "@/lib/interac-reconciliation";
 import { settleInteracPayment } from "@/lib/payment-settlement";
+import { recordReceivedOrganizationMoney } from "@/lib/organization-invoice-settlement";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,7 +56,67 @@ export interface ReconciliationRun {
     amountCad: number;
     referenceCode: string | null;
     appointmentId?: string;
+    organizationInvoiceId?: string;
   }>;
+}
+
+/**
+ * A transfer naming an organization invoice (JCO-…, spec 002). Settles only on
+ * the exact balance, through the same recorder as a card payment, keyed on
+ * Interac's own transfer reference so it can never count twice.
+ */
+async function reconcileOrganizationTransfer(
+  parsed: ParsedInteracNotification,
+  msg: { _id: unknown; emailMessageId?: string },
+  run: ReconciliationRun,
+): Promise<void> {
+  const invoice = await OrganizationInvoice.findOne({ number: parsed.referenceCode })
+    .select("_id number status balanceCents")
+    .lean();
+  const decision = decideOrganizationInteracReconciliation(
+    { amountCad: parsed.amountCad, referenceCode: parsed.referenceCode, payerName: parsed.payerName },
+    invoice
+      ? { number: invoice.number ?? "", status: invoice.status, balanceCents: invoice.balanceCents }
+      : null,
+  );
+
+  if (decision.action === "settle" && invoice) {
+    const recorded = await recordReceivedOrganizationMoney({
+      invoiceId: String(invoice._id),
+      amountCents: Math.round(parsed.amountCad * 100),
+      method: "interac",
+      source: "interac_reconciler",
+      externalRef: `interac:${parsed.interacTransactionRef ?? msg.emailMessageId ?? String(msg._id)}`,
+      reference: parsed.interacTransactionRef ?? undefined,
+    });
+    // A race (a cheque recorded a moment ago) still records the money, but a
+    // person is asked to look — count it where it belongs.
+    if (recorded.outcome === "applied") run.settled++;
+    else run.review++;
+    console.log(
+      `[interac-reconciler] settled ${parsed.referenceCode} — ${decision.detail} (${recorded.outcome})`,
+    );
+  } else {
+    run.review++;
+    console.warn(`[interac-reconciler] review (${decision.reason}): ${decision.detail}`);
+  }
+
+  run.outcomes.push({
+    messageId: msg.emailMessageId,
+    reason: decision.reason,
+    amountCad: parsed.amountCad,
+    referenceCode: parsed.referenceCode,
+    organizationInvoiceId: invoice ? String(invoice._id) : undefined,
+  });
+  await markProcessed(msg._id, {
+    reason: decision.reason,
+    action: decision.action,
+    detail: decision.detail,
+    amount: String(parsed.amountCad),
+    reference: parsed.referenceCode ?? "",
+    interacRef: parsed.interacTransactionRef ?? "",
+    organizationInvoiceId: invoice ? String(invoice._id) : "",
+  });
 }
 
 export async function runInteracReconciliation(
@@ -90,6 +157,11 @@ export async function runInteracReconciliation(
       // seen so we don't re-parse it forever, but count it apart.
       run.skipped++;
       await markProcessed(msg._id, { reason: "unparsed" });
+      continue;
+    }
+
+    if (isOrganizationInvoiceReference(parsed.referenceCode)) {
+      await reconcileOrganizationTransfer(parsed, msg, run);
       continue;
     }
 
