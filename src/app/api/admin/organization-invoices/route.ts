@@ -6,6 +6,7 @@ import { requireBillingAdmin } from "@/lib/organization-admin";
 import { isPeriodKey } from "@/lib/organization-invoice-lines";
 import {
   draftForSession,
+  draftSessionsForOrganization,
   draftStatement,
   unbilledSummary,
 } from "@/lib/organization-invoice";
@@ -58,13 +59,24 @@ export async function GET(req: NextRequest) {
 /**
  * POST /api/admin/organization-invoices — create or rebuild a draft:
  * `{ kind: "session", appointmentId }` or
- * `{ kind: "statement", organizationId, periodKey: "YYYY-MM" }`.
+ * `{ kind: "statement", organizationId, periodKey: "YYYY-MM" }`, or
+ * `{ kind: "sessions", organizationId }` — one draft per unbilled session.
  */
 export async function POST(req: NextRequest) {
   const gate = await requireBillingAdmin();
   if (gate.error) return gate.error;
   try {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (body?.kind === "sessions" && typeof body.organizationId === "string") {
+      const drafted = await draftSessionsForOrganization(body.organizationId);
+      if (drafted === 0) {
+        return NextResponse.json(
+          { error: "Nothing to invoice: no closed, unbilled session for this.", code: "NOTHING_TO_BILL" },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ drafted }, { status: 201 });
+    }
     let result;
     if (body?.kind === "session" && typeof body.appointmentId === "string") {
       result = await draftForSession(body.appointmentId);

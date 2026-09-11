@@ -47,6 +47,7 @@ vi.mock("@/models/OrganizationInvoice", async (importOriginal) => ({
 }));
 vi.mock("@/lib/organization-invoice", () => ({
   draftForSession: () => h.touched(),
+  draftSessionsForOrganization: () => h.touched(),
   draftStatement: () => h.touched(),
   refreshDraft: () => h.touched(),
   issueAndSend: () => h.touched(),

@@ -127,6 +127,9 @@ describe("helpers", () => {
     expect(start.toISOString()).toBe("2026-12-01T00:00:00.000Z");
     expect(end.toISOString()).toBe("2027-01-01T00:00:00.000Z");
     expect(previousPeriodKey(new Date("2027-01-01T13:00:00Z"))).toBe("2026-12");
+    // 00:30 UTC on 1 October is still 30 September in Montréal.
+    expect(previousPeriodKey(new Date("2026-10-01T00:30:00Z"))).toBe("2026-08");
+    expect(previousPeriodKey(new Date("2026-10-01T12:00:00Z"))).toBe("2026-09");
     expect(() => periodBounds("2026-13")).toThrow();
   });
 });

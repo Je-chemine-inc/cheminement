@@ -114,6 +114,8 @@ imunify360-agent rules update-shared-disabled-rules
 | `20 * * * *` | proposal-timeouts |
 | `30 * * * *` | payment-guarantee-reminders |
 | `40 * * * *` | unscheduled-match-reminders |
+| `50 * * * *` | **organization-billing** (spec 002) — drafts organization statements/invoices, the team review email, overdue marking. Does nothing while the switch in Admin → Organismes payeurs is off. Line: `50 * * * * root /root/jechemine/run-cron.sh organization-billing` |
+| `7,22,37,52 * * * *` | interac-reconciliation (settles exact Interac matches — see debt-map 2026-09-04) |
 | `*/5 * * * *` | inbound-email-sync (support@ + paiement@ → Réception) |
 | `*/3 * * * *` | **app watchdog** — `/root/jechemine/healthcheck.sh` restarts `jechemine` if it stops responding |
 | `15 7 * * *` | **MongoDB backup** — `/root/jechemine/backup-mongo.sh` (see below) |

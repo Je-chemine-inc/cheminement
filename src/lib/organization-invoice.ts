@@ -195,6 +195,19 @@ export async function draftStatement(
   });
 }
 
+/** One draft per unbilled session of an organization. Returns how many exist now. */
+export async function draftSessionsForOrganization(organizationId: string): Promise<number> {
+  await connectToDatabase();
+  if (!mongoose.Types.ObjectId.isValid(organizationId)) return 0;
+  const sessions = await Appointment.find(billableSessionsFilter(organizationId)).select("_id").lean();
+  let drafted = 0;
+  for (const s of sessions) {
+    const r = await draftForSession(String(s._id));
+    if (r?.ok) drafted += 1;
+  }
+  return drafted;
+}
+
 /** Rebuild a draft from the sessions as they are now. */
 export async function refreshDraft(invoiceId: string): Promise<InvoiceResult | null> {
   await connectToDatabase();

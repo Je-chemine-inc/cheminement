@@ -167,6 +167,12 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé au client quand toutes les séances payées par son organisme sont utilisées : ses prochaines séances lui seront facturées.",
     category: "Paiements",
   },
+  admin_organization_statement_review: {
+    name: "Alerte équipe — factures aux organismes à réviser",
+    description:
+      "Envoyé à l’équipe quand des brouillons de facture ou de relevé pour des organismes payeurs attendent d’être révisés et envoyés. Ne nomme aucun client.",
+    category: "Alertes administratives",
+  },
   organization_invoice: {
     name: "Facture à un organisme",
     description:

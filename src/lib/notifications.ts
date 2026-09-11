@@ -6806,6 +6806,65 @@ export async function sendOrganizationInvoiceEmail(data: {
 }
 
 /**
+ * Spec 002: organization invoices wait for a human to review and send them.
+ * One email per run listing the new drafts — organizations, periods, session
+ * counts and totals; never a patient's name.
+ */
+export async function sendAdminOrganizationInvoicesReview(data: {
+  items: Array<{
+    organizationName: string;
+    kind: "session" | "statement";
+    periodKey?: string | null;
+    sessions: number;
+    totalCents: number;
+  }>;
+}): Promise<boolean> {
+  if (data.items.length === 0) return false;
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn("[admin_organization_statement_review] No admin recipients — set adminAlertEmail.");
+    return false;
+  }
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = `${base}/admin/dashboard/organization-invoices`;
+  const money = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} $`;
+  const describe = (i: (typeof data.items)[number]) =>
+    `${escapeHtml(i.organizationName)} — ${i.kind === "statement" ? `relevé ${i.periodKey ?? ""}` : "facture de séance"} — ${i.sessions} séance(s), ${money(i.totalCents)}`;
+
+  const html = buildEmailHtml({
+    title: "Factures aux organismes à réviser",
+    theme: "info",
+    greeting: "Bonjour,",
+    intro: `${data.items.length} brouillon(s) de facture aux organismes attend(ent) votre révision. Rien n’est envoyé à un organisme avant que vous cliquiez « Envoyer ».`,
+    details: data.items.map((i, n) => ({ label: `#${n + 1}`, value: describe(i), stacked: true })),
+    button: { text: "Réviser les factures", url },
+    branding,
+  });
+  const text = buildEmailText([
+    "Factures aux organismes à réviser",
+    ...data.items.map((i) => describe(i).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")),
+    url,
+  ]);
+  let sent = false;
+  for (const to of adminEmails) {
+    const ok = await sendEmail(
+      { to, subject: `Factures aux organismes à réviser (${data.items.length})`, html, text },
+      "admin_organization_statement_review",
+    ).catch((e) => {
+      console.error("sendAdminOrganizationInvoicesReview:", e);
+      return false;
+    });
+    sent = sent || ok;
+  }
+  return sent;
+}
+
+/**
  * Alert admins when every proposed professional has refused an appointment
  * and the routing has cascaded to `routingStatus: "general"`. Without this
  * notification the request silently drops into the general queue with no

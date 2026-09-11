@@ -118,8 +118,18 @@ export function periodBounds(key: string): { start: Date; end: Date } {
   return { start: new Date(Date.UTC(y, mo, 1)), end: new Date(Date.UTC(y, mo + 1, 1)) };
 }
 
-/** The month before `now`'s calendar month — what a statement run bills. */
+/**
+ * The month before the current one in Montréal — what a statement run bills.
+ * In Toronto time, not UTC: at 20:00 on 30 September (00:00 UTC, 1 October)
+ * September is not over yet.
+ */
 export function previousPeriodKey(now: Date): string {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  return periodKeyOf(d);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value); // 1-12
+  return periodKeyOf(new Date(Date.UTC(year, month - 2, 1)));
 }

@@ -38,6 +38,7 @@ export type EmailNotificationType =
   | "admin_coverage_cap_warning"
   // Spec 002 phase 4: documents sent to an organization.
   | "organization_invoice"
+  | "admin_organization_statement_review"
   | "organization_statement"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
@@ -310,6 +311,10 @@ const defaultEmailTemplates: Record<
   admin_coverage_cap_warning: {
     enabled: true,
     subject: "Une séance couverte restante — Je chemine",
+  },
+  admin_organization_statement_review: {
+    enabled: true,
+    subject: "Factures aux organismes à réviser — Je chemine",
   },
   organization_invoice: {
     enabled: true,
