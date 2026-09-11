@@ -1197,7 +1197,7 @@
       "title": "Organization coverage",
       "add": "Add a coverage",
       "switchOffNotice": "Organization billing is off: these coverages do not apply to sessions yet.",
-      "noOrganizations": "First create an organization under “Paying organizations”.",
+      "noOrganizations": "No paying organization is on file yet: you can create one right here.",
       "empty": "No coverage. This client's sessions are billed to them.",
       "statuses": {
         "active": "Active",
@@ -1285,7 +1285,13 @@
       "consentFromBooking": "The client ticked the consent box when booking; it is recorded with the coverage.",
       "rejectTitle": "Refuse this declaration?",
       "rejectBody": "{name} will not be billed. Sessions already closed and waiting for this answer will be billed to the client, who will receive the payment request.",
-      "rejectReasonPlaceholder": "Reason (optional, internal)"
+      "rejectReasonPlaceholder": "Reason (optional, internal)",
+      "declaredNotOnFile": "“{name}”, declared by the client, is not among your paying organizations yet.",
+      "declaredSimilar": "Is it one of these?",
+      "useThisOrganization": "It's “{name}”",
+      "createDeclared": "Create “{name}”",
+      "newOrganization": "+ New organization",
+      "quickCreateHelp": "The organization is added to your paying organizations and selected here. You need at least its billing address to send it an invoice; the rest can wait and is edited under “Paying organizations”."
     },
     "payer": {
       "awaitingDecision": "Payer to confirm",

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  AlertTriangle,
   Archive,
   ArchiveRestore,
   Building2,
@@ -15,16 +14,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -33,66 +23,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const KINDS = ["eap", "employer", "school", "person", "other"] as const;
-const CYCLES = ["per_session", "monthly"] as const;
-const GAP_POLICIES = [
-  "client_copay",
-  "clinic_absorbs_pro_full",
-  "clinic_absorbs_pro_org_rate",
-] as const;
-
-interface Organization {
-  id: string;
-  name: string;
-  kind: (typeof KINDS)[number];
-  billingEmails: string[];
-  contactName: string;
-  phone: string;
-  language: "fr" | "en";
-  paymentTermsDays: number;
-  billingCycle: (typeof CYCLES)[number];
-  negotiatedRate: number | null;
-  gapPolicy: (typeof GAP_POLICIES)[number];
-  autoSendPerSession: boolean;
-  requiresOwnForm: boolean;
-  formNotes: string;
-  internalNotes: string;
-  active: boolean;
-  activeCoverageCount: number;
-}
-
-/** The form keeps money and lists as text; the API converts. */
-type Draft = Omit<Organization, "billingEmails" | "negotiatedRate" | "paymentTermsDays" | "active" | "activeCoverageCount"> & {
-  billingEmails: string;
-  negotiatedRate: string;
-  paymentTermsDays: string;
-};
-
-const emptyDraft = (): Draft => ({
-  id: "",
-  name: "",
-  kind: "eap",
-  billingEmails: "",
-  contactName: "",
-  phone: "",
-  language: "fr",
-  paymentTermsDays: "30",
-  billingCycle: "per_session",
-  negotiatedRate: "",
-  gapPolicy: "client_copay",
-  autoSendPerSession: false,
-  requiresOwnForm: false,
-  formNotes: "",
-  internalNotes: "",
-});
-
-const toDraft = (o: Organization): Draft => ({
-  ...o,
-  billingEmails: o.billingEmails.join(", "),
-  negotiatedRate: o.negotiatedRate === null ? "" : String(o.negotiatedRate),
-  paymentTermsDays: String(o.paymentTermsDays),
-});
+import {
+  OrganizationEditorDialog,
+  emptyOrganizationDraft,
+  organizationToDraft,
+  type OrganizationDraft,
+  type OrganizationRecord as Organization,
+} from "@/components/admin/OrganizationEditorDialog";
 
 async function readError(res: Response): Promise<string> {
   const body = await res.json().catch(() => ({}));
@@ -112,7 +49,9 @@ export default function AdminOrganizationsPage() {
   const [switchConfirm, setSwitchConfirm] = useState<boolean | null>(null);
 
   const [editorOpen, setEditorOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(emptyDraft());
+  const [draft, setDraft] = useState<OrganizationDraft>(emptyOrganizationDraft());
+  // Remounts the form so each opening starts from `draft`.
+  const [editorKey, setEditorKey] = useState(0);
   const [archiving, setArchiving] = useState<Organization | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -147,55 +86,14 @@ export default function AdminOrganizationsPage() {
   }, [items, search]);
 
   const openCreate = () => {
-    setDraft(emptyDraft());
-    setMutationError(null);
+    setDraft(emptyOrganizationDraft());
+    setEditorKey((k) => k + 1);
     setEditorOpen(true);
   };
   const openEdit = (o: Organization) => {
-    setDraft(toDraft(o));
-    setMutationError(null);
+    setDraft(organizationToDraft(o));
+    setEditorKey((k) => k + 1);
     setEditorOpen(true);
-  };
-
-  const save = async () => {
-    if (!draft.name.trim()) {
-      setMutationError(t("nameRequired"));
-      return;
-    }
-    setSubmitting(true);
-    setMutationError(null);
-    try {
-      const res = await fetch(
-        draft.id ? `/api/admin/organizations/${draft.id}` : "/api/admin/organizations",
-        {
-          method: draft.id ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: draft.name,
-            kind: draft.kind,
-            billingEmails: draft.billingEmails,
-            contactName: draft.contactName || null,
-            phone: draft.phone || null,
-            language: draft.language,
-            paymentTermsDays: draft.paymentTermsDays,
-            billingCycle: draft.billingCycle,
-            negotiatedRate: draft.negotiatedRate.trim() || null,
-            gapPolicy: draft.gapPolicy,
-            autoSendPerSession: draft.autoSendPerSession,
-            requiresOwnForm: draft.requiresOwnForm,
-            formNotes: draft.formNotes || null,
-            internalNotes: draft.internalNotes || null,
-          }),
-        },
-      );
-      if (!res.ok) throw new Error(await readError(res));
-      setEditorOpen(false);
-      await fetchItems();
-    } catch (err) {
-      setMutationError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const setArchived = async (o: Organization, archived: boolean) => {
@@ -235,9 +133,6 @@ export default function AdminOrganizationsPage() {
       setSubmitting(false);
     }
   };
-
-  const rateBelowPolicyWarning =
-    draft.gapPolicy === "clinic_absorbs_pro_full" && draft.negotiatedRate.trim() !== "";
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -378,151 +273,13 @@ export default function AdminOrganizationsPage() {
       )}
 
       {/* Create / edit */}
-      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{draft.id ? t("editTitle") : t("addTitle")}</DialogTitle>
-            <DialogDescription>{t("editorHelp")}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label>{t("fields.name")}</Label>
-              <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.kind")}</Label>
-              <Select value={draft.kind} onValueChange={(v) => setDraft({ ...draft, kind: v as Draft["kind"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {KINDS.map((k) => (
-                    <SelectItem key={k} value={k}>{t(`kinds.${k}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.language")}</Label>
-              <Select value={draft.language} onValueChange={(v) => setDraft({ ...draft, language: v as "fr" | "en" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>{t("fields.billingEmails")}</Label>
-              <Input
-                value={draft.billingEmails}
-                onChange={(e) => setDraft({ ...draft, billingEmails: e.target.value })}
-                placeholder="facturation@organisme.ca"
-              />
-              <p className="text-xs text-muted-foreground">{t("fields.billingEmailsHelp")}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.contactName")}</Label>
-              <Input value={draft.contactName} onChange={(e) => setDraft({ ...draft, contactName: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.phone")}</Label>
-              <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("fields.negotiatedRate")}</Label>
-              <Input
-                inputMode="decimal"
-                value={draft.negotiatedRate}
-                onChange={(e) => setDraft({ ...draft, negotiatedRate: e.target.value })}
-                placeholder={t("fields.negotiatedRatePlaceholder")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.paymentTermsDays")}</Label>
-              <Input
-                inputMode="numeric"
-                value={draft.paymentTermsDays}
-                onChange={(e) => setDraft({ ...draft, paymentTermsDays: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>{t("fields.gapPolicy")}</Label>
-              <Select value={draft.gapPolicy} onValueChange={(v) => setDraft({ ...draft, gapPolicy: v as Draft["gapPolicy"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {GAP_POLICIES.map((g) => (
-                    <SelectItem key={g} value={g}>{t(`gapPolicies.${g}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">{t(`gapPolicyHelp.${draft.gapPolicy}`)}</p>
-              {rateBelowPolicyWarning && (
-                <p className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-800 dark:text-amber-300">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {t("negativeMarginWarning")}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>{t("fields.billingCycle")}</Label>
-              <Select value={draft.billingCycle} onValueChange={(v) => setDraft({ ...draft, billingCycle: v as Draft["billingCycle"] })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CYCLES.map((c) => (
-                    <SelectItem key={c} value={c}>{t(`cycles.${c}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 sm:pt-7">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={draft.autoSendPerSession}
-                  disabled={draft.billingCycle !== "per_session"}
-                  onChange={(e) => setDraft({ ...draft, autoSendPerSession: e.target.checked })}
-                />
-                {t("fields.autoSendPerSession")}
-              </label>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={draft.requiresOwnForm}
-                  onChange={(e) => setDraft({ ...draft, requiresOwnForm: e.target.checked })}
-                />
-                {t("fields.requiresOwnForm")}
-              </label>
-              {draft.requiresOwnForm && (
-                <Textarea
-                  value={draft.formNotes}
-                  onChange={(e) => setDraft({ ...draft, formNotes: e.target.value })}
-                  placeholder={t("fields.formNotesPlaceholder")}
-                  rows={2}
-                />
-              )}
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>{t("fields.internalNotes")}</Label>
-              <Textarea
-                value={draft.internalNotes}
-                onChange={(e) => setDraft({ ...draft, internalNotes: e.target.value })}
-                rows={2}
-              />
-            </div>
-          </div>
-          {mutationError && <p className="text-sm text-destructive">{mutationError}</p>}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)} disabled={submitting}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={save} disabled={submitting}>
-              {submitting ? t("saving") : t("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <OrganizationEditorDialog
+        key={editorKey}
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        initial={draft}
+        onSaved={fetchItems}
+      />
 
       {/* Archive */}
       <Dialog open={Boolean(archiving)} onOpenChange={(o) => !o && setArchiving(null)}>

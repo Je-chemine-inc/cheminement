@@ -28,6 +28,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  OrganizationEditorDialog,
+  emptyOrganizationDraft,
+  type OrganizationRecord,
+} from "@/components/admin/OrganizationEditorDialog";
+import { exactOrganizationMatch, similarOrganizations } from "@/lib/organization-name-match";
 
 const MODES = ["full", "split", "per_session", "external"] as const;
 const CONSENT_METHODS = ["written", "online_checkbox", "verbal", "form_on_file"] as const;
@@ -72,6 +78,8 @@ type TermsDraft = {
   id: string;
   /** Set when the editor confirms what the client declared at booking. */
   declarationId: string;
+  /** The organization name the client typed at booking. */
+  declaredName: string;
   organizationId: string;
   forLovedOne: boolean;
   firstName: string;
@@ -92,6 +100,7 @@ type TermsDraft = {
 const emptyTerms = (): TermsDraft => ({
   id: "",
   declarationId: "",
+  declaredName: "",
   organizationId: "",
   forLovedOne: false,
   firstName: "",
@@ -127,6 +136,8 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
 
   const [editor, setEditor] = useState<TermsDraft | null>(null);
+  // Creating an organization from here, prefilled with this name.
+  const [creatingOrg, setCreatingOrg] = useState<{ key: number; name: string } | null>(null);
   const [consentFor, setConsentFor] = useState<{ coverage: Coverage; action: "give" | "withdraw" } | null>(null);
   const [consentMethod, setConsentMethod] = useState<ConsentMethod>("written");
   const [consentNote, setConsentNote] = useState("");
@@ -175,13 +186,13 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
   };
   const openConfirm = (d: PendingDeclaration) => {
     setError(null);
-    // Preselect the organization whose name matches what the client typed.
-    const match = orgs.find(
-      (o) => o.name.trim().toLowerCase() === d.organizationName.trim().toLowerCase(),
-    );
+    // Preselect the organization whose name matches what the client typed
+    // (ignoring case, accents, punctuation and "inc.").
+    const match = exactOrganizationMatch(d.organizationName, orgs);
     setEditor({
       ...emptyTerms(),
       declarationId: d.appointmentId,
+      declaredName: d.organizationName,
       organizationId: match?.id ?? "",
       caseNumber: d.caseNumber,
     });
@@ -202,6 +213,16 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
       validFrom: c.validFrom ?? "",
       validUntil: c.validUntil ?? "",
     });
+  };
+
+  const startCreatingOrg = (name: string) =>
+    setCreatingOrg((c) => ({ key: (c?.key ?? 0) + 1, name }));
+  const organizationCreated = (o: OrganizationRecord) => {
+    setOrgs((list) =>
+      [...list.filter((x) => x.id !== o.id), { id: o.id, name: o.name, gapPolicy: o.gapPolicy, negotiatedRate: o.negotiatedRate }]
+        .sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    );
+    setEditor((e) => (e ? { ...e, organizationId: o.id } : e));
   };
 
   const run = async (fn: () => Promise<Response>, done: () => void) => {
@@ -367,7 +388,7 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
         <h2 className="text-xl font-serif font-light flex items-center gap-2">
           <Building2 className="h-5 w-5" /> {t("title")}
         </h2>
-        <Button type="button" variant="outline" className="gap-2" onClick={openCreate} disabled={orgs.length === 0}>
+        <Button type="button" variant="outline" className="gap-2" onClick={openCreate} disabled={loading}>
           <Plus className="h-4 w-4" />
           {t("add")}
         </Button>
@@ -402,7 +423,9 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={() => openConfirm(d)} disabled={orgs.length === 0}>
+                {/* Not before the organizations are in: matching the declared
+                    name against an empty list would offer to create a duplicate. */}
+                <Button size="sm" className="h-7 text-xs" onClick={() => openConfirm(d)} disabled={loading}>
                   {t("confirmDeclaration")}
                 </Button>
                 <Button
@@ -525,6 +548,40 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
                         ))}
                       </SelectContent>
                     </Select>
+                    {editor.declaredName && !editor.organizationId ? (
+                      <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                        <p>{t("declaredNotOnFile", { name: editor.declaredName })}</p>
+                        {similarOrganizations(editor.declaredName, orgs).length > 0 && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{t("declaredSimilar")}</span>
+                            {similarOrganizations(editor.declaredName, orgs).map((o) => (
+                              <Button
+                                key={o.id}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => setEditor({ ...editor, organizationId: o.id })}
+                              >
+                                {t("useThisOrganization", { name: o.name })}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                        <Button type="button" size="sm" className="h-7 gap-1 text-xs" onClick={() => startCreatingOrg(editor.declaredName)}>
+                          <Plus className="h-3.5 w-3.5" />
+                          {t("createDeclared", { name: editor.declaredName })}
+                        </Button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-xs text-primary underline underline-offset-2"
+                        onClick={() => startCreatingOrg(editor.declaredName)}
+                      >
+                        {t("newOrganization")}
+                      </button>
+                    )}
                   </div>
                   {!editor.declarationId && (
                   <div className="space-y-2 sm:col-span-2">
@@ -644,6 +701,17 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {creatingOrg && (
+        <OrganizationEditorDialog
+          key={creatingOrg.key}
+          open
+          onOpenChange={(o) => !o && setCreatingOrg(null)}
+          initial={emptyOrganizationDraft({ name: creatingOrg.name })}
+          description={t("quickCreateHelp")}
+          onSaved={organizationCreated}
+        />
+      )}
 
       {/* Consent */}
       <Dialog open={Boolean(consentFor)} onOpenChange={(o) => !o && setConsentFor(null)}>

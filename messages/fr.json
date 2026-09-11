@@ -1197,7 +1197,7 @@
       "title": "Couverture par un organisme",
       "add": "Ajouter une couverture",
       "switchOffNotice": "La facturation aux organismes est désactivée : ces couvertures ne s’appliquent pas encore aux séances.",
-      "noOrganizations": "Créez d’abord un organisme dans « Organismes payeurs ».",
+      "noOrganizations": "Aucun organisme payeur n’est encore enregistré : vous pouvez en créer un directement ici.",
       "empty": "Aucune couverture. Les séances de ce client lui sont facturées.",
       "statuses": {
         "active": "Active",
@@ -1285,7 +1285,13 @@
       "consentFromBooking": "Le client a coché le consentement lors de sa demande ; il est enregistré avec la couverture.",
       "rejectTitle": "Refuser la déclaration ?",
       "rejectBody": "{name} ne sera pas facturé. Les séances déjà clôturées en attente de cette réponse seront facturées au client, qui recevra la demande de paiement.",
-      "rejectReasonPlaceholder": "Raison (facultatif, interne)"
+      "rejectReasonPlaceholder": "Raison (facultatif, interne)",
+      "declaredNotOnFile": "« {name} », déclaré par le client, n’est pas encore dans vos organismes payeurs.",
+      "declaredSimilar": "Est-ce l’un de ceux-ci ?",
+      "useThisOrganization": "C’est « {name} »",
+      "createDeclared": "Créer « {name} »",
+      "newOrganization": "+ Nouvel organisme",
+      "quickCreateHelp": "L’organisme est ajouté à vos organismes payeurs et sélectionné ici. Il vous faut au moins son adresse de facturation pour pouvoir lui envoyer une facture ; le reste peut attendre et se modifie dans « Organismes payeurs »."
     },
     "payer": {
       "awaitingDecision": "Payeur à confirmer",
