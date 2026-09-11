@@ -23,6 +23,8 @@ describe("isPaymentEmailType", () => {
       "payment_guarantee_48h_client",
       // An organization's accounts-payable replies about its refund.
       "organization_refund",
+      // …or about the bank debit its bank refused.
+      "organization_debit_failed",
     ];
     for (const t of paymentTypes) {
       expect(isPaymentEmailType(t), t).toBe(true);

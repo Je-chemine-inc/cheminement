@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import Stripe from "stripe";
 import Organization from "@/models/Organization";
 import OrganizationInvoice, { ORGANIZATION_PAYMENT_METHODS } from "@/models/OrganizationInvoice";
 import { requireBillingAdmin } from "@/lib/organization-admin";
@@ -13,7 +14,10 @@ import {
   type InvoiceResult,
 } from "@/lib/organization-invoice";
 import { serializeInvoice } from "@/lib/organization-invoice-serialize";
-import { cancelOpenOrganizationPaymentIntent } from "@/lib/organization-invoice-card";
+import {
+  cancelOpenOrganizationPaymentIntent,
+  reconcileOrganizationDebit,
+} from "@/lib/organization-invoice-card";
 import { checkOrganizationRefund, refundOrganizationPayment } from "@/lib/organization-invoice-refund";
 import type { IOrganizationInvoice } from "@/models/OrganizationInvoice";
 
@@ -68,7 +72,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
  *  `{ action: "refund", paymentId, amount, owed?, reason, requestKey, notify?,
  *     method?, reference?, refundedOn? }` refund a payment — through Stripe for
  *  a card, recorded as made outside for the rest;
- *  `{ action: "refund_check", refundId }` where a Stripe refund stands.
+ *  `{ action: "refund_check", refundId }` where a Stripe refund stands;
+ *  `{ action: "debit_check" }` where the organization's bank debit stands —
+ *  settles it, records its bounce, or clears a marker left behind.
  */
 export async function POST(req: NextRequest, { params }: Ctx) {
   const gate = await requireBillingAdmin();
@@ -102,10 +108,12 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           return NextResponse.json({ error: "amount: dollars received" }, { status: 400 });
         }
         const method = body.method;
+        // Card and bank debit only ever come through Stripe, never by hand.
         if (
           typeof method !== "string" ||
           !(ORGANIZATION_PAYMENT_METHODS as readonly string[]).includes(method) ||
-          method === "card"
+          method === "card" ||
+          method === "pad"
         ) {
           return NextResponse.json(
             { error: "method: interac, cheque, eft, portal or other" },
@@ -173,9 +181,27 @@ export async function POST(req: NextRequest, { params }: Ctx) {
         }
         return respond(await checkOrganizationRefund({ invoiceId: id, refundId: body.refundId }));
       }
+      case "debit_check": {
+        // Asks Stripe where a debit on its way stands, and acts on the answer.
+        let outcome: Awaited<ReturnType<typeof reconcileOrganizationDebit>>;
+        try {
+          outcome = await reconcileOrganizationDebit(id);
+        } catch (e) {
+          if (!(e instanceof Stripe.errors.StripeError)) throw e;
+          console.error("[organization-invoice] debit check, Stripe:", e.message);
+          return NextResponse.json(
+            { error: "Stripe could not be reached. Nothing changed; try again in a moment.", code: "STRIPE_UNAVAILABLE" },
+            { status: 502 },
+          );
+        }
+        const inv = await OrganizationInvoice.findById(id).lean();
+        if (!inv) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        const org = await Organization.findById(inv.organizationId).select(ORG_FIELDS).lean();
+        return NextResponse.json({ outcome, invoice: serializeInvoice(inv, org) });
+      }
       default:
         return NextResponse.json(
-          { error: "action: send, resend, refresh, void, pay, refund or refund_check" },
+          { error: "action: send, resend, refresh, void, pay, refund, refund_check or debit_check" },
           { status: 400 },
         );
     }

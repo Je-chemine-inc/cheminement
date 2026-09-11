@@ -14,6 +14,9 @@ import { formatCalendarDate } from "@/lib/format-calendar-date";
 const BUCKETS = ["current", "d1_30", "d31_60", "d61_90", "d90_plus"] as const;
 type Bucket = (typeof BUCKETS)[number];
 
+/** The organization's bank debit: on its way, or on its way for over 10 days. */
+type DebitState = "pending" | "stuck" | null;
+
 type Session = {
   appointmentId: string;
   clientId: string;
@@ -31,12 +34,12 @@ interface Receivables {
     totals: Record<Bucket, number> & { totalCents: number };
   };
   anomalies: {
-    overdue: Array<{ invoiceId: string; organizationId: string; number: string; balanceCents: number; daysLate: number; remindersSent: number; disputed: boolean }>;
+    overdue: Array<{ invoiceId: string; organizationId: string; number: string; balanceCents: number; daysLate: number; remindersSent: number; disputed: boolean; debit?: DebitState }>;
     awaitingDecision: Array<Session & { reason: string }>;
     uninvoiced: Array<Session & { daysSinceClosure: number }>;
     capMismatch: Array<{ coverageId: string; clientId: string; clientName: string; organizationId: string; used: number; max: number | null; issues: string[]; staleSlots: number }>;
     negativeMargin: Array<Session & { marginCents: number }>;
-    paymentReview: Array<{ invoiceId: string; organizationId: string; number: string; status: string; balanceCents: number; disputed: boolean; refundUnconfirmed?: boolean; lastEvent: string }>;
+    paymentReview: Array<{ invoiceId: string; organizationId: string; number: string; status: string; balanceCents: number; disputed: boolean; refundUnconfirmed?: boolean; debit?: DebitState; lastEvent: string }>;
   };
 }
 
@@ -78,6 +81,8 @@ export function OrganizationReceivablesPanel({ reloadKey }: { reloadKey: number 
   const a = data.anomalies;
   const person = (s: { clientName: string; forLovedOne?: string }) =>
     s.forLovedOne ? t("forLovedOne", { client: s.clientName, name: s.forLovedOne }) : s.clientName;
+  const debitNote = (d: DebitState | undefined) =>
+    d ? ` — ${t(d === "stuck" ? "debitStuck" : "debitPending")}` : "";
   const patientLink = (clientId: string, label: string) =>
     clientId ? (
       <Link href={`/admin/dashboard/patients/${clientId}`} className="underline underline-offset-2 hover:text-primary">
@@ -96,6 +101,7 @@ export function OrganizationReceivablesPanel({ reloadKey }: { reloadKey: number 
           {i.number} — {org(i.organizationId)} — {money(i.balanceCents)} —{" "}
           {t("daysLate", { days: i.daysLate })} — {t("remindersSent", { count: i.remindersSent })}
           {i.disputed ? ` — ${t("disputed")}` : ""}
+          {debitNote(i.debit)}
         </li>
       )),
     },
@@ -148,6 +154,7 @@ export function OrganizationReceivablesPanel({ reloadKey }: { reloadKey: number 
           {i.balanceCents < 0 ? t("credit", { amount: money(-i.balanceCents) }) : money(i.balanceCents)}
           {i.disputed ? ` — ${t("disputed")}` : ""}
           {i.refundUnconfirmed ? ` — ${t("refundUnconfirmed")}` : ""}
+          {debitNote(i.debit)}
           {i.lastEvent ? <span className="block text-muted-foreground">{i.lastEvent}</span> : null}
         </li>
       )),

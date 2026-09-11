@@ -47,6 +47,9 @@ export default function AdminOrganizationsPage() {
 
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [switchConfirm, setSwitchConfirm] = useState<boolean | null>(null);
+  // Bank debit (DPA) on the pay link: its own switch, for a pilot.
+  const [padEnabled, setPadEnabled] = useState<boolean | null>(null);
+  const [padConfirm, setPadConfirm] = useState<boolean | null>(null);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<OrganizationDraft>(emptyOrganizationDraft());
@@ -68,7 +71,11 @@ export default function AdminOrganizationsPage() {
       ]);
       if (!orgRes.ok) throw new Error(await readError(orgRes));
       setItems(((await orgRes.json()) as { organizations: Organization[] }).organizations);
-      if (flagRes.ok) setEnabled(((await flagRes.json()) as { enabled: boolean }).enabled);
+      if (flagRes.ok) {
+        const flags = (await flagRes.json()) as { enabled: boolean; padEnabled?: boolean };
+        setEnabled(flags.enabled);
+        setPadEnabled(flags.padEnabled === true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -134,6 +141,25 @@ export default function AdminOrganizationsPage() {
     }
   };
 
+  const applyPadSwitch = async (next: boolean) => {
+    setSubmitting(true);
+    setMutationError(null);
+    try {
+      const res = await fetch("/api/admin/organization-billing", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ padEnabled: next }),
+      });
+      if (!res.ok) throw new Error(await readError(res));
+      setPadEnabled(next);
+      setPadConfirm(null);
+    } catch (err) {
+      setMutationError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -173,6 +199,24 @@ export default function AdminOrganizationsPage() {
             onClick={() => setSwitchConfirm(!enabled)}
           >
             {enabled ? t("turnOff") : t("turnOn")}
+          </Button>
+        </div>
+      )}
+
+      {padEnabled !== null && (
+        <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">{padEnabled ? t("padOn") : t("padOff")}</p>
+            <p className="text-xs text-muted-foreground max-w-2xl">{t("padHelp")}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMutationError(null);
+              setPadConfirm(!padEnabled);
+            }}
+          >
+            {padEnabled ? t("padTurnOff") : t("padTurnOn")}
           </Button>
         </div>
       )}
@@ -322,6 +366,29 @@ export default function AdminOrganizationsPage() {
               disabled={submitting}
             >
               {switchConfirm ? t("turnOn") : t("turnOff")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bank debit (DPA) */}
+      <Dialog open={padConfirm !== null} onOpenChange={(o) => !o && setPadConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{padConfirm ? t("padConfirmOnTitle") : t("padConfirmOffTitle")}</DialogTitle>
+            <DialogDescription>{padConfirm ? t("padConfirmOnBody") : t("padConfirmOffBody")}</DialogDescription>
+          </DialogHeader>
+          {mutationError && <p className="text-sm text-destructive">{mutationError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPadConfirm(null)} disabled={submitting}>
+              {t("cancel")}
+            </Button>
+            <Button
+              variant={padConfirm ? "default" : "destructive"}
+              onClick={() => padConfirm !== null && applyPadSwitch(padConfirm)}
+              disabled={submitting}
+            >
+              {padConfirm ? t("padTurnOn") : t("padTurnOff")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -33,6 +33,8 @@ export type OrganizationInvoiceStatus =
 
 export const ORGANIZATION_PAYMENT_METHODS = [
   "card",
+  // Pre-authorized bank debit (DPA / ACSS) from the pay link, through Stripe.
+  "pad",
   "interac",
   "cheque",
   "eft",
@@ -117,8 +119,10 @@ export interface IOrganizationInvoiceRefund {
  */
 export interface IOrganizationInvoicePaymentEvent {
   at: Date;
-  kind: "overpaid" | "not_payable" | "refund" | "dispute";
+  kind: "overpaid" | "not_payable" | "refund" | "dispute" | "debit_failed";
   detail: string;
+  /** Server-only: the Stripe object it is about, so it is recorded once. */
+  ref?: string;
 }
 
 /**
@@ -145,7 +149,7 @@ export interface IOrganizationInvoiceSendLogEntry {
   at: Date;
   to: string[];
   byUserId?: mongoose.Types.ObjectId;
-  kind: "sent" | "resent" | "reminder" | "payment_received" | "refund_notice";
+  kind: "sent" | "resent" | "reminder" | "payment_received" | "refund_notice" | "debit_failed";
   /** The organization's form as it went out, under its outgoing name. */
   attachment?: {
     fileId: mongoose.Types.ObjectId;
@@ -192,8 +196,15 @@ export interface IOrganizationInvoice extends Document {
    */
   payToken?: string;
   payTokenExpiresAt?: Date;
-  /** The latest card payment started from the pay link. */
+  /** The latest online payment (card or bank debit) started from the pay link. */
   stripePaymentIntentId?: string;
+  /**
+   * A bank debit Stripe is processing — it settles in about 5 business days,
+   * or bounces. While set: no reminders, no overdue flip, no new online
+   * payment, no admin « payé », no void. Set and cleared only for that
+   * intent; always queried on `pendingDebit.paymentIntentId`.
+   */
+  pendingDebit?: { paymentIntentId: string; amountCents: number; since: Date };
   /**
    * Not used: an organization writes the invoice NUMBER (JCO-…) on an Interac
    * transfer — the reference the PDF already asks for — so there is one
@@ -288,10 +299,20 @@ const PaymentEventSchema = new Schema<IOrganizationInvoicePaymentEvent>(
     at: { type: Date, required: true },
     kind: {
       type: String,
-      enum: ["overpaid", "not_payable", "refund", "dispute"],
+      enum: ["overpaid", "not_payable", "refund", "dispute", "debit_failed"],
       required: true,
     },
     detail: { type: String, maxlength: 500 },
+    ref: String,
+  },
+  { _id: false },
+);
+
+const PendingDebitSchema = new Schema(
+  {
+    paymentIntentId: { type: String, required: true },
+    amountCents: { type: Number, required: true },
+    since: { type: Date, required: true },
   },
   { _id: false },
 );
@@ -329,7 +350,7 @@ const SendLogSchema = new Schema<IOrganizationInvoiceSendLogEntry>(
     byUserId: { type: Schema.Types.ObjectId, ref: "User" },
     kind: {
       type: String,
-      enum: ["sent", "resent", "reminder", "payment_received", "refund_notice"],
+      enum: ["sent", "resent", "reminder", "payment_received", "refund_notice", "debit_failed"],
       required: true,
     },
     attachment: { type: SentAttachmentSchema, default: undefined },
@@ -375,6 +396,7 @@ const OrganizationInvoiceSchema = new Schema<IOrganizationInvoice>(
     payToken: String,
     payTokenExpiresAt: Date,
     stripePaymentIntentId: String,
+    pendingDebit: { type: PendingDebitSchema, default: undefined },
     interacReferenceCode: String,
     payments: { type: [PaymentSchema], default: [] },
     refunds: { type: [RefundSchema], default: [] },

@@ -42,6 +42,7 @@ import {
 } from "@/lib/organization-invoice-pay-link";
 import {
   sendAdminOrganizationPaymentReview,
+  sendOrganizationDebitFailedEmail,
   sendOrganizationPaymentReceivedEmail,
 } from "@/lib/notifications";
 
@@ -227,18 +228,30 @@ async function notifyPaymentReceived(inv: Lean, amountCents: number, now: Date) 
   }
 }
 
-/** Note it on the invoice and email the team. Never throws. */
+/**
+ * Note it on the invoice and email the team. Never throws. With `once`, an
+ * event about the same Stripe object (`ref`) is recorded — and emailed — only
+ * the first time; returns whether this call recorded it.
+ */
 async function flagForReview(
   inv: Pick<Lean, "_id" | "organizationId" | "number">,
   kind: IOrganizationInvoicePaymentEvent["kind"],
   detail: string,
   now: Date,
-) {
+  opts: { ref?: string; once?: boolean } = {},
+): Promise<boolean> {
   try {
-    await OrganizationInvoice.updateOne(
-      { _id: inv._id },
-      { $push: { paymentEvents: { at: now, kind, detail: detail.slice(0, 500) } } },
+    const r = await OrganizationInvoice.updateOne(
+      opts.once && opts.ref
+        ? { _id: inv._id, paymentEvents: { $not: { $elemMatch: { kind, ref: opts.ref } } } }
+        : { _id: inv._id },
+      {
+        $push: {
+          paymentEvents: { at: now, kind, detail: detail.slice(0, 500), ...(opts.ref ? { ref: opts.ref } : {}) },
+        },
+      },
     );
+    if (opts.once && r.modifiedCount !== 1) return false;
     const org = await Organization.findById(inv.organizationId).select("name").lean();
     await sendAdminOrganizationPaymentReview({
       invoiceNumber: inv.number ?? "—",
@@ -246,8 +259,10 @@ async function flagForReview(
       kind,
       detail,
     });
+    return true;
   } catch (e) {
     console.error("[organization-payment] review alert failed:", e);
+    return false;
   }
 }
 
@@ -281,6 +296,16 @@ export async function recordOrganizationPayment(args: {
   if (!isAwaitingPayment(inv.status)) {
     return { ok: false, status: 409, code: "NOT_PAYABLE", error: "This invoice is not awaiting payment." };
   }
+  // The organization's bank debit is on its way: a cheque recorded now would
+  // be paid twice when it clears.
+  if (inv.pendingDebit?.paymentIntentId) {
+    return {
+      ok: false,
+      status: 409,
+      code: "DEBIT_PENDING",
+      error: "A bank debit for this invoice is in progress. Wait for its result.",
+    };
+  }
   if (args.amountCents > inv.balanceCents) {
     return {
       ok: false,
@@ -296,6 +321,7 @@ export async function recordOrganizationPayment(args: {
       _id: inv._id,
       status: { $in: AWAITING_PAYMENT_STATUSES },
       balanceCents: { $gte: args.amountCents },
+      "pendingDebit.paymentIntentId": { $exists: false },
       ...(args.externalRef ? { "payments.externalRef": { $ne: args.externalRef } } : {}),
     },
     {
@@ -391,32 +417,152 @@ export interface OrganizationIntentLike {
   amount_received?: number;
   currency?: string;
   metadata?: Record<string, string> | null;
+  payment_method_types?: string[] | null;
+  /** Set once the bank was actually debited (a failed microdeposit check has none). */
+  latest_charge?: string | { id: string } | null;
+  last_payment_error?: { code?: string | null; message?: string | null } | null;
 }
 
-/** `payment_intent.succeeded` for a pay-link payment. */
+/** A pay-link payment by pre-authorized bank debit (ACSS) or by card. */
+export function organizationMethodForIntent(pi: Pick<OrganizationIntentLike, "payment_method_types" | "metadata">): "pad" | "card" {
+  return pi.payment_method_types?.includes("acss_debit") || pi.metadata?.method === "pad" ? "pad" : "card";
+}
+
+/** The invoice a pay-link intent is for: its metadata, else the stored intent id. */
+async function invoiceIdForIntent(pi: OrganizationIntentLike): Promise<string> {
+  const fromMetadata = pi.metadata?.organizationInvoiceId ?? "";
+  if (mongoose.Types.ObjectId.isValid(fromMetadata)) return fromMetadata;
+  const byIntent = await OrganizationInvoice.findOne({ stripePaymentIntentId: pi.id }).select("_id").lean();
+  return byIntent ? String(byIntent._id) : "";
+}
+
+/** The debit this intent started is over (paid, cancelled): the marker goes — only its own. */
+export async function clearOrganizationPendingDebit(paymentIntentId: string) {
+  await connectToDatabase();
+  await OrganizationInvoice.updateOne(
+    { "pendingDebit.paymentIntentId": paymentIntentId },
+    { $unset: { pendingDebit: 1 } },
+  );
+}
+
+/** `payment_intent.succeeded` for a pay-link payment, card or bank debit. */
 export async function settleOrganizationInvoiceIntent(
   pi: OrganizationIntentLike,
 ): Promise<ReceivedMoneyOutcome> {
   await connectToDatabase();
-  let invoiceId = pi.metadata?.organizationInvoiceId ?? "";
-  if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
-    const byIntent = await OrganizationInvoice.findOne({ stripePaymentIntentId: pi.id })
-      .select("_id")
-      .lean();
-    invoiceId = byIntent ? String(byIntent._id) : "";
-  }
+  const invoiceId = await invoiceIdForIntent(pi);
   if (!invoiceId) {
     console.error("[organization-payment] no invoice for payment intent", pi.id);
     return { outcome: "not_found" };
   }
-  return recordReceivedOrganizationMoney({
+  const result = await recordReceivedOrganizationMoney({
     invoiceId,
     amountCents: pi.amount_received ?? pi.amount ?? 0,
-    method: "card",
+    method: organizationMethodForIntent(pi),
     source: "stripe",
     externalRef: pi.id,
     reference: pi.id,
   });
+  // A debit that cleared is no longer pending — also on a replay, so a
+  // retried event finishes what a crash left half done.
+  if (result.outcome !== "not_found") await clearOrganizationPendingDebit(pi.id);
+  return result;
+}
+
+/**
+ * `payment_intent.processing` (or the pay page's confirmation): a bank debit
+ * is on its way. Marked unless that intent was already recorded, already
+ * failed, or another debit is pending. Card intents are ignored.
+ */
+export async function markOrganizationDebitProcessing(
+  pi: OrganizationIntentLike,
+  now: Date = new Date(),
+): Promise<"marked" | "ignored"> {
+  if (organizationMethodForIntent(pi) !== "pad") return "ignored";
+  await connectToDatabase();
+  const invoiceId = await invoiceIdForIntent(pi);
+  if (!invoiceId) return "ignored";
+  const r = await OrganizationInvoice.updateOne(
+    {
+      _id: oid(invoiceId),
+      "payments.externalRef": { $ne: pi.id },
+      "pendingDebit.paymentIntentId": { $exists: false },
+      paymentEvents: { $not: { $elemMatch: { kind: "debit_failed", ref: pi.id } } },
+    },
+    { $set: { pendingDebit: { paymentIntentId: pi.id, amountCents: pi.amount ?? 0, since: now } } },
+  );
+  return r.modifiedCount === 1 ? "marked" : "ignored";
+}
+
+/** Tell the organization its debit bounced and the invoice is payable again. Never throws. */
+async function noticeDebitFailed(inv: Lean, amountCents: number, now: Date) {
+  try {
+    const org = await Organization.findById(inv.organizationId).select("name language billingEmails").lean();
+    const lang = org?.language === "en" ? "en" : "fr";
+    const emails = inv.billTo?.emails?.length ? inv.billTo.emails : (org?.billingEmails ?? []);
+    const token = await ensurePayToken(inv._id);
+    const reached: string[] = [];
+    for (const to of emails) {
+      const ok = await sendOrganizationDebitFailedEmail({
+        to,
+        organizationName: org?.name ?? inv.billTo?.name ?? "",
+        number: inv.number ?? "",
+        amountCents,
+        balanceCents: Math.max(0, inv.balanceCents),
+        payUrl: token ? organizationPayUrl(token, lang) : null,
+        locale: lang,
+      }).catch(() => false);
+      if (ok) reached.push(to);
+    }
+    if (reached.length > 0) {
+      await OrganizationInvoice.updateOne(
+        { _id: inv._id },
+        { $push: { sendLog: { at: now, to: reached, kind: "debit_failed" } } },
+      );
+    }
+  } catch (e) {
+    console.error("[organization-payment] debit-failed notice failed:", e);
+  }
+}
+
+/**
+ * `payment_intent.payment_failed`. A declined card stays silent (the pay
+ * link is still usable). A bank debit that bounced — it was processing, or
+ * the bank was debited — clears its marker, is recorded once, alerts the
+ * team, and tells the organization only while it still owes money (an
+ * Interac transfer may have paid the invoice meanwhile).
+ */
+export async function recordOrganizationDebitFailure(
+  pi: OrganizationIntentLike,
+  now: Date = new Date(),
+): Promise<"recorded" | "ignored"> {
+  if (organizationMethodForIntent(pi) !== "pad") return "ignored";
+  await connectToDatabase();
+  const invoiceId = await invoiceIdForIntent(pi);
+  if (!invoiceId) return "ignored";
+  const inv = await OrganizationInvoice.findById(invoiceId).lean();
+  if (!inv) return "ignored";
+  const wasPending = inv.pendingDebit?.paymentIntentId === pi.id;
+  // A microdeposit verification that failed never debited anything.
+  if (!wasPending && !pi.latest_charge) return "ignored";
+  await OrganizationInvoice.updateOne(
+    { _id: inv._id, "pendingDebit.paymentIntentId": pi.id },
+    { $unset: { pendingDebit: 1 } },
+  );
+  const why = pi.last_payment_error?.message || pi.last_payment_error?.code || "";
+  const first = await flagForReview(
+    inv as Lean,
+    "debit_failed",
+    `Le débit préautorisé de ${money(pi.amount ?? 0)} sur la facture ${inv.number ?? "—"} a été refusé par la banque de l’organisme${why ? ` (${why})` : ""}. La facture est de nouveau payable.`,
+    now,
+    { ref: pi.id, once: true },
+  );
+  if (!first) return "ignored";
+  const fresh = (await OrganizationInvoice.findById(inv._id).lean()) as Lean | null;
+  if (fresh && isAwaitingPayment(fresh.status) && fresh.balanceCents > 0) {
+    await noticeDebitFailed(fresh, pi.amount ?? 0, now);
+  }
+  return "recorded";
 }
 
 /** The invoice a card payment went to, found by its intent. */

@@ -9,8 +9,11 @@
  *   - payment_intent.payment_failed (record a declined purchase)
  *   - payment_intent.canceled       (record an abandoned purchase)
  *   - charge.refunded               (REVOKE premium access after a refund)
+ *   - payment_intent.processing     (an organization's bank debit is on its
+ *                                    way: « débit en cours », no reminders)
  *
- * The last four were dispatched by the webhook long before they were listed
+ * payment_intent.succeeded, payment_failed, canceled and charge.refunded were
+ * dispatched by the webhook long before they were listed
  * here. Re-run this against LIVE whenever the handler list changes: refund
  * revoking access is only as good as charge.refunded actually being delivered.
  *
@@ -30,6 +33,7 @@ const NEEDED = [
   "payment_intent.payment_failed",
   "payment_intent.canceled",
   "charge.refunded",
+  "payment_intent.processing",
 ];
 
 async function main() {
@@ -67,7 +71,7 @@ async function main() {
     }
     const added = NEEDED.filter((e) => !current.includes(e));
     if (added.length === 0) {
-      console.log(`${ep.id} (${ep.url}) already has the 3 events — no change.`);
+      console.log(`${ep.id} (${ep.url}) already has the ${NEEDED.length} events — no change.`);
       continue;
     }
     const merged = Array.from(new Set([...current, ...NEEDED]));

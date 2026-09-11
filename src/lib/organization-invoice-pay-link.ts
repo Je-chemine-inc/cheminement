@@ -13,6 +13,16 @@ import crypto from "crypto";
 import OrganizationInvoice, {
   type OrganizationInvoiceStatus,
 } from "@/models/OrganizationInvoice";
+import PlatformSettings from "@/models/PlatformSettings";
+
+/** How an organization may pay online from its pay link. */
+export type OrganizationPayMethod = "card" | "pad";
+
+/** The DPA (bank debit) switch — off by default, for a pilot. */
+export async function isOrganizationPadEnabled(): Promise<boolean> {
+  const settings = await PlatformSettings.findOne().select("organizationPadEnabled").lean();
+  return settings?.organizationPadEnabled === true;
+}
 
 /** Statuses in which the organization still owes money on the invoice. */
 export const AWAITING_PAYMENT_STATUSES = ["sent", "overdue", "partially_paid"] as const;
@@ -54,7 +64,11 @@ export async function ensurePayToken(invoiceId: unknown): Promise<string | null>
   return inv?.payToken ?? null;
 }
 
-export type PublicInvoiceState = "awaiting" | "paid" | "closed";
+/**
+ * `processing`: the organization's bank debit is on its way — nothing to pay
+ * meanwhile.
+ */
+export type PublicInvoiceState = "awaiting" | "processing" | "paid" | "closed";
 
 /** What the pay page may show. Built field by field — never spread an invoice. */
 export function publicInvoiceView(
@@ -66,12 +80,18 @@ export function publicInvoiceView(
     creditedCents?: number | null;
     balanceCents: number;
     dueAt?: Date | null;
+    pendingDebit?: { paymentIntentId?: string; amountCents: number; since: Date } | null;
   },
   org: { name?: string | null; language?: string | null } | null,
   now: Date = new Date(),
+  methods: OrganizationPayMethod[] = ["card"],
 ) {
-  const state: PublicInvoiceState = isAwaitingPayment(inv.status) && inv.balanceCents > 0
-    ? "awaiting"
+  const awaiting = isAwaitingPayment(inv.status) && inv.balanceCents > 0;
+  const debit = inv.pendingDebit?.paymentIntentId ? inv.pendingDebit : null;
+  const state: PublicInvoiceState = awaiting
+    ? debit
+      ? "processing"
+      : "awaiting"
     : inv.status === "paid"
       ? "paid"
       : "closed";
@@ -87,5 +107,8 @@ export function publicInvoiceView(
     dueAt: inv.dueAt ?? null,
     overdue: state === "awaiting" && Boolean(inv.dueAt && new Date(inv.dueAt) < now),
     state,
+    // The debit on its way: amount and date only — never the Stripe id.
+    debitPending: state === "processing" && debit ? { amountCents: debit.amountCents, since: debit.since } : null,
+    methods: state === "awaiting" ? methods : [],
   };
 }

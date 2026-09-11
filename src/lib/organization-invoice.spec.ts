@@ -346,6 +346,26 @@ describe("voidInvoice", () => {
     expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "REFUND_IN_PROGRESS" });
     expect(h.invFindOneAndUpdate).not.toHaveBeenCalled();
   });
+
+  it("refuses while the organization's bank debit is on its way — the money would land on a void invoice", async () => {
+    h.invoice = {
+      ...h.invoice,
+      status: "sent",
+      number: "JCO-2026-000007",
+      pendingDebit: { paymentIntentId: "pi_debit", amountCents: 9000, since: NOW },
+    };
+    expect(await voidInvoice({ invoiceId: String(INV), reason: "", byUserId: ADMIN })).toMatchObject({ code: "DEBIT_PENDING" });
+    expect(h.invFindOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.aptUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("the void itself is conditional on no debit having started since the read", async () => {
+    h.invoice = { ...h.invoice, status: "sent", number: "JCO-2026-000007" };
+    await voidInvoice({ invoiceId: String(INV), reason: "Erreur", byUserId: ADMIN, now: NOW });
+    expect(h.invFindOneAndUpdate.mock.calls[0][0]).toMatchObject({
+      "pendingDebit.paymentIntentId": { $exists: false },
+    });
+  });
 });
 
 /**

@@ -171,3 +171,29 @@ describe("the invoice model keeps what refunds write", () => {
     expect(o.sendLog[0].kind).toBe("refund_notice");
   });
 });
+
+describe("the invoice model keeps what a bank debit writes", () => {
+  it("the pending debit, a « pad » payment, a bounce with its reference, the notice", () => {
+    const since = new Date("2026-10-02T14:00:00Z");
+    const doc = new OrganizationInvoice({
+      kind: "session",
+      organizationId: new mongoose.Types.ObjectId(),
+      draftKey: "session:d",
+      pendingDebit: { paymentIntentId: "pi_debit", amountCents: 18000, since },
+      payments: [{ paymentId: P1, amountCents: 18000, method: "pad", receivedAt: new Date(), source: "stripe", externalRef: "pi_old" }],
+      paymentEvents: [{ at: new Date(), kind: "debit_failed", detail: "Débit refusé", ref: "pi_bounced" }],
+      sendLog: [{ at: new Date(), to: ["a@b.ca"], kind: "debit_failed" }],
+    });
+    expect(doc.validateSync()).toBeUndefined();
+    const o = doc.toObject();
+    expect(o.pendingDebit).toEqual({ paymentIntentId: "pi_debit", amountCents: 18000, since });
+    expect(o.payments[0].method).toBe("pad");
+    expect(o.paymentEvents[0]).toMatchObject({ kind: "debit_failed", ref: "pi_bounced" });
+    expect(o.sendLog[0].kind).toBe("debit_failed");
+  });
+
+  it("no debit, no marker: nothing that would read as « en cours »", () => {
+    const o = new OrganizationInvoice({ kind: "session", organizationId: new mongoose.Types.ObjectId(), draftKey: "session:e" }).toObject();
+    expect(o.pendingDebit).toBeUndefined();
+  });
+});

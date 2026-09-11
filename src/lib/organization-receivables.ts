@@ -142,6 +142,18 @@ const nameOfPerson = (p: Person) => (p ? `${p.firstName ?? ""} ${p.lastName ?? "
 
 /** A Stripe refund still unconfirmed after this long needs someone to press « Vérifier ». */
 const REFUND_CHECK_AFTER_MS = 15 * 60_000;
+/** A bank debit takes about 5 business days; still on its way after 10 days, someone checks. */
+const DEBIT_CHECK_AFTER_MS = 10 * 86_400_000;
+
+/** The organization's bank debit: on its way, on its way for too long, or none. */
+export function debitStateOf(
+  pendingDebit: { paymentIntentId?: string; since?: Date } | null | undefined,
+  now: Date,
+): "pending" | "stuck" | null {
+  if (!pendingDebit?.paymentIntentId) return null;
+  const since = pendingDebit.since ? new Date(pendingDebit.since).getTime() : now.getTime();
+  return now.getTime() - since > DEBIT_CHECK_AFTER_MS ? "stuck" : "pending";
+}
 
 /**
  * Invoices whose money a person must look at: an overpayment (money to give
@@ -162,6 +174,7 @@ export function paymentReviewFilter(now: Date): Record<string, unknown> {
           $elemMatch: { status: "requested", at: { $lt: new Date(now.getTime() - REFUND_CHECK_AFTER_MS) } },
         },
       },
+      { "pendingDebit.since": { $lt: new Date(now.getTime() - DEBIT_CHECK_AFTER_MS) } },
     ],
   };
 }
@@ -175,7 +188,7 @@ export async function loadOrganizationReceivables(now: Date = new Date()) {
     status: { $in: AWAITING_PAYMENT_STATUSES },
     balanceCents: { $gt: 0 },
   })
-    .select("organizationId number status balanceCents totalCents dueAt reminders disputed")
+    .select("organizationId number status balanceCents totalCents dueAt reminders disputed pendingDebit")
     .sort({ dueAt: 1 })
     .lean();
   const aging = buildAging(open, now);
@@ -192,10 +205,12 @@ export async function loadOrganizationReceivables(now: Date = new Date()) {
       daysLate: daysPastDue(i.dueAt, now),
       remindersSent: Number(Boolean(i.reminders?.dueSentAt)) + Number(Boolean(i.reminders?.followUpSentAt)),
       disputed: Boolean(i.disputed),
+      // The organization is paying: its bank debit is on its way.
+      debit: debitStateOf(i.pendingDebit, now),
     }));
 
   const toReview = await OrganizationInvoice.find(paymentReviewFilter(now))
-    .select("organizationId number status balanceCents paidCents disputed paymentEvents refunds.status")
+    .select("organizationId number status balanceCents paidCents disputed paymentEvents refunds.status pendingDebit")
     .limit(LIST_LIMIT)
     .lean();
   const paymentReview = toReview.map((i) => ({
@@ -207,6 +222,7 @@ export async function loadOrganizationReceivables(now: Date = new Date()) {
     paidCents: i.paidCents,
     disputed: Boolean(i.disputed),
     refundUnconfirmed: (i.refunds ?? []).some((r) => r.status === "requested"),
+    debit: debitStateOf(i.pendingDebit, now),
     lastEvent: i.paymentEvents?.at(-1)?.detail ?? "",
   }));
 

@@ -618,11 +618,16 @@ export async function voidInvoice(args: {
   if ((inv.refunds ?? []).some((r) => r.status === "requested" || r.status === "pending")) {
     return refuse(409, "REFUND_IN_PROGRESS", "A refund on this invoice is not settled yet.");
   }
+  // The money may still arrive: it would land on a void invoice.
+  if (inv.pendingDebit?.paymentIntentId) {
+    return refuse(409, "DEBIT_PENDING", "A bank debit for this invoice is in progress. Wait for its result.");
+  }
   if (!["issuing", "sent", "overdue", "refunded"].includes(inv.status) || inv.paidCents > 0) {
     return refuse(409, "CANNOT_VOID", "An invoice with a payment on it cannot be voided.");
   }
   const voided = await OrganizationInvoice.findOneAndUpdate(
-    { _id: inv._id, status: inv.status, paidCents: 0 },
+    // A debit that started since the read keeps the invoice as it is.
+    { _id: inv._id, status: inv.status, paidCents: 0, "pendingDebit.paymentIntentId": { $exists: false } },
     {
       $set: {
         status: "void",

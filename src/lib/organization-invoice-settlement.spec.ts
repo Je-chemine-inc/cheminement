@@ -25,6 +25,7 @@ const h = vi.hoisted(() => ({
   aptUpdateMany: vi.fn(async () => ({ modifiedCount: 0 })),
   receipt: vi.fn(async () => true),
   review: vi.fn(async () => true),
+  debitFailed: vi.fn(async () => true),
 }));
 
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
@@ -61,11 +62,16 @@ vi.mock("@/models/OrganizationInvoice", () => {
 vi.mock("@/lib/notifications", () => ({
   sendOrganizationPaymentReceivedEmail: h.receipt,
   sendAdminOrganizationPaymentReview: h.review,
+  sendOrganizationDebitFailedEmail: h.debitFailed,
 }));
 
 import {
+  clearOrganizationPendingDebit,
   flagOrganizationInvoiceDispute,
+  markOrganizationDebitProcessing,
   markOrganizationRefundStatus,
+  organizationMethodForIntent,
+  recordOrganizationDebitFailure,
   openOrganizationStripeRefund,
   recordOrganizationOutsideRefund,
   recordOrganizationPayment,
@@ -114,6 +120,7 @@ beforeEach(() => {
   h.aptUpdateMany.mockClear();
   h.receipt.mockClear();
   h.review.mockClear();
+  h.debitFailed.mockClear();
 });
 
 describe("syncInvoiceStatus", () => {
@@ -207,7 +214,12 @@ describe("recordOrganizationPayment (an admin records a cheque, an EFT…)", () 
     const r = await pay(9000);
     expect(r.ok).toBe(true);
     const [filter, update] = h.fou.mock.calls[0] as [Doc, { $inc: Doc; $push: { payments: Doc } }];
-    expect(filter).toMatchObject({ balanceCents: { $gte: 9000 }, status: { $in: ["sent", "overdue", "partially_paid"] } });
+    expect(filter).toMatchObject({
+      balanceCents: { $gte: 9000 },
+      status: { $in: ["sent", "overdue", "partially_paid"] },
+      // A debit that started since the read: the cheque would be paid twice.
+      "pendingDebit.paymentIntentId": { $exists: false },
+    });
     expect(update.$inc).toEqual({ paidCents: 9000, balanceCents: -9000 });
     expect(update.$push.payments).toMatchObject({ amountCents: 9000, method: "cheque", source: "admin" });
 
@@ -225,6 +237,13 @@ describe("recordOrganizationPayment (an admin records a cheque, an EFT…)", () 
   it("reports a race instead of guessing", async () => {
     h.fou.mockReturnValue(null);
     expect(await pay(9000)).toMatchObject({ code: "CHANGED_MEANWHILE" });
+    expect(h.receipt).not.toHaveBeenCalled();
+  });
+
+  it("refuses while the organization's bank debit is on its way — it would be paid twice", async () => {
+    h.invoice = sent({ pendingDebit: { paymentIntentId: "pi_debit", amountCents: 18000, since: NOW } });
+    expect(await pay(9000)).toMatchObject({ code: "DEBIT_PENDING" });
+    expect(h.fou).not.toHaveBeenCalled();
     expect(h.receipt).not.toHaveBeenCalled();
   });
 });
@@ -307,6 +326,149 @@ describe("settleOrganizationInvoiceIntent", () => {
       outcome: "not_found",
     });
     expect(h.fou).not.toHaveBeenCalled();
+    // Nothing to clear either.
+    expect(h.invUpdateOne).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Phase 9 — the organization pays by pre-authorized bank debit (ACSS): the
+ * debit is « en cours » for about 5 business days, then clears or bounces.
+ */
+describe("a bank debit from the pay link", () => {
+  const PENDING = { paymentIntentId: "pi_debit", amountCents: 18000, since: NOW };
+  const debit = (over: Doc = {}) => ({
+    id: "pi_debit",
+    amount: 18000,
+    amount_received: 18000,
+    payment_method_types: ["acss_debit"],
+    metadata: { type: "organization_invoice", organizationInvoiceId: String(INV), method: "pad" },
+    ...over,
+  });
+  const card = (over: Doc = {}) => debit({ payment_method_types: ["card"], metadata: { type: "organization_invoice", organizationInvoiceId: String(INV), method: "card" }, ...over });
+  const CLEAR: [Doc, Doc] = [{ "pendingDebit.paymentIntentId": "pi_debit" }, { $unset: { pendingDebit: 1 } }];
+
+  it("the method is read from the intent, never assumed", () => {
+    expect(organizationMethodForIntent({ payment_method_types: ["acss_debit"] })).toBe("pad");
+    expect(organizationMethodForIntent({ metadata: { method: "pad" } })).toBe("pad");
+    expect(organizationMethodForIntent({ payment_method_types: ["card"], metadata: {} })).toBe("card");
+    // An intent from before the switch carried no method: it was a card.
+    expect(organizationMethodForIntent({})).toBe("card");
+  });
+
+  it("a debit that cleared is recorded as a bank debit, and its marker goes", async () => {
+    h.invoice = sent({ pendingDebit: PENDING });
+    const r = await settleOrganizationInvoiceIntent(debit());
+    expect(r.outcome).toBe("applied");
+    const [, update] = h.fou.mock.calls[0] as [Doc, { $push: { payments: Doc } }];
+    expect(update.$push.payments).toMatchObject({ amountCents: 18000, method: "pad", source: "stripe", externalRef: "pi_debit" });
+    expect(updatesOf()).toContainEqual(CLEAR);
+    expect(h.receipt).toHaveBeenCalled();
+  });
+
+  it("a replay still clears the marker — a crash between the two writes heals itself", async () => {
+    h.fou.mockReturnValue(null);
+    const r = await settleOrganizationInvoiceIntent(debit());
+    expect(r.outcome).toBe("duplicate");
+    expect(updatesOf()).toContainEqual(CLEAR);
+    expect(h.receipt).not.toHaveBeenCalled();
+  });
+
+  it("clearing only ever takes away that intent's own marker", async () => {
+    await clearOrganizationPendingDebit("pi_debit");
+    expect(updatesOf()).toEqual([CLEAR]);
+  });
+
+  describe("markOrganizationDebitProcessing", () => {
+    it("marks it on its way — unless already recorded, already bounced, or another debit is pending", async () => {
+      expect(await markOrganizationDebitProcessing(debit(), NOW)).toBe("marked");
+      expect(updatesOf()).toEqual([
+        [
+          {
+            _id: INV,
+            "payments.externalRef": { $ne: "pi_debit" },
+            "pendingDebit.paymentIntentId": { $exists: false },
+            paymentEvents: { $not: { $elemMatch: { kind: "debit_failed", ref: "pi_debit" } } },
+          },
+          { $set: { pendingDebit: { paymentIntentId: "pi_debit", amountCents: 18000, since: NOW } } },
+        ],
+      ]);
+    });
+
+    it("says so when nothing was marked", async () => {
+      h.invUpdateOne.mockResolvedValue({ modifiedCount: 0 });
+      expect(await markOrganizationDebitProcessing(debit(), NOW)).toBe("ignored");
+    });
+
+    it("a card is never « en cours »: nothing is written", async () => {
+      expect(await markOrganizationDebitProcessing(card(), NOW)).toBe("ignored");
+      expect(h.invUpdateOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("recordOrganizationDebitFailure", () => {
+    const bounced = (over: Doc = {}) =>
+      debit({ latest_charge: "py_1", last_payment_error: { code: "insufficient_funds", message: "Insufficient funds" }, ...over });
+
+    it("a declined card stays silent — the pay link is still usable", async () => {
+      h.invoice = sent();
+      expect(await recordOrganizationDebitFailure(card({ latest_charge: "ch_1" }), NOW)).toBe("ignored");
+      expect(h.invUpdateOne).not.toHaveBeenCalled();
+      expect(h.review).not.toHaveBeenCalled();
+      expect(h.debitFailed).not.toHaveBeenCalled();
+    });
+
+    it("a bank check that failed before anything was debited is not a bounce", async () => {
+      h.invoice = sent();
+      expect(await recordOrganizationDebitFailure(debit({ latest_charge: null }), NOW)).toBe("ignored");
+      expect(h.invUpdateOne).not.toHaveBeenCalled();
+      expect(h.review).not.toHaveBeenCalled();
+    });
+
+    it("a bounce clears the marker, is recorded once, alerts the team and tells the organization it still owes", async () => {
+      h.invoice = sent({ pendingDebit: PENDING });
+      expect(await recordOrganizationDebitFailure(bounced(), NOW)).toBe("recorded");
+
+      expect(updatesOf()[0]).toEqual([{ _id: INV, "pendingDebit.paymentIntentId": "pi_debit" }, { $unset: { pendingDebit: 1 } }]);
+      const [eventFilter, eventUpdate] = updatesOf()[1];
+      expect(eventFilter).toEqual({ _id: INV, paymentEvents: { $not: { $elemMatch: { kind: "debit_failed", ref: "pi_debit" } } } });
+      const event = (eventUpdate.$push as { paymentEvents: Doc }).paymentEvents;
+      expect(event).toMatchObject({ kind: "debit_failed", ref: "pi_debit" });
+      expect(String(event.detail)).toContain("180,00 $");
+      expect(h.review).toHaveBeenCalledWith(expect.objectContaining({ kind: "debit_failed", invoiceNumber: "JCO-2026-000007" }));
+
+      expect(h.debitFailed).toHaveBeenCalledTimes(2);
+      const mail = h.debitFailed.mock.calls[0] as unknown as [Doc];
+      expect(mail[0]).toMatchObject({ to: "factu@pae.ca", number: "JCO-2026-000007", amountCents: 18000, balanceCents: 18000 });
+      expect(String(mail[0].payUrl)).toContain("/org-pay?token=");
+      // The bank's reason is for the team, never the organization's email.
+      expect(JSON.stringify(mail[0])).not.toContain("Insufficient");
+      const logged = updatesOf().find(([, u]) => (u.$push as Doc | undefined)?.sendLog);
+      expect((logged![1].$push as { sendLog: Doc }).sendLog).toMatchObject({ kind: "debit_failed", to: ["factu@pae.ca", "rh@pae.ca"] });
+    });
+
+    it("the same bounce delivered again records nothing and emails nobody", async () => {
+      h.invoice = sent();
+      h.invUpdateOne.mockImplementation(async (_f: Doc, u: Doc) => ({
+        modifiedCount: (u.$push as Doc | undefined)?.paymentEvents ? 0 : 1,
+      }));
+      expect(await recordOrganizationDebitFailure(bounced(), NOW)).toBe("ignored");
+      expect(h.review).not.toHaveBeenCalled();
+      expect(h.debitFailed).not.toHaveBeenCalled();
+    });
+
+    it("the processing event never came: a debit that took money and bounced is still recorded", async () => {
+      h.invoice = sent();
+      expect(await recordOrganizationDebitFailure(bounced(), NOW)).toBe("recorded");
+      expect(h.review).toHaveBeenCalled();
+    });
+
+    it("paid another way meanwhile: the team is told, the organization is not asked to pay again", async () => {
+      h.invoice = sent({ status: "paid", paidCents: 18000, balanceCents: 0, pendingDebit: PENDING });
+      expect(await recordOrganizationDebitFailure(bounced(), NOW)).toBe("recorded");
+      expect(h.review).toHaveBeenCalled();
+      expect(h.debitFailed).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -88,7 +88,7 @@ interface Invoice {
     id: string | null;
     amountCents: number;
     refundedCents: number;
-    method: "card" | (typeof PAY_METHODS)[number];
+    method: "card" | "pad" | (typeof PAY_METHODS)[number];
     reference: string;
     receivedAt: string;
     source: "stripe" | "interac_reconciler" | "admin";
@@ -114,6 +114,8 @@ interface Invoice {
   paymentEvents: { at: string; kind: string; detail: string }[];
   reminders: { dueSentAt: string | null; followUpSentAt: string | null; overdueAlertSentAt: string | null };
   disputed: boolean;
+  /** The organization's bank debit on its way. */
+  debitPending: { amountCents: number; since: string } | null;
 }
 interface Unbilled {
   organizationId: string;
@@ -226,6 +228,7 @@ export default function OrganizationInvoicesPage() {
     if (!r.ok) {
       if (onRefused?.(r.body)) return false;
       if (r.body?.code === "CONSENT_MISSING") setBlocked(r.body?.details?.blocked ?? []);
+      else if (typeof r.body?.code === "string" && t.has(`debit.errors.${r.body.code}`)) setError(t(`debit.errors.${r.body.code}`));
       else setError(r.body?.error ?? `Error ${r.status}`);
       return false;
     }
@@ -459,6 +462,11 @@ export default function OrganizationInvoicesPage() {
                             {t("refund.unconfirmedBadge")}
                           </Badge>
                         )}
+                        {inv.debitPending && (
+                          <Badge variant="outline" className="border-transparent bg-sky-100 text-sky-800">
+                            {t("debit.badge", { amount: money(inv.debitPending.amountCents) })}
+                          </Badge>
+                        )}
                         {formStale(inv) ? (
                           <Badge variant="outline" className="border-transparent bg-red-100 text-red-800">
                             {t("form.badgeStale")}
@@ -528,14 +536,19 @@ export default function OrganizationInvoicesPage() {
                           }>
                           {t("resend")}
                         </Button>
-                        <Button size="sm" className="h-8" onClick={() => {
-                          setPay({ amount: (inv.balanceCents / 100).toFixed(2), method: "cheque", reference: "", receivedOn: "" });
-                          setPaying(inv);
-                        }}>
+                        {/* While the organization's debit is on its way, neither: it would pay twice, or land on a void invoice. */}
+                        <Button size="sm" className="h-8" disabled={Boolean(inv.debitPending)}
+                          title={inv.debitPending ? t("debit.blocked") : undefined}
+                          onClick={() => {
+                            setPay({ amount: (inv.balanceCents / 100).toFixed(2), method: "cheque", reference: "", receivedOn: "" });
+                            setPaying(inv);
+                          }}>
                           {t("recordPayment")}
                         </Button>
                         {inv.paidCents === 0 && (
                           <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive"
+                            disabled={Boolean(inv.debitPending)}
+                            title={inv.debitPending ? t("debit.blocked") : undefined}
                             onClick={() => { setVoidReason(""); setVoiding(inv); }}>
                             {t("void")}
                           </Button>
@@ -611,6 +624,27 @@ export default function OrganizationInvoicesPage() {
                         <span className="font-mono">{money(l.amountCents)}</span>
                       </div>
                     ))}
+                    {inv.debitPending && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 p-2 text-sky-900">
+                        <p>
+                          {t("debit.line", {
+                            amount: money(inv.debitPending.amountCents),
+                            date: new Date(inv.debitPending.since).toLocaleDateString("fr-CA"),
+                          })}
+                        </p>
+                        <button
+                          className="text-primary hover:underline"
+                          disabled={busy === `debit_check-${inv.id}`}
+                          onClick={() =>
+                            void act(`debit_check-${inv.id}`, `/api/admin/organization-invoices/${inv.id}`, { action: "debit_check" }, (b) =>
+                              setNotice(t(`debit.outcomes.${String(b.outcome ?? "processing")}`)),
+                            )
+                          }
+                        >
+                          {t("debit.check")}
+                        </button>
+                      </div>
+                    )}
                     {inv.payments.length > 0 && (
                       <div className="pt-2">
                         <p className="font-medium">{t("paymentsTitle")}</p>

@@ -4,8 +4,12 @@ import connectToDatabase from "@/lib/mongodb";
 import Organization from "@/models/Organization";
 import OrganizationInvoice from "@/models/OrganizationInvoice";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
-import { isPayTokenShaped, publicInvoiceView } from "@/lib/organization-invoice-pay-link";
-import { startOrganizationCardPayment } from "@/lib/organization-invoice-card";
+import {
+  isOrganizationPadEnabled,
+  isPayTokenShaped,
+  publicInvoiceView,
+} from "@/lib/organization-invoice-pay-link";
+import { startOrganizationPayment } from "@/lib/organization-invoice-card";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 
 /**
@@ -25,13 +29,14 @@ export async function GET(req: NextRequest) {
     if (!isPayTokenShaped(token)) return NextResponse.json(NOT_FOUND, { status: 404 });
     await connectToDatabase();
     const inv = await OrganizationInvoice.findOne({ payToken: token })
-      .select("organizationId number status totalCents paidCents creditedCents balanceCents dueAt")
+      .select("organizationId number status totalCents paidCents creditedCents balanceCents dueAt pendingDebit")
       .lean();
     if (!inv) return NextResponse.json(NOT_FOUND, { status: 404 });
     const org = await Organization.findById(inv.organizationId).select("name language").lean();
     const interacEmail = await getInteracDepositEmail().catch(() => "");
+    const methods: Array<"card" | "pad"> = (await isOrganizationPadEnabled()) ? ["card", "pad"] : ["card"];
     return NextResponse.json({
-      ...publicInvoiceView(inv, org),
+      ...publicInvoiceView(inv, org, new Date(), methods),
       interacEmail: interacEmail || null,
     });
   } catch (error) {
@@ -44,8 +49,8 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`org-pay-intent:${getClientIp(req)}`, 10, 60_000);
   if (!limit.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   try {
-    const body = (await req.json().catch(() => null)) as { token?: unknown } | null;
-    const result = await startOrganizationCardPayment(body?.token);
+    const body = (await req.json().catch(() => null)) as { token?: unknown; method?: unknown } | null;
+    const result = await startOrganizationPayment(body?.token, body?.method ?? "card");
     if (!result.ok) {
       return NextResponse.json({ error: result.error, code: result.code }, { status: result.status });
     }
@@ -53,6 +58,9 @@ export async function POST(req: NextRequest) {
       clientSecret: result.clientSecret,
       amountCents: result.amountCents,
       currency: "CAD",
+      method: result.method,
+      // A debit waiting for its microdeposits: where the organization confirms them.
+      verification: result.verification ?? null,
     });
   } catch (error) {
     if (error instanceof Stripe.errors.StripeError) {

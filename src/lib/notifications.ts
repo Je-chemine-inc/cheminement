@@ -756,6 +756,7 @@ const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
   "organization_payment_reminder",
   "organization_payment_received",
   "organization_refund",
+  "organization_debit_failed",
 ]);
 
 /** True when replies to this email type should route to the payment inbox. */
@@ -6821,7 +6822,7 @@ export async function sendOrganizationInvoiceEmail(data: {
       { label: lang === "fr" ? "Échéance" : "Due date", value: due },
     ],
     ...(data.payUrl
-      ? { button: { text: lang === "fr" ? "Payer par carte" : "Pay by card", url: data.payUrl } }
+      ? { button: { text: lang === "fr" ? "Payer en ligne" : "Pay online", url: data.payUrl } }
       : {}),
     ...(data.interacEmail
       ? { infoBox: orgInteracBox(data.interacEmail, data.number, lang) }
@@ -6840,7 +6841,7 @@ export async function sendOrganizationInvoiceEmail(data: {
         : lang === "fr"
           ? "Le document est joint à ce courriel."
           : "The document is attached to this email.",
-      data.payUrl ? `${lang === "fr" ? "Payer par carte" : "Pay by card"} : ${data.payUrl}` : "",
+      data.payUrl ? `${lang === "fr" ? "Payer en ligne" : "Pay online"} : ${data.payUrl}` : "",
       data.interacEmail ? orgInteracLine(data.interacEmail, data.number, lang) : "",
     ],
     lang,
@@ -6974,7 +6975,7 @@ export async function sendOrganizationPaymentReminderEmail(data: {
       { label: lang === "fr" ? "Échéance" : "Due date", value: due },
     ],
     ...(data.payUrl
-      ? { button: { text: lang === "fr" ? "Payer par carte" : "Pay by card", url: data.payUrl } }
+      ? { button: { text: lang === "fr" ? "Payer en ligne" : "Pay online", url: data.payUrl } }
       : {}),
     ...(data.interacEmail ? { infoBox: orgInteracBox(data.interacEmail, data.number, lang) } : {}),
     branding,
@@ -6984,7 +6985,7 @@ export async function sendOrganizationPaymentReminderEmail(data: {
     [
       title,
       `${data.organizationName} — ${balance} — ${due}`,
-      data.payUrl ? `${lang === "fr" ? "Payer par carte" : "Pay by card"} : ${data.payUrl}` : "",
+      data.payUrl ? `${lang === "fr" ? "Payer en ligne" : "Pay online"} : ${data.payUrl}` : "",
       data.interacEmail ? orgInteracLine(data.interacEmail, data.number, lang) : "",
     ],
     lang,
@@ -7027,7 +7028,7 @@ export async function sendOrganizationPaymentReceivedEmail(data: {
       { label: lang === "fr" ? "Solde restant" : "Remaining balance", value: balance },
     ],
     ...(!settled && data.payUrl
-      ? { button: { text: lang === "fr" ? "Payer le solde par carte" : "Pay the balance by card", url: data.payUrl } }
+      ? { button: { text: lang === "fr" ? "Payer le solde en ligne" : "Pay the balance online", url: data.payUrl } }
       : {}),
     branding,
     lang,
@@ -7056,8 +7057,8 @@ export async function sendOrganizationRefundEmail(data: {
   organizationName: string;
   number: string;
   amountCents: number;
-  /** "card": back on the card that paid; "outside": sent another way. */
-  via: "card" | "outside";
+  /** "card": back on the card that paid; "bank": to the debited account; "outside": sent another way. */
+  via: "card" | "bank" | "outside";
   /** Stripe accepted it but the money is still on its way. */
   pending: boolean;
   balanceCents: number;
@@ -7076,9 +7077,13 @@ export async function sendOrganizationRefundEmail(data: {
       ? lang === "fr"
         ? "Le montant est rendu sur la carte qui a servi au paiement ; il apparaît habituellement sur le relevé sous 5 à 10 jours ouvrables."
         : "It goes back to the card used for the payment and usually shows on the statement within 5 to 10 business days."
-      : lang === "fr"
-        ? "Ce remboursement a été fait hors de la plateforme (virement, chèque ou autre)."
-        : "This refund was made outside the platform (transfer, cheque or other).";
+      : data.via === "bank"
+        ? lang === "fr"
+          ? "Le montant est versé dans le compte bancaire qui a été débité ; il y apparaît habituellement sous 5 à 10 jours ouvrables."
+          : "It goes back to the bank account that was debited and usually shows there within 5 to 10 business days."
+        : lang === "fr"
+          ? "Ce remboursement a été fait hors de la plateforme (virement, chèque ou autre)."
+          : "This refund was made outside the platform (transfer, cheque or other).";
   const intro =
     lang === "fr"
       ? `Nous avons remboursé ${amount} à ${org} sur la facture ${data.number}. ${how} ${owing ? `Il reste ${balance} à régler sur cette facture.` : "Rien ne reste à régler sur cette facture."}`
@@ -7114,6 +7119,54 @@ export async function sendOrganizationRefundEmail(data: {
   return sendEmail(
     { to: data.to, subject: `${title} — Je chemine`, html, text },
     "organization_refund",
+  );
+}
+
+/**
+ * An organization's pre-authorized bank debit was refused by its bank: the
+ * invoice is payable again. Number, amount and the pay link — no reason from
+ * the bank, no patient.
+ */
+export async function sendOrganizationDebitFailedEmail(data: {
+  to: string;
+  organizationName: string;
+  number: string;
+  amountCents: number;
+  balanceCents: number;
+  payUrl?: string | null;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const amount = orgMoney(data.amountCents, lang);
+  const balance = orgMoney(data.balanceCents, lang);
+  const org = escapeHtml(data.organizationName);
+  const title = lang === "fr" ? `Débit refusé — facture ${data.number}` : `Debit declined — invoice ${data.number}`;
+  const intro =
+    lang === "fr"
+      ? `Le débit préautorisé de ${amount} pour la facture ${data.number} de ${org} a été refusé par votre institution financière. Rien n’a été prélevé. Il reste ${balance} à régler : vous pouvez payer de nouveau en ligne, ou par l’un des autres moyens indiqués sur la facture en rappelant son numéro.`
+      : `The pre-authorized debit of ${amount} for invoice ${data.number} (${org}) was declined by your financial institution. Nothing was taken. ${balance} remains outstanding: you can pay again online, or by one of the other methods shown on the invoice, quoting its number.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "warning",
+    greeting: lang === "fr" ? "Bonjour," : "Hello,",
+    intro,
+    details: [
+      { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
+      { label: lang === "fr" ? "Débit refusé" : "Declined debit", value: amount },
+      { label: lang === "fr" ? "Solde dû" : "Balance due", value: balance },
+    ],
+    ...(data.payUrl ? { button: { text: lang === "fr" ? "Payer en ligne" : "Pay online", url: data.payUrl } } : {}),
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [title, `${data.organizationName} — ${amount} — ${lang === "fr" ? "solde" : "balance"} ${balance}`, data.payUrl ?? ""],
+    lang,
+  );
+  return sendEmail(
+    { to: data.to, subject: `${title} — Je chemine`, html, text },
+    "organization_debit_failed",
   );
 }
 
@@ -7172,7 +7225,7 @@ export async function sendAdminOrganizationInvoicesOverdue(data: {
 export async function sendAdminOrganizationPaymentReview(data: {
   invoiceNumber: string;
   organizationName: string;
-  kind: "overpaid" | "not_payable" | "refund" | "dispute";
+  kind: "overpaid" | "not_payable" | "refund" | "dispute" | "debit_failed";
   detail: string;
 }): Promise<boolean> {
   await connectToDatabase();
@@ -7192,6 +7245,7 @@ export async function sendAdminOrganizationPaymentReview(data: {
     not_payable: "Paiement sur une facture qui n’attendait rien",
     refund: "Remboursement enregistré",
     dispute: "Paiement contesté",
+    debit_failed: "Débit préautorisé refusé",
   }[data.kind];
   const html = buildEmailHtml({
     title: `${heading} — ${escapeHtml(data.invoiceNumber)}`,

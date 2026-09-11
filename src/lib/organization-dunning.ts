@@ -37,6 +37,8 @@ export type DunningFacts = {
   balanceCents: number;
   dueAt?: Date | null;
   disputed?: boolean;
+  /** A bank debit on its way: the organization is paying — no reminder. */
+  pendingDebit?: { paymentIntentId?: string } | null;
   reminders?: { dueSentAt?: Date; followUpSentAt?: Date; overdueAlertSentAt?: Date } | null;
 };
 
@@ -53,7 +55,13 @@ export type DunningStep = {
  */
 export function dunningStepFor(inv: DunningFacts, now: Date): DunningStep {
   const none: DunningStep = { reminder: null, teamAlert: false, daysLate: 0 };
-  if (!isAwaitingPayment(inv.status) || inv.balanceCents <= 0 || !inv.dueAt || inv.disputed) {
+  if (
+    !isAwaitingPayment(inv.status) ||
+    inv.balanceCents <= 0 ||
+    !inv.dueAt ||
+    inv.disputed ||
+    inv.pendingDebit?.paymentIntentId
+  ) {
     return none;
   }
   const late = now.getTime() - new Date(inv.dueAt).getTime();
@@ -99,13 +107,14 @@ export async function runOrganizationDunning(now: Date = new Date()): Promise<Du
     balanceCents: { $gt: 0 },
     dueAt: { $lte: now },
     disputed: { $ne: true },
+    "pendingDebit.paymentIntentId": { $exists: false },
     $or: [
       { "reminders.dueSentAt": { $exists: false } },
       { "reminders.followUpSentAt": { $exists: false } },
       { "reminders.overdueAlertSentAt": { $exists: false } },
     ],
   })
-    .select("organizationId number status balanceCents dueAt disputed reminders billTo payToken")
+    .select("organizationId number status balanceCents dueAt disputed pendingDebit reminders billTo payToken")
     .lean();
   if (candidates.length === 0) return result;
 
@@ -134,6 +143,8 @@ export async function runOrganizationDunning(now: Date = new Date()): Promise<Du
         status: { $in: AWAITING_PAYMENT_STATUSES },
         balanceCents: { $gt: 0 },
         disputed: { $ne: true },
+        // A debit that started between the read and now: no reminder after all.
+        "pendingDebit.paymentIntentId": { $exists: false },
         [claimKey]: { $exists: false },
       },
       { $set: stamps },

@@ -37,6 +37,9 @@ const h = vi.hoisted(() => ({
   orgDispute: vi.fn(),
   orgIsPayment: vi.fn(),
   orgRefundStatus: vi.fn(),
+  orgDebitProcessing: vi.fn(),
+  orgDebitFailure: vi.fn(),
+  orgDebitClear: vi.fn(),
   chargeRetrieve: vi.fn(),
 }));
 
@@ -65,6 +68,9 @@ vi.mock("@/lib/organization-invoice-settlement", () => ({
   markOrganizationRefundStatus: h.orgRefundStatus,
   flagOrganizationInvoiceDispute: h.orgDispute,
   isOrganizationInvoicePayment: h.orgIsPayment,
+  markOrganizationDebitProcessing: h.orgDebitProcessing,
+  recordOrganizationDebitFailure: h.orgDebitFailure,
+  clearOrganizationPendingDebit: h.orgDebitClear,
 }));
 vi.mock("@/models/StripeWebhookEvent", () => ({
   default: {
@@ -148,6 +154,9 @@ beforeEach(() => {
   h.orgRefund.mockResolvedValue("not_found");
   h.orgDispute.mockResolvedValue("not_found");
   h.orgIsPayment.mockResolvedValue(false);
+  h.orgDebitProcessing.mockResolvedValue("marked");
+  h.orgDebitFailure.mockResolvedValue("ignored");
+  h.orgDebitClear.mockResolvedValue(undefined);
   h.chargeRetrieve.mockResolvedValue({ id: "ch_org", amount_refunded: 0 });
   process.env.NEXTAUTH_URL = "https://www.jechemine.ca";
   vi.spyOn(console, "log").mockImplementation(() => {});
@@ -467,14 +476,59 @@ describe("an organization paying its invoice (spec 002)", () => {
     expect(h.webhookEventDeleteOne).toHaveBeenCalledWith({ eventId: EVENT_ID });
   });
 
-  it("a declined or abandoned card touches neither the invoice nor an appointment", async () => {
+  it("a declined or abandoned payment records no money and touches no appointment", async () => {
     for (const type of ["payment_intent.payment_failed", "payment_intent.canceled"]) {
       h.constructEvent.mockReturnValue(event(type, orgPi(), `evt_${type}`));
-      await POST(req());
+      expect((await POST(req())).status).toBe(200);
     }
     expect(h.orgSettle).not.toHaveBeenCalled();
     expect(h.apptFindById).not.toHaveBeenCalled();
     expect(h.markFailed).not.toHaveBeenCalled();
+  });
+
+  describe("a bank debit (DPA) — « en cours » for days, then it clears or bounces", () => {
+    const debitPi = (over: Record<string, unknown> = {}) =>
+      orgPi({ id: "pi_debit", payment_method_types: ["acss_debit"], ...over });
+
+    it("processing marks the debit on its way — no money recorded, no appointment looked for", async () => {
+      h.constructEvent.mockReturnValue(event("payment_intent.processing", debitPi()));
+      expect((await POST(req())).status).toBe(200);
+      expect(h.orgDebitProcessing).toHaveBeenCalledWith(expect.objectContaining({ id: "pi_debit" }));
+      expect(h.orgSettle).not.toHaveBeenCalled();
+      expect(h.apptFindById).not.toHaveBeenCalled();
+    });
+
+    it("processing for an appointment's payment changes nothing — its own routes track it", async () => {
+      h.constructEvent.mockReturnValue(
+        event("payment_intent.processing", { id: "pi_appt", metadata: { appointmentId: "appt1" } }),
+      );
+      expect((await POST(req())).status).toBe(200);
+      expect(h.orgDebitProcessing).not.toHaveBeenCalled();
+      expect(h.apptFindById).not.toHaveBeenCalled();
+      expect(h.apptFindOne).not.toHaveBeenCalled();
+    });
+
+    it("a debit the bank refused goes to the invoice's settlement, never to the appointment path", async () => {
+      h.orgDebitFailure.mockResolvedValue("recorded");
+      h.constructEvent.mockReturnValue(event("payment_intent.payment_failed", debitPi({ latest_charge: "py_1" })));
+      expect((await POST(req())).status).toBe(200);
+      expect(h.orgDebitFailure).toHaveBeenCalledWith(expect.objectContaining({ id: "pi_debit" }));
+      expect(h.apptFindById).not.toHaveBeenCalled();
+      expect(h.markFailed).not.toHaveBeenCalled();
+    });
+
+    it("an abandoned payment takes away its own « en cours » marker", async () => {
+      h.constructEvent.mockReturnValue(event("payment_intent.canceled", debitPi()));
+      await POST(req());
+      expect(h.orgDebitClear).toHaveBeenCalledWith("pi_debit");
+    });
+
+    it("a database error releases the claim, so Stripe's retry marks it", async () => {
+      h.orgDebitProcessing.mockRejectedValue(new Error("mongo down"));
+      h.constructEvent.mockReturnValue(event("payment_intent.processing", debitPi()));
+      expect((await POST(req())).status).toBe(500);
+      expect(h.webhookEventDeleteOne).toHaveBeenCalledWith({ eventId: EVENT_ID });
+    });
   });
 
   it("a refund adjusts the invoice and emails no client", async () => {

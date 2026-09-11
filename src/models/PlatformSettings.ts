@@ -45,6 +45,8 @@ export type EmailNotificationType =
   | "organization_payment_received"
   // A refund an admin made to an organization from the invoice screen.
   | "organization_refund"
+  // An organization's pre-authorized debit was refused by its bank.
+  | "organization_debit_failed"
   | "admin_organization_invoice_overdue"
   | "admin_organization_payment_review"
   | "interac_transfer_instructions"
@@ -201,6 +203,12 @@ export interface IPlatformSettings extends Document {
   adminAlertEmail?: string;
   /** Spec 002 kill switch: third-party (organization) billing. Off by default. */
   organizationBillingEnabled?: boolean;
+  /**
+   * Organizations may pay an invoice by pre-authorized bank debit (DPA) from
+   * the pay link. Off by default, for a pilot: the bank-account form and the
+   * microdeposit path cannot be tested without real Stripe keys.
+   */
+  organizationPadEnabled?: boolean;
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -342,6 +350,10 @@ const defaultEmailTemplates: Record<
   organization_refund: {
     enabled: true,
     subject: "Remboursement — Je chemine",
+  },
+  organization_debit_failed: {
+    enabled: true,
+    subject: "Débit refusé — Je chemine",
   },
   admin_organization_invoice_overdue: {
     enabled: true,
@@ -485,6 +497,7 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       default: "",
     },
     organizationBillingEnabled: { type: Boolean, default: false },
+    organizationPadEnabled: { type: Boolean, default: false },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },

@@ -172,6 +172,16 @@ describe("a card refund goes through Stripe", () => {
     expect(h.email).not.toHaveBeenCalled();
   });
 
+  it("a bank debit is refunded through Stripe too — to the account, pending while the bank moves it", async () => {
+    h.invoice = paid({
+      payments: [{ paymentId: CARD, amountCents: 18000, refundedCents: 0, method: "pad", source: "stripe", externalRef: "pi_debit" }],
+    });
+    h.create.mockResolvedValue(stripeRefund({ status: "pending", payment_intent: "pi_debit" }));
+    await refund();
+    expect(h.create.mock.calls[0][0]).toMatchObject({ payment_intent: "pi_debit", amount: 5000 });
+    expect(h.email.mock.calls[0][0]).toMatchObject({ via: "bank", pending: true });
+  });
+
   it("Stripe refusing outright takes the row back", async () => {
     h.create.mockRejectedValue(
       new Stripe.errors.StripeInvalidRequestError({ message: "Charge already refunded", type: "invalid_request_error", statusCode: 400 } as never),

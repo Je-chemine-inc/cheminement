@@ -8,6 +8,7 @@ import {
   buildAging,
   capIssuesFor,
   daysPastDue,
+  debitStateOf,
   paymentReviewFilter,
 } from "@/lib/organization-receivables";
 
@@ -35,6 +36,20 @@ describe("paymentReviewFilter — money a person must look at", () => {
     // Refunds are made from the screen now: « refunded » is a normal closed state.
     expect(branches).not.toContainEqual({ status: "refunded" });
     expect(branches).toContainEqual({ status: "refunded", balanceCents: { $gt: 0 } });
+  });
+
+  it("a bank debit still on its way after 10 days — not one that started this week", () => {
+    expect(branches).toContainEqual({ "pendingDebit.since": { $lt: ago(10) } });
+  });
+});
+
+describe("debitStateOf", () => {
+  it("no debit, a debit on its way, one on its way for over 10 days", () => {
+    expect(debitStateOf(undefined, NOW)).toBeNull();
+    expect(debitStateOf(null, NOW)).toBeNull();
+    expect(debitStateOf({ paymentIntentId: "pi_1", since: ago(3) }, NOW)).toBe("pending");
+    expect(debitStateOf({ paymentIntentId: "pi_1", since: ago(10) }, NOW)).toBe("pending");
+    expect(debitStateOf({ paymentIntentId: "pi_1", since: ago(10.1) }, NOW)).toBe("stuck");
   });
 });
 

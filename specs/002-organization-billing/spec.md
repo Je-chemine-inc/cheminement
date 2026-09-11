@@ -39,7 +39,7 @@ always go to the client.
 | Invoice cycle | Per org: per-session or monthly statement |
 | Statements | Auto-drafted; admin reviews then sends |
 | Per-session invoices | Auto-send switch per org, off by default |
-| Org payment | Pay link (card + Interac) and admin mark-paid |
+| Org payment | Pay link (card + Interac; bank debit behind its own switch) and admin mark-paid |
 | Intake | Client declares (free text + case number + consent); admin confirms |
 | Payer unclear at closure | Hold for admin decision — nothing charged, pro still credited |
 | Org invoice shows | Patient full name + case number · pro name, title, licence · dates, duration, amounts |
@@ -49,6 +49,7 @@ always go to the client.
 | Cap alerts | Admin at 1 left · client at 1 left · pro sees « PAE — séance 4/6 » |
 | Own claim form (2026-09-11) | One PDF per invoice or statement, filled in by an admin and sent with it under a fixed name (`JCO-…-formulaire.pdf`). If the organization requires it, nothing goes out — the hourly auto-send included — until it is attached, unless an admin sends without it (recorded in the send log) |
 | Refunds (2026-09-11) | From the invoice screen. The admin chooses each time: « toujours dû » (the balance comes back, reminders resume — as a Stripe-dashboard refund does) or « plus dû » (a credit is recorded). Refunding an overpayment only brings the balance back to 0. Card: refunded through Stripe; Interac, cheque, EFT: recorded as refunded outside the platform |
+| Bank debit (2026-09-11) | Per invoice, from the pay link: the organization picks « compte bancaire » (one pre-authorized debit, business account, no standing mandate) or card. « Débit en cours » shows for the ~5 business days it takes — no reminder, no payment recorded by hand and no void meanwhile. Its own switch, off by default, for a pilot |
 | Not in v1 | Per-therapy-type rates · dollar cap · auto-filling orgs' own proforma forms |
 
 ## 4. Acceptance criteria

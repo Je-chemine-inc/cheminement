@@ -139,3 +139,28 @@ describe("serializeInvoice — refunds", () => {
     expect(json).not.toContain("secret-request-key");
   });
 });
+
+describe("serializeInvoice — a bank debit on its way", () => {
+  it("amount and date only — never Stripe's intent id", () => {
+    const since = new Date("2026-10-02T14:00:00Z");
+    const s = serializeInvoice(
+      invoice({ pendingDebit: { paymentIntentId: "pi_secret_debit", amountCents: 9000, since } }),
+      org as never,
+    );
+    expect(s.debitPending).toEqual({ amountCents: 9000, since });
+    expect(JSON.stringify(s)).not.toContain("pi_secret_debit");
+  });
+
+  it("none on an invoice without one", () => {
+    expect(serializeInvoice(invoice(), org as never).debitPending).toBeNull();
+  });
+
+  it("a bounced debit's reference stays server-side too", () => {
+    const s = serializeInvoice(
+      invoice({ paymentEvents: [{ at: new Date(), kind: "debit_failed", detail: "Débit refusé", ref: "pi_secret_debit" }] }),
+      org as never,
+    );
+    expect(s.paymentEvents[0]).toMatchObject({ kind: "debit_failed", detail: "Débit refusé" });
+    expect(JSON.stringify(s)).not.toContain("pi_secret_debit");
+  });
+});

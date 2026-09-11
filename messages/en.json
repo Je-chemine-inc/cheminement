@@ -1194,7 +1194,16 @@
       "confirmOnTitle": "Turn on organization billing?",
       "confirmOnBody": "From now on, closed sessions of covered clients will no longer charge the client for the organization's share. Check the coverages and consents before turning it on.",
       "confirmOffTitle": "Turn off organization billing?",
-      "confirmOffBody": "The next closed sessions will be billed to the client in full, even if they are covered. Sessions already closed do not change."
+      "confirmOffBody": "The next closed sessions will be billed to the client in full, even if they are covered. Sessions already closed do not change.",
+      "padOff": "Bank debit (PAD) on the pay link: off",
+      "padOn": "Bank debit (PAD) on the pay link: on",
+      "padHelp": "Lets the organization pay an invoice by pre-authorized debit from its business account, one invoice at a time (no standing authorization). The debit takes 3 to 5 business days; the invoice shows \"debit in progress\" until then. Before turning it on, check that pre-authorized debit (ACSS) is active in the Stripe account.",
+      "padTurnOn": "Offer bank debit",
+      "padTurnOff": "Stop offering bank debit",
+      "padConfirmOnTitle": "Offer bank debit (PAD)?",
+      "padConfirmOnBody": "Pay links will offer card or bank debit. An authorized debit cannot be cancelled from here: if the bank refuses it, the invoice becomes payable again and the organization is told.",
+      "padConfirmOffTitle": "Stop offering bank debit?",
+      "padConfirmOffBody": "Pay links will offer card only. Debits already under way carry on."
     },
     "coverages": {
       "title": "Organization coverage",
@@ -1400,7 +1409,8 @@
         "eft": "Bank transfer (EFT)",
         "portal": "Organization's portal",
         "other": "Other",
-        "card": "Card (pay link)"
+        "card": "Card (pay link)",
+        "pad": "Bank debit PAD (pay link)"
       },
       "cancel": "Cancel",
       "disputed": "Disputed",
@@ -1424,7 +1434,8 @@
         "resent": "Resent",
         "reminder": "Reminder",
         "payment_received": "Payment receipt",
-        "refund_notice": "Refund notice"
+        "refund_notice": "Refund notice",
+        "debit_failed": "Debit declined notice"
       },
       "payReceiptNote": "A receipt is emailed to the organization's billing address.",
       "receivables": {
@@ -1489,10 +1500,12 @@
           },
           "paymentReview": {
             "title": "Payments to review",
-            "hint": "Overpaid, disputed or refunded, or received on a void invoice. Nothing was refunded automatically."
+            "hint": "Overpaid, disputed, refunds not confirmed, bank debits in progress for over 10 days, or money received on a void invoice. Nothing was refunded automatically."
           }
         },
-        "refundUnconfirmed": "refund to check"
+        "refundUnconfirmed": "refund to check",
+        "debitPending": "bank debit in progress",
+        "debitStuck": "bank debit in progress for over 10 days"
       },
       "form": {
         "title": "Organization’s form",
@@ -1606,6 +1619,24 @@
           "REFUND_UNCONFIRMED": "Stripe did not confirm the refund. In a minute, use “Check” on the invoice before trying again.",
           "CHECK_TOO_SOON": "Stripe may still be answering: check again in a minute.",
           "FAILED": "The refund could not be made. Try again."
+        },
+        "viaStripePad": "Refunded by Stripe to the bank account that was debited. Irreversible: the money leaves the clinic's account."
+      },
+      "debit": {
+        "badge": "debit in progress · {amount}",
+        "line": "Bank debit of {amount} in progress since {date}. It usually takes 3 to 5 business days.",
+        "check": "Check with Stripe",
+        "blocked": "A bank debit is in progress: wait until it clears or fails.",
+        "outcomes": {
+          "settled": "The debit cleared: the payment is recorded.",
+          "processing": "The debit is still in progress with the bank.",
+          "failed": "The debit was declined: the invoice is payable again.",
+          "cleared": "This debit was no longer in progress: the marker is removed.",
+          "none": "No debit in progress on this invoice."
+        },
+        "errors": {
+          "DEBIT_PENDING": "The organization's bank debit on this invoice is in progress: wait until it clears or fails.",
+          "STRIPE_UNAVAILABLE": "Stripe could not answer. Nothing changed: try again in a moment."
         }
       }
     },
@@ -7235,6 +7266,23 @@
     "inProgress": "A payment for this invoice is already being processed. Refresh the page in a few minutes.",
     "errorGeneric": "The payment could not be made. Try again, or pay by Interac e-Transfer.",
     "additionalVerification": "Your bank asks for an extra verification. Please try again.",
-    "credit": "Credit"
+    "credit": "Credit",
+    "chooseMethod": "Choose how to pay",
+    "methodCard": "Credit card",
+    "methodCardHelp": "Paid right away.",
+    "methodPad": "Bank debit (PAD)",
+    "methodPadHelp": "Canadian business account. One debit, for this invoice; 3 to 5 business days.",
+    "padNote": "A single debit of {amount} will be taken for invoice {number}. No standing authorization: each invoice is paid on its own.",
+    "padPayAmount": "Authorize the {amount} debit",
+    "padFootnote": "Debit secured by Stripe. Je chemine keeps no bank details.",
+    "changeMethod": "Change payment method",
+    "debitTitle": "Debit in progress",
+    "debitBody": "The {amount} debit authorized on {date} is in progress with your financial institution. It usually takes 3 to 5 business days. A receipt will follow as soon as it clears.",
+    "debitStartedBody": "Thank you. Your financial institution is processing the debit; it usually takes 3 to 5 business days. A receipt will follow as soon as it clears.",
+    "verifyTitle": "Confirm your bank account",
+    "verifyBody": "Stripe will deposit two small amounts into your account. When they show up, enter them on the verification page: the debit goes ahead after that.",
+    "verifyArrival": "Expected around {date}.",
+    "verifyLink": "Open the verification page",
+    "methodUnavailable": "This payment method is not available right now. Pay by card or by another method shown below."
   }
 }

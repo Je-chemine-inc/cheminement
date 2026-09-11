@@ -17,6 +17,7 @@ const WEDNESDAY_11H = new Date("2026-10-14T15:00:00Z");
 
 const h = vi.hoisted(() => ({
   candidates: [] as Record<string, unknown>[],
+  findFilter: null as Record<string, unknown> | null,
   claimModified: 1,
   reminderOk: true,
   teamOk: true,
@@ -36,7 +37,10 @@ vi.mock("@/models/Organization", () => ({
 }));
 vi.mock("@/models/OrganizationInvoice", () => ({
   default: {
-    find: () => ({ select: () => ({ lean: async () => h.candidates }) }),
+    find: (filter: Record<string, unknown>) => {
+      h.findFilter = filter;
+      return { select: () => ({ lean: async () => h.candidates }) };
+    },
     findById: () => ({ select: () => ({ lean: async () => ({ payToken: "e".repeat(64) }) }) }),
     updateOne: h.invUpdateOne,
     updateMany: h.invUpdateMany,
@@ -107,6 +111,15 @@ describe("dunningStepFor", () => {
   it("still chases a partly paid invoice for what is left", () => {
     expect(step({ status: "partially_paid", balanceCents: 9000 }, day(1)).reminder).toBe("due");
   });
+
+  it("never chases an organization whose bank debit is on its way — nor alerts the team", () => {
+    const pendingDebit = { paymentIntentId: "pi_debit", amountCents: 18000, since: day(-1) };
+    expect(step({ pendingDebit }, day(0))).toMatchObject({ reminder: null, teamAlert: false });
+    expect(step({ pendingDebit, reminders: { dueSentAt: day(0), followUpSentAt: day(14) } }, day(40))).toMatchObject({
+      reminder: null,
+      teamAlert: false,
+    });
+  });
 });
 
 describe("isReminderHour", () => {
@@ -126,11 +139,23 @@ describe("runOrganizationDunning", () => {
 
     expect(r.reminders).toBe(1);
     const [claimFilter, claimUpdate] = h.invUpdateOne.mock.calls[0] as [Record<string, unknown>, Record<string, unknown>];
-    expect(claimFilter).toMatchObject({ _id: INV, "reminders.dueSentAt": { $exists: false }, balanceCents: { $gt: 0 }, disputed: { $ne: true } });
+    expect(claimFilter).toMatchObject({
+      _id: INV,
+      "reminders.dueSentAt": { $exists: false },
+      balanceCents: { $gt: 0 },
+      disputed: { $ne: true },
+      // A debit started between the read and the claim: no reminder after all.
+      "pendingDebit.paymentIntentId": { $exists: false },
+    });
     expect(claimUpdate).toEqual({ $set: { "reminders.dueSentAt": now } });
     expect(h.reminder).toHaveBeenCalledTimes(2);
     const log = h.invUpdateOne.mock.calls[1][1] as { $push: { sendLog: Record<string, unknown> } };
     expect(log.$push.sendLog).toMatchObject({ kind: "reminder", to: ["factu@pae.ca", "rh@pae.ca"] });
+  });
+
+  it("never even looks at an invoice whose bank debit is on its way", async () => {
+    await runOrganizationDunning(WEDNESDAY_11H);
+    expect(h.findFilter).toMatchObject({ "pendingDebit.paymentIntentId": { $exists: false }, disputed: { $ne: true } });
   });
 
   it("a reminder names the invoice and the balance — no patient, no PDF", async () => {

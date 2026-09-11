@@ -16,6 +16,8 @@ const h = vi.hoisted(() => ({
   issue: vi.fn(),
   resend: vi.fn(),
   pay: vi.fn(),
+  reconcile: vi.fn(),
+  invoiceDoc: null as Record<string, unknown> | null,
 }));
 
 const ok = { ok: true, invoice: { toObject: () => ({ _id: INV, organizationId: "o1" }) } };
@@ -35,14 +37,17 @@ vi.mock("@/lib/organization-invoice-refund", () => ({
   refundOrganizationPayment: h.refund,
   checkOrganizationRefund: h.check,
 }));
-vi.mock("@/lib/organization-invoice-card", () => ({ cancelOpenOrganizationPaymentIntent: vi.fn() }));
+vi.mock("@/lib/organization-invoice-card", () => ({
+  cancelOpenOrganizationPaymentIntent: vi.fn(),
+  reconcileOrganizationDebit: h.reconcile,
+}));
 vi.mock("@/lib/organization-invoice-serialize", () => ({ serializeInvoice: (inv: { _id: string }) => ({ id: inv._id }) }));
 vi.mock("@/models/Organization", () => ({
   default: { findById: () => ({ select: () => ({ lean: async () => ({ name: "PAE" }) }) }) },
 }));
 vi.mock("@/models/OrganizationInvoice", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/models/OrganizationInvoice")>()),
-  default: {},
+  default: { findById: () => ({ lean: async () => h.invoiceDoc }) },
 }));
 
 import { POST } from "./route";
@@ -64,6 +69,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.gate = { session: { user: { id: "admin1" } } };
   for (const f of [h.refund, h.check, h.issue, h.resend, h.pay]) f.mockResolvedValue(ok);
+  h.reconcile.mockResolvedValue("processing");
+  h.invoiceDoc = { _id: INV, organizationId: "o1" };
 });
 
 describe("refund", () => {
@@ -125,10 +132,27 @@ describe("the other actions", () => {
     expect(h.resend.mock.calls[0][0]).toMatchObject({ withoutOwnForm: true });
   });
 
-  it("an admin never records a card payment by hand", async () => {
-    const r = await post({ action: "pay", amount: "10", method: "card" });
-    expect(r.status).toBe(400);
+  it("an admin never records a card payment or a bank debit by hand — those come from Stripe", async () => {
+    for (const method of ["card", "pad"]) {
+      const r = await post({ action: "pay", amount: "10", method });
+      expect(r.status).toBe(400);
+    }
     expect(h.pay).not.toHaveBeenCalled();
+  });
+
+  it("debit_check asks Stripe where the bank debit stands and answers with the outcome", async () => {
+    h.reconcile.mockResolvedValue("settled");
+    const r = await post({ action: "debit_check" });
+    expect(h.reconcile).toHaveBeenCalledWith(INV);
+    expect(r).toEqual({ status: 200, body: { outcome: "settled", invoice: { id: INV } } });
+  });
+
+  it("debit_check with Stripe down changes nothing and says so", async () => {
+    const Stripe = (await import("stripe")).default;
+    h.reconcile.mockRejectedValue(new Stripe.errors.StripeConnectionError({ message: "timeout" } as never));
+    const r = await post({ action: "debit_check" });
+    expect(r.status).toBe(502);
+    expect(r.body.code).toBe("STRIPE_UNAVAILABLE");
   });
 
   it("without billing rights, nothing runs", async () => {

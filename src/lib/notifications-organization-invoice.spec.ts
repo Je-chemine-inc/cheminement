@@ -143,6 +143,58 @@ describe("sendOrganizationRefundEmail", () => {
     await send({ via: "outside", locale: "en" });
     expect(h.sent[0].html).toContain("made outside the platform");
   });
+
+  it("a bank debit goes back to the account it came from — not « la carte »", async () => {
+    await send({ via: "bank" });
+    expect(h.sent[0].html).toContain("compte bancaire qui a été débité");
+    expect(h.sent[0].html).not.toContain("carte");
+  });
+});
+
+describe("sendOrganizationDebitFailedEmail", () => {
+  const send = async (over: Record<string, unknown> = {}) => {
+    const mod = await import("@/lib/notifications");
+    return mod.sendOrganizationDebitFailedEmail({
+      to: "factu@pae.ca",
+      organizationName: "PAE Desjardins",
+      number: "JCO-2026-000007",
+      amountCents: 18000,
+      balanceCents: 18000,
+      payUrl: "https://x/org-pay?token=t",
+      locale: "fr",
+      ...over,
+    });
+  };
+
+  it("says the debit was refused, nothing was taken, what is owed and where to pay — under its own type", async () => {
+    expect(await send()).toBe(true);
+    const [mail] = h.sent;
+    expect(mail.tags).toEqual(["organization_debit_failed"]);
+    expect(mail.html).toContain("JCO-2026-000007");
+    expect(mail.html).toContain("180,00 $");
+    expect(mail.html).toContain("Rien n’a été prélevé");
+    expect(mail.html).toContain("https://x/org-pay?token=t");
+    expect(mail.text).toContain("https://x/org-pay?token=t");
+  });
+
+  it("in English, and it answers to the payment inbox", async () => {
+    await send({ locale: "en" });
+    expect(h.sent[0].html).toContain("was declined by your financial institution");
+    const mod = await import("@/lib/notifications");
+    expect(mod.isPaymentEmailType("organization_debit_failed")).toBe(true);
+  });
+
+  it("can be turned off like any other email", async () => {
+    h.settings = {
+      ...h.settings,
+      emailSettings: {
+        ...(h.settings!.emailSettings as Record<string, unknown>),
+        templates: { organization_debit_failed: { enabled: false } },
+      },
+    };
+    expect(await send()).toBe(false);
+    expect(h.sent).toEqual([]);
+  });
 });
 
 describe("sendAdminOrganizationInvoicesReview — drafts waiting for a form", () => {

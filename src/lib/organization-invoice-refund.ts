@@ -114,7 +114,7 @@ async function adoptStripeRefund(invoiceId: unknown, refundId: unknown, refund: 
 /** Tell the organization. Never throws: the refund is done either way. */
 async function noticeOrganization(
   inv: IOrganizationInvoice,
-  args: { amountCents: number; via: "card" | "outside"; pending: boolean },
+  args: { amountCents: number; via: "card" | "bank" | "outside"; pending: boolean },
   now: Date,
 ) {
   try {
@@ -290,7 +290,12 @@ export async function refundOrganizationPayment(args: {
   if (args.notify && rowStatusOf(refund) !== "failed") {
     await noticeOrganization(
       fresh,
-      { amountCents: args.amountCents, via: "card", pending: rowStatusOf(refund) === "pending" },
+      {
+        amountCents: args.amountCents,
+        // A bank debit goes back to the account it came from.
+        via: payment.method === "pad" ? "bank" : "card",
+        pending: rowStatusOf(refund) === "pending",
+      },
       now,
     );
   }

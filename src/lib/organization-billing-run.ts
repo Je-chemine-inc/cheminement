@@ -163,8 +163,9 @@ export async function runOrganizationBilling(
     }
   }
 
+  // Not while the organization's bank debit is on its way: it is paying.
   const overdue = await OrganizationInvoice.updateMany(
-    { status: "sent", dueAt: { $lt: now } },
+    { status: "sent", dueAt: { $lt: now }, "pendingDebit.paymentIntentId": { $exists: false } },
     { $set: { status: "overdue" } },
   );
   result.markedOverdue = overdue.modifiedCount;

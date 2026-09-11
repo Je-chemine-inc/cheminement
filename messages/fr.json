@@ -1194,7 +1194,16 @@
       "confirmOnTitle": "Activer la facturation aux organismes ?",
       "confirmOnBody": "Dès maintenant, les séances clôturées de clients couverts ne seront plus débitées au client pour la part de l’organisme. Vérifiez les couvertures et les consentements avant d’activer.",
       "confirmOffTitle": "Désactiver la facturation aux organismes ?",
-      "confirmOffBody": "Les prochaines séances clôturées seront facturées au client en entier, même s’il est couvert. Les séances déjà clôturées ne changent pas."
+      "confirmOffBody": "Les prochaines séances clôturées seront facturées au client en entier, même s’il est couvert. Les séances déjà clôturées ne changent pas.",
+      "padOff": "Débit bancaire (DPA) sur le lien de paiement : désactivé",
+      "padOn": "Débit bancaire (DPA) sur le lien de paiement : activé",
+      "padHelp": "Permet à l’organisme de payer une facture par débit préautorisé de son compte d’entreprise, une facture à la fois (aucune autorisation permanente). Le débit prend 3 à 5 jours ouvrables ; la facture affiche « débit en cours » d’ici là. Avant d’activer, vérifiez que le débit préautorisé (ACSS) est actif dans le compte Stripe.",
+      "padTurnOn": "Offrir le débit bancaire",
+      "padTurnOff": "Retirer le débit bancaire",
+      "padConfirmOnTitle": "Offrir le débit bancaire (DPA) ?",
+      "padConfirmOnBody": "Les liens de paiement proposeront la carte ou le débit bancaire. Un débit autorisé ne s’annule pas d’ici : s’il est refusé par la banque, la facture redevient payable et l’organisme est avisé.",
+      "padConfirmOffTitle": "Retirer le débit bancaire ?",
+      "padConfirmOffBody": "Les liens de paiement ne proposeront plus que la carte. Les débits déjà en cours suivent leur cours."
     },
     "coverages": {
       "title": "Couverture par un organisme",
@@ -1400,7 +1409,8 @@
         "eft": "Virement bancaire (TEF)",
         "portal": "Portail de l’organisme",
         "other": "Autre",
-        "card": "Carte (lien de paiement)"
+        "card": "Carte (lien de paiement)",
+        "pad": "Débit bancaire DPA (lien de paiement)"
       },
       "cancel": "Annuler",
       "disputed": "Contesté",
@@ -1424,7 +1434,8 @@
         "resent": "Renvoyée",
         "reminder": "Rappel",
         "payment_received": "Accusé de paiement",
-        "refund_notice": "Avis de remboursement"
+        "refund_notice": "Avis de remboursement",
+        "debit_failed": "Avis de débit refusé"
       },
       "payReceiptNote": "Un accusé de réception est envoyé à l’adresse de facturation de l’organisme.",
       "receivables": {
@@ -1489,10 +1500,12 @@
           },
           "paymentReview": {
             "title": "Paiements à vérifier",
-            "hint": "Trop-perçus, paiements contestés, remboursés ou reçus sur une facture annulée. Rien n’a été remboursé automatiquement."
+            "hint": "Trop-perçus, paiements contestés, remboursements non confirmés, débits bancaires en cours depuis plus de 10 jours, ou argent reçu sur une facture annulée. Rien n’a été remboursé automatiquement."
           }
         },
-        "refundUnconfirmed": "remboursement à vérifier"
+        "refundUnconfirmed": "remboursement à vérifier",
+        "debitPending": "débit bancaire en cours",
+        "debitStuck": "débit bancaire en cours depuis plus de 10 jours"
       },
       "form": {
         "title": "Formulaire de l’organisme",
@@ -1606,6 +1619,24 @@
           "REFUND_UNCONFIRMED": "Stripe n’a pas confirmé le remboursement. Dans une minute, utilisez « Vérifier » sur la facture avant de réessayer.",
           "CHECK_TOO_SOON": "Stripe répond peut-être encore : vérifiez dans une minute.",
           "FAILED": "Le remboursement n’a pas pu être fait. Réessayez."
+        },
+        "viaStripePad": "Remboursé par Stripe dans le compte bancaire débité. Irréversible : l’argent quitte le compte de la clinique."
+      },
+      "debit": {
+        "badge": "débit en cours · {amount}",
+        "line": "Débit bancaire de {amount} en cours depuis le {date}. Il prend habituellement 3 à 5 jours ouvrables.",
+        "check": "Vérifier auprès de Stripe",
+        "blocked": "Un débit bancaire est en cours : attendez qu’il soit confirmé ou refusé.",
+        "outcomes": {
+          "settled": "Le débit est confirmé : le paiement est inscrit.",
+          "processing": "Le débit est toujours en cours auprès de la banque.",
+          "failed": "Le débit a été refusé : la facture est de nouveau payable.",
+          "cleared": "Ce débit n’était plus en cours : l’indicateur est retiré.",
+          "none": "Aucun débit en cours sur cette facture."
+        },
+        "errors": {
+          "DEBIT_PENDING": "Un débit bancaire de l’organisme est en cours sur cette facture : attendez qu’il soit confirmé ou refusé.",
+          "STRIPE_UNAVAILABLE": "Stripe n’a pas pu répondre. Rien n’a changé : réessayez dans un moment."
         }
       }
     },
@@ -7234,6 +7265,23 @@
     "inProgress": "Un paiement pour cette facture est déjà en cours de traitement. Actualisez la page dans quelques minutes.",
     "errorGeneric": "Le paiement n’a pas pu être effectué. Réessayez ou choisissez le virement Interac.",
     "additionalVerification": "Votre banque demande une vérification supplémentaire. Réessayez.",
-    "credit": "Crédit"
+    "credit": "Crédit",
+    "chooseMethod": "Choisir le mode de paiement",
+    "methodCard": "Carte de crédit",
+    "methodCardHelp": "Paiement immédiat.",
+    "methodPad": "Débit bancaire (DPA)",
+    "methodPadHelp": "Compte d’entreprise canadien. Un seul débit, pour cette facture ; 3 à 5 jours ouvrables.",
+    "padNote": "Un seul débit de {amount} sera prélevé pour la facture {number}. Aucune autorisation permanente : chaque facture se paie à part.",
+    "padPayAmount": "Autoriser le débit de {amount}",
+    "padFootnote": "Débit sécurisé par Stripe. Je chemine ne conserve aucune donnée bancaire.",
+    "changeMethod": "Changer de mode de paiement",
+    "debitTitle": "Débit en cours",
+    "debitBody": "Le débit de {amount} autorisé le {date} est en cours auprès de votre institution financière. Il prend habituellement 3 à 5 jours ouvrables. Un accusé de réception suivra dès qu’il sera confirmé.",
+    "debitStartedBody": "Merci. Votre institution financière traite le débit ; cela prend habituellement 3 à 5 jours ouvrables. Un accusé de réception suivra dès qu’il sera confirmé.",
+    "verifyTitle": "Confirmez votre compte bancaire",
+    "verifyBody": "Stripe va déposer deux petits montants dans votre compte. Quand ils apparaissent, inscrivez-les sur la page de vérification : le débit partira ensuite.",
+    "verifyArrival": "Arrivée prévue vers le {date}.",
+    "verifyLink": "Ouvrir la page de vérification",
+    "methodUnavailable": "Ce mode de paiement n’est pas offert pour le moment. Payez par carte ou par un autre moyen indiqué ci-dessous."
   }
 }

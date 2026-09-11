@@ -197,6 +197,12 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l’adresse de facturation d’un organisme quand son paiement est reçu — par carte, par virement Interac ou inscrit à la main. Indique le solde restant.",
     category: "Paiements",
   },
+  organization_debit_failed: {
+    name: "Débit refusé (organisme)",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme quand son débit préautorisé (DPA) est refusé par sa banque, s’il doit encore de l’argent sur la facture. Montant, solde et lien de paiement ; aucun nom de client.",
+    category: "Paiements",
+  },
   organization_refund: {
     name: "Remboursement (organisme)",
     description:

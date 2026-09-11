@@ -183,10 +183,10 @@ describe("runOrganizationBilling", () => {
     expect(items.map((i) => i.needsOwnForm)).toEqual([true, false]);
   });
 
-  it("marks sent invoices past their due date overdue", async () => {
+  it("marks sent invoices past their due date overdue — not one whose bank debit is on its way", async () => {
     await runOrganizationBilling(NOW);
     expect(h.invUpdateMany).toHaveBeenCalledWith(
-      { status: "sent", dueAt: { $lt: NOW } },
+      { status: "sent", dueAt: { $lt: NOW }, "pendingDebit.paymentIntentId": { $exists: false } },
       { $set: { status: "overdue" } },
     );
   });

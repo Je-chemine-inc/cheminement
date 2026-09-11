@@ -202,7 +202,8 @@ consent 409 · void releases lines · cron double-run safe.
 - **As built (2026-09-11):** the Interac reference is the invoice **number** (`JCO-…`), not a
   separate `ORG-` code — the PDF already asked for it, and two references per invoice is the
   problem `interac-reference.ts` documents fixing for clients. The pay link is **card only**
-  (a PAD debit settles days later and can bounce after the invoice looks paid). Anything a
+  (a PAD debit settles days later and can bounce after the invoice looks paid) — since phase 9,
+  bank debit is offered behind its own switch, the invoice « en cours » until the debit clears. Anything a
   person must look at (overpayment, money on a void invoice, refund, chargeback) also gets
   its own email, `admin_organization_payment_review`. Reminders go out weekdays 8 h – 18 h
   Montréal. Details and invariants: debt-map, 2026-09-11 phase 5 entry.
@@ -247,6 +248,24 @@ attaches one PDF; it is not auto-filled (still out of scope).
   screen refund by its metadata; the team is alerted only about refunds made elsewhere and failures.
 - Admin: « Rembourser » per payment (`OrganizationRefundDialog`), the refunds list, a credit line on
   the invoice, the pay page and the PDF; email `organization_refund` (on by default).
+
+### Phase 9 — Bank debit (DPA) on the pay link (2026-09-12)
+- Its own switch, `PlatformSettings.organizationPadEnabled` (off), on "Organismes payeurs" next to the
+  main one; `GET/PUT /api/admin/organization-billing` reads and sets both.
+- `startOrganizationPayment(token, method)` (`src/lib/organization-invoice-card.ts`): an ACSS intent —
+  one debit, business account, sporadic, automatic verification, never `setup_future_usage`. An open
+  intent is reused only for the same amount and method; the key names the method and the intent it
+  replaces. Microdeposits: the Stripe verification link is shown, not an error.
+- `OrganizationInvoice.pendingDebit {paymentIntentId, amountCents, since}` while it is on its way: set by
+  the `payment_intent.processing` webhook or by the pay page's `POST /api/organization-invoices/pay/confirm`
+  (which asks Stripe); cleared by success, cancellation, bounce or « Vérifier » (`debit_check`). Meanwhile
+  no reminders, no overdue flip, no payment recorded by hand, no void, no new online payment.
+- A bounce (`payment_intent.payment_failed` after processing) is recorded once (`paymentEvents`
+  `debit_failed` with the intent as `ref`), alerts the team and emails the organization
+  (`organization_debit_failed`) while it owes. Payments carry the method read from the intent (`pad`).
+- Pay page: method choice, « Débit en cours », the verification screen; the organization emails say
+  « Payer en ligne ». Receivables flag a debit still on its way after 10 days. Details and invariants:
+  debt-map, 2026-09-12 bank-debit entry.
 
 ---
 

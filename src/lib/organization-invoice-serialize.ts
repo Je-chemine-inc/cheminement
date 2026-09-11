@@ -102,6 +102,10 @@ export function serializeInvoice(
       overdueAlertSentAt: inv.reminders?.overdueAlertSentAt ?? null,
     },
     disputed: Boolean(inv.disputed),
+    // A bank debit on its way: amount and date only, never Stripe's id.
+    debitPending: inv.pendingDebit?.paymentIntentId
+      ? { amountCents: inv.pendingDebit.amountCents, since: inv.pendingDebit.since }
+      : null,
     hasPayLink: Boolean(inv.payToken),
     voidReason: inv.voidReason ?? "",
     createdAt: inv.createdAt,

@@ -151,7 +151,7 @@ export function OrganizationRefundDialog({
             outside ? "border-border/60 bg-muted/40" : "border-amber-300 bg-amber-50 text-amber-900"
           }`}
         >
-          {outside ? t("viaOutside") : t("viaStripe")}
+          {outside ? t("viaOutside") : payment.method === "pad" ? t("viaStripePad") : t("viaStripe")}
         </p>
 
         <div className="space-y-1.5">

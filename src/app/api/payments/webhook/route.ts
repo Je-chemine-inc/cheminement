@@ -31,11 +31,14 @@ import {
 import { issueFiscalReceipt } from "@/lib/session-post-closure";
 import { markClientPaymentGuaranteeGreen } from "@/lib/payment-guarantee";
 import {
+  clearOrganizationPendingDebit,
   flagOrganizationInvoiceDispute,
   isOrganizationInvoiceIntent,
   isOrganizationInvoicePayment,
   isOrganizationInvoiceRefund,
+  markOrganizationDebitProcessing,
   markOrganizationRefundStatus,
+  recordOrganizationDebitFailure,
   recordOrganizationStripeRefund,
   settleOrganizationInvoiceIntent,
 } from "@/lib/organization-invoice-settlement";
@@ -99,6 +102,10 @@ export async function POST(req: NextRequest) {
 
       case "payment_intent.payment_failed":
         await handlePaymentIntentFailed(event.data.object);
+        break;
+
+      case "payment_intent.processing":
+        await handlePaymentIntentProcessing(event.data.object);
         break;
 
       case "payment_intent.canceled":
@@ -315,8 +322,14 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
     return;
   }
 
-  // A declined organization card: nothing to record, the pay link stays usable.
-  if (isOrganizationInvoiceIntent(paymentIntent)) return;
+  // An organization's payment: a declined card is silent (the pay link stays
+  // usable); a bank debit that bounced makes the invoice payable again, and
+  // the team — and the organization, if it still owes — are told.
+  if (isOrganizationInvoiceIntent(paymentIntent)) {
+    const outcome = await recordOrganizationDebitFailure(paymentIntent);
+    console.log("[organization-invoice] payment failed:", outcome, paymentIntent.id);
+    return;
+  }
 
   const appointmentId = paymentIntent.metadata.appointmentId;
 
@@ -378,6 +391,21 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
   }
 }
 
+/**
+ * A payment Stripe is processing — for an organization's bank debit, the
+ * invoice shows « débit en cours » for the days it takes (no reminders
+ * meanwhile). Appointment debits record « processing » from their own routes
+ * (guest/confirm, complete-session): this event changes nothing for them.
+ */
+async function handlePaymentIntentProcessing(paymentIntent: Stripe.PaymentIntent) {
+  if (isOrganizationInvoiceIntent(paymentIntent)) {
+    const outcome = await markOrganizationDebitProcessing(paymentIntent);
+    console.log("[organization-invoice] debit processing:", outcome, paymentIntent.id);
+    return;
+  }
+  console.log("Payment processing (no action):", paymentIntent.id);
+}
+
 async function handlePaymentIntentCanceled(
   paymentIntent: Stripe.PaymentIntent,
 ) {
@@ -388,8 +416,12 @@ async function handlePaymentIntentCanceled(
     return;
   }
 
-  // An abandoned organization card payment: the next visit starts a new one.
-  if (isOrganizationInvoiceIntent(paymentIntent)) return;
+  // An abandoned organization payment: the next visit starts a new one. A
+  // debit marked on its way for this intent is not any more.
+  if (isOrganizationInvoiceIntent(paymentIntent)) {
+    await clearOrganizationPendingDebit(paymentIntent.id);
+    return;
+  }
 
   const appointmentId = paymentIntent.metadata.appointmentId;
 
