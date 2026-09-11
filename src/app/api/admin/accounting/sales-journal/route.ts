@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+// Register the Appointment model so populate() resolves refs — without it the
+// export failed ("Schema hasn't been registered") until some other route had
+// loaded the model since the server started.
+import "@/models/Appointment";
 import { isLedgerCreditCleared } from "@/lib/billing-totals";
 
 function csvEscape(s: string | number | undefined | null): string {
@@ -10,6 +14,14 @@ function csvEscape(s: string | number | undefined | null): string {
   const t = String(s);
   if (/[",\n\r]/.test(t)) return `"${t.replace(/"/g, '""')}"`;
   return t;
+}
+
+/** A populated reference is a document: print its id, not "[object Object]". */
+function refId(ref: unknown): string {
+  if (ref && typeof ref === "object" && "_id" in ref) {
+    return String((ref as { _id: unknown })._id);
+  }
+  return ref ? String(ref) : "";
 }
 
 /**
@@ -48,8 +60,9 @@ export async function GET(req: NextRequest) {
       .lean();
 
     // M17: don't recognize uncleared money as revenue — an unconfirmed Interac
-    // transfer, or an organization that has not paid yet (spec 002). Rules in
-    // isLedgerCreditCleared.
+    // transfer, a card session nothing was charged for yet, or an organization
+    // that has not paid (spec 002). Rules in isLedgerCreditCleared; it reads
+    // `payment.status`, so keep it in the populate above.
     const cleared = rows.filter((r) =>
       isLedgerCreditCleared(
         r,
@@ -93,9 +106,9 @@ export async function GET(req: NextRequest) {
             : "",
         ),
         csvEscape(r.cycleKey),
-        csvEscape(String(r.professionalId)),
+        csvEscape(refId(r.professionalId)),
         csvEscape(proName),
-        csvEscape(r.appointmentId ? String(r.appointmentId) : ""),
+        csvEscape(refId(r.appointmentId)),
         csvEscape(sessionDate),
         csvEscape(r.sessionActNature),
         csvEscape(r.grossAmountCad),

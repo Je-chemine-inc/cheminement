@@ -45,10 +45,34 @@ describe("session billed total", () => {
 });
 
 describe("isLedgerCreditCleared", () => {
-  it("card credits clear at closure; Interac once confirmed", () => {
-    expect(isLedgerCreditCleared({ paymentChannel: "stripe" }, null)).toBe(true);
+  it("Interac credits clear once the transfer is confirmed", () => {
     expect(isLedgerCreditCleared({ paymentChannel: "transfer" }, { payment: { status: "pending" } })).toBe(false);
     expect(isLedgerCreditCleared({ paymentChannel: "transfer" }, { payment: { status: "paid" } })).toBe(true);
+  });
+
+  /**
+   * Card credits used to count as revenue at closure — but closure charges
+   * nothing when there is no card on file or the card is declined, and the
+   * session then sat in the sales journal as collected while still unpaid.
+   */
+  it("a card credit counts once the client's payment came in, not at closure", () => {
+    const card = (status: string) => isLedgerCreditCleared({ paymentChannel: "stripe" }, { payment: { status } });
+    expect(card("paid")).toBe(true);
+    // No card on file, or the charge was declined: still owed.
+    expect(card("pending")).toBe(false);
+    expect(card("overdue")).toBe(false);
+    expect(card("failed")).toBe(false);
+    // A voided invoice is not a sale.
+    expect(card("cancelled")).toBe(false);
+    // A bank debit still settling is not money in yet.
+    expect(card("processing")).toBe(false);
+    // Collected, then refunded: the refund is its own event.
+    expect(card("refunded")).toBe(true);
+    expect(card("partially_refunded")).toBe(true);
+  });
+
+  it("a card credit whose session can no longer be read counts as recorded", () => {
+    expect(isLedgerCreditCleared({ paymentChannel: "stripe" }, null)).toBe(true);
   });
 
   it("an organization credit is a receivable until the organization pays", () => {

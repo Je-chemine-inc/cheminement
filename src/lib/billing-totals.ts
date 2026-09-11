@@ -36,9 +36,16 @@ export const SESSION_BILLED_TOTAL_EXPR = {
   ],
 } as const;
 
+/** A client payment that actually came in (a later refund is its own event). */
+const PAYMENT_RECEIVED = new Set(["paid", "refunded", "partially_refunded"]);
+
 /**
  * Whether a professional's ledger credit is revenue yet (sales journal).
- *  - card / direct debit ("stripe"): cleared at closure.
+ *  - card / direct debit ("stripe"): once the money came in. It used to count
+ *    at closure, but closure charges nothing when there is no card on file or
+ *    the card is declined — the session then waits unpaid, like an Interac
+ *    one — and a bank debit settles days later ("processing"). A credit whose
+ *    session can no longer be read counts as recorded.
  *  - Interac ("transfer"): once the transfer is confirmed.
  *  - "organization": once the organization has paid AND the client's share,
  *    if any, is paid — until then it is a receivable, not revenue.
@@ -49,6 +56,9 @@ export function isLedgerCreditCleared(
   apt: AppointmentAmounts | null | undefined,
 ): boolean {
   switch (entry.paymentChannel) {
+    case "stripe":
+      if (!apt?.payment) return true;
+      return PAYMENT_RECEIVED.has(apt.payment.status ?? "");
     case "transfer":
       return apt?.payment?.status === "paid";
     case "organization": {

@@ -3,12 +3,24 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+// Register the Appointment model so populate() resolves refs — without it the
+// export failed ("Schema hasn't been registered") until some other route had
+// loaded the model since the server started.
+import "@/models/Appointment";
 
 function csvEscape(s: string | number | undefined | null): string {
   if (s === undefined || s === null) return "";
   const t = String(s);
   if (/[",\n\r]/.test(t)) return `"${t.replace(/"/g, '""')}"`;
   return t;
+}
+
+/** A populated reference is a document: print its id, not "[object Object]". */
+function refId(ref: unknown): string {
+  if (ref && typeof ref === "object" && "_id" in ref) {
+    return String((ref as { _id: unknown })._id);
+  }
+  return ref ? String(ref) : "";
 }
 
 /** Grand livre complet : crédits et débits (archive / impôts). */
@@ -74,9 +86,9 @@ export async function GET(req: NextRequest) {
         ),
         csvEscape(kind),
         csvEscape(r.cycleKey),
-        csvEscape(String(r.professionalId)),
+        csvEscape(refId(r.professionalId)),
         csvEscape(proName),
-        csvEscape(r.appointmentId ? String(r.appointmentId) : ""),
+        csvEscape(refId(r.appointmentId)),
         csvEscape(creditAmt),
         csvEscape(debitAmt),
         csvEscape(r.payoutReference),
