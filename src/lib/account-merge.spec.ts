@@ -34,6 +34,7 @@ const h = vi.hoisted(() => {
   const extMsg = mk();
   const rpurch = mk();
   const mergeEntitlements = vi.fn().mockResolvedValue(0);
+  const mergeCoverages = vi.fn().mockResolvedValue(0);
   const store: {
     survivor: Record<string, unknown> | null;
     loser: Record<string, unknown> | null;
@@ -54,6 +55,7 @@ const h = vi.hoisted(() => {
     extMsg,
     rpurch,
     mergeEntitlements,
+    mergeCoverages,
     store,
   };
 });
@@ -86,6 +88,11 @@ vi.mock("@/models/Resource", () => ({ ResourcePurchase: h.rpurch }));
 // resource-entitlement.spec.ts; here we only pin that the merge calls it.
 vi.mock("@/lib/resource-entitlement", () => ({
   mergeResourceEntitlements: h.mergeEntitlements,
+}));
+// Same reason for organization coverages (spec 002): one active coverage per
+// person is a unique index. Behaviour covered in organization-coverage.spec.ts.
+vi.mock("@/lib/organization-coverage", () => ({
+  mergeOrganizationCoverages: h.mergeCoverages,
 }));
 
 import { mergeAccounts } from "@/lib/account-merge";
@@ -204,6 +211,16 @@ describe("mergeAccounts — happy path", () => {
     expect(arg.loserEmail).toBe("loser@example.com");
     expect(String(arg.survivorId)).toBe(SURV);
     expect(res.reassigned.resourceEntitlements).toBe(2);
+  });
+
+  it("carries organization coverages over (spec 002)", async () => {
+    h.mergeCoverages.mockResolvedValue(1);
+    const res = await mergeAccounts({ survivorId: SURV, loserId: LOSER });
+    expect(h.mergeCoverages).toHaveBeenCalledTimes(1);
+    const arg = h.mergeCoverages.mock.calls[0][0] as { loserId: unknown; survivorId: unknown };
+    expect(String(arg.loserId)).toBe(LOSER);
+    expect(String(arg.survivorId)).toBe(SURV);
+    expect(res.reassigned.organizationCoverages).toBe(1);
   });
 
   it("keeps the survivor's MedicalProfile (loser's is NOT moved)", async () => {

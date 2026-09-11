@@ -8,6 +8,9 @@ import {
   PROFESSIONAL_REDACTED_PAYMENT_FIELDS,
   redactPaymentForProfessional,
   redactPaymentForProfessionalAll,
+  redactThirdPartyBillingForClient,
+  redactLedgerEntryForProfessional,
+  PROFESSIONAL_VISIBLE_LEDGER_FIELDS,
 } from "./redact-payment";
 
 const appointment = () => ({
@@ -114,5 +117,69 @@ describe("redactPaymentForProfessionalAll", () => {
 
   it("returns an empty array unchanged", () => {
     expect(redactPaymentForProfessionalAll([])).toEqual([]);
+  });
+});
+
+describe("third-party billing (spec 002)", () => {
+  const withTpb = () => ({
+    _id: "apt-1",
+    payment: { price: 30, platformFee: 3, professionalPayout: 27, status: "pending" },
+    thirdPartyBilling: {
+      kind: "organization",
+      state: "confirmed",
+      organizationId: "org-1",
+      orgAmountCents: 9000,
+      clientAmountCents: 3000,
+      clinicAbsorbedCents: 0,
+      platformFeeTotalCents: 1200,
+      proPayoutTotalCents: 10800,
+      gapPolicy: "client_copay",
+    },
+    payerDeclaration: { organizationName: "PAE Desjardins", caseNumber: "PAE-4471" },
+    billingOverride: { payer: "organization", note: "note interne" },
+  });
+
+  it("professionals see who pays and what they earn — never the org's amount or the margin", () => {
+    const apt = redactPaymentForProfessional(withTpb()) as Record<string, unknown>;
+    expect(apt.thirdPartyBilling).toEqual({ kind: "organization", proPayoutTotalCents: 10800 });
+    expect(apt).not.toHaveProperty("payerDeclaration");
+    expect(apt).not.toHaveProperty("billingOverride");
+  });
+
+  it("clients see who pays — never the org's amount, the margin or the pro's pay", () => {
+    const apt = redactThirdPartyBillingForClient(withTpb()) as Record<string, unknown>;
+    expect(apt.thirdPartyBilling).toEqual({ kind: "organization", state: "confirmed" });
+    expect(apt).not.toHaveProperty("billingOverride");
+    // Their own declaration is theirs to see.
+    expect(apt).toHaveProperty("payerDeclaration");
+  });
+
+  it("keeps the external payer label a client's receipt screen needs", () => {
+    const apt = redactThirdPartyBillingForClient({
+      thirdPartyBilling: { kind: "external", state: "confirmed", externalPayerLabel: "PAE X", orgAmountCents: 0 },
+    }) as { thirdPartyBilling: Record<string, unknown> };
+    expect(apt.thirdPartyBilling).toEqual({ kind: "external", state: "confirmed", externalPayerLabel: "PAE X" });
+  });
+});
+
+describe("redactLedgerEntryForProfessional", () => {
+  it("is an allow-list: new ledger columns never reach professionals by default", () => {
+    const out = redactLedgerEntryForProfessional({
+      _id: "e1",
+      netToProfessionalCad: 108,
+      paymentChannel: "organization",
+      grossAmountCad: 120,
+      platformFeeCad: 12,
+      orgAmountCad: 90,
+      clientAmountCad: 30,
+      note: "internal",
+      someFutureColumn: "secret",
+    });
+    expect(out).toEqual({ _id: "e1", netToProfessionalCad: 108, paymentChannel: "organization" });
+  });
+
+  it("keeps every field the professional's screen reads", () => {
+    const full = Object.fromEntries(PROFESSIONAL_VISIBLE_LEDGER_FIELDS.map((f) => [f, "x"]));
+    expect(redactLedgerEntryForProfessional(full)).toEqual(full);
   });
 });

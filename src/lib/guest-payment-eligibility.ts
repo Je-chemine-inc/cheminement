@@ -24,6 +24,8 @@ const NOT_PAYABLE_PAYMENT_STATUSES: Record<string, GuestPayRefusal> = {
   refunded: "NOT_AVAILABLE",
   partially_refunded: "NOT_AVAILABLE",
   cancelled: "NOT_AVAILABLE",
+  // Nothing to pay: an organization pays, or the payer is being decided.
+  covered: "NOT_AVAILABLE",
 };
 
 export type GuestPayRefusal =

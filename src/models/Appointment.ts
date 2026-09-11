@@ -15,7 +15,10 @@ export interface IPayment {
     | "refunded"
     | "partially_refunded"
     | "cancelled"
-    | "overdue";
+    | "overdue"
+    /** The client owes nothing: an organization pays, or an admin has yet to
+     *  decide who does. Only ever set at closure (spec 002). */
+    | "covered";
   method?: "card" | "transfer" | "direct_debit" | "manual";
   stripePaymentIntentId?: string;
   /** Encrypted at rest when FIELD_ENCRYPTION_KEY is set (see `encryptPaymentMethodReference`). */
@@ -70,6 +73,67 @@ export interface IReferralInfo {
   documentUrl?: string; // URL to uploaded prescription/referral PDF
   documentName?: string;
   uploadedAt?: Date;
+}
+
+/**
+ * What the client said at booking about who pays (spec 002). Unverified: nothing
+ * is billed to an organization until an admin confirms by linking a real one.
+ */
+export interface IPayerDeclaration {
+  kind?: "employer" | "eap" | "school" | "person" | "other";
+  organizationName: string;
+  caseNumber?: string;
+  consentGiven: boolean;
+  consentTextVersion?: string;
+  declaredAt: Date;
+  source: "client_booking";
+  status: "pending" | "confirmed" | "rejected";
+  reviewedAt?: Date;
+  reviewedBy?: mongoose.Types.ObjectId;
+  rejectionReason?: string;
+  coverageId?: mongoose.Types.ObjectId;
+}
+
+/** An admin's per-session choice of payer ("chosen per session" coverage). */
+export interface IBillingOverride {
+  payer: "organization" | "client" | "external";
+  setBy?: mongoose.Types.ObjectId;
+  setAt: Date;
+  note?: string;
+}
+
+/**
+ * Who was billed for this session, decided at closure by resolveSessionPayers
+ * (src/lib/third-party-billing.ts). SERVER-ONLY: never writable from a request.
+ * Amounts are integer cents; `payment` keeps holding the client's share.
+ */
+export interface IThirdPartyBilling {
+  kind: "client" | "organization" | "external";
+  state: "confirmed" | "awaiting_decision";
+  reason: string;
+  organizationId?: mongoose.Types.ObjectId;
+  coverageId?: mongoose.Types.ObjectId;
+  caseNumber?: string;
+  externalPayerLabel?: string;
+  listPriceCents: number;
+  orgAmountCents: number;
+  clientAmountCents: number;
+  clinicAbsorbedCents: number;
+  clinicSurplusCents: number;
+  proBasisCents: number;
+  proPayoutTotalCents: number;
+  platformFeeTotalCents: number;
+  orgProfessionalPayoutCents: number;
+  orgPlatformFeeCents: number;
+  gapPolicy?: string;
+  consumedCapSlot: boolean;
+  orgInvoiceId?: mongoose.Types.ObjectId;
+  orgStatus: "unbilled" | "invoiced" | "paid" | "void" | "refunded";
+  orgPaidAt?: Date;
+  decisionAlertSentAt?: Date;
+  resolvedAt?: Date;
+  resolvedBy?: mongoose.Types.ObjectId;
+  plannedAt: Date;
 }
 
 export interface IAppointment extends Document {
@@ -266,6 +330,11 @@ export interface IAppointment extends Document {
    */
   postMeetingAdminAlertSentAt?: Date;
 
+  /** Third-party payer — see IPayerDeclaration / IBillingOverride / IThirdPartyBilling. */
+  payerDeclaration?: IPayerDeclaration;
+  billingOverride?: IBillingOverride;
+  thirdPartyBilling?: IThirdPartyBilling;
+
   /** Relance automatique Interac J+1 (24h après transferDueAt sans paiement). */
   interacReminder24hSent?: boolean;
   /** Relance automatique Interac J+2 (48h après transferDueAt sans paiement). */
@@ -278,6 +347,89 @@ export interface IAppointment extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const PayerDeclarationSchema = new Schema<IPayerDeclaration>(
+  {
+    kind: {
+      type: String,
+      enum: ["employer", "eap", "school", "person", "other"],
+    },
+    organizationName: { type: String, required: true, trim: true, maxlength: 120 },
+    caseNumber: { type: String, trim: true, maxlength: 60 },
+    consentGiven: { type: Boolean, required: true },
+    consentTextVersion: String,
+    declaredAt: { type: Date, required: true },
+    source: { type: String, enum: ["client_booking"], default: "client_booking" },
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "rejected"],
+      default: "pending",
+    },
+    reviewedAt: Date,
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    rejectionReason: { type: String, maxlength: 500 },
+    coverageId: { type: Schema.Types.ObjectId, ref: "OrganizationCoverage" },
+  },
+  { _id: false },
+);
+
+const BillingOverrideSchema = new Schema<IBillingOverride>(
+  {
+    payer: {
+      type: String,
+      enum: ["organization", "client", "external"],
+      required: true,
+    },
+    setBy: { type: Schema.Types.ObjectId, ref: "User" },
+    setAt: { type: Date, required: true },
+    note: { type: String, maxlength: 500 },
+  },
+  { _id: false },
+);
+
+const ThirdPartyBillingSchema = new Schema<IThirdPartyBilling>(
+  {
+    kind: {
+      type: String,
+      enum: ["client", "organization", "external"],
+      required: true,
+    },
+    state: {
+      type: String,
+      enum: ["confirmed", "awaiting_decision"],
+      required: true,
+    },
+    reason: { type: String, required: true },
+    organizationId: { type: Schema.Types.ObjectId, ref: "Organization" },
+    coverageId: { type: Schema.Types.ObjectId, ref: "OrganizationCoverage" },
+    caseNumber: String,
+    externalPayerLabel: String,
+    listPriceCents: { type: Number, required: true },
+    orgAmountCents: { type: Number, required: true, default: 0 },
+    clientAmountCents: { type: Number, required: true, default: 0 },
+    clinicAbsorbedCents: { type: Number, default: 0 },
+    clinicSurplusCents: { type: Number, default: 0 },
+    proBasisCents: { type: Number, required: true },
+    proPayoutTotalCents: { type: Number, required: true },
+    platformFeeTotalCents: { type: Number, required: true },
+    orgProfessionalPayoutCents: { type: Number, default: 0 },
+    orgPlatformFeeCents: { type: Number, default: 0 },
+    gapPolicy: String,
+    consumedCapSlot: { type: Boolean, default: false },
+    orgInvoiceId: { type: Schema.Types.ObjectId, ref: "OrganizationInvoice" },
+    orgStatus: {
+      type: String,
+      enum: ["unbilled", "invoiced", "paid", "void", "refunded"],
+      default: "unbilled",
+    },
+    orgPaidAt: Date,
+    decisionAlertSentAt: Date,
+    resolvedAt: Date,
+    resolvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    plannedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
 
 const PaymentSchema = new Schema<IPayment>(
   {
@@ -308,6 +460,7 @@ const PaymentSchema = new Schema<IPayment>(
         "partially_refunded",
         "cancelled",
         "overdue",
+        "covered",
       ],
       default: "pending",
     },
@@ -533,6 +686,14 @@ const AppointmentSchema = new Schema<IAppointment>(
     postMeetingPaymentReminderSent: { type: Boolean, default: false },
     postMeetingAdminAlertSentAt: { type: Date, required: false },
 
+    payerDeclaration: { type: PayerDeclarationSchema, required: false },
+    // `select: false`: fail-closed. No query returns these unless it asks for
+    // them by name (`.select("+thirdPartyBilling +billingOverride")`), so a route
+    // that forgets to redact cannot leak an organization's rate or the clinic's
+    // margin. Aggregations ignore this — redact those explicitly.
+    billingOverride: { type: BillingOverrideSchema, required: false, select: false },
+    thirdPartyBilling: { type: ThirdPartyBillingSchema, required: false, select: false },
+
     interacReminder24hSent: { type: Boolean, default: false },
     interacReminder48hSent: { type: Boolean, default: false },
     paymentReminder12hSent: { type: Boolean, default: false },
@@ -557,6 +718,14 @@ const AppointmentSchema = new Schema<IAppointment>(
 );
 
 AppointmentSchema.index({ clientId: 1, date: 1 });
+// Organization billing (spec 002): unbilled org sessions per organization, and
+// every session charged to a given coverage.
+AppointmentSchema.index({
+  "thirdPartyBilling.organizationId": 1,
+  "thirdPartyBilling.orgStatus": 1,
+  date: 1,
+});
+AppointmentSchema.index({ "thirdPartyBilling.coverageId": 1 });
 AppointmentSchema.index({ professionalId: 1, date: 1 });
 AppointmentSchema.index({ status: 1, date: 1 });
 AppointmentSchema.index({ routingStatus: 1 });

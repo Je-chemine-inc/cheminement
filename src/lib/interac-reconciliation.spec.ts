@@ -88,6 +88,15 @@ describe("decideInteracReconciliation", () => {
     },
   );
 
+  it("never settles a session a third party pays — sends it to review", () => {
+    const d = decideInteracReconciliation(
+      { amountCad: 150, referenceCode: CODE },
+      { ...unpaid, paymentStatus: "covered" },
+    );
+    expect(d.action).toBe("review");
+    expect(d.reason).toBe("covered_by_third_party");
+  });
+
   it("still settles an OVERDUE invoice — overdue is genuinely unpaid", () => {
     const d = decideInteracReconciliation(
       { amountCad: 150, referenceCode: CODE },

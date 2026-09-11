@@ -16,6 +16,7 @@ import AdminAccessLog from "@/models/AdminAccessLog";
 import AuthAuditLog from "@/models/AuthAuditLog";
 import { ResourcePurchase } from "@/models/Resource";
 import { mergeResourceEntitlements } from "@/lib/resource-entitlement";
+import { mergeOrganizationCoverages } from "@/lib/organization-coverage";
 
 /** Only client-side accounts are mergeable. Merging professionals/admins would
  * touch Profile, ledger/payouts, Stripe Connect and Admin RBAC — out of scope
@@ -161,6 +162,11 @@ export async function mergeAccounts(opts: {
       survivorId: sId,
       loserEmail: loser.email,
     }),
+  );
+  // Same reason: one active coverage per person is a unique index (spec 002).
+  bump(
+    "organizationCoverages",
+    await mergeOrganizationCoverages({ loserId: lId, survivorId: sId }),
   );
   bump(
     "storedFiles",

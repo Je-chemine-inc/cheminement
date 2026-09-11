@@ -181,6 +181,8 @@ export interface IPlatformSettings extends Document {
    * via l'API publique platform-contact.
    */
   adminAlertEmail?: string;
+  /** Spec 002 kill switch: third-party (organization) billing. Off by default. */
+  organizationBillingEnabled?: boolean;
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -412,6 +414,7 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       trim: true,
       default: "",
     },
+    organizationBillingEnabled: { type: Boolean, default: false },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },

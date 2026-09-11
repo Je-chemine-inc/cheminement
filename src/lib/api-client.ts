@@ -325,10 +325,13 @@ export type ProfessionalLedgerEntryResponse = {
   entryKind?: "credit" | "debit";
   cycleKey?: string;
   appointmentId?: string;
+  /** Set on an adjustment row: the session whose earnings it corrects. */
+  adjustsAppointmentId?: string;
   sessionActNature?: string;
-  // grossAmountCad + platformFeeCad are stripped by the API for professional callers.
+  // The API sends an allow-list (redactLedgerEntryForProfessional): never the
+  // client gross, the platform fee or an organization's share.
   netToProfessionalCad: number;
-  paymentChannel: "stripe" | "transfer" | "none";
+  paymentChannel: "stripe" | "transfer" | "none" | "organization";
   payoutAmountCad?: number;
   payoutReference?: string;
   payoutNotes?: string;

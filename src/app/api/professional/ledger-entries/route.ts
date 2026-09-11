@@ -6,6 +6,7 @@ import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import Appointment from "@/models/Appointment";
 import { getBiweeklyCycleKey, getBiweeklyRange } from "@/lib/ledger-cycle";
+import { redactLedgerEntryForProfessional } from "@/lib/redact-payment";
 
 export async function GET() {
   try {
@@ -145,17 +146,12 @@ export async function GET() {
 
     const pendingPayoutCad = pending[0]?.total ?? 0;
 
-    // Hide gross client amount + platform fee from professionals (commercial confidentiality)
-    const redactedEntries = entries.map((e) => {
-      const { grossAmountCad: _g, platformFeeCad: _p, ...rest } = e as {
-        grossAmountCad?: number;
-        platformFeeCad?: number;
-        [k: string]: unknown;
-      };
-      void _g;
-      void _p;
-      return rest;
-    });
+    // Commercial confidentiality: professionals get an allow-list of ledger
+    // fields (never the client's gross, the platform fee or an organization's
+    // share). See redactLedgerEntryForProfessional.
+    const redactedEntries = entries.map((e) =>
+      redactLedgerEntryForProfessional(e as unknown as Record<string, unknown>),
+    );
 
     return NextResponse.json({
       entries: redactedEntries,

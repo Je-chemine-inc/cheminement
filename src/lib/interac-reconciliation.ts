@@ -27,6 +27,7 @@ export type ReconciliationReason =
   | "no_reference"
   | "unknown_reference"
   | "already_paid"
+  | "covered_by_third_party"
   | "amount_mismatch"
   | "no_amount_due"
   | "cancelled";
@@ -87,6 +88,18 @@ export function decideInteracReconciliation(
       action: "review",
       reason: "cancelled",
       detail: `La séance ${transfer.referenceCode} est annulée — un remboursement est peut-être dû.`,
+    };
+  }
+
+  // A third party pays this session (spec 002): the client owes nothing, so a
+  // transfer against it is almost certainly a mistake — never settle it.
+  if (invoice.paymentStatus === "covered") {
+    return {
+      action: "review",
+      reason: "covered_by_third_party",
+      detail:
+        `La séance ${transfer.referenceCode} est payée par un tiers (organisme) — ` +
+        `le client ne doit rien. Virement à vérifier.`,
     };
   }
 

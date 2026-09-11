@@ -238,8 +238,10 @@ describe("preview", () => {
     await callGet(PRO);
 
     const [filter] = h.find.mock.calls[0] as [Record<string, unknown>];
+    // "covered" (spec 002): a session an organization pays is repriced only
+    // through the payer-reassignment route, which also fixes the ledger.
     expect(filter["payment.status"]).toEqual({
-      $nin: ["paid", "processing", "refunded", "partially_refunded"],
+      $nin: ["paid", "processing", "refunded", "partially_refunded", "covered"],
     });
     expect(filter.fiscalReceiptIssuedAt).toEqual({ $in: [null, undefined] });
   });

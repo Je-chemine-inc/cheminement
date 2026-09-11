@@ -18,6 +18,9 @@ export const LOCKED_PAYMENT_STATUSES = [
   "processing",
   "refunded",
   "partially_refunded",
+  // Repricing a session a third party pays for goes through the payer
+  // reassignment route, which also fixes the ledger (spec 002).
+  "covered",
 ] as const;
 
 export type RepriceRefusal =

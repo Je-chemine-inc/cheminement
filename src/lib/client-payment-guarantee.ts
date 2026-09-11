@@ -18,6 +18,9 @@ export const SETTLED_PAYMENT_STATUSES = [
   "refunded",
   "partially_refunded",
   "cancelled",
+  // A third party pays, or an admin has yet to decide who does (spec 002).
+  // Either way the CLIENT is not chased.
+  "covered",
 ] as const;
 
 /** True when a payment is in a SETTLED_PAYMENT_STATUSES state. Import this rather

@@ -25,7 +25,8 @@ type PaymentStatus =
   | "refunded"
   | "partially_refunded"
   | "cancelled"
-  | "overdue";
+  | "overdue"
+  | "covered";
 
 type CancelledBy = "client" | "professional" | "admin";
 

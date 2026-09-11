@@ -11,7 +11,13 @@ export interface IProfessionalLedgerEntry extends Document {
   grossAmountCad: number;
   platformFeeCad: number;
   netToProfessionalCad: number;
-  paymentChannel: "stripe" | "transfer" | "none";
+  paymentChannel: "stripe" | "transfer" | "none" | "organization";
+  /** Spec 002: what each side was billed when an organization paid part or all. */
+  clientAmountCad?: number;
+  orgAmountCad?: number;
+  /** Set on an ADJUSTMENT row (no appointmentId: that one is unique per credit). */
+  adjustsAppointmentId?: mongoose.Types.ObjectId;
+  note?: string;
   /** Débit : montant versé au professionnel. */
   payoutAmountCad?: number;
   payoutReference?: string;
@@ -50,9 +56,17 @@ const ProfessionalLedgerEntrySchema = new Schema<IProfessionalLedgerEntry>(
     netToProfessionalCad: { type: Number, default: 0 },
     paymentChannel: {
       type: String,
-      enum: ["stripe", "transfer", "none"],
+      enum: ["stripe", "transfer", "none", "organization"],
       default: "none",
     },
+    clientAmountCad: Number,
+    orgAmountCad: Number,
+    adjustsAppointmentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Appointment",
+      index: true,
+    },
+    note: String,
     payoutAmountCad: { type: Number },
     payoutReference: String,
     payoutNotes: String,

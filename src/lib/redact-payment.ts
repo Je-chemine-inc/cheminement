@@ -43,7 +43,77 @@ export function redactPaymentForProfessional<T>(appointment: T): T {
     }
   }
 
+  // Third-party billing (spec 002). The organization's amount, its negotiated
+  // rate and the clinic's margin are as confidential as the client's price. A
+  // professional sees only who pays and what THEY are paid. The client's payer
+  // declaration and the admin's override note are not theirs either.
+  if (obj && typeof obj === "object") {
+    const tpb = obj.thirdPartyBilling;
+    if (tpb && typeof tpb === "object") {
+      const t = tpb as Record<string, unknown>;
+      obj.thirdPartyBilling = {
+        kind: t.kind,
+        proPayoutTotalCents: t.proPayoutTotalCents,
+      };
+    }
+    delete obj.payerDeclaration;
+    delete obj.billingOverride;
+  }
+
   return appointment;
+}
+
+/**
+ * Third-party billing as a CLIENT may see it: who pays (so their screen can say
+ * "payé par votre organisme" or "réglé hors plateforme"), never the
+ * organization's amount, rate, the clinic's margin or the professional's pay.
+ * Mutates a plain object in place, like `redactPaymentForProfessional`.
+ */
+export function redactThirdPartyBillingForClient<T>(appointment: T): T {
+  const obj = appointment as unknown as Record<string, unknown>;
+  if (!obj || typeof obj !== "object") return appointment;
+  const tpb = obj.thirdPartyBilling;
+  if (tpb && typeof tpb === "object") {
+    const t = tpb as Record<string, unknown>;
+    obj.thirdPartyBilling = {
+      kind: t.kind,
+      state: t.state,
+      ...(t.externalPayerLabel ? { externalPayerLabel: t.externalPayerLabel } : {}),
+    };
+  }
+  delete obj.billingOverride;
+  return appointment;
+}
+
+/**
+ * The ledger fields a professional may receive. An ALLOW-list: the route used
+ * to strip two fields and spread the rest, so every new ledger column — the
+ * organization's share among them — would have reached professionals.
+ */
+export const PROFESSIONAL_VISIBLE_LEDGER_FIELDS = [
+  "_id",
+  "professionalId",
+  "entryKind",
+  "cycleKey",
+  "appointmentId",
+  "adjustsAppointmentId",
+  "sessionActNature",
+  "netToProfessionalCad",
+  "paymentChannel",
+  "payoutAmountCad",
+  "payoutReference",
+  "payoutNotes",
+  "createdAt",
+] as const;
+
+export function redactLedgerEntryForProfessional(
+  entry: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of PROFESSIONAL_VISIBLE_LEDGER_FIELDS) {
+    if (field in entry) out[field] = entry[field];
+  }
+  return out;
 }
 
 /** Array convenience wrapper — same rules as the single-object form. */
