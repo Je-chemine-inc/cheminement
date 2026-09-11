@@ -56,7 +56,7 @@ type Res = Promise<{ status: number; body: Record<string, unknown> }>;
 
 const call = (
   body: unknown,
-  session: unknown = { user: { id: "adm", role: "admin" } },
+  session: unknown = { user: { id: "adm", role: "admin", isAdmin: true } },
   id = PRO,
 ): Res => {
   h.getServerSession.mockResolvedValueOnce(session);
@@ -68,7 +68,7 @@ const call = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.store.admin = null;
+  h.store.admin = { permissions: { manageBilling: true } };
   h.store.user = { role: "professional" };
   h.store.profile = { payoutMethod: "interac" };
   h.store.balance = { credits: 200, debits: 50 };
@@ -81,6 +81,24 @@ describe("POST /api/admin/accounting/professionals/[id]/payout", () => {
   it("rejects a non-admin (401)", async () => {
     const res = await call({}, { user: { id: "x", role: "client" } });
     expect(res.status).toBe(401);
+    expect(h.create).not.toHaveBeenCalled();
+  });
+
+  // The check this route had let both of these through: it accepted
+  // managePatients in place of billing rights, and skipped the check
+  // altogether when the admin had no Admin record.
+  it("rejects an admin with patient rights but no billing rights (403)", async () => {
+    h.store.admin = { permissions: { managePatients: true, manageBilling: false } };
+    const res = await call({});
+    expect(res.status).toBe(403);
+    expect(h.aggregate).not.toHaveBeenCalled();
+    expect(h.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an admin with no Admin record (403)", async () => {
+    h.store.admin = null;
+    const res = await call({});
+    expect(res.status).toBe(403);
     expect(h.create).not.toHaveBeenCalled();
   });
 

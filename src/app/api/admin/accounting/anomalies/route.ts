@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 const HOURS_48_MS = 48 * 60 * 60 * 1000;
 
@@ -11,12 +9,8 @@ const HOURS_48_MS = 48 * 60 * 60 * 1000;
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const stripeFailures = await Appointment.find({
       "payment.status": "failed",

@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import User, { type IUser } from "@/models/User";
 import Organization from "@/models/Organization";
 import OrganizationInvoice from "@/models/OrganizationInvoice";
-import { authOptions } from "@/lib/auth";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 import { paymentAssurance } from "@/lib/client-payment-guarantee";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    // Billing rights, not only the admin role: a support admin without
+    // manageBilling must not see every client's payments.
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";

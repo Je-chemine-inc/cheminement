@@ -8,8 +8,12 @@ import type { IOrganizationCoverage } from "@/models/OrganizationCoverage";
 import { fromCents } from "@/lib/money-cents";
 
 /**
- * Gate for every organization-billing admin action (spec 002): an active admin
- * with `manageBilling`. Same shape as `requireContentAdmin` in pro-catalog.ts.
+ * Gate for every billing admin action: an active admin with `manageBilling`.
+ * Spec 002's organization screens, and the older « Facturation et paiements »
+ * and « Comptabilité & cycles » screens with their exports and payouts. Fails
+ * closed: no Admin record, an inactive one, or another permission is 403.
+ * Connects to the database. Same shape as `requireContentAdmin` in
+ * pro-catalog.ts; `getAdminUiPermissions` applies the same rule to the menu.
  */
 export async function requireBillingAdmin(): Promise<
   { error: NextResponse; session?: undefined } | { error?: undefined; session: Session }

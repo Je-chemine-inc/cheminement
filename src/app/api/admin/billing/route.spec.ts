@@ -10,11 +10,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const ORG = "0123456789abcdef01234567";
 const INV = "0123456789abcdef0123456e";
 
+type Session = { user: { id: string; role: string; isAdmin?: boolean } } | null;
+
 const h = vi.hoisted(() => ({
-  session: { user: { id: "admin1", role: "admin" } } as { user: { id: string; role: string } } | null,
+  session: null as Session,
+  permissions: null as Record<string, boolean> | null,
   page: [] as Record<string, unknown>[],
   orgFind: vi.fn(),
   invFind: vi.fn(),
+  reads: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
@@ -23,10 +27,12 @@ vi.mock("next/server", () => ({
 vi.mock("next-auth", () => ({ getServerSession: async () => h.session }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
+vi.mock("@/lib/admin-rbac", () => ({ getActiveAdminPermissions: async () => h.permissions }));
 vi.mock("@/models/User", () => ({ default: { find: () => ({ select: () => ({ lean: async () => [] }) }) } }));
 vi.mock("@/models/Appointment", () => ({
   default: {
     find: (filter: Record<string, unknown>) => {
+      h.reads();
       // The page query (with populate…) vs the summary query (select → lean).
       const pageChain = {
         select: () => pageChain,
@@ -67,7 +73,9 @@ const payers = async () =>
   }).body.payments.map((p) => p.payer);
 
 beforeEach(() => {
-  h.session = { user: { id: "admin1", role: "admin" } };
+  h.session = { user: { id: "admin1", role: "admin", isAdmin: true } };
+  h.permissions = { manageBilling: true };
+  h.reads.mockReset();
   h.orgFind.mockReset();
   h.orgFind.mockReturnValue([{ _id: ORG, name: "PAE Desjardins" }]);
   h.invFind.mockReset();
@@ -84,6 +92,14 @@ describe("GET /api/admin/billing — the payer", () => {
   it("is refused to anyone but an admin", async () => {
     h.session = { user: { id: "u", role: "client" } };
     expect(((await GET({ url: "https://x/api/admin/billing" } as never)) as unknown as { status: number }).status).toBe(401);
+  });
+
+  it("is refused to an admin without billing rights, before anything is read", async () => {
+    // cajclinique@gmail.com: a support admin who could read every client's payments.
+    h.permissions = { managePatients: true, manageBilling: false };
+    const res = (await GET({ url: "https://x/api/admin/billing" } as never)) as unknown as { status: number };
+    expect(res.status).toBe(403);
+    expect(h.reads).not.toHaveBeenCalled();
   });
 
   it("names the organization and the invoice the session went out on", async () => {

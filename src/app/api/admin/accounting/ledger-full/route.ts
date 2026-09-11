@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 // Register the Appointment model so populate() resolves refs — without it the
 // export failed ("Schema hasn't been registered") until some other route had
 // loaded the model since the server started.
 import "@/models/Appointment";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 function csvEscape(s: string | number | undefined | null): string {
   if (s === undefined || s === null) return "";
@@ -26,12 +24,8 @@ function refId(ref: unknown): string {
 /** Grand livre complet : crédits et débits (archive / impôts). */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { searchParams } = new URL(req.url);
     const yearStr = searchParams.get("year");

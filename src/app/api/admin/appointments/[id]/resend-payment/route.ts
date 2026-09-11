@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import { authOptions } from "@/lib/auth";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import {
   sendInteracTransferInstructionsEmail,
@@ -17,12 +15,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    // Only the billing and accounting screens send this: same rights as them.
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { id } = await params;
     const apt = await Appointment.findById(id)

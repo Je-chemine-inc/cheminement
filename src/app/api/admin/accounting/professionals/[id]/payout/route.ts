@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import mongoose from "mongoose";
-import connectToDatabase from "@/lib/mongodb";
-import Admin from "@/models/Admin";
 import User from "@/models/User";
 import Profile from "@/models/Profile";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import { getBiweeklyCycleKey } from "@/lib/ledger-cycle";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -24,25 +21,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    await connectToDatabase();
-
-    const adminRecord = await Admin.findOne({
-      userId: session.user.id,
-      isActive: true,
-    })
-      .select("permissions")
-      .lean();
-    if (
-      adminRecord?.permissions &&
-      !adminRecord.permissions.manageBilling &&
-      !adminRecord.permissions.managePatients
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // manageBilling only. The check this replaces let an admin with no Admin
+    // record through, and accepted managePatients in place of billing rights.
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { id } = await params;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {

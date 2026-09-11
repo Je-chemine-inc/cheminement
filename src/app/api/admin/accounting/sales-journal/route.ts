@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 // Also registers the Appointment model so populate() resolves refs — without
 // it the export failed ("Schema hasn't been registered") until some other
@@ -9,6 +6,7 @@ import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import Appointment from "@/models/Appointment";
 import { isLedgerCreditCleared, refundedAmountCad } from "@/lib/billing-totals";
 import { getBiweeklyCycleKey } from "@/lib/ledger-cycle";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 function csvEscape(s: string | number | undefined | null): string {
   if (s === undefined || s === null) return "";
@@ -40,12 +38,8 @@ type JournalLine = { at: number; cells: Array<string | number | null | undefined
  */
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { searchParams } = new URL(req.url);
     const yearStr = searchParams.get("year");

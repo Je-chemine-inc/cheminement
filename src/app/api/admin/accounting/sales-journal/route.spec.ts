@@ -10,7 +10,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const h = vi.hoisted(() => ({
-  session: { user: { id: "admin1", role: "admin" } } as { user: { id: string; role: string } } | null,
+  session: null as { user: { id: string; role: string; isAdmin?: boolean } } | null,
+  permissions: null as Record<string, boolean> | null,
+  reads: vi.fn(),
   rows: [] as Array<Record<string, unknown>>,
   // Sessions refunded during the exported year, as Appointment.find returns them.
   refunded: [] as Array<Record<string, unknown>>,
@@ -73,9 +75,11 @@ vi.mock("next/server", () => {
 vi.mock("next-auth", () => ({ getServerSession: async () => h.session }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
+vi.mock("@/lib/admin-rbac", () => ({ getActiveAdminPermissions: async () => h.permissions }));
 vi.mock("@/models/ProfessionalLedgerEntry", () => ({
   default: {
     find: (filter: Record<string, unknown>) => {
+      h.reads();
       const selects: Record<string, string> = {};
       // The refund query asks for the credits of given sessions, on one channel.
       const bySession = filter.appointmentId as { $in: unknown[] } | undefined;
@@ -136,7 +140,9 @@ const exportCsv = async () => {
 };
 
 beforeEach(() => {
-  h.session = { user: { id: "admin1", role: "admin" } };
+  h.session = { user: { id: "admin1", role: "admin", isAdmin: true } };
+  h.permissions = { manageBilling: true };
+  h.reads.mockReset();
   h.rows = [];
   h.refunded = [];
   h.refundQuery.value = null;
@@ -165,6 +171,13 @@ describe("GET /api/admin/accounting/sales-journal", () => {
     h.session = { user: { id: "u", role: "professional" } };
     const res = (await GET({ url: "https://x/api/admin/accounting/sales-journal" } as never)) as unknown as { status: number };
     expect(res.status).toBe(401);
+  });
+
+  it("is refused to an admin without billing rights, before anything is read", async () => {
+    h.permissions = { managePatients: true, manageBilling: false };
+    const res = (await GET({ url: "https://x/api/admin/accounting/sales-journal" } as never)) as unknown as { status: number };
+    expect(res.status).toBe(403);
+    expect(h.reads).not.toHaveBeenCalled();
   });
 
   it("lists a card session only once its payment came in", async () => {

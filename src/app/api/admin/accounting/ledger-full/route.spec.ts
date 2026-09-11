@@ -6,7 +6,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const h = vi.hoisted(() => ({
-  session: { user: { id: "admin1", role: "admin" } } as { user: { id: string; role: string } } | null,
+  session: null as { user: { id: string; role: string; isAdmin?: boolean } } | null,
+  permissions: null as Record<string, boolean> | null,
+  reads: vi.fn(),
   rows: [] as Array<Record<string, unknown>>,
   appointmentModelLoaded: false,
 }));
@@ -34,9 +36,11 @@ vi.mock("next/server", () => {
 vi.mock("next-auth", () => ({ getServerSession: async () => h.session }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
+vi.mock("@/lib/admin-rbac", () => ({ getActiveAdminPermissions: async () => h.permissions }));
 vi.mock("@/models/ProfessionalLedgerEntry", () => ({
   default: {
     find: () => {
+      h.reads();
       const q = { populate: () => q, sort: () => q, lean: async () => h.rows };
       return q;
     },
@@ -54,7 +58,9 @@ const exportCsv = async () => {
 };
 
 beforeEach(() => {
-  h.session = { user: { id: "admin1", role: "admin" } };
+  h.session = { user: { id: "admin1", role: "admin", isAdmin: true } };
+  h.permissions = { manageBilling: true };
+  h.reads.mockReset();
   h.rows = [
     {
       entryKind: "credit",
@@ -89,6 +95,13 @@ describe("GET /api/admin/accounting/ledger-full", () => {
     h.session = { user: { id: "u", role: "client" } };
     const res = (await GET({ url: "https://x/api/admin/accounting/ledger-full" } as never)) as unknown as { status: number };
     expect(res.status).toBe(401);
+  });
+
+  it("is refused to an admin without billing rights, before anything is read", async () => {
+    h.permissions = { managePatients: true, manageBilling: false };
+    const res = (await GET({ url: "https://x/api/admin/accounting/ledger-full" } as never)) as unknown as { status: number };
+    expect(res.status).toBe(403);
+    expect(h.reads).not.toHaveBeenCalled();
   });
 
   it("prints the professional and session ids, not [object Object]", async () => {

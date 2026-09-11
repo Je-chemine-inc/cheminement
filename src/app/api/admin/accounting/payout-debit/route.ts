@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import User from "@/models/User";
 import mongoose from "mongoose";
 import { getBiweeklyCycleKey } from "@/lib/ledger-cycle";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 /**
  * Enregistre un débit (versement plateforme → professionnel) dans le grand livre.
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const body = await req.json();
     const professionalId = body.professionalId as string | undefined;
@@ -42,8 +38,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    await connectToDatabase();
 
     const pro = await User.findById(professionalId);
     if (!pro || pro.role !== "professional") {

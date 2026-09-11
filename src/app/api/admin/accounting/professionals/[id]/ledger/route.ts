@@ -1,29 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import mongoose from "mongoose";
-import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import User from "@/models/User";
 import Profile from "@/models/Profile";
 import { getBiweeklyCycleKey, getBiweeklyRange } from "@/lib/ledger-cycle";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: "Professional ID is required" }, { status: 400 });
     }
-
-    await connectToDatabase();
 
     const proOid = new mongoose.Types.ObjectId(id);
     const professional = await User.findById(id).select("firstName lastName email role").lean();

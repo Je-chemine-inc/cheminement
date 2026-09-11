@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import mongoose from "mongoose";
-import connectToDatabase from "@/lib/mongodb";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import User from "@/models/User";
 import { getBiweeklyCycleKey, getBiweeklyRange } from "@/lib/ledger-cycle";
+import { requireBillingAdmin } from "@/lib/organization-admin";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    await connectToDatabase();
+    const gate = await requireBillingAdmin();
+    if (gate.error) return gate.error;
 
     const currentCycleKey = getBiweeklyCycleKey(new Date());
     const { start: cycleStart, end: cycleEnd } = getBiweeklyRange(new Date());
