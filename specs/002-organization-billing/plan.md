@@ -211,6 +211,10 @@ consent 409 · void releases lines · cron double-run safe.
 Org receivables aging report, anomalies (overdue org invoices, awaiting decisions, confirmed
 sessions never invoiced after 35 d, cap mismatch, negative margins), "Payer" column in admin
 billing, client dashboard « 3/10 séances utilisées ».
+- **As built (2026-09-11):** aging + anomalies live at the top of "Factures aux organismes"
+  (billing admins; CSV export), plus a sixth list, payments to review (phase 5's credits,
+  disputes, refunds, money on void invoices). The client's « 3/10 » is on their billing page
+  and is hidden while the organization-billing switch is off.
 
 ---
 
