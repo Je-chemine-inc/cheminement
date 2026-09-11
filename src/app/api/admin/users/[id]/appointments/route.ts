@@ -29,6 +29,8 @@ export async function GET(
     const appointments = await Appointment.find({
       $or: [{ clientId: id }, { professionalId: id }],
     })
+      // Admin-only: who pays (spec 002). Both fields are select:false.
+      .select("+thirdPartyBilling +billingOverride")
       .populate("clientId", "firstName lastName email")
       .populate("professionalId", "firstName lastName email")
       .sort({ date: -1, createdAt: -1 })
@@ -60,6 +62,19 @@ export async function GET(
         sessionOutcome: apt.sessionOutcome || null,
         sessionActNature: apt.sessionActNature || null,
         routingStatus: apt.routingStatus,
+        sessionCompletedAt: apt.sessionCompletedAt ?? null,
+        // Spec 002: who pays, as decided at closure, and any admin choice.
+        payer: apt.thirdPartyBilling
+          ? {
+              kind: apt.thirdPartyBilling.kind,
+              state: apt.thirdPartyBilling.state,
+              reason: apt.thirdPartyBilling.reason,
+              orgAmount: (apt.thirdPartyBilling.orgAmountCents ?? 0) / 100,
+              caseNumber: apt.thirdPartyBilling.caseNumber ?? null,
+              onOrganizationInvoice: !!apt.thirdPartyBilling.orgInvoiceId,
+            }
+          : null,
+        billingOverride: apt.billingOverride?.payer ?? null,
         client: client
           ? {
               id: client._id.toString(),
@@ -95,7 +110,11 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({ appointments: mapped });
+    return NextResponse.json({
+      appointments: mapped,
+      // The payer actions need manageBilling; the page hides them otherwise.
+      canManagePayer: !!admin.permissions?.manageBilling,
+    });
   } catch (error) {
     console.error("Admin user appointments error:", error);
     return NextResponse.json(

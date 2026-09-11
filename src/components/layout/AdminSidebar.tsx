@@ -28,6 +28,7 @@ import {
   Newspaper,
   Clapperboard,
   Layers,
+  Building2,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -106,6 +107,11 @@ export function AdminSidebar() {
           title: t("billing"),
           url: "/admin/dashboard/billing",
           icon: Wallet,
+        },
+        {
+          title: t("organizations"),
+          url: "/admin/dashboard/organizations",
+          icon: Building2,
         },
         {
           title: t("accounting"),

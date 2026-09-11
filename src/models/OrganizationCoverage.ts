@@ -48,6 +48,21 @@ export interface ICoverageConsent {
   withdrawnAt?: Date;
 }
 
+/**
+ * Every consent change, append-only (Loi 25). `consent` holds the current
+ * state; this keeps what it replaced — a withdrawal never erases when and how
+ * consent had been given.
+ */
+export interface ICoverageConsentEvent {
+  action: "given" | "withdrawn";
+  at: Date;
+  by?: mongoose.Types.ObjectId;
+  source: "client_booking" | "admin_recorded";
+  method?: (typeof CONSENT_METHODS)[number];
+  textVersion?: string;
+  note?: string;
+}
+
 export interface IOrganizationCoverage extends Document {
   clientId: mongoose.Types.ObjectId;
   beneficiaryKey: string;
@@ -67,6 +82,7 @@ export interface IOrganizationCoverage extends Document {
   exhaustedNotifiedAt?: Date;
   lastSessionWarningSentAt?: Date;
   consent: ICoverageConsent;
+  consentLog: ICoverageConsentEvent[];
   sourceAppointmentId?: mongoose.Types.ObjectId;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
@@ -96,6 +112,19 @@ const ConsentSchema = new Schema<ICoverageConsent>(
     textVersion: String,
     note: { type: String, maxlength: 2000 },
     withdrawnAt: Date,
+  },
+  { _id: false },
+);
+
+const ConsentEventSchema = new Schema<ICoverageConsentEvent>(
+  {
+    action: { type: String, enum: ["given", "withdrawn"], required: true },
+    at: { type: Date, required: true },
+    by: { type: Schema.Types.ObjectId, ref: "User" },
+    source: { type: String, enum: ["client_booking", "admin_recorded"], required: true },
+    method: { type: String, enum: CONSENT_METHODS },
+    textVersion: String,
+    note: { type: String, maxlength: 2000 },
   },
   { _id: false },
 );
@@ -136,6 +165,7 @@ const OrganizationCoverageSchema = new Schema<IOrganizationCoverage>(
     exhaustedNotifiedAt: Date,
     lastSessionWarningSentAt: Date,
     consent: { type: ConsentSchema, default: () => ({ status: "none" }) },
+    consentLog: { type: [ConsentEventSchema], default: [] },
     sourceAppointmentId: { type: Schema.Types.ObjectId, ref: "Appointment" },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },

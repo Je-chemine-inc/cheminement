@@ -56,6 +56,8 @@ import { useTranslations } from "next-intl";
 import MedicalProfile from "@/components/dashboard/MedicalProfile";
 import { IMedicalProfile } from "@/models/MedicalProfile";
 import { MergeDuplicatesCard } from "@/components/admin/MergeDuplicatesCard";
+import { CoveragePanel } from "@/components/admin/CoveragePanel";
+import { AppointmentPayerControl } from "@/components/admin/AppointmentPayerControl";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 
 export default function PatientDetailPage({
@@ -76,6 +78,8 @@ export default function PatientDetailPage({
   const [professionals, setProfessionals] = useState<BookableProfessional[]>([]);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [paymentActionLoading, setPaymentActionLoading] = useState<string | null>(null);
+  // Spec 002: the payer actions need manageBilling (the API says so).
+  const [canManagePayer, setCanManagePayer] = useState(false);
   // When arriving via the billing "Aperçu" deep-link (?appointment=<id>), scroll
   // to that session row and highlight it briefly so the admin lands right on the
   // rencontre they clicked.
@@ -169,6 +173,7 @@ export default function PatientDetailPage({
       if (aptRes.ok) {
         const aptData = await aptRes.json();
         setAppointments(aptData.appointments || []);
+        setCanManagePayer(Boolean(aptData.canManagePayer));
       }
 
       setData(userData);
@@ -476,6 +481,7 @@ export default function PatientDetailPage({
                 {appointments.map((apt) => {
                   const paymentStatus = apt.payment?.status ?? "pending";
                   const isPaid = paymentStatus === "paid";
+                  const isCovered = paymentStatus === "covered";
                   const canMarkPaid =
                     !isPaid &&
                     paymentStatus !== "refunded" &&
@@ -507,11 +513,25 @@ export default function PatientDetailPage({
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
                               isPaid
                                 ? "bg-green-50 text-green-700"
-                                : "bg-amber-50 text-amber-700"
+                                : isCovered
+                                  ? "bg-teal-50 text-teal-700"
+                                  : "bg-amber-50 text-amber-700"
                             }`}
                           >
-                            {isPaid ? t("paymentPaid") : t("paymentUnpaid")}
+                            {isPaid
+                              ? t("paymentPaid")
+                              : isCovered
+                                ? t("paymentCovered")
+                                : t("paymentUnpaid")}
                           </span>
+                          <AppointmentPayerControl
+                            appointmentId={apt.id}
+                            closed={Boolean(apt.sessionCompletedAt)}
+                            payer={apt.payer ?? null}
+                            billingOverride={apt.billingOverride ?? null}
+                            canManage={canManagePayer}
+                            onChanged={fetchData}
+                          />
                           {canMarkPaid ? (
                             <Button
                               type="button"
@@ -579,6 +599,8 @@ export default function PatientDetailPage({
           </div>
         )}
       </div>
+
+      <CoveragePanel clientId={id} />
 
       {/* Document(s) de référence — uploaded by a referring professional when the
           request was created (bookingFor="patient"). Stays accessible here for

@@ -943,7 +943,8 @@
       "statusLabel": "Statut :",
       "resendInvite": "Renvoyer l'invitation",
       "resendGuarantee": "Relance Garantie Bancaire",
-      "approveGuarantee": "Approuver la garantie manuellement"
+      "approveGuarantee": "Approuver la garantie manuellement",
+      "paymentCovered": "Couvert"
     },
     "appointmentStatus": {
       "scheduled": "Planifié",
@@ -1116,6 +1117,189 @@
       "reviewLicenseStatus_pending_review": "En attente de révision",
       "reviewLicenseStatus_rejected": "Rejeté",
       "reviewLicenseStatus_not_applicable": "Non applicable"
+    },
+    "organizations": {
+      "title": "Organismes payeurs",
+      "subtitle": "Employeurs, PAE, écoles et autres tiers qui paient les séances de certains clients. Leurs conditions s’appliquent à la clôture des séances.",
+      "add": "Ajouter un organisme",
+      "refresh": "Actualiser",
+      "empty": "Aucun organisme pour l’instant.",
+      "searchPlaceholder": "Rechercher un organisme",
+      "showArchived": "Afficher les archivés",
+      "archived": "Archivé",
+      "edit": "Modifier",
+      "archive": "Archiver",
+      "unarchive": "Réactiver",
+      "activeCoverages": "{count, plural, =0 {aucun client couvert} one {# client couvert} other {# clients couverts}}",
+      "rateValue": "Tarif négocié {amount} $",
+      "noRate": "Prix normal de la séance",
+      "nameRequired": "Le nom est obligatoire.",
+      "addTitle": "Nouvel organisme",
+      "editTitle": "Modifier l’organisme",
+      "editorHelp": "Les conditions s’appliquent aux séances clôturées à partir de maintenant ; une séance déjà clôturée garde ses montants.",
+      "fields": {
+        "name": "Nom",
+        "kind": "Type",
+        "language": "Langue des documents",
+        "billingEmails": "Courriels de facturation",
+        "billingEmailsHelp": "Jusqu’à 5 adresses, séparées par des virgules.",
+        "contactName": "Personne-ressource",
+        "phone": "Téléphone",
+        "negotiatedRate": "Tarif négocié par séance ($)",
+        "negotiatedRatePlaceholder": "Vide = prix normal",
+        "paymentTermsDays": "Délai de paiement (jours)",
+        "gapPolicy": "Si le tarif est inférieur au prix de la séance",
+        "billingCycle": "Facturation",
+        "autoSendPerSession": "Envoyer les factures par séance sans révision",
+        "requiresOwnForm": "L’organisme exige son propre formulaire",
+        "formNotesPlaceholder": "Quel formulaire, où l’envoyer…",
+        "internalNotes": "Notes internes"
+      },
+      "kinds": {
+        "eap": "PAE",
+        "employer": "Employeur",
+        "school": "École",
+        "person": "Personne",
+        "other": "Autre"
+      },
+      "cycles": {
+        "per_session": "Une facture par séance",
+        "monthly": "Relevé mensuel"
+      },
+      "gapPolicies": {
+        "client_copay": "Le client paie la différence",
+        "clinic_absorbs_pro_full": "La clinique absorbe, professionnel payé en entier",
+        "clinic_absorbs_pro_org_rate": "La clinique absorbe, professionnel payé sur le tarif"
+      },
+      "gapPolicyHelp": {
+        "client_copay": "Le client paie l’écart entre le prix de la séance et le tarif ; sa carte est débitée de cet écart.",
+        "clinic_absorbs_pro_full": "Le client ne paie rien ; le professionnel est payé sur le prix normal et la clinique assume l’écart.",
+        "clinic_absorbs_pro_org_rate": "Le client ne paie rien ; le professionnel est payé sur le tarif de l’organisme."
+      },
+      "negativeMarginWarning": "Attention : avec un tarif inférieur au prix, la clinique paie l’écart de sa poche à chaque séance.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "archiveTitle": "Archiver l’organisme ?",
+      "archiveBody": "{name} n’apparaîtra plus dans les choix. Les séances et factures passées restent intactes. Impossible tant qu’il couvre des clients.",
+      "switchOn": "Facturation aux organismes : activée",
+      "switchOff": "Facturation aux organismes : désactivée",
+      "switchHelpOff": "Tant qu’elle est désactivée, chaque séance est facturée au client comme avant, même si une couverture existe. Vous pouvez préparer les organismes et les couvertures d’avance.",
+      "switchHelpOn": "À la clôture, la couverture du client s’applique : l’organisme paie sa part et le client n’est débité que de la sienne.",
+      "turnOn": "Activer",
+      "turnOff": "Désactiver",
+      "confirmOnTitle": "Activer la facturation aux organismes ?",
+      "confirmOnBody": "Dès maintenant, les séances clôturées de clients couverts ne seront plus débitées au client pour la part de l’organisme. Vérifiez les couvertures et les consentements avant d’activer.",
+      "confirmOffTitle": "Désactiver la facturation aux organismes ?",
+      "confirmOffBody": "Les prochaines séances clôturées seront facturées au client en entier, même s’il est couvert. Les séances déjà clôturées ne changent pas."
+    },
+    "coverages": {
+      "title": "Couverture par un organisme",
+      "add": "Ajouter une couverture",
+      "switchOffNotice": "La facturation aux organismes est désactivée : ces couvertures ne s’appliquent pas encore aux séances.",
+      "noOrganizations": "Créez d’abord un organisme dans « Organismes payeurs ».",
+      "empty": "Aucune couverture. Les séances de ce client lui sont facturées.",
+      "statuses": {
+        "active": "Active",
+        "exhausted": "Épuisée",
+        "ended": "Terminée"
+      },
+      "consentGiven": "Consentement reçu",
+      "consentWithdrawn": "Consentement retiré",
+      "consentMissing": "Consentement manquant",
+      "forClient": "Pour le client",
+      "forLovedOne": "Pour un proche : {name}",
+      "caseNumberValue": "Dossier {value}",
+      "modes": {
+        "full": "L’organisme paie tout",
+        "split": "Partagé",
+        "per_session": "Au cas par cas",
+        "external": "Réglé hors plateforme"
+      },
+      "modeHelp": {
+        "full": "L’organisme paie la séance (à son tarif négocié s’il y en a un).",
+        "split": "L’organisme paie une part fixe ou un pourcentage ; le client paie le reste.",
+        "per_session": "Chaque séance attend votre décision après la clôture.",
+        "external": "Payé en dehors de la plateforme (ex. comptant, portail de l’organisme) : rien n’est débité, le client reçoit un reçu qui nomme le payeur."
+      },
+      "splitPercent": "{value} % payé par l’organisme",
+      "splitFixed": "{value} $ payés par l’organisme",
+      "rateOverrideValue": "tarif {value} $",
+      "sessionsUsedOf": "{used} séance(s) sur {max}",
+      "sessionsUsed": "{used} séance(s) utilisée(s)",
+      "validity": "valide du {from} au {until}",
+      "endedBecause": "Terminée : {reason}",
+      "editTerms": "Modifier",
+      "recordConsent": "Enregistrer le consentement",
+      "withdrawConsent": "Retirer le consentement",
+      "end": "Terminer",
+      "addTitle": "Nouvelle couverture",
+      "editTitle": "Modifier la couverture",
+      "editorHelp": "S’applique aux séances clôturées à partir de maintenant.",
+      "fields": {
+        "organization": "Organisme",
+        "organizationPlaceholder": "Choisir un organisme",
+        "forLovedOne": "Pour un proche (réservé par ce compte)",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "lovedOneHelp": "Le nom doit correspondre à celui saisi lors de la réservation.",
+        "caseNumber": "Numéro de dossier de l’organisme",
+        "mode": "Prise en charge",
+        "splitType": "Part de l’organisme",
+        "splitTypePercent": "Pourcentage",
+        "splitTypeFixed": "Montant fixe",
+        "splitPercent": "Pourcentage payé par l’organisme",
+        "splitFixed": "Montant payé par l’organisme ($)",
+        "maxSessions": "Nombre maximal de séances",
+        "maxSessionsPlaceholder": "Vide = illimité",
+        "rateOverride": "Tarif propre à ce client ($)",
+        "rateOverridePlaceholder": "Vide = tarif de l’organisme",
+        "validFrom": "Valide à partir du",
+        "validUntil": "Valide jusqu’au",
+        "consentGiven": "Le client a consenti à ce que l’organisme soit facturé",
+        "consentNote": "Comment et quand (obligatoire)"
+      },
+      "consentHelp": "Loi 25 : aucune facture nommant le client ne sera envoyée à l’organisme sans ce consentement.",
+      "withdrawConsentHelp": "Plus aucune facture nommant le client ne pourra être envoyée à l’organisme. Les séances suivantes attendront une décision.",
+      "consentMethods": {
+        "written": "Écrit (signé)",
+        "online_checkbox": "Case cochée en ligne",
+        "verbal": "Verbal",
+        "form_on_file": "Formulaire au dossier"
+      },
+      "organizationRequired": "Choisissez un organisme.",
+      "consentNoteRequired": "Précisez comment et quand le client a consenti.",
+      "negativeMarginWarning": "Attention : avec un tarif inférieur au prix, la clinique paie l’écart de sa poche à chaque séance.",
+      "endTitle": "Terminer la couverture ?",
+      "endBody": "Les prochaines séances ne seront plus facturées à {name}. Les séances passées ne changent pas.",
+      "endReasonPlaceholder": "Raison (facultatif)",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler"
+    },
+    "payer": {
+      "awaitingDecision": "Payeur à confirmer",
+      "paidBy": {
+        "organization": "Payé par l’organisme",
+        "client": "Payé par le client",
+        "external": "Réglé hors plateforme"
+      },
+      "planned": "Payeur prévu : {payer}",
+      "payers": {
+        "organization": "Organisme",
+        "client": "Client",
+        "external": "Hors plateforme"
+      },
+      "choose": "Choisir le payeur",
+      "auto": "Selon la couverture",
+      "confirmTitle": "Changer le payeur de cette séance ?",
+      "confirmBody": {
+        "organization": "La séance sera facturée à l’organisme selon la couverture du client ; le client ne devra que sa part éventuelle.",
+        "client": "Le client devra le prix complet de la séance et recevra une demande de paiement.",
+        "external": "La séance sera marquée payée hors plateforme et le client recevra un reçu qui nomme le payeur."
+      },
+      "cancel": "Annuler",
+      "confirm": "Confirmer"
     }
   },
   "AppointmentSelector": {
@@ -2781,7 +2965,8 @@
       "externalMessages": "Courriels externes",
       "emailTemplates": "Modèles de courriels",
       "employees": "Employés",
-      "administration": "Administration"
+      "administration": "Administration",
+      "organizations": "Organismes payeurs"
     },
     "overview": {
       "title": "Bienvenue",

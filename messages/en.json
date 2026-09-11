@@ -943,7 +943,8 @@
       "statusLabel": "Status:",
       "resendInvite": "Resend invitation",
       "resendGuarantee": "Resend Banking Guarantee",
-      "approveGuarantee": "Manually approve guarantee"
+      "approveGuarantee": "Manually approve guarantee",
+      "paymentCovered": "Covered"
     },
     "appointmentStatus": {
       "scheduled": "Scheduled",
@@ -1116,6 +1117,189 @@
       "reviewLicenseStatus_pending_review": "Pending review",
       "reviewLicenseStatus_rejected": "Rejected",
       "reviewLicenseStatus_not_applicable": "Not applicable"
+    },
+    "organizations": {
+      "title": "Paying organizations",
+      "subtitle": "Employers, EAPs, schools and other third parties that pay for some clients' sessions. Their terms apply when sessions are closed.",
+      "add": "Add an organization",
+      "refresh": "Refresh",
+      "empty": "No organizations yet.",
+      "searchPlaceholder": "Search organizations",
+      "showArchived": "Show archived",
+      "archived": "Archived",
+      "edit": "Edit",
+      "archive": "Archive",
+      "unarchive": "Restore",
+      "activeCoverages": "{count, plural, =0 {no clients covered} one {# client covered} other {# clients covered}}",
+      "rateValue": "Negotiated rate {amount} $",
+      "noRate": "Normal session price",
+      "nameRequired": "The name is required.",
+      "addTitle": "New organization",
+      "editTitle": "Edit organization",
+      "editorHelp": "Terms apply to sessions closed from now on; a session already closed keeps its amounts.",
+      "fields": {
+        "name": "Name",
+        "kind": "Type",
+        "language": "Document language",
+        "billingEmails": "Billing emails",
+        "billingEmailsHelp": "Up to 5 addresses, separated by commas.",
+        "contactName": "Contact person",
+        "phone": "Phone",
+        "negotiatedRate": "Negotiated rate per session ($)",
+        "negotiatedRatePlaceholder": "Empty = normal price",
+        "paymentTermsDays": "Payment terms (days)",
+        "gapPolicy": "If the rate is below the session price",
+        "billingCycle": "Invoicing",
+        "autoSendPerSession": "Send per-session invoices without review",
+        "requiresOwnForm": "The organization requires its own form",
+        "formNotesPlaceholder": "Which form, where to send it…",
+        "internalNotes": "Internal notes"
+      },
+      "kinds": {
+        "eap": "EAP",
+        "employer": "Employer",
+        "school": "School",
+        "person": "Person",
+        "other": "Other"
+      },
+      "cycles": {
+        "per_session": "One invoice per session",
+        "monthly": "Monthly statement"
+      },
+      "gapPolicies": {
+        "client_copay": "The client pays the difference",
+        "clinic_absorbs_pro_full": "The clinic absorbs it, professional paid in full",
+        "clinic_absorbs_pro_org_rate": "The clinic absorbs it, professional paid on the rate"
+      },
+      "gapPolicyHelp": {
+        "client_copay": "The client pays the gap between the session price and the rate; their card is charged for that gap.",
+        "clinic_absorbs_pro_full": "The client pays nothing; the professional is paid on the normal price and the clinic carries the gap.",
+        "clinic_absorbs_pro_org_rate": "The client pays nothing; the professional is paid on the organization's rate."
+      },
+      "negativeMarginWarning": "Careful: with a rate below the price, the clinic pays the difference out of pocket for every session.",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "archiveTitle": "Archive this organization?",
+      "archiveBody": "{name} will no longer be offered. Past sessions and invoices stay as they are. Not possible while it still covers clients.",
+      "switchOn": "Organization billing: on",
+      "switchOff": "Organization billing: off",
+      "switchHelpOff": "While it is off, every session is billed to the client as before, even when a coverage exists. You can set up organizations and coverages ahead of time.",
+      "switchHelpOn": "At closure the client's coverage applies: the organization pays its share and the client is charged only theirs.",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "confirmOnTitle": "Turn on organization billing?",
+      "confirmOnBody": "From now on, closed sessions of covered clients will no longer charge the client for the organization's share. Check the coverages and consents before turning it on.",
+      "confirmOffTitle": "Turn off organization billing?",
+      "confirmOffBody": "The next closed sessions will be billed to the client in full, even if they are covered. Sessions already closed do not change."
+    },
+    "coverages": {
+      "title": "Organization coverage",
+      "add": "Add a coverage",
+      "switchOffNotice": "Organization billing is off: these coverages do not apply to sessions yet.",
+      "noOrganizations": "First create an organization under “Paying organizations”.",
+      "empty": "No coverage. This client's sessions are billed to them.",
+      "statuses": {
+        "active": "Active",
+        "exhausted": "Used up",
+        "ended": "Ended"
+      },
+      "consentGiven": "Consent received",
+      "consentWithdrawn": "Consent withdrawn",
+      "consentMissing": "Consent missing",
+      "forClient": "For the client",
+      "forLovedOne": "For a loved one: {name}",
+      "caseNumberValue": "Case {value}",
+      "modes": {
+        "full": "The organization pays everything",
+        "split": "Shared",
+        "per_session": "Case by case",
+        "external": "Settled outside the platform"
+      },
+      "modeHelp": {
+        "full": "The organization pays for the session (at its negotiated rate if it has one).",
+        "split": "The organization pays a fixed amount or a percentage; the client pays the rest.",
+        "per_session": "Each session waits for your decision after closure.",
+        "external": "Paid outside the platform (e.g. cash, the organization's portal): nothing is charged, and the client gets a receipt naming the payer."
+      },
+      "splitPercent": "{value}% paid by the organization",
+      "splitFixed": "{value} $ paid by the organization",
+      "rateOverrideValue": "rate {value} $",
+      "sessionsUsedOf": "{used} of {max} session(s)",
+      "sessionsUsed": "{used} session(s) used",
+      "validity": "valid from {from} to {until}",
+      "endedBecause": "Ended: {reason}",
+      "editTerms": "Edit",
+      "recordConsent": "Record consent",
+      "withdrawConsent": "Withdraw consent",
+      "end": "End",
+      "addTitle": "New coverage",
+      "editTitle": "Edit coverage",
+      "editorHelp": "Applies to sessions closed from now on.",
+      "fields": {
+        "organization": "Organization",
+        "organizationPlaceholder": "Choose an organization",
+        "forLovedOne": "For a loved one (booked through this account)",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "lovedOneHelp": "The name must match the one entered when booking.",
+        "caseNumber": "Organization case number",
+        "mode": "Coverage",
+        "splitType": "Organization's share",
+        "splitTypePercent": "Percentage",
+        "splitTypeFixed": "Fixed amount",
+        "splitPercent": "Percentage paid by the organization",
+        "splitFixed": "Amount paid by the organization ($)",
+        "maxSessions": "Maximum number of sessions",
+        "maxSessionsPlaceholder": "Empty = unlimited",
+        "rateOverride": "Rate for this client ($)",
+        "rateOverridePlaceholder": "Empty = the organization's rate",
+        "validFrom": "Valid from",
+        "validUntil": "Valid until",
+        "consentGiven": "The client agreed to have the organization billed",
+        "consentNote": "How and when (required)"
+      },
+      "consentHelp": "Law 25: no invoice naming the client will be sent to the organization without this consent.",
+      "withdrawConsentHelp": "No invoice naming the client can be sent to the organization any more. The next sessions will wait for a decision.",
+      "consentMethods": {
+        "written": "Written (signed)",
+        "online_checkbox": "Ticked online",
+        "verbal": "Verbal",
+        "form_on_file": "Form on file"
+      },
+      "organizationRequired": "Choose an organization.",
+      "consentNoteRequired": "Say how and when the client agreed.",
+      "negativeMarginWarning": "Careful: with a rate below the price, the clinic pays the difference out of pocket for every session.",
+      "endTitle": "End this coverage?",
+      "endBody": "Future sessions will no longer be billed to {name}. Past sessions do not change.",
+      "endReasonPlaceholder": "Reason (optional)",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel"
+    },
+    "payer": {
+      "awaitingDecision": "Payer to confirm",
+      "paidBy": {
+        "organization": "Paid by the organization",
+        "client": "Paid by the client",
+        "external": "Settled outside the platform"
+      },
+      "planned": "Planned payer: {payer}",
+      "payers": {
+        "organization": "Organization",
+        "client": "Client",
+        "external": "Outside the platform"
+      },
+      "choose": "Choose the payer",
+      "auto": "Per the coverage",
+      "confirmTitle": "Change who pays for this session?",
+      "confirmBody": {
+        "organization": "The session will be billed to the organization under the client's coverage; the client will owe only their share, if any.",
+        "client": "The client will owe the full session price and receive a payment request.",
+        "external": "The session will be marked paid outside the platform and the client will receive a receipt naming the payer."
+      },
+      "cancel": "Cancel",
+      "confirm": "Confirm"
     }
   },
   "AppointmentSelector": {
@@ -2780,7 +2964,8 @@
       "externalMessages": "External emails",
       "emailTemplates": "Email templates",
       "employees": "Employees",
-      "administration": "Administration"
+      "administration": "Administration",
+      "organizations": "Paying organizations"
     },
     "overview": {
       "title": "Welcome Back",
