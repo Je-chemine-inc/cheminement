@@ -36,6 +36,9 @@ export type EmailNotificationType =
   | "client_coverage_cap_warning"
   | "client_coverage_exhausted"
   | "admin_coverage_cap_warning"
+  // Spec 002 phase 4: documents sent to an organization.
+  | "organization_invoice"
+  | "organization_statement"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_day2_reminder"
@@ -307,6 +310,14 @@ const defaultEmailTemplates: Record<
   admin_coverage_cap_warning: {
     enabled: true,
     subject: "Une séance couverte restante — Je chemine",
+  },
+  organization_invoice: {
+    enabled: true,
+    subject: "Facture — Je chemine",
+  },
+  organization_statement: {
+    enabled: true,
+    subject: "Relevé de facturation — Je chemine",
   },
   interac_transfer_instructions: {
     enabled: true,

@@ -6728,6 +6728,84 @@ export async function sendAdminCoverageCapWarning(data: {
 }
 
 /**
+ * Spec 002: an invoice or statement to an organization's billing address.
+ * The body names no patient — only the organization, the number, the amounts
+ * and the due date. Patient names are in the attached PDF, which may only be
+ * sent with every client's consent (checked by the caller).
+ */
+export async function sendOrganizationInvoiceEmail(data: {
+  to: string;
+  kind: "session" | "statement";
+  organizationName: string;
+  number: string;
+  totalCents: number;
+  balanceCents: number;
+  dueAt: Date | null;
+  periodKey: string | null;
+  pdf: Buffer;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const money = (cents: number) =>
+    lang === "fr"
+      ? `${(cents / 100).toFixed(2).replace(".", ",")} $`
+      : `$${(cents / 100).toFixed(2)}`;
+  const due = data.dueAt
+    ? new Intl.DateTimeFormat(lang === "fr" ? "fr-CA" : "en-CA", {
+        timeZone: "America/Toronto",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(new Date(data.dueAt))
+    : "—";
+  const statement = data.kind === "statement";
+  const title = statement
+    ? lang === "fr" ? "Relevé de facturation" : "Billing statement"
+    : lang === "fr" ? "Facture" : "Invoice";
+  const org = escapeHtml(data.organizationName);
+
+  const html = buildEmailHtml({
+    title: `${title} ${data.number}`,
+    theme: "info",
+    greeting: lang === "fr" ? "Bonjour," : "Hello,",
+    intro:
+      lang === "fr"
+        ? `Veuillez trouver ci-joint ${statement ? "le relevé" : "la facture"} ${data.number} adressé${statement ? "" : "e"} à ${org} pour des séances offertes par Je chemine.`
+        : `Please find attached ${statement ? "statement" : "invoice"} ${data.number} for ${org}, for sessions provided by Je chemine.`,
+    details: [
+      { label: lang === "fr" ? "Numéro" : "Number", value: data.number },
+      ...(data.periodKey ? [{ label: lang === "fr" ? "Période" : "Period", value: data.periodKey }] : []),
+      { label: lang === "fr" ? "Montant" : "Amount", value: money(data.totalCents) },
+      { label: lang === "fr" ? "Solde dû" : "Balance due", value: money(data.balanceCents) },
+      { label: lang === "fr" ? "Échéance" : "Due date", value: due },
+    ],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      `${title} ${data.number}`,
+      `${data.organizationName} — ${money(data.balanceCents)} — ${due}`,
+      lang === "fr" ? "Le document est joint à ce courriel." : "The document is attached to this email.",
+    ],
+    lang,
+  );
+  return sendEmail(
+    {
+      to: data.to,
+      subject: `${title} ${data.number} — Je chemine`,
+      html,
+      text,
+      attachments: [
+        { filename: `${data.number}.pdf`, content: data.pdf, contentType: "application/pdf" },
+      ],
+    },
+    statement ? "organization_statement" : "organization_invoice",
+  );
+}
+
+/**
  * Alert admins when every proposed professional has refused an appointment
  * and the routing has cascaded to `routingStatus: "general"`. Without this
  * notification the request silently drops into the general queue with no

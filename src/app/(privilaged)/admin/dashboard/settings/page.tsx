@@ -167,6 +167,18 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé au client quand toutes les séances payées par son organisme sont utilisées : ses prochaines séances lui seront facturées.",
     category: "Paiements",
   },
+  organization_invoice: {
+    name: "Facture à un organisme",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme payeur, avec la facture PDF d’une séance. Le courriel ne nomme aucun client ; le PDF, oui — il n’est envoyé qu’avec le consentement de chaque client.",
+    category: "Paiements",
+  },
+  organization_statement: {
+    name: "Relevé mensuel à un organisme",
+    description:
+      "Envoyé à l’adresse de facturation d’un organisme payeur, avec le relevé PDF du mois. Le courriel ne nomme aucun client ; le PDF, oui — il n’est envoyé qu’avec le consentement de chaque client.",
+    category: "Paiements",
+  },
   admin_coverage_cap_warning: {
     name: "Alerte équipe — une séance couverte restante",
     description:

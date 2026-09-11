@@ -40,6 +40,22 @@ vi.mock("@/models/OrganizationCoverage", async (importOriginal) => ({
   default: trap,
 }));
 vi.mock("@/models/PlatformSettings", () => ({ default: trap }));
+vi.mock("server-only", () => ({}));
+vi.mock("@/models/OrganizationInvoice", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/models/OrganizationInvoice")>()),
+  default: trap,
+}));
+vi.mock("@/lib/organization-invoice", () => ({
+  draftForSession: () => h.touched(),
+  draftStatement: () => h.touched(),
+  refreshDraft: () => h.touched(),
+  issueAndSend: () => h.touched(),
+  resendInvoice: () => h.touched(),
+  voidInvoice: () => h.touched(),
+  recordOrganizationPayment: () => h.touched(),
+  unbilledSummary: () => h.touched(),
+  renderInvoicePdf: () => h.touched(),
+}));
 vi.mock("@/lib/coverage-admin", () => ({
   createCoverage: () => h.touched(),
   updateCoverageTerms: () => h.touched(),
@@ -48,7 +64,7 @@ vi.mock("@/lib/coverage-admin", () => ({
 }));
 
 const API = path.join(process.cwd(), "src/app/api/admin");
-const ROOTS = ["organizations", "coverages", "organization-billing"];
+const ROOTS = ["organizations", "coverages", "organization-billing", "organization-invoices"];
 
 function routeFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
