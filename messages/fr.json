@@ -1317,7 +1317,9 @@
         "external": "La séance sera marquée payée hors plateforme et le client recevra un reçu qui nomme le payeur."
       },
       "cancel": "Annuler",
-      "confirm": "Confirmer"
+      "confirm": "Confirmer",
+      "payerLabel": "Payeur : {payer}",
+      "onlyClientWhileOff": "La facturation aux organismes est désactivée : le client paie chaque séance."
     },
     "orgInvoices": {
       "title": "Factures aux organismes",

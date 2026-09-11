@@ -6,6 +6,9 @@
  * Before closure the admin can pre-choose the payer (closure honours it);
  * after closure they can change it, which recomputes the amounts — so that
  * path asks for confirmation. Hidden entirely without manageBilling.
+ *
+ * The client pays by default; what is shown and offered comes from
+ * payerChoice() (lib/session-payer-choice).
  */
 import { useState } from "react";
 import { AlertCircle } from "lucide-react";
@@ -27,8 +30,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type Payer = "organization" | "client" | "external";
-const PAYERS: Payer[] = ["organization", "client", "external"];
+import {
+  overrideFor,
+  payerChoice,
+  type PayerDecisionChoice as Payer,
+  type PayerOption,
+} from "@/lib/session-payer-choice";
 
 export interface AppointmentPayerSummary {
   kind: Payer;
@@ -44,6 +51,8 @@ export function AppointmentPayerControl({
   closed,
   payer,
   billingOverride,
+  coverageApplies,
+  organizationBilling,
   canManage,
   onChanged,
 }: {
@@ -51,6 +60,9 @@ export function AppointmentPayerControl({
   closed: boolean;
   payer: AppointmentPayerSummary | null;
   billingOverride: Payer | null;
+  /** An active coverage exists for this session's beneficiary. */
+  coverageApplies: boolean;
+  organizationBilling: boolean;
   canManage: boolean;
   onChanged: () => void;
 }) {
@@ -73,7 +85,7 @@ export function AppointmentPayerControl({
           : ""}
       </span>
     )
-  ) : !closed && billingOverride ? (
+  ) : !closed && billingOverride && organizationBilling ? (
     <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
       {t("planned", { payer: t(`payers.${billingOverride}`) })}
     </span>
@@ -81,7 +93,28 @@ export function AppointmentPayerControl({
 
   if (!canManage) return badge;
 
-  const submit = async (choice: Payer | "auto") => {
+  const shown = payerChoice({
+    closed,
+    payerKind: payer?.kind ?? null,
+    billingOverride,
+    coverageApplies,
+    organizationBilling,
+  });
+
+  // Nothing to choose: while organization billing is off the client pays
+  // every upcoming session, so there is no dropdown to get wrong.
+  if (shown.options.length === 1) {
+    return (
+      <div className="flex flex-col gap-1">
+        {badge}
+        <span className="text-xs text-muted-foreground" title={t("onlyClientWhileOff")}>
+          {t("payerLabel", { payer: t(`payers.${shown.value}`) })}
+        </span>
+      </div>
+    );
+  }
+
+  const submit = async (choice: PayerOption) => {
     setSubmitting(true);
     setError(null);
     try {
@@ -94,7 +127,8 @@ export function AppointmentPayerControl({
         : await fetch(`/api/admin/appointments/${appointmentId}/billing-override`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ payer: choice === "auto" ? null : choice }),
+            // The default stores nothing, so a coverage added later applies.
+            body: JSON.stringify({ payer: overrideFor(choice, coverageApplies) }),
           });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -109,20 +143,18 @@ export function AppointmentPayerControl({
     }
   };
 
-  const current = closed ? payer?.kind : billingOverride ?? "auto";
-
   return (
     <div className="flex flex-col gap-1">
       {badge}
       {!payer?.onOrganizationInvoice && (
         <Select
-          value={current ?? ""}
+          value={shown.value}
           onValueChange={(v) => {
             if (closed) {
               setError(null);
               setPending(v as Payer);
             } else {
-              void submit(v as Payer | "auto");
+              void submit(v as PayerOption);
             }
           }}
           disabled={submitting}
@@ -131,9 +163,10 @@ export function AppointmentPayerControl({
             <SelectValue placeholder={t("choose")} />
           </SelectTrigger>
           <SelectContent>
-            {!closed && <SelectItem value="auto">{t("auto")}</SelectItem>}
-            {PAYERS.map((p) => (
-              <SelectItem key={p} value={p}>{t(`payers.${p}`)}</SelectItem>
+            {shown.options.map((p) => (
+              <SelectItem key={p} value={p}>
+                {p === "auto" ? t("auto") : t(`payers.${p}`)}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

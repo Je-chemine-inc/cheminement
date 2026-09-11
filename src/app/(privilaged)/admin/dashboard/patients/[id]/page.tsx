@@ -80,6 +80,8 @@ export default function PatientDetailPage({
   const [paymentActionLoading, setPaymentActionLoading] = useState<string | null>(null);
   // Spec 002: the payer actions need manageBilling (the API says so).
   const [canManagePayer, setCanManagePayer] = useState(false);
+  // While organization billing is off the client pays every session.
+  const [organizationBilling, setOrganizationBilling] = useState(false);
   // When arriving via the billing "Aperçu" deep-link (?appointment=<id>), scroll
   // to that session row and highlight it briefly so the admin lands right on the
   // rencontre they clicked.
@@ -176,6 +178,7 @@ export default function PatientDetailPage({
         const aptData = await aptRes.json();
         setAppointments(aptData.appointments || []);
         setCanManagePayer(Boolean(aptData.canManagePayer));
+        setOrganizationBilling(Boolean(aptData.organizationBilling));
       }
 
       setData(userData);
@@ -536,6 +539,8 @@ export default function PatientDetailPage({
                             closed={Boolean(apt.sessionCompletedAt)}
                             payer={apt.payer ?? null}
                             billingOverride={apt.billingOverride ?? null}
+                            coverageApplies={Boolean(apt.coverageApplies)}
+                            organizationBilling={organizationBilling}
                             canManage={canManagePayer}
                             onChanged={fetchData}
                           />

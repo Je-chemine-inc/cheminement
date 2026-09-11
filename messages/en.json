@@ -1317,7 +1317,9 @@
         "external": "The session will be marked paid outside the platform and the client will receive a receipt naming the payer."
       },
       "cancel": "Cancel",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "payerLabel": "Payer: {payer}",
+      "onlyClientWhileOff": "Organization billing is off: the client pays every session."
     },
     "orgInvoices": {
       "title": "Organization invoices",

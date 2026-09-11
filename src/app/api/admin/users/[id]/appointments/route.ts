@@ -3,7 +3,18 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Admin from "@/models/Admin";
+import OrganizationCoverage from "@/models/OrganizationCoverage";
 import { authOptions } from "@/lib/auth";
+import { beneficiaryKeyOf } from "@/lib/organization-coverage";
+import { isOrganizationBillingEnabled } from "@/lib/session-payer-plan";
+
+/** A reference's id, populated or not. */
+const refIdOf = (ref: unknown): string =>
+  ref && typeof ref === "object" && "_id" in ref
+    ? String((ref as { _id: unknown })._id)
+    : ref
+      ? String(ref)
+      : "";
 
 // GET /api/admin/users/[id]/appointments — Appointment history for a user
 export async function GET(
@@ -36,6 +47,24 @@ export async function GET(
       .sort({ date: -1, createdAt: -1 })
       .limit(100)
       .lean();
+
+    // The payer choice defaults to the client; « Selon la couverture » only
+    // where a coverage applies — and only while organization billing is on,
+    // since closure ignores coverages when it is off.
+    const organizationBilling = await isOrganizationBillingEnabled();
+    const covered = new Set<string>();
+    if (organizationBilling) {
+      const clientIds = [
+        ...new Set(appointments.map((a) => refIdOf(a.clientId)).filter(Boolean)),
+      ];
+      const coverages = await OrganizationCoverage.find({
+        clientId: { $in: clientIds },
+        status: "active",
+      })
+        .select("clientId beneficiaryKey")
+        .lean();
+      for (const c of coverages) covered.add(`${String(c.clientId)}|${c.beneficiaryKey}`);
+    }
 
     const mapped = appointments.map((apt) => {
       const client = apt.clientId as unknown as {
@@ -75,6 +104,7 @@ export async function GET(
             }
           : null,
         billingOverride: apt.billingOverride?.payer ?? null,
+        coverageApplies: covered.has(`${refIdOf(apt.clientId)}|${beneficiaryKeyOf(apt)}`),
         client: client
           ? {
               id: client._id.toString(),
@@ -114,6 +144,7 @@ export async function GET(
       appointments: mapped,
       // The payer actions need manageBilling; the page hides them otherwise.
       canManagePayer: !!admin.permissions?.manageBilling,
+      organizationBilling,
     });
   } catch (error) {
     console.error("Admin user appointments error:", error);
