@@ -17,6 +17,9 @@
  * Pure: no database, no Stripe, no email. The caller performs the action.
  */
 
+// client-payment-guarantee imports only types, so this module stays free of models.
+import { isSettledPaymentStatus } from "@/lib/client-payment-guarantee";
+
 export type ReconciliationAction = "settle" | "review";
 
 export type ReconciliationReason =
@@ -50,14 +53,6 @@ export interface InvoiceFacts {
   appointmentStatus?: string | null;
 }
 
-/** Payment states where the money question is already closed. */
-const SETTLED = [
-  "paid",
-  "processing",
-  "refunded",
-  "partially_refunded",
-  "cancelled",
-];
 
 /** Money compares in cents; never trust float equality on dollars. */
 const cents = (n: number): number => Math.round(n * 100);
@@ -95,7 +90,7 @@ export function decideInteracReconciliation(
     };
   }
 
-  if (SETTLED.includes(invoice.paymentStatus ?? "")) {
+  if (isSettledPaymentStatus(invoice.paymentStatus)) {
     return {
       action: "review",
       reason: "already_paid",

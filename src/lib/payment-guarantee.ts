@@ -2,6 +2,7 @@ import { stripe } from "@/lib/stripe";
 import User from "@/models/User";
 import Appointment from "@/models/Appointment";
 import { encryptPaymentMethodReference } from "@/lib/field-encryption";
+import { SETTLED_PAYMENT_STATUSES } from "@/lib/client-payment-guarantee";
 
 
 /**
@@ -14,8 +15,6 @@ import { encryptPaymentMethodReference } from "@/lib/field-encryption";
  */
 export const OPEN_APPOINTMENT_STATUSES = ["pending", "scheduled", "ongoing"];
 
-/** Payment states where the money question is already closed. */
-const SETTLED = ["paid", "processing", "refunded", "partially_refunded", "cancelled"];
 
 /**
  * Link a freshly saved card/PAD onto the client's OPEN appointments.
@@ -42,7 +41,7 @@ export async function linkPaymentMethodToOpenAppointments(
       {
         clientId: userId,
         status: { $in: OPEN_APPOINTMENT_STATUSES },
-        "payment.status": { $nin: SETTLED },
+        "payment.status": { $nin: [...SETTLED_PAYMENT_STATUSES] },
         $or: [
           { "payment.stripePaymentMethodId": { $exists: false } },
           { "payment.stripePaymentMethodId": null },

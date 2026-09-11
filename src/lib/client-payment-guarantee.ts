@@ -20,7 +20,11 @@ export const SETTLED_PAYMENT_STATUSES = [
   "cancelled",
 ] as const;
 
-function isSettled(status: string | undefined | null): boolean {
+/** True when a payment is in a SETTLED_PAYMENT_STATUSES state. Import this rather
+ * than keeping a local copy of the list — copies drift. */
+export function isSettledPaymentStatus(
+  status: string | undefined | null,
+): boolean {
   return (SETTLED_PAYMENT_STATUSES as readonly string[]).includes(status ?? "");
 }
 
@@ -68,7 +72,7 @@ export function clientLacksPaymentGuaranteeForAppointment(
   // to "guarantee" — never dun such a session. This is the authoritative
   // settlement signal and guards ALL reminder stages (day1/day2/h48/post-meeting)
   // that share this helper.
-  if (isSettled(appointment.payment?.status)) {
+  if (isSettledPaymentStatus(appointment.payment?.status)) {
     return false;
   }
   if (appointment.payment?.stripePaymentMethodId) return false;
@@ -95,7 +99,7 @@ export function clientLacksPaymentGuaranteeForAppointment(
 export function clientOwesUncollectedFee(appointment: {
   payment?: { stripePaymentMethodId?: string; status?: string };
 }): boolean {
-  if (isSettled(appointment.payment?.status)) {
+  if (isSettledPaymentStatus(appointment.payment?.status)) {
     return false;
   }
   if (appointment.payment?.stripePaymentMethodId) return false;
