@@ -13,13 +13,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 
 const h = vi.hoisted(() => ({
-  sent: [] as Array<{ to: string; tags?: string[] }>,
+  sent: [] as Array<{ to: string; tags?: string[]; html?: string; text?: string }>,
   settings: null as Record<string, unknown> | null,
   template: null as Record<string, string> | null,
 }));
 
 vi.mock("@/lib/email-transport", () => ({
-  sendMail: vi.fn(async (opts: { to: string; tags?: string[] }) => {
+  sendMail: vi.fn(async (opts: { to: string; tags?: string[]; html?: string; text?: string }) => {
     h.sent.push(opts);
     return { backend: "smtp", messageId: "test-id" };
   }),
@@ -67,7 +67,9 @@ function settingsWith(templates: Record<string, unknown>) {
   };
 }
 
-async function callAlert() {
+async function callAlert(
+  payerDeclaration?: { organizationName: string; caseNumber?: string },
+) {
   const mod = await import("@/lib/notifications");
   await mod.sendAdminNewServiceRequestAlert({
     clientName: "Marie Tremblay",
@@ -75,6 +77,7 @@ async function callAlert() {
     bookingFor: "self",
     motifs: ["Anxiété"],
     appointmentId: "abc123",
+    payerDeclaration,
   });
 }
 
@@ -152,5 +155,31 @@ describe("sendAdminNewServiceRequestAlert", () => {
       "direction@jechemine.ca",
     ]);
     expect(h.sent.every((s) => s.tags?.[0] === "admin_new_service_request")).toBe(true);
+  });
+});
+
+describe("the third-party payer a client declared (spec 002)", () => {
+  const declared = { organizationName: "PAE <b>Desjardins</b>", caseNumber: "4471" };
+
+  it("shows it in the team alert, escaped, on the built-in template", async () => {
+    await callAlert(declared);
+    const { html = "", text = "" } = h.sent[0];
+    expect(html).toContain("Tiers payeur déclaré");
+    expect(html).toContain("PAE &lt;b&gt;Desjardins&lt;/b&gt;");
+    expect(html).not.toContain("<b>Desjardins</b>");
+    expect(html).toContain("dossier 4471");
+    expect(text).toContain("Tiers payeur déclaré");
+  });
+
+  it("shows it on the admin-editable template path too", async () => {
+    h.template = { subject: "Nouvelle demande", title: "Nouvelle demande", bodyHtml: "<p>corps</p>", ctaText: "Voir" };
+    await callAlert(declared);
+    expect(h.sent[0].html).toContain("Tiers payeur déclaré");
+    expect(h.sent[0].html).toContain("PAE &lt;b&gt;Desjardins&lt;/b&gt;");
+  });
+
+  it("adds nothing when nothing was declared", async () => {
+    await callAlert();
+    expect(h.sent[0].html).not.toContain("Tiers payeur");
   });
 });

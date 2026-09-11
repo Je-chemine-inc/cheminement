@@ -1,3 +1,5 @@
+import { ORG_BILLING_CONSENT_VERSION } from "@/models/OrganizationCoverage";
+
 /**
  * Which appointment fields a caller is allowed to set — one allow-list per route.
  *
@@ -50,6 +52,43 @@ export const BOOKING_INTAKE_FIELDS = [
   "time",
   "duration",
 ] as const;
+
+/**
+ * Spec 002: the client says a third party pays (employer, PAE, school…). The
+ * funnel sends `thirdPartyPayer: { organizationName, caseNumber?, consent }`;
+ * the server builds the stored `payerDeclaration` itself — its status, date and
+ * consent version are never taken from the browser, and `payerDeclaration`
+ * sent directly is dropped like any other non-intake field. Without the consent
+ * box ticked there is no declaration: the organization may not be billed.
+ */
+export function buildPayerDeclaration(
+  value: unknown,
+  now: Date = new Date(),
+): {
+  organizationName: string;
+  caseNumber?: string;
+  consentGiven: true;
+  consentTextVersion: string;
+  declaredAt: Date;
+  source: "client_booking";
+  status: "pending";
+} | null {
+  if (!isPlainObject(value)) return null;
+  const name =
+    typeof value.organizationName === "string" ? value.organizationName.trim().slice(0, 120) : "";
+  if (name.length < 2 || value.consent !== true) return null;
+  const caseNumber =
+    typeof value.caseNumber === "string" ? value.caseNumber.trim().slice(0, 60) : "";
+  return {
+    organizationName: name,
+    ...(caseNumber ? { caseNumber } : {}),
+    consentGiven: true,
+    consentTextVersion: ORG_BILLING_CONSENT_VERSION,
+    declaredAt: now,
+    source: "client_booking",
+    status: "pending",
+  };
+}
 
 /** Payment methods a client may pick at booking. Never "manual" — that one means
  *  "settled by an admin" and skips every charge. */
@@ -111,6 +150,12 @@ export function pickBookingIntake<T extends object>(
   const data: Record<string, unknown> = {};
   const dropped: string[] = [];
   for (const [key, value] of Object.entries(body)) {
+    if (key === "thirdPartyPayer") {
+      const declaration = buildPayerDeclaration(value);
+      if (declaration) data.payerDeclaration = declaration;
+      else if (value !== null && value !== undefined) dropped.push(key);
+      continue;
+    }
     if (allowed.has(key) && !isPathOrOperatorKey(key)) data[key] = value;
     else dropped.push(key);
   }

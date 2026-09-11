@@ -22,9 +22,11 @@ const h = vi.hoisted(() => {
   const resolveBillingUrl = vi.fn().mockResolvedValue("https://x/pay");
   const aptUpdateOne = vi.fn().mockResolvedValue({ modifiedCount: 1 });
   const decisionAlert = vi.fn().mockResolvedValue(true);
+  const notifyCoverageCap = vi.fn().mockResolvedValue({ lastSession: false, exhausted: false });
   return {
     aptUpdateOne,
     decisionAlert,
+    notifyCoverageCap,
     store,
     sendFiscalReceiptEmail,
     sendSessionInvoiceEmail,
@@ -104,6 +106,7 @@ vi.mock("@/lib/guardian-utils", () => ({
   })),
 }));
 vi.mock("@/lib/client-portal-urls", () => ({ resolveBillingUrl: h.resolveBillingUrl }));
+vi.mock("@/lib/coverage-notices", () => ({ notifyCoverageCap: h.notifyCoverageCap }));
 vi.mock("@/lib/invoice-number", () => ({ nextInvoiceNumber: h.nextInvoiceNumber }));
 vi.mock("@/lib/ledger-cycle", () => ({ cycleKeyFromDateOrNow: () => "2026-06" }));
 
@@ -332,6 +335,20 @@ describe("runSessionClosureSideEffects — third-party payer", () => {
       { _id: expect.anything() },
       { $unset: { "thirdPartyBilling.decisionAlertSentAt": "" } },
     );
+  });
+
+  it("checks the session cap only when this session used a capped slot, and writes to the session's recipient", async () => {
+    h.store.appointment = covered({
+      thirdPartyBilling: snapshot({ consumedCapSlot: true, coverageId: "0123456789abcdef01234568" }),
+    });
+    await runSessionClosureSideEffects("apt1");
+    expect(h.notifyCoverageCap).toHaveBeenCalledWith("0123456789abcdef01234568", {
+      recipient: expect.objectContaining({ email: "alex@example.com" }),
+    });
+    h.notifyCoverageCap.mockClear();
+    h.store.appointment = covered();
+    await runSessionClosureSideEffects("apt1");
+    expect(h.notifyCoverageCap).not.toHaveBeenCalled();
   });
 
   it("a confirmed payer never triggers the decision alert", async () => {

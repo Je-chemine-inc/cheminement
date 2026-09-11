@@ -49,6 +49,7 @@ import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
 import { appointmentDayKey } from "@/lib/appointment-date";
 import { useTranslations } from "next-intl";
 import { EndSessionDialog } from "@/components/appointments/EndSessionDialog";
+import { CoverageBadge } from "@/components/appointments/CoverageBadge";
 
 export default function SessionDetailsPage() {
   const t = useTranslations("Dashboard.sessions");
@@ -612,6 +613,7 @@ export default function SessionDetailsPage() {
                 <Label className="text-xs text-muted-foreground">{t("payment")}</Label>
                 <div className="mt-1 flex items-center gap-2">
                   {getPaymentStatusBadge(appointment.payment.status)}
+                  <CoverageBadge badge={appointment.coverageBadge} />
                 </div>
               </div>
 

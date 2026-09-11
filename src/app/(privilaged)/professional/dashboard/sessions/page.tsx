@@ -45,9 +45,11 @@ import {
 import { appointmentsAPI } from "@/lib/api-client";
 import { clientDisplayName } from "@/lib/appointment-client-name";
 import { getAppointmentBeneficiary } from "@/lib/appointment-beneficiary";
+import { CoverageBadge, type CoverageBadgeValue } from "@/components/appointments/CoverageBadge";
 
 interface ApiAppointment {
   _id: string;
+  coverageBadge?: CoverageBadgeValue | null;
   clientId: {
     _id: string;
     firstName: string;
@@ -110,6 +112,8 @@ interface Session {
   meetingLink?: string;
   /** Who the session is for, when different from the account holder (clientId). */
   beneficiary?: { name: string; relationship?: string } | null;
+  /** Spec 002: a third party pays — kind and sessions used, no amounts. */
+  coverageBadge?: CoverageBadgeValue | null;
 }
 
 export default function SessionsPage() {
@@ -176,6 +180,7 @@ export default function SessionsPage() {
               notes: appointment.notes,
               meetingLink: appointment.meetingLink,
               beneficiary: getAppointmentBeneficiary(appointment),
+              coverageBadge: appointment.coverageBadge ?? null,
             };
           },
         );
@@ -571,6 +576,7 @@ export default function SessionsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {getPaymentStatusBadge(nextSession.paymentStatus)}
+                    <CoverageBadge badge={nextSession.coverageBadge} />
                   </div>
                 </div>
               </div>
@@ -636,6 +642,7 @@ export default function SessionsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {getPaymentStatusBadge(session.paymentStatus)}
+                    <CoverageBadge badge={session.coverageBadge} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -687,7 +694,10 @@ export default function SessionsPage() {
                       {session.clientName}
                     </p>
                   </div>
-                  {getPaymentStatusBadge(session.paymentStatus)}
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {getPaymentStatusBadge(session.paymentStatus)}
+                    <CoverageBadge badge={session.coverageBadge} />
+                  </div>
                 </div>
                 <div className="space-y-2 text-xs text-muted-foreground font-light">
                   <div className="flex items-center gap-1">
@@ -973,7 +983,10 @@ export default function SessionsPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(session.status)}</TableCell>
                   <TableCell>
-                    {getPaymentStatusBadge(session.paymentStatus)}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {getPaymentStatusBadge(session.paymentStatus)}
+                      <CoverageBadge badge={session.coverageBadge} />
+                    </div>
                   </TableCell>
                   <TableCell className="font-light">
                     <span className="text-sm font-medium">

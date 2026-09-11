@@ -540,6 +540,7 @@ export async function POST(req: NextRequest) {
       motifs: motifs as string[],
       appointmentId: String(appointment._id),
       isEmergency: Boolean(appointmentData.isEmergency),
+      payerDeclaration: appointment.payerDeclaration ?? null,
     };
     after(() =>
       sendAdminNewServiceRequestAlert(adminAlertArgs).catch((err) =>

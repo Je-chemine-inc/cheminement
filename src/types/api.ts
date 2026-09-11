@@ -51,6 +51,8 @@ export interface PaymentInfo {
 
 export interface AppointmentResponse {
   _id: string;
+  /** Spec 002, professionals only: kind of payer and sessions used — no amounts. */
+  coverageBadge?: { kind: string; used: number; max: number | null } | null;
   clientId: PersonResponse;
   professionalId?: PersonResponse | null;
   date: string;

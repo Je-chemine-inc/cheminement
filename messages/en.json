@@ -1275,7 +1275,17 @@
       "endReasonPlaceholder": "Reason (optional)",
       "save": "Save",
       "saving": "Saving…",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "declaredTitle": "Declared by the client: {name}",
+      "declaredHelp": "to confirm",
+      "confirmDeclaration": "Confirm…",
+      "rejectDeclaration": "Refuse",
+      "confirmTitle": "Confirm the coverage",
+      "confirmHelp": "Choose the organization and its terms. Sessions already closed and waiting for this answer will be billed to the organization, and the client will receive a confirmation email.",
+      "consentFromBooking": "The client ticked the consent box when booking; it is recorded with the coverage.",
+      "rejectTitle": "Refuse this declaration?",
+      "rejectBody": "{name} will not be billed. Sessions already closed and waiting for this answer will be billed to the client, who will receive the payment request.",
+      "rejectReasonPlaceholder": "Reason (optional, internal)"
     },
     "payer": {
       "awaitingDecision": "Payer to confirm",
@@ -1640,6 +1650,18 @@
       "contactGuest": "Please fill in all required contact information",
       "availabilityRequired": "Please select at least one slot in the availability grid.",
       "modalityRequired": "Please select a meeting modality"
+    },
+    "thirdPartyPayer": {
+      "question": "Someone else pays for my sessions (employer, EAP, school…)",
+      "questionHelp": "We will confirm with the organization before billing it.",
+      "organizationName": "Organization name",
+      "organizationPlaceholder": "e.g. my employer's EAP",
+      "caseNumber": "Case number (if you have one)",
+      "caseNumberPlaceholder": "Optional",
+      "consent": "I authorize Je chemine to send this organization the information needed to bill my sessions: my name, my case number, the dates and length of the sessions, the amounts and the professional's name. The reason for consulting and what is said in sessions are never shared. I can withdraw this consent at any time.",
+      "cardStillRequired": "Your card is still required to guarantee the appointment: a late cancellation or a missed session is billed to you, not to the organization.",
+      "organizationRequired": "Enter the name of the organization that pays for your sessions.",
+      "consentRequired": "Tick the authorization so we can bill the organization — or untick “Someone else pays for my sessions”."
     }
   },
   "Header": {
@@ -6829,5 +6851,17 @@
     "externalCta_podcast": "Listen to the episode",
     "ctaTitle": "More content is waiting for you.",
     "ctaButton": "All media"
+  },
+  "CoverageBadge": {
+    "title": "Sessions paid by a third party — no amounts shown",
+    "usedOf": "{used}/{max} sessions",
+    "used": "{used} session(s)",
+    "kinds": {
+      "eap": "EAP",
+      "employer": "Employer",
+      "school": "School",
+      "person": "Third-party payer",
+      "other": "Third-party payer"
+    }
   }
 }

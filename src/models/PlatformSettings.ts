@@ -31,6 +31,11 @@ export type EmailNotificationType =
   | "admin_new_service_request"
   // Spec 002: a closed session is held because nobody has decided who pays.
   | "admin_third_party_decision_needed"
+  // Spec 002: coverage confirmed, and the session-cap notices (one left / used up).
+  | "client_coverage_confirmed"
+  | "client_coverage_cap_warning"
+  | "client_coverage_exhausted"
+  | "admin_coverage_cap_warning"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_day2_reminder"
@@ -286,6 +291,22 @@ const defaultEmailTemplates: Record<
   admin_third_party_decision_needed: {
     enabled: true,
     subject: "Payeur à confirmer — séance clôturée — Je chemine",
+  },
+  client_coverage_confirmed: {
+    enabled: true,
+    subject: "Vos séances sont prises en charge — Je chemine",
+  },
+  client_coverage_cap_warning: {
+    enabled: true,
+    subject: "Il vous reste une séance couverte — Je chemine",
+  },
+  client_coverage_exhausted: {
+    enabled: true,
+    subject: "Vos séances couvertes sont utilisées — Je chemine",
+  },
+  admin_coverage_cap_warning: {
+    enabled: true,
+    subject: "Une séance couverte restante — Je chemine",
   },
   interac_transfer_instructions: {
     enabled: true,

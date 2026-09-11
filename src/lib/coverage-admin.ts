@@ -55,6 +55,8 @@ export async function createCoverage(args: {
   organizationId: string;
   terms: CoverageTermsInput;
   consent?: Extract<ConsentAction, { action: "give" }> | null;
+  /** Consent the client gave themself (the booking checkbox), not an admin. */
+  consentFromBooking?: { at: Date; textVersion: string } | null;
   adminUserId: string;
   now?: Date;
 }): Promise<CoverageResult> {
@@ -96,6 +98,28 @@ export async function createCoverage(args: {
         : {}),
       organizationId: args.organizationId,
       status: statusForCap("active", 0, args.terms.maxSessions),
+      ...(args.consentFromBooking && !args.consent
+        ? {
+            consent: {
+              status: "given",
+              recordedAt: args.consentFromBooking.at,
+              source: "client_booking",
+              method: "online_checkbox",
+              textVersion: args.consentFromBooking.textVersion,
+              note: "Case cochée par le client lors de sa demande",
+            },
+            consentLog: [
+              {
+                action: "given",
+                at: args.consentFromBooking.at,
+                source: "client_booking",
+                method: "online_checkbox",
+                textVersion: args.consentFromBooking.textVersion,
+                note: "Case cochée par le client lors de sa demande",
+              },
+            ],
+          }
+        : {}),
       ...(args.consent
         ? {
             consent: {
@@ -165,6 +189,11 @@ export async function updateCoverageTerms(args: {
   const { $set, $unset } = toSetUnset(args.terms);
   $set.status = status;
   $set.updatedBy = args.adminUserId;
+  // A new cap gets its own "1 session left" / "used up" notices.
+  if (args.terms.maxSessions !== undefined && args.terms.maxSessions !== (current.maxSessions ?? null)) {
+    $unset.lastSessionWarningSentAt = 1;
+    $unset.exhaustedNotifiedAt = 1;
+  }
 
   try {
     const updated = await OrganizationCoverage.findOneAndUpdate(

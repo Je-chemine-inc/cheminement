@@ -24,6 +24,7 @@ import {
   resolveReferralPatientIdentity,
 } from "@/lib/referral-patient-account";
 import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
+import { coverageBadgesFor } from "@/lib/coverage-badges";
 import { pickBookingIntake } from "@/lib/appointment-writable-fields";
 import {
   linkGuardian,
@@ -120,9 +121,17 @@ export async function GET(req: NextRequest) {
 
     // Hide client gross + platform fee from professionals (commercial confidentiality + accounting clarity)
     if (session.user.role === "professional") {
+      // Spec 002: the kind of payer and sessions used — never who or how much.
+      const badges = await coverageBadgesFor(appointments).catch((e) => {
+        console.error("coverageBadgesFor:", e);
+        return new Map();
+      });
       return NextResponse.json(
         redactPaymentForProfessionalAll(
-          appointments.map((apt) => apt.toObject()),
+          appointments.map((apt) => ({
+            ...apt.toObject(),
+            coverageBadge: badges.get(String(apt._id)) ?? null,
+          })),
         ),
       );
     }
@@ -731,6 +740,7 @@ export async function POST(req: NextRequest) {
             motifs: motifs as string[],
             appointmentId: appointment._id.toString(),
             isEmergency: Boolean(data.isEmergency),
+            payerDeclaration: appointment.payerDeclaration ?? null,
           });
         }
       } catch (e) {

@@ -149,6 +149,30 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé automatiquement à un client lorsqu'il soumet le formulaire de demande pour lui-même ou un proche. N'affecte PAS l'alerte envoyée à l'équipe.",
     category: "Bienvenue & Relances",
   },
+  client_coverage_confirmed: {
+    name: "Prise en charge confirmée (client)",
+    description:
+      "Envoyé au client quand un administrateur confirme que son organisme (employeur, PAE, école…) paie ses séances. Rappelle qu’une annulation tardive ou une absence lui reste facturée.",
+    category: "Paiements",
+  },
+  client_coverage_cap_warning: {
+    name: "Une séance couverte restante (client)",
+    description:
+      "Envoyé au client quand il ne lui reste qu’une séance payée par son organisme : les suivantes lui seront facturées, sauf prolongation.",
+    category: "Paiements",
+  },
+  client_coverage_exhausted: {
+    name: "Séances couvertes utilisées (client)",
+    description:
+      "Envoyé au client quand toutes les séances payées par son organisme sont utilisées : ses prochaines séances lui seront facturées.",
+    category: "Paiements",
+  },
+  admin_coverage_cap_warning: {
+    name: "Alerte équipe — une séance couverte restante",
+    description:
+      "Envoyé à l’équipe quand un client n’a plus qu’une séance payée par son organisme, pour demander une prolongation à temps.",
+    category: "Alertes administratives",
+  },
   admin_third_party_decision_needed: {
     name: "Alerte équipe — payeur à confirmer",
     description:

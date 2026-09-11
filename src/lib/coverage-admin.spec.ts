@@ -135,10 +135,20 @@ describe("updateCoverageTerms", () => {
     expect(update.$set.status).toBe("active");
   });
 
-  it("clears a cap with $unset", async () => {
+  it("clears a cap with $unset, and a new cap gets fresh notices", async () => {
     await updateCoverageTerms({ coverageId: "cov", terms: { maxSessions: null }, adminUserId: ADMIN });
     const update = h.findOneAndUpdate.mock.calls[0][1] as { $unset: Record<string, unknown> };
-    expect(update.$unset).toEqual({ maxSessions: 1 });
+    expect(update.$unset).toEqual({
+      maxSessions: 1,
+      lastSessionWarningSentAt: 1,
+      exhaustedNotifiedAt: 1,
+    });
+  });
+
+  it("keeps the notices already sent when the cap does not change", async () => {
+    await updateCoverageTerms({ coverageId: "cov", terms: { maxSessions: 6, caseNumber: "X" }, adminUserId: ADMIN });
+    const update = h.findOneAndUpdate.mock.calls[0][1] as { $unset?: Record<string, unknown> };
+    expect(update.$unset).toBeUndefined();
   });
 
   it("refuses to edit an ended coverage, or switch to split without terms", async () => {

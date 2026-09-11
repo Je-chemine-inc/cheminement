@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import Appointment from "@/models/Appointment";
 import Organization from "@/models/Organization";
 import OrganizationCoverage from "@/models/OrganizationCoverage";
 import { requireBillingAdmin, serializeCoverage } from "@/lib/organization-admin";
@@ -10,7 +11,10 @@ import {
 } from "@/lib/organization-input";
 import { createCoverage } from "@/lib/coverage-admin";
 
-/** GET /api/admin/coverages?clientId= — every coverage of one client, newest first. */
+/**
+ * GET /api/admin/coverages?clientId= — every coverage of one client, newest
+ * first, plus what the client declared at booking that nobody reviewed yet.
+ */
 export async function GET(req: NextRequest) {
   const gate = await requireBillingAdmin();
   if (gate.error) return gate.error;
@@ -29,10 +33,27 @@ export async function GET(req: NextRequest) {
       .select("name active gapPolicy negotiatedRateCents")
       .lean();
     const byId = new Map(orgs.map((o) => [String(o._id), o]));
+    const declared = await Appointment.find({
+      clientId,
+      "payerDeclaration.status": "pending",
+    })
+      .select("payerDeclaration bookingFor lovedOneInfo.firstName lovedOneInfo.lastName createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
     return NextResponse.json({
       coverages: coverages.map((c) =>
         serializeCoverage(c, byId.get(String(c.organizationId)) ?? null),
       ),
+      pendingDeclarations: declared.map((a) => ({
+        appointmentId: String(a._id),
+        organizationName: a.payerDeclaration?.organizationName ?? "",
+        caseNumber: a.payerDeclaration?.caseNumber ?? "",
+        declaredAt: a.payerDeclaration?.declaredAt ?? null,
+        beneficiaryName:
+          a.bookingFor === "loved-one"
+            ? `${a.lovedOneInfo?.firstName ?? ""} ${a.lovedOneInfo?.lastName ?? ""}`.trim()
+            : "",
+      })),
     });
   } catch (error) {
     console.error("Admin list coverages error:", error);

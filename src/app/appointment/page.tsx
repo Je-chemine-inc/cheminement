@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import {
+  EMPTY_THIRD_PARTY_PAYER,
+  ThirdPartyPayerFields,
+  thirdPartyPayerErrorKey,
+  toThirdPartyPayerPayload,
+  type ThirdPartyPayerDraft,
+} from "@/components/appointments/ThirdPartyPayerFields";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -159,6 +166,10 @@ export default function BookAppointmentPage() {
 
   // Issue Type / Motifs (multi-select, max 3)
   const [issueType, setIssueType] = useState<string[]>([]);
+  // Spec 002: "someone else pays" — only offered while organization billing is on.
+  const [thirdPartyPayer, setThirdPartyPayer] = useState<ThirdPartyPayerDraft>(
+    EMPTY_THIRD_PARTY_PAYER,
+  );
 
   // Medical profile data for defaults
   const [medicalProfile, setMedicalProfile] =
@@ -748,6 +759,10 @@ export default function BookAppointmentPage() {
       };
 
       if (emergency) appointmentData.emergency = true;
+      const declaredPayer = toThirdPartyPayerPayload(thirdPartyPayer);
+      if (declaredPayer && bookingFor !== "patient") {
+        appointmentData.thirdPartyPayer = declaredPayer;
+      }
 
       let effectiveGuestInfo: GuestInfo = guestInfo;
 
@@ -824,6 +839,12 @@ export default function BookAppointmentPage() {
       setError(tB("errors.availabilityRequired"));
       return;
     }
+    const payerErrorKey =
+      bookingFor !== "patient" ? thirdPartyPayerErrorKey(thirdPartyPayer) : null;
+    if (payerErrorKey) {
+      setError(tB(`thirdPartyPayer.${payerErrorKey}`));
+      return;
+    }
 
     // For guests, submit without payment
     if (isGuest) {
@@ -855,6 +876,10 @@ export default function BookAppointmentPage() {
       }
 
       if (emergency) appointmentData.emergency = true;
+      const declaredPayer = toThirdPartyPayerPayload(thirdPartyPayer);
+      if (declaredPayer && bookingFor !== "patient") {
+        appointmentData.thirdPartyPayer = declaredPayer;
+      }
 
       // Include loved one info if booking for a loved one
       if (bookingFor === "loved-one" && lovedOneInfo.firstName) {
@@ -2942,6 +2967,13 @@ export default function BookAppointmentPage() {
                       */}
                     </div>
                   </div>
+
+                  {bookingFor !== "patient" && (
+                    <ThirdPartyPayerFields
+                      value={thirdPartyPayer}
+                      onChange={setThirdPartyPayer}
+                    />
+                  )}
 
                   {/* Info about what happens next */}
                   <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4">

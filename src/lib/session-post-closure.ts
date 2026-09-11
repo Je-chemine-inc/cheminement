@@ -17,6 +17,7 @@ import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { getPlatformContactInfo } from "@/lib/platform-contact";
 import { formatStandardAddressBlock } from "@/lib/format-platform-contact";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
+import { notifyCoverageCap } from "@/lib/coverage-notices";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
 import { nextInvoiceNumber } from "@/lib/invoice-number";
 import { resolveInteracReferenceCode } from "@/lib/interac-reference";
@@ -291,6 +292,15 @@ export async function runSessionClosureSideEffects(
         );
       }
     }
+  }
+
+  // A capped coverage just used a session: one left, or none — tell the
+  // client (and the team at one left). Claimed on the coverage, so a retry of
+  // these side effects never sends it twice.
+  if (tpb?.consumedCapSlot && tpb.coverageId) {
+    await notifyCoverageCap(String(tpb.coverageId), { recipient }).catch((e) =>
+      console.error("notifyCoverageCap:", e),
+    );
   }
 
   // `billable` is the CLIENT's share. When a third party pays everything it is

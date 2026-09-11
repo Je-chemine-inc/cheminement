@@ -207,3 +207,61 @@ describe("toWriterRole", () => {
     expect(toWriterRole("admin")).toBe("admin");
   });
 });
+
+describe("the third-party payer a client declares at booking (spec 002)", () => {
+  const base = { type: "video", bookingFor: "self" };
+
+  it("builds the declaration server-side: pending, dated, with the consent version", () => {
+    const { data, dropped } = pickBookingIntake({
+      ...base,
+      thirdPartyPayer: { organizationName: "  PAE Desjardins ", caseNumber: " 4471 ", consent: true },
+    }) as { data: Record<string, unknown>; dropped: string[] };
+    expect(dropped).toEqual([]);
+    expect(data).not.toHaveProperty("thirdPartyPayer");
+    expect(data.payerDeclaration).toMatchObject({
+      organizationName: "PAE Desjardins",
+      caseNumber: "4471",
+      consentGiven: true,
+      consentTextVersion: "org-billing-2026-09",
+      source: "client_booking",
+      status: "pending",
+    });
+    expect((data.payerDeclaration as { declaredAt: unknown }).declaredAt).toBeInstanceOf(Date);
+  });
+
+  it("never takes the status, the coverage or the review from the browser", () => {
+    const { data, dropped } = pickBookingIntake({
+      ...base,
+      payerDeclaration: { organizationName: "X", status: "confirmed", coverageId: "c1" },
+      thirdPartyPayer: { organizationName: "PAE X", consent: true, status: "confirmed", coverageId: "c1" },
+    }) as { data: Record<string, unknown>; dropped: string[] };
+    expect(dropped).toContain("payerDeclaration");
+    expect(data.payerDeclaration).toMatchObject({ status: "pending" });
+    expect(data.payerDeclaration).not.toHaveProperty("coverageId");
+  });
+
+  it("records nothing without the consent box ticked, or without a name", () => {
+    for (const thirdPartyPayer of [
+      { organizationName: "PAE X", consent: false },
+      { organizationName: "PAE X", consent: "true" },
+      { organizationName: "", consent: true },
+      "PAE X",
+    ]) {
+      const { data, dropped } = pickBookingIntake({ ...base, thirdPartyPayer }) as {
+        data: Record<string, unknown>;
+        dropped: string[];
+      };
+      expect(data).not.toHaveProperty("payerDeclaration");
+      expect(dropped).toContain("thirdPartyPayer");
+    }
+  });
+
+  it("caps the free text", () => {
+    const { data } = pickBookingIntake({
+      ...base,
+      thirdPartyPayer: { organizationName: "A".repeat(500), caseNumber: "9".repeat(200), consent: true },
+    }) as unknown as { data: { payerDeclaration: { organizationName: string; caseNumber: string } } };
+    expect(data.payerDeclaration.organizationName).toHaveLength(120);
+    expect(data.payerDeclaration.caseNumber).toHaveLength(60);
+  });
+});

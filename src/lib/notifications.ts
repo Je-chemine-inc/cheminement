@@ -9,6 +9,7 @@ import {
   emailTransportStatus,
 } from "@/lib/email-transport";
 import connectToDatabase from "@/lib/mongodb";
+import { escapeHtml } from "@/lib/legal-sections";
 import { buildReceiptNumber } from "@/lib/receipt-number";
 import { resolveProfessionalNotifeeParty } from "@/lib/guardian-utils";
 import {
@@ -744,6 +745,10 @@ const PAYMENT_EMAIL_TYPES = new Set<EmailNotificationType>([
   "payment_guarantee_day1_reminder",
   "payment_guarantee_day2_reminder",
   "payment_guarantee_48h_client",
+  // Spec 002: questions about who pays a session go to whoever handles money.
+  "client_coverage_confirmed",
+  "client_coverage_cap_warning",
+  "client_coverage_exhausted",
 ]);
 
 /** True when replies to this email type should route to the payment inbox. */
@@ -6324,6 +6329,8 @@ export async function sendAdminNewServiceRequestAlert(data: {
   motifs: string[];
   appointmentId: string;
   isEmergency?: boolean;
+  /** Spec 002: the client says a third party pays — an admin must confirm it. */
+  payerDeclaration?: { organizationName: string; caseNumber?: string } | null;
 }): Promise<void> {
   await connectToDatabase();
   const adminEmails = await getAdminAlertRecipients();
@@ -6349,6 +6356,18 @@ export async function sendAdminNewServiceRequestAlert(data: {
   // so admins triage them ahead of standard demandes.
   const isEmergency = Boolean(data.isEmergency);
 
+  // Client free text — escaped before it goes anywhere near the HTML.
+  const declaredValue = data.payerDeclaration
+    ? `${escapeHtml(data.payerDeclaration.organizationName)}${
+        data.payerDeclaration.caseNumber
+          ? ` (dossier ${escapeHtml(data.payerDeclaration.caseNumber)})`
+          : ""
+      } — à confirmer dans le dossier du client`
+    : "";
+  const declaredText = data.payerDeclaration
+    ? `Tiers payeur déclaré : ${data.payerDeclaration.organizationName} — à confirmer`
+    : "";
+
   // Admin-editable template (subject/title/body/CTA); the hardcoded block below
   // is the fallback if the DB row can't be loaded. French-only admin alert.
   const editable = await loadEditableTemplate("adminNewServiceRequest", "fr", {
@@ -6366,6 +6385,9 @@ export async function sendAdminNewServiceRequestAlert(data: {
       theme: isEmergency ? "warning" : "info",
       greeting: "",
       intro: editable.bodyHtml,
+      details: declaredValue
+        ? [{ label: "Tiers payeur déclaré", value: declaredValue, stacked: true }]
+        : undefined,
       button: editable.ctaText
         ? { text: editable.ctaText, url: adminUrl }
         : undefined,
@@ -6376,6 +6398,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
       [
         editable.title,
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        declaredText,
         editable.ctaText ? `${editable.ctaText} : ${adminUrl}` : "",
       ],
       "fr",
@@ -6406,6 +6429,9 @@ export async function sendAdminNewServiceRequestAlert(data: {
       { label: "Courriel", value: data.clientEmail },
       { label: "Pour", value: data.bookingFor },
       { label: "Motif(s)", value: data.motifs.join(", ") || "—" },
+      ...(declaredValue
+        ? [{ label: "Tiers payeur déclaré", value: declaredValue, stacked: true }]
+        : []),
       { label: "ID Rendez-vous", value: data.appointmentId },
     ],
     button: { text: "Voir les demandes", url: adminUrl },
@@ -6420,6 +6446,7 @@ export async function sendAdminNewServiceRequestAlert(data: {
     `Client : ${data.clientName} — ${data.clientEmail}`,
     `Pour : ${data.bookingFor}`,
     `Motif(s) : ${data.motifs.join(", ") || "—"}`,
+    ...(declaredText ? [declaredText] : []),
     `ID : ${data.appointmentId}`,
     adminUrl,
   ]);
@@ -6515,6 +6542,184 @@ export async function sendAdminThirdPartyDecisionAlert(data: {
       "admin_third_party_decision_needed",
     ).catch((e) => {
       console.error("sendAdminThirdPartyDecisionAlert:", e);
+      return false;
+    });
+    sent = sent || ok;
+  }
+  return sent;
+}
+
+/**
+ * Spec 002: an admin confirmed that an organization pays for the client's
+ * sessions. Says who pays and what stays the client's (late cancellations and
+ * no-shows). Returns true once sent.
+ */
+export async function sendClientCoverageConfirmedEmail(data: {
+  clientEmail: string;
+  clientName: string;
+  organizationName: string;
+  maxSessions?: number | null;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const org = escapeHtml(data.organizationName);
+  const cap = data.maxSessions
+    ? lang === "fr"
+      ? ` jusqu’à ${data.maxSessions} séance(s)`
+      : ` for up to ${data.maxSessions} session(s)`
+    : "";
+  const html = buildEmailHtml({
+    title: lang === "fr" ? "Prise en charge confirmée" : "Coverage confirmed",
+    theme: "success",
+    greeting: lang === "fr" ? `Bonjour ${escapeHtml(data.clientName)},` : `Hello ${escapeHtml(data.clientName)},`,
+    intro:
+      lang === "fr"
+        ? `Nous avons confirmé que ${org} paie vos séances${cap}. Vous n’aurez rien à régler pour ces séances, sauf si l’organisme ne couvre qu’une partie du prix.`
+        : `We have confirmed that ${org} pays for your sessions${cap}. You will have nothing to pay for these sessions, unless the organization covers only part of the price.`,
+    details: [
+      {
+        label: lang === "fr" ? "À savoir" : "Good to know",
+        value:
+          lang === "fr"
+            ? "Votre carte reste enregistrée pour garantir vos rendez-vous : une annulation tardive ou une absence vous sera facturée, pas à l’organisme."
+            : "Your card stays on file to guarantee your appointments: a late cancellation or a missed session is billed to you, not to the organization.",
+        stacked: true,
+      },
+    ],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      lang === "fr" ? "Prise en charge confirmée" : "Coverage confirmed",
+      lang === "fr"
+        ? `${data.organizationName} paie vos séances${cap}.`
+        : `${data.organizationName} pays for your sessions${cap}.`,
+      lang === "fr"
+        ? "Une annulation tardive ou une absence vous reste facturée."
+        : "A late cancellation or a missed session is still billed to you.",
+    ],
+    lang,
+  );
+  const subject =
+    lang === "fr"
+      ? "Vos séances sont prises en charge — Je chemine"
+      : "Your sessions are covered — Je chemine";
+  return sendEmail(
+    { to: data.clientEmail, subject, html, text },
+    "client_coverage_confirmed",
+  ).catch((e) => {
+    console.error("sendClientCoverageConfirmedEmail:", e);
+    return false;
+  });
+}
+
+/**
+ * Spec 002: one covered session left — or none. Tells the client that the
+ * sessions after that are theirs to pay, so it never comes as a surprise.
+ */
+export async function sendClientCoverageCapEmail(data: {
+  kind: "last_session" | "exhausted";
+  clientEmail: string;
+  clientName: string;
+  organizationName: string;
+  used: number;
+  max: number;
+  locale?: "fr" | "en";
+}): Promise<boolean> {
+  const branding = await getBranding();
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const org = escapeHtml(data.organizationName);
+  const last = data.kind === "last_session";
+  const html = buildEmailHtml({
+    title: last
+      ? lang === "fr" ? "Il vous reste une séance couverte" : "One covered session left"
+      : lang === "fr" ? "Vos séances couvertes sont utilisées" : "Your covered sessions are used up",
+    theme: "warning",
+    greeting: lang === "fr" ? `Bonjour ${escapeHtml(data.clientName)},` : `Hello ${escapeHtml(data.clientName)},`,
+    intro: last
+      ? lang === "fr"
+        ? `Vous avez utilisé ${data.used} des ${data.max} séances payées par ${org}. Il vous en reste une. Les séances suivantes vous seront facturées, à moins que l’organisme ne prolonge sa prise en charge.`
+        : `You have used ${data.used} of the ${data.max} sessions paid by ${org}. One is left. Sessions after that will be billed to you, unless the organization extends its coverage.`
+      : lang === "fr"
+        ? `Les ${data.max} séances payées par ${org} sont maintenant utilisées. Vos prochaines séances vous seront facturées, à moins que l’organisme ne prolonge sa prise en charge — parlez-en à votre organisme si besoin.`
+        : `The ${data.max} sessions paid by ${org} are now used up. Your next sessions will be billed to you, unless the organization extends its coverage — check with your organization if needed.`,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      last
+        ? lang === "fr" ? "Il vous reste une séance couverte" : "One covered session left"
+        : lang === "fr" ? "Vos séances couvertes sont utilisées" : "Your covered sessions are used up",
+      `${data.organizationName} — ${data.used}/${data.max}`,
+      lang === "fr"
+        ? "Les séances suivantes vous seront facturées, sauf prolongation par l’organisme."
+        : "Later sessions will be billed to you unless the organization extends its coverage.",
+    ],
+    lang,
+  );
+  const subject = last
+    ? lang === "fr" ? "Il vous reste une séance couverte — Je chemine" : "One covered session left — Je chemine"
+    : lang === "fr" ? "Vos séances couvertes sont utilisées — Je chemine" : "Your covered sessions are used up — Je chemine";
+  return sendEmail(
+    { to: data.clientEmail, subject, html, text },
+    last ? "client_coverage_cap_warning" : "client_coverage_exhausted",
+  ).catch((e) => {
+    console.error("sendClientCoverageCapEmail:", e);
+    return false;
+  });
+}
+
+/**
+ * Spec 002: a client's coverage has one session left. Gives the team time to
+ * ask the organization for more sessions before the client starts paying.
+ */
+export async function sendAdminCoverageCapWarning(data: {
+  clientName: string;
+  clientId: string;
+  organizationName: string;
+  used: number;
+  max: number;
+}): Promise<boolean> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn("[admin_coverage_cap_warning] No admin recipients — set adminAlertEmail.");
+    return false;
+  }
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = `${base}/admin/dashboard/patients/${data.clientId}`;
+  const html = buildEmailHtml({
+    title: "Couverture : une séance restante",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `${escapeHtml(data.clientName)} a utilisé ${data.used} des ${data.max} séances payées par ${escapeHtml(data.organizationName)}. Il en reste une : demandez une prolongation à l’organisme si le suivi continue.`,
+    details: [
+      { label: "Client", value: escapeHtml(data.clientName) },
+      { label: "Organisme", value: escapeHtml(data.organizationName) },
+      { label: "Séances", value: `${data.used} / ${data.max}` },
+    ],
+    button: { text: "Voir le dossier", url },
+    branding,
+  });
+  const text = buildEmailText([
+    "Couverture : une séance restante",
+    `${data.clientName} — ${data.organizationName} — ${data.used}/${data.max}`,
+    url,
+  ]);
+  let sent = false;
+  for (const to of adminEmails) {
+    const ok = await sendEmail(
+      { to, subject: `Une séance couverte restante — ${data.clientName}`, html, text },
+      "admin_coverage_cap_warning",
+    ).catch((e) => {
+      console.error("sendAdminCoverageCapWarning:", e);
       return false;
     });
     sent = sent || ok;

@@ -1275,7 +1275,17 @@
       "endReasonPlaceholder": "Raison (facultatif)",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "declaredTitle": "Déclaré par le client : {name}",
+      "declaredHelp": "à confirmer",
+      "confirmDeclaration": "Confirmer…",
+      "rejectDeclaration": "Refuser",
+      "confirmTitle": "Confirmer la prise en charge",
+      "confirmHelp": "Choisissez l’organisme et ses conditions. Les séances déjà clôturées en attente de cette réponse seront facturées à l’organisme, et le client recevra un courriel de confirmation.",
+      "consentFromBooking": "Le client a coché le consentement lors de sa demande ; il est enregistré avec la couverture.",
+      "rejectTitle": "Refuser la déclaration ?",
+      "rejectBody": "{name} ne sera pas facturé. Les séances déjà clôturées en attente de cette réponse seront facturées au client, qui recevra la demande de paiement.",
+      "rejectReasonPlaceholder": "Raison (facultatif, interne)"
     },
     "payer": {
       "awaitingDecision": "Payeur à confirmer",
@@ -1640,6 +1650,18 @@
       "contactGuest": "Veuillez remplir tous les champs de contact obligatoires",
       "availabilityRequired": "Veuillez cocher au moins un créneau dans la grille de disponibilités.",
       "modalityRequired": "Veuillez sélectionner une modalité de rencontre"
+    },
+    "thirdPartyPayer": {
+      "question": "Un tiers paie mes séances (employeur, PAE, école…)",
+      "questionHelp": "Nous confirmerons avec l’organisme avant de le facturer.",
+      "organizationName": "Nom de l’organisme",
+      "organizationPlaceholder": "Ex. : PAE de mon employeur",
+      "caseNumber": "Numéro de dossier (si vous en avez un)",
+      "caseNumberPlaceholder": "Facultatif",
+      "consent": "J’autorise Je chemine à transmettre à cet organisme les renseignements nécessaires à la facturation de mes séances : mon nom, mon numéro de dossier, les dates et la durée des séances, les montants et le nom du professionnel. Le motif de consultation et le contenu des séances ne sont jamais transmis. Je peux retirer ce consentement en tout temps.",
+      "cardStillRequired": "Votre carte reste demandée pour garantir le rendez-vous : une annulation tardive ou une absence vous est facturée, pas à l’organisme.",
+      "organizationRequired": "Indiquez le nom de l’organisme qui paie vos séances.",
+      "consentRequired": "Cochez l’autorisation pour que nous puissions facturer l’organisme — ou décochez « Un tiers paie mes séances »."
     }
   },
   "Header": {
@@ -6828,5 +6850,17 @@
     "externalCta_podcast": "Écouter l'épisode",
     "ctaTitle": "D'autres contenus vous attendent.",
     "ctaButton": "Tous les médias"
+  },
+  "CoverageBadge": {
+    "title": "Séances payées par un tiers — aucun montant n’est affiché",
+    "usedOf": "{used}/{max} séances",
+    "used": "{used} séance(s)",
+    "kinds": {
+      "eap": "PAE",
+      "employer": "Employeur",
+      "school": "École",
+      "person": "Tiers payeur",
+      "other": "Tiers payeur"
+    }
   }
 }

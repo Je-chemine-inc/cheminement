@@ -35,12 +35,18 @@ vi.mock("@/lib/session-payer-reassign", () => ({
   PAYER_DECISIONS: ["organization", "client", "external"],
   reassignSessionPayer: h.reassign,
 }));
+vi.mock("@/lib/payer-declaration", () => ({
+  confirmPayerDeclaration: h.reassign,
+  rejectPayerDeclaration: h.reassign,
+}));
+vi.mock("@/lib/coverage-notices", () => ({ notifyCoverageConfirmed: vi.fn() }));
 vi.mock("@/models/Appointment", () => ({
   default: { updateOne: h.updateOne, exists: h.exists },
 }));
 
 import { POST } from "./route";
 import { PUT } from "../billing-override/route";
+import { POST as REVIEW } from "../payer-declaration/route";
 
 const req = (body: unknown) =>
   ({ json: async () => body }) as unknown as Parameters<typeof POST>[0];
@@ -144,5 +150,27 @@ describe("PUT /api/admin/appointments/[id]/billing-override", () => {
     h.updateOne.mockResolvedValue({ matchedCount: 0 });
     h.exists.mockResolvedValue(null);
     expect(((await PUT(req({ payer: "client" }), ctx())) as unknown as Res).status).toBe(404);
+  });
+});
+
+describe("POST /api/admin/appointments/[id]/payer-declaration — gate", () => {
+  const call = () => REVIEW(req({ action: "reject" }), ctx());
+
+  it("401 without an admin session", async () => {
+    h.getServerSession.mockResolvedValue({ user: { id: "u1", isAdmin: false, role: "client" } });
+    expect(((await call()) as unknown as Res).status).toBe(401);
+    expect(h.reassign).not.toHaveBeenCalled();
+  });
+
+  it("403 without manageBilling", async () => {
+    h.permissions = { manageUsers: true, manageBilling: false };
+    expect(((await call()) as unknown as Res).status).toBe(403);
+    expect(h.reassign).not.toHaveBeenCalled();
+  });
+
+  it("400 for an unknown action, and a confirm needs an organization", async () => {
+    expect(((await REVIEW(req({ action: "approve" }), ctx())) as unknown as Res).status).toBe(400);
+    expect(((await REVIEW(req({ action: "confirm" }), ctx())) as unknown as Res).status).toBe(400);
+    expect(h.reassign).not.toHaveBeenCalled();
   });
 });

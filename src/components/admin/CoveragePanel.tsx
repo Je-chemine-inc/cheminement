@@ -60,8 +60,18 @@ interface Coverage {
   consent: { status: "none" | "given" | "withdrawn"; recordedAt: string | null; method: string | null; note: string };
 }
 
+interface PendingDeclaration {
+  appointmentId: string;
+  organizationName: string;
+  caseNumber: string;
+  declaredAt: string | null;
+  beneficiaryName: string;
+}
+
 type TermsDraft = {
   id: string;
+  /** Set when the editor confirms what the client declared at booking. */
+  declarationId: string;
   organizationId: string;
   forLovedOne: boolean;
   firstName: string;
@@ -81,6 +91,7 @@ type TermsDraft = {
 
 const emptyTerms = (): TermsDraft => ({
   id: "",
+  declarationId: "",
   organizationId: "",
   forLovedOne: false,
   firstName: "",
@@ -108,6 +119,9 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [coverages, setCoverages] = useState<Coverage[]>([]);
+  const [declarations, setDeclarations] = useState<PendingDeclaration[]>([]);
+  const [rejecting, setRejecting] = useState<PendingDeclaration | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -130,7 +144,14 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
         return;
       }
       setAllowed(true);
-      if (res.ok) setCoverages(((await res.json()) as { coverages: Coverage[] }).coverages);
+      if (res.ok) {
+        const body = (await res.json()) as {
+          coverages: Coverage[];
+          pendingDeclarations?: PendingDeclaration[];
+        };
+        setCoverages(body.coverages);
+        setDeclarations(body.pendingDeclarations ?? []);
+      }
       const [orgRes, flagRes] = await Promise.all([
         fetch("/api/admin/organizations", { cache: "no-store" }),
         fetch("/api/admin/organization-billing", { cache: "no-store" }),
@@ -152,6 +173,20 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
     setError(null);
     setEditor(emptyTerms());
   };
+  const openConfirm = (d: PendingDeclaration) => {
+    setError(null);
+    // Preselect the organization whose name matches what the client typed.
+    const match = orgs.find(
+      (o) => o.name.trim().toLowerCase() === d.organizationName.trim().toLowerCase(),
+    );
+    setEditor({
+      ...emptyTerms(),
+      declarationId: d.appointmentId,
+      organizationId: match?.id ?? "",
+      caseNumber: d.caseNumber,
+    });
+  };
+
   const openEdit = (c: Coverage) => {
     setError(null);
     setEditor({
@@ -213,6 +248,17 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
       setError(t("organizationRequired"));
       return;
     }
+    if (editor.declarationId) {
+      return run(
+        () =>
+          fetch(`/api/admin/appointments/${editor.declarationId}/payer-declaration`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...terms, action: "confirm", organizationId: editor.organizationId }),
+          }),
+        () => setEditor(null),
+      );
+    }
     if (editor.consentGiven && !editor.consentNote.trim()) {
       setError(t("consentNoteRequired"));
       return;
@@ -258,6 +304,22 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
       () => {
         setConsentFor(null);
         setConsentNote("");
+      },
+    );
+  };
+
+  const confirmReject = () => {
+    if (!rejecting) return;
+    return run(
+      () =>
+        fetch(`/api/admin/appointments/${rejecting.appointmentId}/payer-declaration`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reject", reason: rejectReason }),
+        }),
+      () => {
+        setRejecting(null);
+        setRejectReason("");
       },
     );
   };
@@ -316,6 +378,49 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
       )}
       {orgs.length === 0 && !loading && (
         <p className="mb-4 text-xs text-muted-foreground">{t("noOrganizations")}</p>
+      )}
+
+      {declarations.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {declarations.map((d) => (
+            <div
+              key={d.appointmentId}
+              className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="space-y-0.5">
+                <p className="font-medium text-amber-900 dark:text-amber-200">
+                  {t("declaredTitle", { name: d.organizationName })}
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  {[
+                    d.caseNumber ? t("caseNumberValue", { value: d.caseNumber }) : "",
+                    d.beneficiaryName ? t("forLovedOne", { name: d.beneficiaryName }) : "",
+                    t("declaredHelp"),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => openConfirm(d)} disabled={orgs.length === 0}>
+                  {t("confirmDeclaration")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    setError(null);
+                    setRejectReason("");
+                    setRejecting(d);
+                  }}
+                >
+                  {t("rejectDeclaration")}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {loading ? (
@@ -399,8 +504,12 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
       <Dialog open={Boolean(editor)} onOpenChange={(o) => !o && setEditor(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editor?.id ? t("editTitle") : t("addTitle")}</DialogTitle>
-            <DialogDescription>{t("editorHelp")}</DialogDescription>
+            <DialogTitle>
+              {editor?.declarationId ? t("confirmTitle") : editor?.id ? t("editTitle") : t("addTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {editor?.declarationId ? t("confirmHelp") : t("editorHelp")}
+            </DialogDescription>
           </DialogHeader>
           {editor && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -417,6 +526,7 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
                       </SelectContent>
                     </Select>
                   </div>
+                  {!editor.declarationId && (
                   <div className="space-y-2 sm:col-span-2">
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -434,6 +544,7 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
                       </div>
                     )}
                   </div>
+                  )}
                 </>
               )}
               <div className="space-y-2">
@@ -492,7 +603,13 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
                   {t("negativeMarginWarning")}
                 </p>
               )}
-              {!editor.id && (
+              {editor.declarationId && (
+                <p className="flex items-center gap-2 rounded-md bg-green-50 p-2 text-xs text-green-800 sm:col-span-2 dark:bg-green-950/30 dark:text-green-300">
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                  {t("consentFromBooking")}
+                </p>
+              )}
+              {!editor.id && !editor.declarationId && (
                 <div className="space-y-2 rounded-md border border-border/60 p-3 sm:col-span-2">
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -554,6 +671,22 @@ export function CoveragePanel({ clientId }: { clientId: string }) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setConsentFor(null)} disabled={submitting}>{t("cancel")}</Button>
             <Button onClick={saveConsent} disabled={submitting}>{submitting ? t("saving") : t("save")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refuse a declaration */}
+      <Dialog open={Boolean(rejecting)} onOpenChange={(o) => !o && setRejecting(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("rejectTitle")}</DialogTitle>
+            <DialogDescription>{t("rejectBody", { name: rejecting?.organizationName ?? "" })}</DialogDescription>
+          </DialogHeader>
+          <Input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder={t("rejectReasonPlaceholder")} />
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejecting(null)} disabled={submitting}>{t("cancel")}</Button>
+            <Button variant="destructive" onClick={confirmReject} disabled={submitting}>{t("rejectDeclaration")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -22,6 +22,7 @@ import { voidReceiptForRefund } from "@/lib/payment-settlement";
 import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { redactPaymentForProfessional } from "@/lib/redact-payment";
+import { coverageBadgesFor } from "@/lib/coverage-badges";
 import { parseAppointmentDate } from "@/lib/appointment-date";
 import {
   pickAppointmentPatch,
@@ -103,8 +104,13 @@ export async function GET(
     }
 
     if (session.user.role === "professional") {
+      // Spec 002: the kind of payer and sessions used — never who or how much.
+      const badges = await coverageBadgesFor([appointment]).catch(() => new Map());
       return NextResponse.json(
-        redactPaymentForProfessional(appointment.toObject()),
+        redactPaymentForProfessional({
+          ...appointment.toObject(),
+          coverageBadge: badges.get(String(appointment._id)) ?? null,
+        }),
       );
     }
 
