@@ -1155,7 +1155,7 @@
         "billingCycle": "Invoicing",
         "autoSendPerSession": "Send per-session invoices without review",
         "requiresOwnForm": "The organization requires its own form",
-        "formNotesPlaceholder": "Which form, where to send it…",
+        "formNotesPlaceholder": "Which form, how to fill it in… (it goes out with each invoice, to the billing addresses)",
         "internalNotes": "Internal notes"
       },
       "kinds": {
@@ -1489,6 +1489,51 @@
             "title": "Payments to review",
             "hint": "Overpaid, disputed or refunded, or received on a void invoice. Nothing was refunded automatically."
           }
+        }
+      },
+      "form": {
+        "title": "Organization’s form",
+        "badgeRequired": "Form required",
+        "badgeAttached": "Form attached",
+        "badgeStale": "Form out of date",
+        "notSentYet": "not sent yet",
+        "attach": "Attach the form",
+        "replace": "Replace",
+        "remove": "Remove",
+        "download": "Download",
+        "cancel": "Cancel",
+        "chooseFile": "PDF file",
+        "fileLine": "{name} · {size} KB · attached {date}",
+        "notesTitle": "What the organization asks for",
+        "dialogTitle": "Attach the organization’s form",
+        "dialogBody": "One PDF of 5 MB at most, filled in by you. It goes out with the invoice to {org}.",
+        "confirmNoClinical": "I confirm this form contains no reason for consultation, no nature of services and no therapy type.",
+        "upload": "Attach",
+        "attachedNotice": "Form attached.",
+        "removeTitle": "Remove the form?",
+        "removeBody": "The invoice will no longer go out with this form. If the organization requires one, nothing is sent until another is attached.",
+        "removedNotice": "Form removed.",
+        "notScanned": "not scanned by the antivirus",
+        "staleBody": "The sessions changed since this form was attached: attach an updated one.",
+        "missingBody": "{org} requires its own form with each invoice. Attach it, or send without it.",
+        "sendWithForm": "Attached: the invoice and the organization’s form.",
+        "sendWithout": "Send without the form — this decision is recorded.",
+        "logWithForm": "with the form",
+        "logWithoutForm": "without the form, by an administrator’s decision",
+        "unbilledRequired": "Requires its own form with each invoice.",
+        "errors": {
+          "FILE_REQUIRED": "Choose the PDF to attach.",
+          "CONFIRMATION_REQUIRED": "Tick the confirmation: the organization receives this document.",
+          "FORM_NOT_PDF": "The file must be a readable PDF.",
+          "FORM_TOO_LARGE": "The PDF must be 5 MB or less.",
+          "FORM_INFECTED": "The antivirus rejected this file.",
+          "SCAN_UNAVAILABLE": "The antivirus is not answering: try again in a moment.",
+          "NOT_EDITABLE": "This invoice can no longer be sent: its form cannot change.",
+          "CHANGED_MEANWHILE": "The invoice changed meanwhile. Refresh the page.",
+          "OWN_FORM_MISSING": "The organization requires its form: attach it, or send without it.",
+          "OWN_FORM_STALE": "The sessions changed since the form was attached.",
+          "OWN_FORM_UNAVAILABLE": "The attached form cannot be read: attach it again.",
+          "FAILED": "The form could not be attached. Try again."
         }
       }
     },

@@ -1155,7 +1155,7 @@
         "billingCycle": "Facturation",
         "autoSendPerSession": "Envoyer les factures par séance sans révision",
         "requiresOwnForm": "L’organisme exige son propre formulaire",
-        "formNotesPlaceholder": "Quel formulaire, où l’envoyer…",
+        "formNotesPlaceholder": "Quel formulaire, comment le remplir… (il part avec chaque facture, aux adresses de facturation)",
         "internalNotes": "Notes internes"
       },
       "kinds": {
@@ -1489,6 +1489,51 @@
             "title": "Paiements à vérifier",
             "hint": "Trop-perçus, paiements contestés, remboursés ou reçus sur une facture annulée. Rien n’a été remboursé automatiquement."
           }
+        }
+      },
+      "form": {
+        "title": "Formulaire de l’organisme",
+        "badgeRequired": "Formulaire requis",
+        "badgeAttached": "Formulaire joint",
+        "badgeStale": "Formulaire à revoir",
+        "notSentYet": "pas encore envoyé",
+        "attach": "Joindre le formulaire",
+        "replace": "Remplacer",
+        "remove": "Retirer",
+        "download": "Télécharger",
+        "cancel": "Annuler",
+        "chooseFile": "Fichier PDF",
+        "fileLine": "{name} · {size} Ko · joint le {date}",
+        "notesTitle": "Ce que l’organisme demande",
+        "dialogTitle": "Joindre le formulaire de l’organisme",
+        "dialogBody": "Un seul PDF de 5 Mo au plus, que vous avez rempli. Il part avec la facture à {org}.",
+        "confirmNoClinical": "Je confirme que ce formulaire ne contient ni motif de consultation, ni nature des services, ni type de thérapie.",
+        "upload": "Joindre",
+        "attachedNotice": "Formulaire joint.",
+        "removeTitle": "Retirer le formulaire ?",
+        "removeBody": "La facture ne partira plus avec ce formulaire. Si l’organisme en exige un, rien ne lui sera envoyé avant qu’un autre soit joint.",
+        "removedNotice": "Formulaire retiré.",
+        "notScanned": "non analysé par l’antivirus",
+        "staleBody": "Les séances ont changé depuis que ce formulaire a été joint : joignez-en un à jour.",
+        "missingBody": "{org} exige son propre formulaire avec chaque facture. Joignez-le, ou envoyez sans lui.",
+        "sendWithForm": "Seront joints : la facture et le formulaire de l’organisme.",
+        "sendWithout": "Envoyer sans le formulaire — cette décision sera consignée.",
+        "logWithForm": "avec le formulaire",
+        "logWithoutForm": "sans le formulaire, par décision de l’administrateur",
+        "unbilledRequired": "Exige son propre formulaire avec chaque facture.",
+        "errors": {
+          "FILE_REQUIRED": "Choisissez le PDF à joindre.",
+          "CONFIRMATION_REQUIRED": "Cochez la confirmation : l’organisme recevra ce document.",
+          "FORM_NOT_PDF": "Le fichier doit être un PDF lisible.",
+          "FORM_TOO_LARGE": "Le PDF doit faire 5 Mo au plus.",
+          "FORM_INFECTED": "Fichier refusé par l’antivirus.",
+          "SCAN_UNAVAILABLE": "L’antivirus ne répond pas : réessayez dans un moment.",
+          "NOT_EDITABLE": "Cette facture ne peut plus être envoyée : son formulaire ne peut plus changer.",
+          "CHANGED_MEANWHILE": "La facture a changé entre-temps. Actualisez la page.",
+          "OWN_FORM_MISSING": "L’organisme exige son formulaire : joignez-le, ou envoyez sans lui.",
+          "OWN_FORM_STALE": "Les séances ont changé depuis que le formulaire a été joint.",
+          "OWN_FORM_UNAVAILABLE": "Le formulaire joint est illisible : joignez-le de nouveau.",
+          "FAILED": "Le formulaire n’a pas pu être joint. Réessayez."
         }
       }
     },

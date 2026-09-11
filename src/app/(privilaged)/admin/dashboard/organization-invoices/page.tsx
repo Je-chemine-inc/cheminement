@@ -5,9 +5,11 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
+  Download,
   Eye,
   FileText,
   Loader2,
+  Paperclip,
   RefreshCw,
   Send,
 } from "lucide-react";
@@ -33,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 import { OrganizationReceivablesPanel } from "@/components/admin/OrganizationReceivablesPanel";
+import { OrganizationFormDialog } from "@/components/admin/OrganizationFormDialog";
 
 type Status = "draft" | "issuing" | "sent" | "partially_paid" | "paid" | "overdue" | "void" | "refunded";
 const FILTERS = ["open", "draft", "sent", "overdue", "partially_paid", "paid", "void"] as const;
@@ -60,7 +63,25 @@ interface Invoice {
   dueAt: string | null;
   billToEmails: string[];
   lines: Line[];
-  sendLog: { at: string; to: string[]; kind: "sent" | "resent" | "reminder" | "payment_received" }[];
+  sendLog: {
+    at: string;
+    to: string[];
+    kind: "sent" | "resent" | "reminder" | "payment_received";
+    withForm: boolean;
+    withoutOwnForm: boolean;
+  }[];
+  // The organization's own claim form.
+  requiresOwnForm: boolean;
+  formNotes: string;
+  attachmentEditable: boolean;
+  attachment: {
+    fileName: string;
+    size: number;
+    scanStatus: "clean" | "skipped";
+    uploadedAt: string;
+    stale: boolean;
+    sent: boolean;
+  } | null;
   payments: {
     amountCents: number;
     refundedCents: number;
@@ -81,8 +102,14 @@ interface Unbilled {
   oldest: string | null;
   billingCycle: "per_session" | "monthly";
   hasBillingEmail: boolean;
+  requiresOwnForm: boolean;
 }
 type Blocked = { appointmentId: string; patientFullName: string; sessionDate: string };
+
+/** Nothing can go out until the form is attached (or sent without, on purpose). */
+const formMissing = (inv: Invoice) => inv.requiresOwnForm && !inv.attachment && inv.attachmentEditable;
+const formStale = (inv: Invoice) => Boolean(inv.attachment?.stale) && inv.attachmentEditable;
+const formBlocks = (inv: Invoice) => formMissing(inv) || formStale(inv);
 
 const money = (cents: number) => `${(cents / 100).toFixed(2).replace(".", ",")} $`;
 const previousMonth = () => {
@@ -124,7 +151,11 @@ export default function OrganizationInvoicesPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [periods, setPeriods] = useState<Record<string, string>>({});
 
-  const [sending, setSending] = useState<Invoice | null>(null);
+  const [sending, setSending] = useState<{ inv: Invoice; action: "send" | "resend" } | null>(null);
+  // Send to an organization that requires its form, without it — ticked on purpose.
+  const [withoutForm, setWithoutForm] = useState(false);
+  const [attaching, setAttaching] = useState<Invoice | null>(null);
+  const [removingForm, setRemovingForm] = useState<Invoice | null>(null);
   const [blocked, setBlocked] = useState<Blocked[] | null>(null);
   const [voiding, setVoiding] = useState<Invoice | null>(null);
   const [voidReason, setVoidReason] = useState("");
@@ -156,13 +187,20 @@ export default function OrganizationInvoicesPage() {
     };
   }, [filter, reloadKey]);
 
-  const act = async (key: string, url: string, body: unknown, onDone?: (b: Record<string, unknown>) => void) => {
+  const act = async (
+    key: string,
+    url: string,
+    body: unknown,
+    onDone?: (b: Record<string, unknown>) => void,
+    onRefused?: (b: Record<string, unknown>) => boolean,
+  ) => {
     setBusy(key);
     setError(null);
     setNotice(null);
     const r = await call(url, { method: "POST", body: JSON.stringify(body) });
     setBusy(null);
     if (!r.ok) {
+      if (onRefused?.(r.body)) return false;
       if (r.body?.code === "CONSENT_MISSING") setBlocked(r.body?.details?.blocked ?? []);
       else setError(r.body?.error ?? `Error ${r.status}`);
       return false;
@@ -185,7 +223,48 @@ export default function OrganizationInvoicesPage() {
         }, (b) => setNotice(t("draftsReady", { count: Number(b.drafted ?? 0) })));
 
   const invoiceAction = (inv: Invoice, body: Record<string, unknown>, done?: () => void) =>
-    act(`${body.action}-${inv.id}`, `/api/admin/organization-invoices/${inv.id}`, body, done);
+    act(`${body.action}-${inv.id}`, `/api/admin/organization-invoices/${inv.id}`, body, done, (b) => {
+      // The form went missing or stale since the page loaded: back to the send
+      // dialog, which says what to do.
+      if (b?.code === "OWN_FORM_MISSING" || b?.code === "OWN_FORM_STALE") {
+        const now: Invoice =
+          b.code === "OWN_FORM_MISSING"
+            ? { ...inv, requiresOwnForm: true, attachment: null }
+            : { ...inv, attachment: inv.attachment ? { ...inv.attachment, stale: true } : null };
+        setWithoutForm(false);
+        setSending({ inv: now, action: body.action === "resend" ? "resend" : "send" });
+        load();
+        return true;
+      }
+      if (b?.code === "OWN_FORM_UNAVAILABLE") {
+        setError(t("form.errors.OWN_FORM_UNAVAILABLE"));
+        return true;
+      }
+      return false;
+    });
+
+  const openSend = (inv: Invoice, action: "send" | "resend") => {
+    setWithoutForm(false);
+    setSending({ inv, action });
+  };
+
+  const removeForm = async (inv: Invoice) => {
+    setBusy(`removeForm-${inv.id}`);
+    setError(null);
+    setNotice(null);
+    const r = await call(`/api/admin/organization-invoices/${inv.id}/attachment`, { method: "DELETE" });
+    setBusy(null);
+    if (!r.ok) {
+      setError(
+        typeof r.body?.code === "string" && t.has(`form.errors.${r.body.code}`)
+          ? t(`form.errors.${r.body.code}`)
+          : (r.body?.error ?? `Error ${r.status}`),
+      );
+      return;
+    }
+    setNotice(t("form.removedNotice"));
+    load();
+  };
 
   const openPdf = (inv: Invoice) =>
     window.open(`/api/admin/organization-invoices/${inv.id}/pdf?inline=1`, "_blank", "noopener,noreferrer");
@@ -241,6 +320,9 @@ export default function OrganizationInvoicesPage() {
                   </p>
                   {!u.hasBillingEmail && (
                     <p className="text-xs text-amber-700">{t("noBillingEmail")}</p>
+                  )}
+                  {u.requiresOwnForm && (
+                    <p className="text-xs text-muted-foreground">{t("form.unbilledRequired")}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -311,6 +393,22 @@ export default function OrganizationInvoicesPage() {
                             {t("overpaid", { amount: money(-inv.balanceCents) })}
                           </Badge>
                         )}
+                        {formStale(inv) ? (
+                          <Badge variant="outline" className="border-transparent bg-red-100 text-red-800">
+                            {t("form.badgeStale")}
+                          </Badge>
+                        ) : inv.attachment ? (
+                          <Badge variant="outline" className="border-transparent bg-green-100 text-green-800">
+                            {t("form.badgeAttached")}
+                            {!inv.attachment.sent && ["sent", "overdue", "partially_paid"].includes(inv.status)
+                              ? ` · ${t("form.notSentYet")}`
+                              : ""}
+                          </Badge>
+                        ) : formMissing(inv) ? (
+                          <Badge variant="outline" className="border-transparent bg-amber-100 text-amber-800">
+                            {t("form.badgeRequired")}
+                          </Badge>
+                        ) : null}
                       </span>
                       <span className="block text-sm">{inv.organizationName}</span>
                       <span className="block text-xs text-muted-foreground">
@@ -328,13 +426,18 @@ export default function OrganizationInvoicesPage() {
                     <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => openPdf(inv)}>
                       <Eye className="h-3.5 w-3.5" /> PDF
                     </Button>
+                    {formMissing(inv) && (
+                      <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setAttaching(inv)}>
+                        <Paperclip className="h-3.5 w-3.5" /> {t("form.attach")}
+                      </Button>
+                    )}
                     {inv.status === "draft" && (
                       <>
                         <Button size="sm" variant="outline" className="h-8" disabled={busy === `refresh-${inv.id}`}
                           onClick={() => invoiceAction(inv, { action: "refresh" }, () => setNotice(t("refreshed")))}>
                           {t("refreshDraft")}
                         </Button>
-                        <Button size="sm" className="h-8 gap-1" onClick={() => setSending(inv)}>
+                        <Button size="sm" className="h-8 gap-1" onClick={() => openSend(inv, "send")}>
                           <Send className="h-3.5 w-3.5" /> {t("send")}
                         </Button>
                         <Button size="sm" variant="ghost" className="h-8 text-destructive hover:text-destructive"
@@ -344,14 +447,19 @@ export default function OrganizationInvoicesPage() {
                       </>
                     )}
                     {inv.status === "issuing" && (
-                      <Button size="sm" className="h-8 gap-1" onClick={() => setSending(inv)}>
+                      <Button size="sm" className="h-8 gap-1" onClick={() => openSend(inv, "send")}>
                         <Send className="h-3.5 w-3.5" /> {t("retrySend")}
                       </Button>
                     )}
                     {["sent", "overdue", "partially_paid"].includes(inv.status) && (
                       <>
                         <Button size="sm" variant="outline" className="h-8" disabled={busy === `resend-${inv.id}`}
-                          onClick={() => invoiceAction(inv, { action: "resend" }, () => setNotice(t("resent")))}>
+                          onClick={() =>
+                            // Without a usable form, the dialog explains and offers to send without it.
+                            formBlocks(inv)
+                              ? openSend(inv, "resend")
+                              : invoiceAction(inv, { action: "resend" }, () => setNotice(t("resent")))
+                          }>
                           {t("resend")}
                         </Button>
                         <Button size="sm" className="h-8" onClick={() => {
@@ -372,6 +480,55 @@ export default function OrganizationInvoicesPage() {
                 </div>
                 {expanded === inv.id && (
                   <div className="bg-muted/30 px-6 py-3 text-xs space-y-1">
+                    {(inv.requiresOwnForm || inv.attachment) && (
+                      <div className="mb-2 space-y-1 rounded-md border border-border/60 bg-background p-2">
+                        <p className="font-medium">{t("form.title")}</p>
+                        {inv.formNotes && (
+                          <p className="whitespace-pre-line text-muted-foreground">
+                            {t("form.notesTitle")} : {inv.formNotes}
+                          </p>
+                        )}
+                        {inv.attachment ? (
+                          <>
+                            <p>
+                              {t("form.fileLine", {
+                                name: inv.attachment.fileName,
+                                size: Math.max(1, Math.round(inv.attachment.size / 1024)),
+                                date: new Date(inv.attachment.uploadedAt).toLocaleDateString("fr-CA"),
+                              })}
+                              {inv.attachment.scanStatus === "skipped" ? ` · ${t("form.notScanned")}` : ""}
+                            </p>
+                            {formStale(inv) && <p className="text-red-700">{t("form.staleBody")}</p>}
+                            <div className="flex flex-wrap gap-3 pt-1">
+                              <a
+                                href={`/api/admin/organization-invoices/${inv.id}/attachment`}
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                              >
+                                <Download className="h-3.5 w-3.5" /> {t("form.download")}
+                              </a>
+                              {inv.attachmentEditable && (
+                                <>
+                                  <button className="text-primary hover:underline" onClick={() => setAttaching(inv)}>
+                                    {t("form.replace")}
+                                  </button>
+                                  <button
+                                    className="text-destructive hover:underline"
+                                    disabled={busy === `removeForm-${inv.id}`}
+                                    onClick={() => setRemovingForm(inv)}
+                                  >
+                                    {t("form.remove")}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        ) : inv.attachmentEditable ? (
+                          <button className="text-primary hover:underline" onClick={() => setAttaching(inv)}>
+                            {t("form.attach")}
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
                     {inv.lines.map((l) => (
                       <div key={l.appointmentId} className="flex flex-wrap justify-between gap-2">
                         <span>
@@ -423,7 +580,15 @@ export default function OrganizationInvoicesPage() {
                     {inv.sendLog.length > 0 && (
                       <p className="pt-2 text-muted-foreground">
                         {inv.sendLog
-                          .map((s) => `${t(`logKinds.${s.kind}`)} : ${t("sentTo", { date: new Date(s.at).toLocaleString("fr-CA"), to: s.to.join(", ") })}`)
+                          .map(
+                            (s) =>
+                              `${t(`logKinds.${s.kind}`)} : ${t("sentTo", { date: new Date(s.at).toLocaleString("fr-CA"), to: s.to.join(", ") })}` +
+                              (s.withForm
+                                ? ` (${t("form.logWithForm")})`
+                                : s.withoutOwnForm
+                                  ? ` (${t("form.logWithoutForm")})`
+                                  : ""),
+                          )
                           .join(" · ")}
                       </p>
                     )}
@@ -435,34 +600,117 @@ export default function OrganizationInvoicesPage() {
         )}
       </section>
 
-      {/* Send */}
-      <Dialog open={Boolean(sending)} onOpenChange={(o) => !o && setSending(null)}>
+      {/* Send (hidden while the form is being attached, then back with it) */}
+      <Dialog open={Boolean(sending) && !attaching} onOpenChange={(o) => !o && setSending(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("sendTitle")}</DialogTitle>
             <DialogDescription>
               {sending
                 ? t("sendBody", {
-                    org: sending.organizationName,
-                    patients: patients(sending),
-                    total: money(sending.totalCents),
+                    org: sending.inv.organizationName,
+                    patients: patients(sending.inv),
+                    total: money(sending.inv.totalCents),
                   })
                 : ""}
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">{t("sendConsentNote")}</p>
+          {sending && formBlocks(sending.inv) ? (
+            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <p>
+                {formStale(sending.inv)
+                  ? t("form.staleBody")
+                  : t("form.missingBody", { org: sending.inv.organizationName })}
+              </p>
+              {sending.inv.formNotes && (
+                <p className="whitespace-pre-line text-xs">
+                  {t("form.notesTitle")} : {sending.inv.formNotes}
+                </p>
+              )}
+              <Button size="sm" variant="outline" className="gap-1 bg-background" onClick={() => setAttaching(sending.inv)}>
+                <Paperclip className="h-3.5 w-3.5" /> {t("form.attach")}
+              </Button>
+              <label className="flex items-start gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={withoutForm}
+                  onChange={(e) => setWithoutForm(e.target.checked)}
+                />
+                <span>{t("form.sendWithout")}</span>
+              </label>
+            </div>
+          ) : sending?.inv.attachment ? (
+            <p className="text-xs text-muted-foreground">{t("form.sendWithForm")}</p>
+          ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSending(null)}>{t("cancel")}</Button>
             <Button
-              disabled={busy === `send-${sending?.id}`}
+              disabled={
+                !sending ||
+                busy === `${sending.action}-${sending.inv.id}` ||
+                (formBlocks(sending.inv) && !withoutForm)
+              }
               onClick={async () => {
                 if (!sending) return;
-                const inv = sending;
+                const { inv, action } = sending;
+                const skipForm = formBlocks(inv) && withoutForm;
                 setSending(null);
-                await invoiceAction(inv, { action: "send" }, () => setNotice(t("sentNotice")));
+                setWithoutForm(false);
+                await invoiceAction(
+                  inv,
+                  { action, ...(skipForm ? { withoutOwnForm: true } : {}) },
+                  () => setNotice(action === "resend" ? t("resent") : t("sentNotice")),
+                );
               }}
             >
-              <FileText className="mr-1 h-4 w-4" /> {t("send")}
+              <FileText className="mr-1 h-4 w-4" /> {sending?.action === "resend" ? t("resend") : t("send")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* The organization's own form */}
+      <OrganizationFormDialog
+        target={
+          attaching
+            ? { id: attaching.id, organizationName: attaching.organizationName, formNotes: attaching.formNotes }
+            : null
+        }
+        onClose={() => setAttaching(null)}
+        onAttached={(invoice) => {
+          const fresh = invoice as Invoice | undefined;
+          setAttaching(null);
+          setNotice(t("form.attachedNotice"));
+          // Back in the send dialog, now with the form.
+          if (fresh && sending?.inv.id === fresh.id) {
+            setSending({ ...sending, inv: fresh });
+            setWithoutForm(false);
+          }
+          load();
+        }}
+      />
+
+      {/* Remove the form */}
+      <Dialog open={Boolean(removingForm)} onOpenChange={(o) => !o && setRemovingForm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("form.removeTitle")}</DialogTitle>
+            <DialogDescription>{t("form.removeBody")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemovingForm(null)}>{t("cancel")}</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!removingForm) return;
+                const inv = removingForm;
+                setRemovingForm(null);
+                await removeForm(inv);
+              }}
+            >
+              {t("form.remove")}
             </Button>
           </DialogFooter>
         </DialogContent>
