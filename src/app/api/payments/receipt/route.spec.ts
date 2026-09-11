@@ -15,6 +15,9 @@ const h = vi.hoisted(() => {
   const getServerSession = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
   const makeQuery = (result: unknown) => ({
+    select() {
+      return this;
+    },
     populate() {
       return this;
     },

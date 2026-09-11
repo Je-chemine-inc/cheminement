@@ -6436,6 +6436,92 @@ export async function sendAdminNewServiceRequestAlert(data: {
   }
 }
 
+/** Why a closed session is being held, in words an admin can act on. */
+const THIRD_PARTY_HOLD_REASONS_FR: Record<string, string> = {
+  declaration_pending:
+    "Le client a déclaré un organisme payeur qui n'a pas encore été confirmé.",
+  per_session_undecided:
+    "Couverture « au choix par séance » : aucun payeur n'a été choisi pour cette séance.",
+  consent_missing:
+    "Le consentement du client n'est pas enregistré : l'organisme ne peut pas être facturé.",
+  organization_without_coverage:
+    "« Organisme » a été choisi pour cette séance, mais aucune couverture n'est liée au client.",
+};
+
+/**
+ * Spec 002: a session was closed but nobody has decided who pays, so nothing was
+ * charged. Tells the team what is blocking it. Contains no clinical detail —
+ * only the client, the date and the reason. Returns true once a copy went out,
+ * so the caller can record that the alert was sent.
+ */
+export async function sendAdminThirdPartyDecisionAlert(data: {
+  clientName: string;
+  appointmentId: string;
+  appointmentDateLabel: string;
+  reason: string;
+  organizationName?: string;
+}): Promise<boolean> {
+  await connectToDatabase();
+  const adminEmails = await getAdminAlertRecipients();
+  if (adminEmails.length === 0) {
+    console.warn(
+      "[admin_third_party_decision_needed] No admin recipients — set adminAlertEmail. " +
+        "A closed session is waiting for a payer decision and nobody was told.",
+    );
+    return false;
+  }
+
+  const branding = await getBranding();
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const adminUrl = `${base}/admin/dashboard/billing`;
+  const why =
+    THIRD_PARTY_HOLD_REASONS_FR[data.reason] ??
+    "Le payeur de cette séance est à confirmer.";
+
+  const html = buildEmailHtml({
+    title: "Payeur à confirmer",
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro: `La séance de ${data.clientName} du ${data.appointmentDateLabel} a été clôturée, mais on ne sait pas encore qui la paie. Rien n'a été facturé : un administrateur doit décider.`,
+    details: [
+      { label: "Client", value: data.clientName },
+      { label: "Date séance", value: data.appointmentDateLabel },
+      ...(data.organizationName
+        ? [{ label: "Organisme déclaré", value: data.organizationName }]
+        : []),
+      { label: "Raison", value: why },
+      { label: "ID RDV", value: data.appointmentId },
+    ],
+    button: { text: "Voir la facturation", url: adminUrl },
+    branding,
+  });
+  const text = buildEmailText([
+    "Payeur à confirmer — séance clôturée",
+    `Client : ${data.clientName}`,
+    `Date : ${data.appointmentDateLabel}`,
+    `Raison : ${why}`,
+    `RDV : ${data.appointmentId}`,
+    adminUrl,
+  ]);
+  const subject = `Payeur à confirmer — ${data.clientName}`;
+
+  let sent = false;
+  for (const to of adminEmails) {
+    const ok = await sendEmail(
+      { to, subject, html, text },
+      "admin_third_party_decision_needed",
+    ).catch((e) => {
+      console.error("sendAdminThirdPartyDecisionAlert:", e);
+      return false;
+    });
+    sent = sent || ok;
+  }
+  return sent;
+}
+
 /**
  * Alert admins when every proposed professional has refused an appointment
  * and the routing has cascaded to `routingStatus: "general"`. Without this

@@ -4,6 +4,7 @@ import Profile from "@/models/Profile";
 import ClientReceipt from "@/models/ClientReceipt";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
 import {
+  sendAdminThirdPartyDecisionAlert,
   sendFiscalReceiptEmail,
   sendSessionInvoiceEmail,
 } from "@/lib/notifications";
@@ -21,6 +22,7 @@ import { nextInvoiceNumber } from "@/lib/invoice-number";
 import { resolveInteracReferenceCode } from "@/lib/interac-reference";
 import mongoose from "mongoose";
 import { cycleKeyFromDateOrNow } from "@/lib/ledger-cycle";
+import { fromCents } from "@/lib/money-cents";
 
 const BILLABLE_OUTCOMES = new Set(["completed", "cancelled_late", "no_show"]);
 
@@ -60,7 +62,10 @@ function buildDateLabel(date?: Date | null, time?: string): string {
 export async function issueFiscalReceipt(appointmentId: string): Promise<void> {
   await connectToDatabase();
 
+  // `+thirdPartyBilling` (select:false): an external session's receipt names
+  // who paid outside the platform (spec 002).
   const appointment = await Appointment.findById(appointmentId)
+    .select("+thirdPartyBilling")
     .populate("clientId", "firstName lastName email language")
     .populate("professionalId", "firstName lastName email");
 
@@ -172,6 +177,7 @@ export async function runSessionClosureSideEffects(
   await connectToDatabase();
 
   const appointment = await Appointment.findById(appointmentId)
+    .select("+thirdPartyBilling")
     .populate("clientId", "firstName lastName email language phone status")
     .populate("professionalId", "firstName lastName email");
 
@@ -207,8 +213,25 @@ export async function runSessionClosureSideEffects(
     email?: string;
   } | null;
 
+  // Spec 002: when a third party pays part or all of the session, the client's
+  // `payment` holds only their share — 0 when an organization pays in full. The
+  // professional is still owed for the whole session, so the ledger reads the
+  // payer snapshot's TOTALS. Gating it on `price > 0` alone would silently stop
+  // paying professionals for every covered session.
+  const tpb = appointment.thirdPartyBilling;
+  const orgCents = tpb?.orgAmountCents ?? 0;
+  const sessionBillable =
+    (price > 0 || orgCents > 0) && !!outcome && BILLABLE_OUTCOMES.has(outcome);
+
   const proId = professional?._id?.toString();
-  if (proId && billable) {
+  if (proId && sessionBillable) {
+    const clientChannel =
+      appointment.payment.method === "transfer"
+        ? "transfer"
+        : appointment.payment.method === "card" ||
+            appointment.payment.method === "direct_debit"
+          ? "stripe"
+          : "none";
     try {
       await ProfessionalLedgerEntry.create({
         professionalId: new mongoose.Types.ObjectId(proId),
@@ -218,16 +241,21 @@ export async function runSessionClosureSideEffects(
         ),
         appointmentId: appointment._id,
         sessionActNature: appointment.sessionActNature,
-        grossAmountCad: price,
-        platformFeeCad: appointment.payment.platformFee,
-        netToProfessionalCad: appointment.payment.professionalPayout,
-        paymentChannel:
-          appointment.payment.method === "transfer"
-            ? "transfer"
-            : appointment.payment.method === "card" ||
-                appointment.payment.method === "direct_debit"
-              ? "stripe"
-              : "none",
+        ...(tpb
+          ? {
+              grossAmountCad: fromCents(tpb.clientAmountCents + tpb.orgAmountCents),
+              platformFeeCad: fromCents(tpb.platformFeeTotalCents),
+              netToProfessionalCad: fromCents(tpb.proPayoutTotalCents),
+              paymentChannel: orgCents > 0 ? "organization" : clientChannel,
+              clientAmountCad: fromCents(tpb.clientAmountCents),
+              orgAmountCad: fromCents(orgCents),
+            }
+          : {
+              grossAmountCad: price,
+              platformFeeCad: appointment.payment.platformFee,
+              netToProfessionalCad: appointment.payment.professionalPayout,
+              paymentChannel: clientChannel,
+            }),
       });
     } catch (e: unknown) {
       const code = (e as { code?: number })?.code;
@@ -237,6 +265,36 @@ export async function runSessionClosureSideEffects(
     }
   }
 
+  // Nobody has decided who pays: nothing was charged, so the team must be told
+  // — exactly once. The claim is the stamp; a failed send gives it back.
+  if (tpb?.state === "awaiting_decision" && !tpb.decisionAlertSentAt) {
+    const claim = await Appointment.updateOne(
+      {
+        _id: appointment._id,
+        "thirdPartyBilling.state": "awaiting_decision",
+        "thirdPartyBilling.decisionAlertSentAt": { $exists: false },
+      },
+      { $set: { "thirdPartyBilling.decisionAlertSentAt": new Date() } },
+    );
+    if (claim.modifiedCount === 1) {
+      const sent = await sendAdminThirdPartyDecisionAlert({
+        clientName: recipient.name,
+        appointmentId: String(appointment._id),
+        appointmentDateLabel: buildDateLabel(appointment.date, appointment.time),
+        reason: tpb.reason,
+        organizationName: appointment.payerDeclaration?.organizationName,
+      }).catch(() => false);
+      if (!sent) {
+        await Appointment.updateOne(
+          { _id: appointment._id },
+          { $unset: { "thirdPartyBilling.decisionAlertSentAt": "" } },
+        );
+      }
+    }
+  }
+
+  // `billable` is the CLIENT's share. When a third party pays everything it is
+  // 0: no invoice number, no payment request, no email to the client.
   if (!billable || !professional) {
     return;
   }

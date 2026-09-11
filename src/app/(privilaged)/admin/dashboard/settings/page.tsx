@@ -149,6 +149,12 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé automatiquement à un client lorsqu'il soumet le formulaire de demande pour lui-même ou un proche. N'affecte PAS l'alerte envoyée à l'équipe.",
     category: "Bienvenue & Relances",
   },
+  admin_third_party_decision_needed: {
+    name: "Alerte équipe — payeur à confirmer",
+    description:
+      "Envoyé à l'équipe quand une séance est clôturée sans que l'on sache qui paie (organisme non confirmé, choix par séance non fait, consentement manquant). Rien n'est facturé tant qu'un administrateur n'a pas décidé.",
+    category: "Alertes administratives",
+  },
   admin_new_service_request: {
     name: "Alerte équipe — nouvelle demande de service",
     description:
@@ -251,6 +257,9 @@ const EMAIL_TEMPLATE_INFO: Record<
   },
 };
 
+// Every category used in EMAIL_TEMPLATE_INFO must be listed here, or its
+// toggles are silently never rendered ("Alertes administratives" and
+// "Ressources" were missing, hiding three toggles).
 const TEMPLATE_CATEGORIES = [
   "Bienvenue & Relances",
   "Authentification",
@@ -258,6 +267,8 @@ const TEMPLATE_CATEGORIES = [
   "Réservation invité",
   "Paiements",
   "Professionnels",
+  "Ressources",
+  "Alertes administratives",
 ];
 
 export default function SettingsPage() {

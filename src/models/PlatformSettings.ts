@@ -29,6 +29,8 @@ export type EmailNotificationType =
   // Sharing it meant switching off the client welcome email also silently
   // switched off the team's own new-demande alerts.
   | "admin_new_service_request"
+  // Spec 002: a closed session is held because nobody has decided who pays.
+  | "admin_third_party_decision_needed"
   | "interac_transfer_instructions"
   | "payment_guarantee_day1_reminder"
   | "payment_guarantee_day2_reminder"
@@ -280,6 +282,10 @@ const defaultEmailTemplates: Record<
   admin_new_service_request: {
     enabled: true,
     subject: "Nouvelle demande de service — Je chemine",
+  },
+  admin_third_party_decision_needed: {
+    enabled: true,
+    subject: "Payeur à confirmer — séance clôturée — Je chemine",
   },
   interac_transfer_instructions: {
     enabled: true,

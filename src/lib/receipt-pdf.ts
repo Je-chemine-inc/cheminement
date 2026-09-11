@@ -106,6 +106,8 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     };
     clientId: unknown;
     professionalId: unknown;
+    /** Spec 002 — only `kind` and the external label are read here. */
+    thirdPartyBilling?: { kind?: string; externalPayerLabel?: string } | null;
   },
   professionalLicense?: string,
   professionalTitle?: string,
@@ -198,7 +200,13 @@ export function buildFiscalReceiptInputFromPopulatedAppointment(
     professionalPayoutCad: appointment.payment.professionalPayout,
     paymentStatus: paymentPendingTransfer ? "pending_transfer" : "paid",
     paymentMethodLabel:
-      appointment.payment.method === "transfer"
+      // Settled outside the platform: say by whom, so the client cannot also
+      // claim it from their own insurer (owner's rule, spec 002).
+      appointment.thirdPartyBilling?.kind === "external"
+        ? `Réglé hors plateforme — payeur : ${
+            appointment.thirdPartyBilling.externalPayerLabel || "Hors plateforme"
+          }`
+        : appointment.payment.method === "transfer"
         ? "Virement Interac"
         : appointment.payment.method === "direct_debit"
           ? "Prélèvement bancaire (PAD)"

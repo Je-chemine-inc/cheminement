@@ -20,7 +20,11 @@ const h = vi.hoisted(() => {
   const ledgerCreate = vi.fn().mockResolvedValue(null);
   const nextInvoiceNumber = vi.fn().mockResolvedValue("JC-2026-000001");
   const resolveBillingUrl = vi.fn().mockResolvedValue("https://x/pay");
+  const aptUpdateOne = vi.fn().mockResolvedValue({ modifiedCount: 1 });
+  const decisionAlert = vi.fn().mockResolvedValue(true);
   return {
+    aptUpdateOne,
+    decisionAlert,
     store,
     sendFiscalReceiptEmail,
     sendSessionInvoiceEmail,
@@ -36,6 +40,9 @@ const h = vi.hoisted(() => {
 });
 
 const makeQuery = (result: unknown) => ({
+  select() {
+    return this;
+  },
   populate() {
     return this;
   },
@@ -49,6 +56,7 @@ vi.mock("@/models/Appointment", () => ({
   default: {
     findById: () => makeQuery(h.store.appointment),
     findByIdAndUpdate: h.aptFindByIdAndUpdate,
+    updateOne: h.aptUpdateOne,
   },
 }));
 vi.mock("@/models/Profile", () => ({
@@ -67,6 +75,7 @@ vi.mock("@/lib/notifications", () => ({
   sendFiscalReceiptEmail: h.sendFiscalReceiptEmail,
   sendSessionInvoiceEmail: h.sendSessionInvoiceEmail,
   sendInteracTransferInstructionsEmail: h.sendInteracTransferInstructionsEmail,
+  sendAdminThirdPartyDecisionAlert: h.decisionAlert,
 }));
 vi.mock("@/lib/sms", () => ({ sendSessionInvoiceSms: h.sendSessionInvoiceSms }));
 vi.mock("@/lib/receipt-pdf", () => ({
@@ -112,7 +121,13 @@ const baseClient = {
   phone: "+15145551234",
   status: "active",
 };
-const basePro = { _id: { toString: () => "p1" }, firstName: "Sam", lastName: "Pro" };
+// A real ObjectId string: the ledger write builds an ObjectId from it, and "p1"
+// made that throw silently, so no test ever exercised the ledger.
+const basePro = {
+  _id: { toString: () => "bbbbbbbbbbbbbbbbbbbbbbbb" },
+  firstName: "Sam",
+  lastName: "Pro",
+};
 
 function makeAppointment(overrides: Record<string, unknown> = {}) {
   return {
@@ -144,6 +159,8 @@ beforeEach(() => {
   h.store.appointment = null;
   h.store.existingPaid = null;
   h.receiptFindOne.mockImplementation(() => Promise.resolve(h.store.existingPaid));
+  h.aptUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+  h.decisionAlert.mockResolvedValue(true);
 });
 
 describe("issueFiscalReceipt — golden rule", () => {
@@ -210,5 +227,132 @@ describe("runSessionClosureSideEffects — unpaid closure sends a payment reques
     await runSessionClosureSideEffects("apt1");
     expect(h.sendFiscalReceiptEmail).toHaveBeenCalledTimes(1);
     expect(h.sendSessionInvoiceEmail).not.toHaveBeenCalled();
+  });
+});
+
+/** Spec 002 — a third party pays part or all of the session. */
+describe("runSessionClosureSideEffects — third-party payer", () => {
+  // $120 session, pro share 90 %, as the resolver would have written it.
+  const snapshot = (over: Record<string, unknown> = {}) => ({
+    kind: "organization",
+    state: "confirmed",
+    reason: "org_full",
+    listPriceCents: 12000,
+    orgAmountCents: 12000,
+    clientAmountCents: 0,
+    platformFeeTotalCents: 1200,
+    proPayoutTotalCents: 10800,
+    ...over,
+  });
+  const covered = (over: Record<string, unknown> = {}) =>
+    makeAppointment({
+      invoiceNumber: undefined,
+      payment: { status: "covered", price: 0, platformFee: 0, professionalPayout: 0, method: "card" },
+      thirdPartyBilling: snapshot(),
+      ...over,
+    });
+  const ledgerRow = () => h.ledgerCreate.mock.calls[0]?.[0] as Record<string, unknown>;
+
+  it("credits the professional for the WHOLE session even when the client owes 0", async () => {
+    h.store.appointment = covered();
+    await runSessionClosureSideEffects("apt1");
+    expect(h.ledgerCreate).toHaveBeenCalledTimes(1);
+    expect(ledgerRow()).toMatchObject({
+      grossAmountCad: 120,
+      platformFeeCad: 12,
+      netToProfessionalCad: 108,
+      paymentChannel: "organization",
+      clientAmountCad: 0,
+      orgAmountCad: 120,
+    });
+  });
+
+  it("sends the client nothing and allocates no invoice number when the org pays it all", async () => {
+    h.store.appointment = covered();
+    await runSessionClosureSideEffects("apt1");
+    expect(h.nextInvoiceNumber).not.toHaveBeenCalled();
+    expect(h.sendSessionInvoiceEmail).not.toHaveBeenCalled();
+    expect(h.sendSessionInvoiceSms).not.toHaveBeenCalled();
+    expect(h.sendFiscalReceiptEmail).not.toHaveBeenCalled();
+  });
+
+  it("co-pay: the client is asked for their share only; the ledger still has the total", async () => {
+    h.store.appointment = makeAppointment({
+      payment: { status: "pending", price: 30, platformFee: 3, professionalPayout: 27, method: "card" },
+      thirdPartyBilling: snapshot({ reason: "org_rate_gap", orgAmountCents: 9000, clientAmountCents: 3000 }),
+    });
+    await runSessionClosureSideEffects("apt1");
+    expect(h.sendSessionInvoiceEmail).toHaveBeenCalledTimes(1);
+    expect(h.sendSessionInvoiceEmail.mock.calls[0][0]).toMatchObject({ amountCad: 30 });
+    expect(ledgerRow()).toMatchObject({
+      grossAmountCad: 120,
+      netToProfessionalCad: 108,
+      clientAmountCad: 30,
+      orgAmountCad: 90,
+    });
+  });
+
+  it("a session held for a payer decision alerts the team exactly once", async () => {
+    h.store.appointment = covered({
+      thirdPartyBilling: snapshot({ state: "awaiting_decision", reason: "declaration_pending" }),
+      payerDeclaration: { organizationName: "PAE Desjardins" },
+    });
+    await runSessionClosureSideEffects("apt1");
+    expect(h.aptUpdateOne).toHaveBeenCalledWith(
+      {
+        _id: expect.anything(),
+        "thirdPartyBilling.state": "awaiting_decision",
+        "thirdPartyBilling.decisionAlertSentAt": { $exists: false },
+      },
+      { $set: { "thirdPartyBilling.decisionAlertSentAt": expect.any(Date) } },
+    );
+    expect(h.decisionAlert).toHaveBeenCalledTimes(1);
+    expect(h.decisionAlert.mock.calls[0][0]).toMatchObject({
+      reason: "declaration_pending",
+      organizationName: "PAE Desjardins",
+    });
+  });
+
+  it("does not alert twice when another run already claimed it", async () => {
+    h.store.appointment = covered({
+      thirdPartyBilling: snapshot({ state: "awaiting_decision", reason: "consent_missing" }),
+    });
+    h.aptUpdateOne.mockResolvedValueOnce({ modifiedCount: 0 });
+    await runSessionClosureSideEffects("apt1");
+    expect(h.decisionAlert).not.toHaveBeenCalled();
+  });
+
+  it("gives the claim back when the alert could not be sent", async () => {
+    h.store.appointment = covered({
+      thirdPartyBilling: snapshot({ state: "awaiting_decision", reason: "consent_missing" }),
+    });
+    h.decisionAlert.mockResolvedValueOnce(false);
+    await runSessionClosureSideEffects("apt1");
+    expect(h.aptUpdateOne).toHaveBeenLastCalledWith(
+      { _id: expect.anything() },
+      { $unset: { "thirdPartyBilling.decisionAlertSentAt": "" } },
+    );
+  });
+
+  it("a confirmed payer never triggers the decision alert", async () => {
+    h.store.appointment = covered();
+    await runSessionClosureSideEffects("apt1");
+    expect(h.decisionAlert).not.toHaveBeenCalled();
+  });
+
+  it("without a payer snapshot the ledger is exactly as before", async () => {
+    h.store.appointment = makeAppointment({
+      payment: { status: "pending", price: 120, platformFee: 20, professionalPayout: 100, method: "transfer" },
+    });
+    await runSessionClosureSideEffects("apt1");
+    expect(ledgerRow()).toEqual(
+      expect.objectContaining({
+        grossAmountCad: 120,
+        platformFeeCad: 20,
+        netToProfessionalCad: 100,
+        paymentChannel: "transfer",
+      }),
+    );
+    expect(ledgerRow()).not.toHaveProperty("orgAmountCad");
   });
 });

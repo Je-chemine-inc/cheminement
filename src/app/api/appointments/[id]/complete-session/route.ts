@@ -25,6 +25,9 @@ import { encryptPaymentMethodReference } from "@/lib/field-encryption";
 import { runSessionClosureSideEffects } from "@/lib/session-post-closure";
 import { getAppointmentStartAt } from "@/lib/appointment-start";
 import { sessionClosureWindow } from "@/lib/session-closure-window";
+import { planSessionPayers, type PlannedPayers } from "@/lib/session-payer-plan";
+import { releaseCoverageSlot } from "@/lib/organization-coverage";
+import { fromCents, toCents } from "@/lib/money-cents";
 
 function parseNextAppointmentAt(
   dateStr: string | undefined,
@@ -48,6 +51,10 @@ export async function POST(
   // the try so they're in scope of the catch block.
   let claimedAppointmentId: string | null = null;
   let closureFinalized = false;
+  // Spec 002: a coverage cap slot taken for this closure, given back if the
+  // closure fails before it is persisted.
+  let reservedCoverageSlot: { coverageId: string; appointmentId: string } | null =
+    null;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id || session.user.role !== "professional") {
@@ -199,6 +206,7 @@ export async function POST(
     let platformFee = apt.payment.platformFee;
     let professionalPayout = apt.payment.professionalPayout;
     let paymentStatus = apt.payment.status;
+    let payerPlan: PlannedPayers | null = null;
 
     if (!paymentLocked) {
       price = roundMoney(listPrice * fraction);
@@ -219,13 +227,42 @@ export async function POST(
       } else {
         paymentStatus = "pending";
       }
+
+      // Spec 002 — third-party payer. Decided AFTER the closure claim and
+      // BEFORE any charge, so the client is only ever charged their own share.
+      // Null (flag off, or no coverage / override / pending declaration) keeps
+      // exactly the numbers computed above.
+      payerPlan = await planSessionPayers({
+        appointmentId: id,
+        outcome,
+        listPriceCents: toCents(listPrice),
+        proShareRatio: payoutRatio,
+        now,
+      });
+      if (payerPlan) {
+        if (payerPlan.reservedSlot && payerPlan.coverageId) {
+          reservedCoverageSlot = {
+            coverageId: payerPlan.coverageId,
+            appointmentId: id,
+          };
+        }
+        const client = payerPlan.plan.client;
+        price = fromCents(client.priceCents);
+        professionalPayout = fromCents(client.professionalPayoutCents);
+        platformFee = fromCents(client.platformFeeCents);
+        paymentStatus = payerPlan.plan.clientPaymentStatus;
+      }
     }
 
     // Trigger payment / Interac reference for every outcome that bills
     // (completed = 100%, cancelled_late = 100%, no_show = 100%). The
     // free 48h-plus cancellation has fraction = 0 and is skipped.
+    const settledExternally = payerPlan?.plan.kind === "external";
     const billableForPayment =
-      !paymentLocked && price > 0 && getBillingFraction(outcome) > 0;
+      !paymentLocked &&
+      price > 0 &&
+      getBillingFraction(outcome) > 0 &&
+      !settledExternally;
 
     let stripeChargePaymentIntentId: string | undefined;
     let interacRefToSet: string | undefined;
@@ -350,6 +387,14 @@ export async function POST(
       }
     }
 
+    if (payerPlan) {
+      $set.thirdPartyBilling = payerPlan.snapshot;
+      if (settledExternally) {
+        $set["payment.method"] = payerPlan.plan.clientPaymentMethod ?? "manual";
+        $set["payment.paidAt"] = now;
+      }
+    }
+
     if (stripeChargePaymentIntentId) {
       $set["payment.stripePaymentIntentId"] = stripeChargePaymentIntentId;
       // M1: only stamp paidAt when the charge actually settled. An ACSS/PAD
@@ -380,7 +425,8 @@ export async function POST(
       !paymentLocked &&
       price > 0 &&
       apt.payment.method === "transfer" &&
-      getBillingFraction(outcome) > 0;
+      getBillingFraction(outcome) > 0 &&
+      !settledExternally;
 
     if (shouldSetTransferDue) {
       $set["payment.transferDueAt"] = due;
@@ -512,6 +558,14 @@ export async function POST(
       await Appointment.findByIdAndUpdate(claimedAppointmentId, {
         $unset: { sessionCompletedAt: "" },
       }).catch(() => {});
+      if (reservedCoverageSlot) {
+        await releaseCoverageSlot(
+          reservedCoverageSlot.coverageId,
+          reservedCoverageSlot.appointmentId,
+        ).catch((e) =>
+          console.error("[complete-session] cap slot release failed:", e),
+        );
+      }
     }
     console.error("complete-session error:", error);
     return NextResponse.json(

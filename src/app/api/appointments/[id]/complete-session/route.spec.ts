@@ -48,7 +48,12 @@ const h = vi.hoisted(() => {
     },
   });
 
-  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, created, clash, store, setDeep, makeQuery };
+  // Spec 002: the payer planner. null = flag off / no third party, so every
+  // test that does not set it runs today's closure untouched.
+  const plan = vi.fn().mockResolvedValue(null);
+  const failPersist = { value: false };
+  const releaseSlot = vi.fn().mockResolvedValue(true);
+  return { getServerSession, charge, sideEffects, findOneAndUpdate, resolveCustomerPm, created, clash, store, setDeep, makeQuery, plan, releaseSlot, failPersist };
 });
 
 vi.mock("next/server", () => ({
@@ -80,6 +85,13 @@ vi.mock("@/lib/stripe-off-session-charge", () => ({
 vi.mock("@/lib/session-post-closure", () => ({
   runSessionClosureSideEffects: h.sideEffects,
 }));
+vi.mock("@/lib/session-payer-plan", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/session-payer-plan")>();
+  return { ...actual, planSessionPayers: h.plan };
+});
+vi.mock("@/lib/organization-coverage", () => ({
+  releaseCoverageSlot: h.releaseSlot,
+}));
 vi.mock("@/lib/interac-reference", () => ({
   buildInteracReferenceCode: () => "INT-TEST",
 }));
@@ -99,6 +111,9 @@ vi.mock("@/models/Appointment", () => ({
     },
     findByIdAndUpdate: (_id: string, update: Record<string, unknown>) => {
       const u = update as Record<string, Record<string, unknown>>;
+      if (h.failPersist.value && u.$set && "status" in u.$set) {
+        throw new Error("database write failed");
+      }
       if (u.$set) h.setDeep(h.store.appointment, u.$set);
       if (u.$unset)
         for (const k of Object.keys(u.$unset)) delete h.store.appointment[k];
@@ -110,6 +125,8 @@ vi.mock("@/models/Appointment", () => ({
 import { POST as completePOST } from "@/app/api/appointments/[id]/complete-session/route";
 import { decryptPaymentMethodReference } from "@/lib/field-encryption";
 import { parseAppointmentDate } from "@/lib/appointment-date";
+import { resolveSessionPayers, type PayerInput } from "@/lib/third-party-billing";
+import { toThirdPartyBillingSnapshot } from "@/lib/session-payer-plan";
 
 const callClose = () =>
   completePOST(
@@ -128,6 +145,9 @@ beforeEach(() => {
   h.resolveCustomerPm.mockResolvedValue(null);
   h.created.length = 0;
   h.clash.value = null;
+  h.plan.mockResolvedValue(null);
+  h.failPersist.value = false;
+  h.releaseSlot.mockResolvedValue(true);
   h.store.appointment = {
     _id: APPT_ID,
     clientId: CLIENT_ID,
@@ -497,5 +517,184 @@ describe("complete-session preserves the stored fee split", () => {
     expect(p.professionalPayout).toBe(150);
     expect(p.status).toBe("paid");
     expect(h.charge).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Spec 002 — third-party payer at closure. Plans come from the REAL resolver, so
+ * the amounts here are the ones production would compute.
+ */
+describe("closure with an organization paying (spec 002)", () => {
+  const ORG = "0123456789abcdef01234567";
+  const COV = "0123456789abcdef01234568";
+
+  const planned = (
+    over: Partial<PayerInput> = {},
+    extra: Record<string, unknown> = {},
+  ) => {
+    const plan = resolveSessionPayers({
+      outcome: "completed",
+      listPriceCents: 12000,
+      proShareRatio: 0.9,
+      coverage: { id: COV, mode: "full", consentGiven: true, hasCap: false },
+      org: { id: ORG, name: "PAE Desjardins", gapPolicy: "client_copay" },
+      override: null,
+      declarationPending: false,
+      capSlot: "not_needed",
+      ...over,
+    });
+    return {
+      plan,
+      snapshot: toThirdPartyBillingSnapshot(
+        plan,
+        { organizationId: ORG, coverageId: COV },
+        new Date(),
+      ),
+      coverageId: COV,
+      reservedSlot: false,
+      slotExhaustedNow: false,
+      ...extra,
+    };
+  };
+
+  const close = (outcome = "completed") =>
+    completePOST(
+      {
+        json: async () => ({
+          sessionOutcome: outcome,
+          sessionActNature:
+            outcome === "completed" ? "individual_psychotherapy" : undefined,
+        }),
+      } as never,
+      { params: Promise.resolve({ id: APPT_ID }) },
+    ) as unknown as Promise<{ status: number; body: Record<string, unknown> }>;
+
+  type Stored = {
+    payment: Record<string, unknown>;
+    thirdPartyBilling: Record<string, unknown>;
+    sessionCompletedAt?: unknown;
+  };
+  const stored = () => h.store.appointment as unknown as Stored;
+
+  beforeEach(() => {
+    h.findOneAndUpdate.mockResolvedValue({ _id: APPT_ID });
+    const p = h.store.appointment.payment as Record<string, unknown>;
+    p.professionalPayout = 108;
+    p.platformFee = 12;
+  });
+
+  it("asks the planner with the list price in cents and the stored professional share", async () => {
+    await close();
+    expect(h.plan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appointmentId: APPT_ID,
+        outcome: "completed",
+        listPriceCents: 12000,
+        proShareRatio: 0.9,
+      }),
+    );
+  });
+
+  it("full coverage: never charges the client's card, and records who pays", async () => {
+    h.plan.mockResolvedValue(planned());
+    const res = await close();
+    expect(res.status).toBe(200);
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(stored().payment.status).toBe("covered");
+    expect(stored().payment.price).toBe(0);
+    expect(stored().thirdPartyBilling).toMatchObject({
+      kind: "organization",
+      orgAmountCents: 12000,
+      clientAmountCents: 0,
+    });
+  });
+
+  it("co-pay: charges the client exactly their share ($30 of $120)", async () => {
+    h.plan.mockResolvedValue(
+      planned({
+        org: { id: ORG, name: "PAE", negotiatedRateCents: 9000, gapPolicy: "client_copay" },
+      }),
+    );
+    await close();
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    expect(h.charge.mock.calls[0][0]).toMatchObject({ amountCad: 30 });
+    expect(stored().payment).toMatchObject({
+      price: 30,
+      professionalPayout: 27,
+      platformFee: 3,
+    });
+  });
+
+  it("handled externally: no charge, recorded as paid by hand, no Interac due date", async () => {
+    (h.store.appointment.payment as Record<string, unknown>).method = "transfer";
+    h.plan.mockResolvedValue(
+      planned({ coverage: { id: COV, mode: "external", consentGiven: true, hasCap: false } }),
+    );
+    await close();
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(stored().payment.status).toBe("paid");
+    expect(stored().payment.method).toBe("manual");
+    expect(stored().payment.paidAt).toBeInstanceOf(Date);
+    expect(stored().payment.transferDueAt).toBeUndefined();
+    expect(stored().payment.interacReferenceCode).toBeUndefined();
+  });
+
+  it("no-show with a coverage: the client's card is charged the full price", async () => {
+    h.plan.mockResolvedValue(planned({ outcome: "no_show" }));
+    await close("no_show");
+    expect(h.charge).toHaveBeenCalledTimes(1);
+    expect(h.charge.mock.calls[0][0]).toMatchObject({ amountCad: 120 });
+  });
+
+  it("an undecided payer charges nobody", async () => {
+    h.plan.mockResolvedValue(
+      planned({ coverage: null, org: null, declarationPending: true }),
+    );
+    await close();
+    expect(h.charge).not.toHaveBeenCalled();
+    expect(stored().payment.status).toBe("covered");
+    expect(stored().thirdPartyBilling.state).toBe("awaiting_decision");
+  });
+
+  it("gives the cap slot back when the closure fails to persist", async () => {
+    h.plan.mockResolvedValue(
+      planned(
+        {
+          coverage: { id: COV, mode: "full", consentGiven: true, hasCap: true },
+          capSlot: "granted",
+        },
+        { reservedSlot: true },
+      ),
+    );
+    h.failPersist.value = true;
+    const res = await close();
+    expect(res.status).toBe(500);
+    expect(h.releaseSlot).toHaveBeenCalledWith(COV, APPT_ID);
+  });
+
+  it("does not release anything when no slot was taken", async () => {
+    h.plan.mockResolvedValue(planned());
+    h.failPersist.value = true;
+    await close();
+    expect(h.releaseSlot).not.toHaveBeenCalled();
+  });
+
+  it("the follow-up appointment copies no billing decision", async () => {
+    h.plan.mockResolvedValue(planned());
+    await completePOST(
+      {
+        json: async () => ({
+          sessionOutcome: "completed",
+          sessionActNature: "individual_psychotherapy",
+          nextAppointmentDate: "2099-03-01",
+          nextAppointmentTime: "10:00",
+        }),
+      } as never,
+      { params: Promise.resolve({ id: APPT_ID }) },
+    );
+    expect(h.created).toHaveLength(1);
+    for (const field of ["thirdPartyBilling", "billingOverride", "payerDeclaration"]) {
+      expect(h.created[0]).not.toHaveProperty(field);
+    }
   });
 });

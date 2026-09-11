@@ -33,7 +33,10 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // `+thirdPartyBilling` so a re-downloaded external receipt carries the same
+    // « Réglé hors plateforme » line as the emailed one. Only the PDF uses it.
     const appointment = await Appointment.findById(appointmentId)
+      .select("+thirdPartyBilling")
       .populate("clientId", "firstName lastName email")
       .populate("professionalId", "firstName lastName email");
 
