@@ -6,6 +6,7 @@ import User from "@/models/User";
 import Profile from "@/models/Profile";
 import ProCatalogItem from "@/models/ProCatalogItem";
 import { calculateAppointmentPricing } from "@/lib/pricing";
+import { isShowcaseCityKey } from "@/lib/showcase-cities";
 import {
   SHOWCASE_THERAPY_TYPES,
   buildShowcasePublicProfile,
@@ -18,6 +19,7 @@ import {
   type ShowcasePublicProfile,
   type ShowcaseTherapyType,
 } from "@/lib/showcase-public";
+import type { CatalogExpertise, DirectoryEntry } from "@/lib/showcase-seo";
 
 /**
  * Reads behind the public showcase pages (spec 003). Documents are loaded
@@ -144,13 +146,20 @@ export async function findPublishedShowcase(
     : { kind: "missing" };
 }
 
-/** The professionals presented in a city, for its page. */
+/**
+ * The professionals presented in a city — or in several, for a region — by
+ * name; with `expertiseSlug`, only those who carry that expertise.
+ */
 export async function listPublishedShowcaseCards(
-  cityKey: string,
+  cityKeys: string | readonly string[],
   locale: ShowcaseLocale,
+  options: { expertiseSlug?: string } = {},
 ): Promise<ShowcaseCard[]> {
+  const keys = typeof cityKeys === "string" ? [cityKeys] : [...cityKeys];
+  if (keys.length === 0) return [];
   await connectToDatabase();
-  const pages = (await ShowcasePage.find({ cityKey, status: "published" })
+  const cityFilter = keys.length === 1 ? keys[0] : { $in: keys };
+  const pages = (await ShowcasePage.find({ cityKey: cityFilter, status: "published" })
     .select(PAGE_SELECT)
     .lean()) as unknown as PageDoc[];
   if (pages.length === 0) return [];
@@ -178,19 +187,31 @@ export async function listPublishedShowcaseCards(
       expertises,
       prices: {},
     });
-    if (profile) cards.push(toShowcaseCard(profile));
+    if (!profile) continue;
+    const card = toShowcaseCard(profile);
+    if (options.expertiseSlug && !card.expertiseSlugs.includes(options.expertiseSlug)) continue;
+    cards.push(card);
   }
   return cards.sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
 }
 
-/** Published pages of active professionals in a city, for its sitemap. */
-export async function listShowcaseSitemapPages(
-  cityKey: string,
-): Promise<{ slug: string; lastModified: Date | null }[]> {
+type DirectoryPageDoc = {
+  userId: unknown;
+  cityKey: string;
+  slug: string;
+  published?: { expertiseIds?: unknown[] };
+  updatedAt?: Date;
+};
+
+/**
+ * Every published page of an active professional, reduced to what the city,
+ * expertise and region pages and the sitemaps need.
+ */
+export async function loadShowcaseDirectory(): Promise<DirectoryEntry[]> {
   await connectToDatabase();
-  const pages = await ShowcasePage.find({ cityKey, status: "published" })
-    .select("userId slug updatedAt")
-    .lean();
+  const pages = (await ShowcasePage.find({ status: "published" })
+    .select("userId cityKey slug published.expertiseIds updatedAt")
+    .lean()) as unknown as DirectoryPageDoc[];
   if (pages.length === 0) return [];
   const active = await User.find({
     _id: { $in: pages.map((page) => page.userId) },
@@ -201,8 +222,34 @@ export async function listShowcaseSitemapPages(
     .lean();
   const activeIds = new Set(active.map((user) => String(user._id)));
   return pages
-    .filter((page) => activeIds.has(String(page.userId)))
-    .map((page) => ({ slug: page.slug, lastModified: page.updatedAt ?? null }));
+    .filter((page) => activeIds.has(String(page.userId)) && isShowcaseCityKey(page.cityKey))
+    .map((page) => ({
+      cityKey: page.cityKey,
+      slug: page.slug,
+      expertiseIds: (page.published?.expertiseIds ?? []).map((id) => String(id)),
+      lastModified: page.updatedAt ?? null,
+    }));
+}
+
+/** The expertises offered on pages that have a URL segment. */
+export async function loadShowcaseCatalog(): Promise<CatalogExpertise[]> {
+  await connectToDatabase();
+  const docs = await ProCatalogItem.find({
+    category: "expertise",
+    showcase: true,
+    active: true,
+    slug: { $type: "string" },
+  })
+    .select("slug labelFr labelEn")
+    .lean();
+  return docs
+    .filter((doc) => typeof doc.slug === "string" && doc.slug)
+    .map((doc) => ({
+      id: String(doc._id),
+      slug: doc.slug as string,
+      labelFr: doc.labelFr,
+      labelEn: doc.labelEn || null,
+    }));
 }
 
 /**

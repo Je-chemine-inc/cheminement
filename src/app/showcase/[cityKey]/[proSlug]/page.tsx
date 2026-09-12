@@ -8,6 +8,7 @@ import { findPublishedShowcase } from "@/lib/showcase-queries";
 import type { ShowcaseLocale } from "@/lib/showcase-public";
 import { ShowcaseProfileView } from "@/components/showcase/ShowcaseProfileView";
 import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
+import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
 
 /**
  * psy<city>.jechemine.ca/<slug> — a professional's published page (spec 003).
@@ -78,6 +79,7 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
   return (
     <>
       <ShowcaseProfileJsonLd profile={result.profile} />
+      <ShowcaseBeacon city={result.profile.city.key} slug={result.profile.slug} />
       <ShowcaseProfileView profile={result.profile} />
     </>
   );

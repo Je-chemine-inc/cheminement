@@ -267,7 +267,7 @@ The showcase pages live on one host per Quebec city (`psymascouche.jechemine.ca/
    curl -sI https://psymascouche.jechemine.ca/             # 307 → https://www.jechemine.ca while the switch is off
    curl -sI http://psymascouche.jechemine.ca/              # 301 → https://psymascouche.jechemine.ca/
    curl -s  https://psymascouche.jechemine.ca/robots.txt   # "Disallow: /" while off
-   curl -sI https://psyatlantis.jechemine.ca/              # 307 → https://www.jechemine.ca/
+   curl -sI https://psyatlantis.jechemine.ca/              # 307 → https://www.jechemine.ca/psy
    curl -sI https://www.jechemine.ca/showcase/mascouche    # 308 → https://psymascouche.jechemine.ca/
    curl -sI https://www.jechemine.ca/ ; curl -sI https://staging.jechemine.ca/  # unchanged
    ```

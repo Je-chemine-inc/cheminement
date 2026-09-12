@@ -66,6 +66,8 @@ export interface ShowcaseEditorJson {
   expertiseOptions: { id: string; labelFr: string; labelEn: string }[];
   consentVersion: string;
   showcaseEnabled: boolean;
+  /** Anonymous counts over the last `days` days. */
+  stats: { days: number; views: number; ctaClicks: number };
 }
 
 export interface ShowcaseAdminJson extends ShowcaseEditorJson {

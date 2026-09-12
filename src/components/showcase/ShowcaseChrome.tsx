@@ -26,6 +26,7 @@ export async function ShowcaseHeader({ city }: { city: ShowcaseCity }) {
         <nav className="flex items-center gap-2 text-sm">
           <a
             href={canonicalSiteUrl(`/appointment?from=showcase&city=${encodeURIComponent(city.key)}`)}
+            data-showcase-cta=""
             className="whitespace-nowrap rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             {/* On a phone the long label would squeeze the city badge. */}

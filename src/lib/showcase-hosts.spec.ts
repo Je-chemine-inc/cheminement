@@ -87,19 +87,39 @@ describe("routeRequest", () => {
   });
 
   it("rewrites a city host to its internal segment", () => {
-    expect(routeRequest({ host: city, pathname: "/" })).toEqual({ action: "rewrite", pathname: "/showcase/mascouche" });
+    expect(routeRequest({ host: city, pathname: "/" })).toEqual({
+      action: "rewrite",
+      pathname: "/showcase/mascouche",
+      cityKey: "mascouche",
+    });
     expect(routeRequest({ host: city, pathname: "/sassi", search: "?utm_source=x" })).toEqual({
       action: "rewrite",
       pathname: "/showcase/mascouche/sassi",
+      cityKey: "mascouche",
     });
     expect(routeRequest({ host: city, pathname: "/robots.txt" })).toEqual({
       action: "rewrite",
       pathname: "/showcase/mascouche/robots-txt",
+      cityKey: "mascouche",
     });
     expect(routeRequest({ host: city, pathname: "/sitemap.xml" })).toEqual({
       action: "rewrite",
       pathname: "/showcase/mascouche/sitemap-xml",
+      cityKey: "mascouche",
     });
+  });
+
+  it("marks a known city's internal path on the internal host as a city page (Next's second middleware pass)", () => {
+    expect(routeRequest({ host: "localhost:3100", pathname: "/showcase/mascouche/sassi" })).toEqual({
+      action: "next",
+      cityKey: "mascouche",
+    });
+    expect(routeRequest({ host: "127.0.0.1:3000", pathname: "/showcase/mascouche" })).toEqual({
+      action: "next",
+      cityKey: "mascouche",
+    });
+    expect(routeRequest({ host: "127.0.0.1:3000", pathname: "/showcase/atlantis" })).toEqual({ action: "next" });
+    expect(routeRequest({ host: "staging.jechemine.ca", pathname: "/showcase/mascouche" })).toEqual({ action: "next" });
   });
 
   it("lets a city host reach Next's files and its own APIs, and sends any other API to www", () => {
@@ -140,7 +160,7 @@ describe("routeRequest", () => {
   it("sends a host it does not serve to www, temporarily (the registry grows; a cached 308 would outlive that)", () => {
     expect(routeRequest({ host: "psyatlantis.jechemine.ca", pathname: "/sassi" })).toEqual({
       action: "redirect",
-      location: "https://www.jechemine.ca/",
+      location: "https://www.jechemine.ca/psy",
       status: 307,
     });
     expect(routeRequest({ host: "blog.jechemine.ca", pathname: "/x", search: "?q=1" })).toEqual({

@@ -44,6 +44,10 @@ const h = vi.hoisted(() => {
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/lib/showcase-settings", () => ({ isShowcaseEnabled: async () => h.enabled }));
+vi.mock("@/lib/showcase-stats", () => ({
+  SHOWCASE_STATS_DAYS: 30,
+  loadShowcaseStats: async () => new Map(),
+}));
 vi.mock("@/models/ShowcasePage", () => ({
   default: {
     findOne: () => h.chain(() => h.page),

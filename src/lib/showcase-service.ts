@@ -35,6 +35,7 @@ import {
 } from "@/lib/showcase-public";
 import { deleteUnreferencedShowcasePhotos } from "@/lib/showcase-photo";
 import { isShowcaseEnabled } from "@/lib/showcase-settings";
+import { SHOWCASE_STATS_DAYS, loadShowcaseStats } from "@/lib/showcase-stats";
 import {
   sendAdminShowcaseSubmittedAlert,
   sendShowcaseChangesRequestedEmail,
@@ -221,10 +222,11 @@ export type ShowcaseContentView = ReturnType<typeof contentView>;
 export async function loadShowcaseEditor(userId: string) {
   const page = await loadPage(userId);
   if (!page) return null;
-  const [profile, options, showcaseEnabled] = await Promise.all([
+  const [profile, options, showcaseEnabled, stats] = await Promise.all([
     profileFacts(userId),
     showcaseExpertiseOptions(),
     isShowcaseEnabled(),
+    loadShowcaseStats("page", [String(page._id)]),
   ]);
   const city = findShowcaseCity(page.cityKey);
   const missing: ShowcaseRequirement[] = missingShowcaseRequirements({
@@ -282,6 +284,10 @@ export async function loadShowcaseEditor(userId: string) {
     })),
     consentVersion: SHOWCASE_CONSENT_VERSION,
     showcaseEnabled,
+    stats: {
+      days: SHOWCASE_STATS_DAYS,
+      ...(stats.get(String(page._id)) ?? { views: 0, ctaClicks: 0 }),
+    },
   };
 }
 
@@ -327,9 +333,15 @@ export async function listShowcasesForAdmin() {
       .lean() as unknown as Promise<PageLean[]>,
     isShowcaseEnabled(),
   ]);
-  const profiles = await Profile.find({ userId: { $in: professionals.map((pro) => pro._id) } })
-    .select("userId specialty officeAddress.city")
-    .lean();
+  const [profiles, stats] = await Promise.all([
+    Profile.find({ userId: { $in: professionals.map((pro) => pro._id) } })
+      .select("userId specialty officeAddress.city")
+      .lean(),
+    loadShowcaseStats(
+      "page",
+      pages.map((page) => String(page._id)),
+    ),
+  ]);
   const pageByUser = new Map(pages.map((page) => [String(page.userId), page]));
   const profileByUser = new Map(profiles.map((profile) => [String(profile.userId), profile]));
 
@@ -360,6 +372,7 @@ export async function listShowcasesForAdmin() {
             invitedAt: page.invitedAt ?? null,
             remindedAt: page.remindedAt ?? null,
             publishedAt: page.publishedAt ?? null,
+            stats: stats.get(String(page._id)) ?? { views: 0, ctaClicks: 0 },
           }
         : null,
     };
@@ -384,6 +397,7 @@ export async function listShowcasesForAdmin() {
     cities,
     cityOptions: SHOWCASE_CITIES.map((city) => ({ key: city.key, name: city.name, region: city.region })),
     showcaseEnabled,
+    statsDays: SHOWCASE_STATS_DAYS,
   };
 }
 

@@ -17,6 +17,16 @@ import { SHOWCASE_HOST_PREFIX, isShowcaseCityKey } from "@/lib/showcase-cities";
 /** Internal route segment the city hosts are rewritten to. */
 export const SHOWCASE_INTERNAL_PREFIX = "/showcase";
 
+/** The directory of cities and regions on www. */
+export const SHOWCASE_HUB_PATH = "/psy";
+
+/**
+ * Request header the middleware sets, with the city key, on a city host's
+ * rewrite — and strips from every other request, so a client cannot set it.
+ * The root layout reads it to send a city page only the messages it uses.
+ */
+export const SHOWCASE_CITY_HEADER = "x-showcase-city";
+
 /**
  * Files crawlers ask each host for, mapped to the route-handler folders that
  * serve them per city. A folder named robots.txt or sitemap.xml would be taken
@@ -129,25 +139,31 @@ function isCityHostApi(pathname: string): boolean {
 }
 
 export type HostRouting =
-  | { action: "next" }
+  /** `cityKey`: the request renders a city page (see the foreign-host rule). */
+  | { action: "next"; cityKey?: string }
   /** 308: a permanent move to the canonical URL. 307: a host we do not serve
    *  (yet) — temporary, so browsers do not cache it (see routeRequest). */
   | { action: "redirect"; location: string; status: 307 | 308 }
-  | { action: "rewrite"; pathname: string };
+  | { action: "rewrite"; pathname: string; cityKey: string };
 
 /**
  * What the middleware does with a request. In order:
- *  1. staging and foreign hosts are left alone.
+ *  1. staging and foreign hosts are left alone — except that a foreign host's
+ *     internal path of a known city is marked as a city page: Next runs the
+ *     middleware a second time for a rewrite's destination, on the internal
+ *     host (localhost:3000/showcase/<city>/…), and that pass must say again
+ *     what the first one said, or the render never hears it. Derived from the
+ *     path, never from a header a client could send.
  *  2. The internal /showcase/<city>/… path is never served under its own
  *     name on a public host: it moves to its city host, so Google sees one
  *     URL per page. An unknown city there falls through to a real 404.
  *  3. The bare domain moves to www (unchanged behaviour).
  *  4. A city host: Next's own files pass; its allowed APIs pass; any other
  *     API moves to www; everything else is rewritten to its city segment.
- *  5. An unknown psy* host goes to the home page on www, any other subdomain
- *     to the same path on www — both TEMPORARILY (307): the city registry
- *     grows, and a permanent redirect cached by a browser would keep sending
- *     a future city's host away.
+ *  5. An unknown psy* host goes to the city directory on www (/psy), any
+ *     other subdomain to the same path on www — both TEMPORARILY (307): the
+ *     city registry grows, and a permanent redirect cached by a browser would
+ *     keep sending a future city's host away.
  * A redirect always lands where no rule redirects again (one hop, no loop).
  */
 export function routeRequest(input: {
@@ -159,9 +175,13 @@ export function routeRequest(input: {
   const search = input.search ?? "";
   const host = classifyHost(input.host);
 
-  if (host.kind === "staging" || host.kind === "foreign") return { action: "next" };
-
   const internal = parseInternalShowcasePath(pathname);
+  if (host.kind === "foreign") {
+    return internal && isShowcaseCityKey(internal.cityKey)
+      ? { action: "next", cityKey: internal.cityKey }
+      : { action: "next" };
+  }
+  if (host.kind === "staging") return { action: "next" };
   if (internal && isShowcaseCityKey(internal.cityKey)) {
     return {
       action: "redirect",
@@ -184,11 +204,15 @@ export function routeRequest(input: {
         ? { action: "next" }
         : { action: "redirect", location: canonicalSiteUrl(`${pathname}${search}`), status: 308 };
     }
-    return { action: "rewrite", pathname: internalShowcasePath(host.cityKey, pathname) };
+    return {
+      action: "rewrite",
+      pathname: internalShowcasePath(host.cityKey, pathname),
+      cityKey: host.cityKey,
+    };
   }
 
   if (host.kind === "unknown-city") {
-    return { action: "redirect", location: canonicalSiteUrl("/"), status: 307 };
+    return { action: "redirect", location: canonicalSiteUrl(SHOWCASE_HUB_PATH), status: 307 };
   }
   // other-subdomain
   return { action: "redirect", location: canonicalSiteUrl(`${pathname}${search}`), status: 307 };

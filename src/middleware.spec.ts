@@ -59,10 +59,30 @@ describe("middleware", () => {
     expect(res.headers.get("location")).toBe("https://psymascouche.jechemine.ca/sassi");
   });
 
-  it("sends a host it does not serve to www with a temporary redirect", () => {
+  it("sends a host it does not serve to the city directory on www, temporarily", () => {
     const res = run("psyatlantis.jechemine.ca", "/sassi");
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("https://www.jechemine.ca/");
+    expect(res.headers.get("location")).toBe("https://www.jechemine.ca/psy");
+  });
+
+  it("keeps the city marker when Next runs the middleware again for the rewrite, from the path, not a sent value", () => {
+    // What production does: the rewrite's destination re-enters the middleware on the internal host.
+    const second = run("localhost:3100", "/showcase/mascouche", {
+      "x-showcase-city": "laval",
+      "x-forwarded-host": "psymascouche.jechemine.ca",
+    });
+    expect(second.headers.get("x-middleware-next")).toBe("1");
+    expect(second.headers.get("x-middleware-request-x-showcase-city")).toBe("mascouche");
+    const internalApi = run("127.0.0.1:3000", "/api/showcase/status", { "x-showcase-city": "mascouche" });
+    expect(internalApi.headers.get("x-middleware-request-x-showcase-city")).toBeNull();
+  });
+
+  it("tells the layout a request is for a city host, and never lets a client say so", () => {
+    const city = run("psymascouche.jechemine.ca", "/sassi", { "x-showcase-city": "laval" });
+    expect(city.headers.get("x-middleware-request-x-showcase-city")).toBe("mascouche");
+    const www = run("www.jechemine.ca", "/", { "x-showcase-city": "mascouche" });
+    expect(www.headers.get("x-middleware-request-x-showcase-city")).toBeNull();
+    expect(www.headers.get("x-middleware-override-headers") ?? "").not.toContain("x-showcase-city,");
   });
 
   it("ignores the scheme header entirely (no redirect loop behind Apache)", () => {

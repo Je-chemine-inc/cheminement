@@ -181,12 +181,14 @@ describe("buildShowcasePublicProfile", () => {
     expect(card).toEqual({
       slug: "sassi",
       url: "https://psymascouche.jechemine.ca/sassi",
+      city: { key: "mascouche", name: "Mascouche" },
       displayName: "Amel Sassi",
       title: { key: "psychologist", label: null },
       photoUrl: `/api/files/${PHOTO}`,
       headline: "Psychologue pour adultes",
       modalities: ["inPerson", "video"],
       expertises: ["Épuisement professionnel", "Anxiété"],
+      expertiseSlugs: ["burn-out", "anxiete"],
       officeCity: "Mascouche",
     });
   });

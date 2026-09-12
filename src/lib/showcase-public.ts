@@ -288,16 +288,20 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
   };
 }
 
-/** The subset a city page lists. */
+/** The subset a city, expertise or region page lists. */
 export interface ShowcaseCard {
   slug: string;
   url: string;
+  city: { key: string; name: string };
   displayName: string;
   title: ShowcasePublicProfile["title"];
   photoUrl: string | null;
   headline: string;
   modalities: ShowcaseModalityKey[];
+  /** The first three, for display. */
   expertises: string[];
+  /** Every expertise's URL segment, for the expertise pages. */
+  expertiseSlugs: string[];
   officeCity: string | null;
 }
 
@@ -305,12 +309,16 @@ export function toShowcaseCard(profile: ShowcasePublicProfile): ShowcaseCard {
   return {
     slug: profile.slug,
     url: profile.url,
+    city: { key: profile.city.key, name: profile.city.name },
     displayName: profile.displayName,
     title: profile.title,
     photoUrl: profile.photoUrl,
     headline: profile.headline,
     modalities: profile.modalities,
     expertises: profile.expertises.slice(0, 3).map((expertise) => expertise.label),
+    expertiseSlugs: profile.expertises
+      .map((expertise) => expertise.slug)
+      .filter((slug): slug is string => Boolean(slug)),
     officeCity: profile.officeCity,
   };
 }

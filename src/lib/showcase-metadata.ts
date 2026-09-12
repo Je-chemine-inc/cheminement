@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site-url";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { absoluteShowcaseUrl, canonicalSiteUrl } from "@/lib/showcase-hosts";
 
 /**
  * Metadata for pages on a city host (psy<city>.jechemine.ca).
@@ -41,7 +41,21 @@ export function showcaseLayoutMetadata(cityKey: string): Metadata {
 }
 
 export function showcasePageMetadata(input: ShowcasePageMetadataInput): Metadata {
-  const url = absoluteShowcaseUrl(input.cityKey, input.path);
+  return pageMetadata(absoluteShowcaseUrl(input.cityKey, input.path), input);
+}
+
+/**
+ * Metadata for the directory pages on www (/psy, /psy/<region>): the same
+ * rules — explicit canonical, images always set — on the canonical host.
+ */
+export function hubPageMetadata(input: Omit<ShowcasePageMetadataInput, "cityKey" | "type">): Metadata {
+  return pageMetadata(canonicalSiteUrl(input.path), input);
+}
+
+function pageMetadata(
+  url: string,
+  input: Pick<ShowcasePageMetadataInput, "title" | "description" | "image" | "index" | "type">,
+): Metadata {
   const images = [input.image || DEFAULT_SHOWCASE_IMAGE];
   return {
     title: input.title,

@@ -37,6 +37,7 @@ interface PageSummary {
   invitedAt: string | null;
   remindedAt: string | null;
   publishedAt: string | null;
+  stats: { views: number; ctaClicks: number };
 }
 
 interface Row {
@@ -55,6 +56,7 @@ interface ListJson {
   cities: { key: string; name: string; host: string; region: string; published: number }[];
   cityOptions: { key: string; name: string; region: string }[];
   showcaseEnabled: boolean;
+  statsDays: number;
 }
 
 type Filter = "all" | "toReview" | "inProgress" | "published" | "unpublished" | "notInvited";
@@ -317,6 +319,7 @@ export default function AdminShowcasesPage() {
                       <th className="px-4 py-3 font-normal">{t("list.columns.professional")}</th>
                       <th className="px-4 py-3 font-normal">{t("list.columns.city")}</th>
                       <th className="px-4 py-3 font-normal">{t("list.columns.page")}</th>
+                      <th className="px-4 py-3 font-normal">{t("list.columns.stats", { days: data.statsDays })}</th>
                       <th className="px-4 py-3 text-right font-normal">{t("list.columns.actions")}</th>
                     </tr>
                   </thead>
@@ -338,6 +341,11 @@ export default function AdminShowcasesPage() {
                               <span className="text-xs text-muted-foreground">{t("list.changes")}</span>
                             ) : null}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {row.page?.publishedAt
+                            ? t("list.stats", { views: row.page.stats.views, clicks: row.page.stats.ctaClicks })
+                            : "—"}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">

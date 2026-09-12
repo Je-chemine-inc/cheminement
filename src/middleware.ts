@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { routeRequest } from "@/lib/showcase-hosts";
+import { SHOWCASE_CITY_HEADER, routeRequest } from "@/lib/showcase-hosts";
 
 /**
  * Canonical host, the showcase city hosts, and the x-pathname header the
@@ -45,13 +45,20 @@ export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  // Only this middleware may say a request is for a city host.
+  requestHeaders.delete(SHOWCASE_CITY_HEADER);
 
   if (decision.action === "rewrite") {
     // Same origin, new path: an internal rewrite, the query string kept.
+    requestHeaders.set(SHOWCASE_CITY_HEADER, decision.cityKey);
     const url = request.nextUrl.clone();
     url.pathname = decision.pathname;
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
+
+  // Next runs this middleware again for a rewrite's destination, on the
+  // internal host: keep telling the render it is a city page.
+  if (decision.cityKey) requestHeaders.set(SHOWCASE_CITY_HEADER, decision.cityKey);
 
   return NextResponse.next({
     request: { headers: requestHeaders },

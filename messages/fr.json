@@ -2041,6 +2041,7 @@
     }
   },
   "Footer": {
+    "findByCity": "Trouver un psy par ville",
     "partners": "Partenaires",
     "partnerWithUs": "Devenez partenaire",
     "company": "Entreprise",
@@ -7306,14 +7307,50 @@
       "emergency": "Je chemine n'est pas un service d'urgence. En cas de danger immédiat, composez le 911. En détresse ou avec des pensées suicidaires : 988, 24 h/24, 7 j/7.",
       "rights": "© {year} Je chemine. Tous droits réservés."
     },
+    "breadcrumb": {
+      "label": "Fil d'Ariane",
+      "quebec": "Québec"
+    },
     "city": {
-      "eyebrow": "Santé mentale à {city}",
       "title": "Professionnels en santé mentale à {city}",
-      "metaTitle": "Psychologue et psychothérapeute à {city}",
+      "heading": "{titles} à {city}",
+      "intro": "Découvrez les professionnels en santé mentale présentés à {city}, {regionIn} : leur approche, leurs champs d'expertise et leurs tarifs. Faites ensuite votre demande de rendez-vous en ligne.",
+      "introEmpty": "Aucun professionnel n'est encore présenté à {city}. D'autres sont présentés ailleurs {regionIn}, et Je chemine peut aussi vous jumeler avec un professionnel, en personne ou en téléconsultation.",
       "metaDescription": "Trouvez un professionnel en santé mentale à {city} ({region}) : présentation, tarifs et demande de rendez-vous en ligne avec Je chemine.",
-      "empty": "Aucun professionnel n'est encore présenté à {city}. Je chemine peut vous jumeler avec un professionnel de la région, en personne ou en téléconsultation.",
-      "emptyCta": "Faire une demande de jumelage",
-      "count": "{count, plural, one {# professionnel présenté} other {# professionnels présentés}}"
+      "count": "{count, plural, one {# professionnel présenté} other {# professionnels présentés}}",
+      "professionalsTitle": "Professionnels présentés à {city}",
+      "expertisesTitle": "Champs d'expertise à {city}",
+      "nearbyTitle": "À proximité, {regionIn}",
+      "regionLink": "Tous les professionnels présentés {regionIn}"
+    },
+    "expertise": {
+      "eyebrow": "Champ d'expertise",
+      "title": "{expertise} à {city}",
+      "intro": "Ces professionnels présentés à {city} comptent « {expertise} » parmi leurs champs d'expertise. Consultez leur page pour connaître leur approche et leurs tarifs, puis faites votre demande de rendez-vous en ligne.",
+      "metaTitle": "{expertise} à {city} : {titles}",
+      "metaDescription": "{titles} à {city} ({region}) qui comptent « {expertise} » parmi leurs champs d'expertise : présentation, tarifs et demande de rendez-vous en ligne avec Je chemine.",
+      "genericTitles": "professionnels en santé mentale",
+      "othersTitle": "Autres champs d'expertise à {city}",
+      "backCity": "Tous les professionnels de {city}"
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "bookQ": "Comment prendre rendez-vous avec un professionnel à {city} ?",
+      "bookA": "Choisissez un professionnel et cliquez sur « Demander un rendez-vous », ou faites une demande de jumelage : Je chemine vous propose un professionnel disponible et vous confirme le rendez-vous.",
+      "videoQ": "Peut-on consulter en téléconsultation ?",
+      "videoA": "Oui. Des professionnels présentés à {city} offrent des séances en vidéo, où que vous soyez au Québec.",
+      "videoANone": "Les professionnels présentés à {city} reçoivent en personne. Je chemine peut aussi vous jumeler avec un professionnel qui offre la téléconsultation.",
+      "insuranceQ": "Les séances sont-elles remboursées par les assurances ?",
+      "insuranceA": "Plusieurs assurances collectives remboursent les services de professionnels membres d'un ordre professionnel. Vérifiez les conditions de votre contrat : un reçu est émis pour chaque séance payée.",
+      "cancelQ": "Puis-je annuler un rendez-vous ?",
+      "cancelA": "Oui, sans frais jusqu'à {hours} heures avant le rendez-vous.",
+      "emergencyQ": "Que faire en cas d'urgence ?",
+      "emergencyA": "Je chemine n'est pas un service d'urgence. En cas de danger immédiat, composez le 911. En détresse ou avec des pensées suicidaires, appelez ou textez le 988, 24 h/24, 7 j/7."
+    },
+    "match": {
+      "title": "Vous ne savez pas qui choisir ?",
+      "body": "Décrivez votre besoin : Je chemine vous jumelle avec un professionnel disponible, en personne ou en téléconsultation.",
+      "button": "Faire une demande de jumelage"
     },
     "notFound": {
       "title": "Cette page n'existe pas",
@@ -7361,6 +7398,34 @@
       "occupationalTherapistMentalHealth": "Ergothérapeute en santé mentale",
       "psychiatrist": "Psychiatre",
       "otherProfessionals": "Autres professionnels"
+    },
+    "titlesPlural": {
+      "psychologist": "psychologues",
+      "psychotherapist": "psychothérapeutes",
+      "neuropsychologist": "neuropsychologues",
+      "psychoeducator": "psychoéducateurs",
+      "occupationalTherapistMentalHealth": "ergothérapeutes en santé mentale",
+      "psychiatrist": "psychiatres",
+      "otherProfessionals": "professionnels en santé mentale"
+    },
+    "regionIn": {
+      "bas-saint-laurent": "au Bas-Saint-Laurent",
+      "saguenay-lac-saint-jean": "au Saguenay–Lac-Saint-Jean",
+      "capitale-nationale": "dans la Capitale-Nationale",
+      "mauricie": "en Mauricie",
+      "estrie": "en Estrie",
+      "montreal": "à Montréal",
+      "outaouais": "en Outaouais",
+      "abitibi-temiscamingue": "en Abitibi-Témiscamingue",
+      "cote-nord": "sur la Côte-Nord",
+      "nord-du-quebec": "dans le Nord-du-Québec",
+      "gaspesie-iles-de-la-madeleine": "en Gaspésie–Îles-de-la-Madeleine",
+      "chaudiere-appalaches": "en Chaudière-Appalaches",
+      "laval": "à Laval",
+      "lanaudiere": "dans Lanaudière",
+      "laurentides": "dans les Laurentides",
+      "monteregie": "en Montérégie",
+      "centre-du-quebec": "au Centre-du-Québec"
     },
     "orders": {
       "OPQ": "Ordre des psychologues du Québec",
@@ -7420,6 +7485,9 @@
       "unpublishedByProfessional": "Vous avez retiré votre page. Vous pouvez la remettre en ligne en tout temps.",
       "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus.",
       "stillLive": "La version publiée de votre page reste en ligne d'ici là."
+    },
+    "stats": {
+      "line": "Ces {days} derniers jours : {views, plural, one {# visite} other {# visites}} et {clicks, plural, one {# clic} other {# clics}} sur « Demander un rendez-vous »."
     },
     "missingTitle": "Il reste à compléter :",
     "missing": {
@@ -7622,8 +7690,10 @@
         "professional": "Professionnel",
         "city": "Ville",
         "page": "Page",
+        "stats": "Visites ({days} j)",
         "actions": "Actions"
       },
+      "stats": "{views, plural, one {# visite} other {# visites}} · {clicks, plural, one {# clic} other {# clics}}",
       "accountInactive": "Compte inactif",
       "changes": "Modifications non publiées",
       "open": "Ouvrir",
@@ -7695,6 +7765,27 @@
         "admin": "Administrateur",
         "system": "Système"
       }
+    }
+  },
+  "ShowcaseHub": {
+    "title": "Trouver un psy par ville au Québec",
+    "intro": "Choisissez votre région, puis votre ville, pour découvrir les professionnels en santé mentale qui y sont présentés et faire votre demande de rendez-vous en ligne.",
+    "empty": "Aucun professionnel n'est encore présenté. Je chemine peut vous jumeler dès maintenant avec un professionnel, en personne ou en téléconsultation.",
+    "metaTitle": "Psychologues et psychothérapeutes par ville au Québec",
+    "metaDescription": "Trouvez un professionnel en santé mentale près de chez vous : les régions et les villes du Québec où Je chemine présente des psychologues et des psychothérapeutes.",
+    "regionCount": "{count, plural, one {# professionnel présenté} other {# professionnels présentés}}",
+    "soon": "Aucun professionnel présenté pour l'instant",
+    "breadcrumbLabel": "Fil d'Ariane",
+    "breadcrumbQuebec": "Québec",
+    "region": {
+      "title": "Professionnels en santé mentale {regionIn}",
+      "heading": "{titles} {regionIn}",
+      "intro": "Les villes où des professionnels en santé mentale sont présentés {regionIn}, et la page de chacun.",
+      "empty": "Aucun professionnel n'est encore présenté {regionIn}. Je chemine peut vous jumeler dès maintenant avec un professionnel, en personne ou en téléconsultation.",
+      "metaDescription": "Trouvez un professionnel en santé mentale {regionIn} : présentation, tarifs et demande de rendez-vous en ligne avec Je chemine.",
+      "citiesTitle": "Villes",
+      "professionalsTitle": "Professionnels présentés",
+      "back": "Toutes les régions"
     }
   }
 }

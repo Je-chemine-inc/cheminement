@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_SHOWCASE_IMAGE,
+  hubPageMetadata,
   showcaseLayoutMetadata,
   showcasePageMetadata,
 } from "@/lib/showcase-metadata";
@@ -38,6 +39,18 @@ describe("showcase metadata", () => {
     expect(withPhoto.openGraph?.images).toEqual([
       "https://psyquebec.jechemine.ca/api/files/0123456789abcdef01234567",
     ]);
+  });
+
+  it("gives the directory pages on www the same rules, on the canonical host", () => {
+    const meta = hubPageMetadata({ path: "/psy/lanaudiere", title: "t", description: "d" });
+    expect(meta.alternates?.canonical).toBe("https://www.jechemine.ca/psy/lanaudiere");
+    expect(meta.openGraph?.url).toBe("https://www.jechemine.ca/psy/lanaudiere");
+    expect(meta.openGraph?.images).toEqual([DEFAULT_SHOWCASE_IMAGE]);
+    expect(meta.robots).toBeUndefined();
+    expect(hubPageMetadata({ path: "/psy", title: "t", description: "d", index: false }).robots).toEqual({
+      index: false,
+      follow: true,
+    });
   });
 
   it("keeps a page out of search results only when asked", () => {

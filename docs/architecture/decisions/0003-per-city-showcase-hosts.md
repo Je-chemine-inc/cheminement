@@ -21,7 +21,7 @@ the middleware only redirected the bare domain to www.
 3. **One URL per page.** The internal path redirects (308) to its city host whatever host asked for
    it, and www's robots.txt disallows it. Each showcase page sets an absolute canonical on its city
    host, because the root layout's relative canonical resolves against the rewritten path.
-4. **Hosts we do not serve redirect temporarily (307).** An unknown `psy…` host goes to www's home,
+4. **Hosts we do not serve redirect temporarily (307).** An unknown `psy…` host goes to the city directory on www (`/psy`),
    any other subdomain to the same path on www. The city registry grows, and a permanent redirect
    cached by a browser would outlive the day a city is added.
 5. **The registry is data, not DNS.** Cities are the Quebec entries of `src/data/canadaCities.ts`

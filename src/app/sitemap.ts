@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { listPublishedContent } from "@/lib/content-entry";
 import { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE } from "@/lib/content-kind";
+import { loadShowcaseDirectory } from "@/lib/showcase-queries";
+import { countByCity, hubSitemapPaths, summarizeRegions } from "@/lib/showcase-seo";
+import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { SITE_URL } from "@/lib/site-url";
 
 /**
@@ -66,6 +69,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // One unreadable kind must not produce an empty sitemap for all of them.
       console.error(`[sitemap] failed to list ${kind}:`, error);
     }
+  }
+
+  // Spec 003: the directory of regions and cities, once professionals are
+  // presented. Each city host lists its own pages in its own sitemap.
+  try {
+    if (await isShowcaseEnabled()) {
+      const summaries = summarizeRegions(countByCity(await loadShowcaseDirectory()));
+      for (const path of hubSitemapPaths(summaries)) {
+        entries.push({
+          url: `${SITE_URL}${path}`,
+          lastModified: now,
+          changeFrequency: "weekly",
+          priority: path.split("/").length === 2 ? 0.8 : 0.7,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[sitemap] failed to list the showcase directory:", error);
   }
 
   return entries;

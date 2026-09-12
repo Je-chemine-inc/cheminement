@@ -115,6 +115,12 @@ export function ShowcaseProStatus({
         <p className="text-sm text-muted-foreground">{t("statusText.draft")}</p>
       )}
 
+      {page.status === "published" && view.showcaseEnabled ? (
+        <p className="text-sm text-muted-foreground">
+          {t("stats.line", { days: view.stats.days, views: view.stats.views, clicks: view.stats.ctaClicks })}
+        </p>
+      ) : null}
+
       {missing.length > 0 ? (
         <div className="rounded-lg bg-muted/60 p-4 text-sm">
           <p className="font-medium text-foreground">{t("missingTitle")}</p>

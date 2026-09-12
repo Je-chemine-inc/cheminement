@@ -25,8 +25,10 @@ const h = vi.hoisted(() => {
     user: null as Record<string, unknown> | null,
     users: [] as Record<string, unknown>[],
     profile: null as Record<string, unknown> | null,
+    catalog: [] as Record<string, unknown>[],
     pageFilters: [] as Record<string, unknown>[],
     userFilters: [] as Record<string, unknown>[],
+    catalogFilters: [] as Record<string, unknown>[],
     profileSelects: [] as string[],
   };
 });
@@ -69,7 +71,12 @@ vi.mock("@/models/Profile", () => ({
   },
 }));
 vi.mock("@/models/ProCatalogItem", () => ({
-  default: { find: () => h.chain(() => []) },
+  default: {
+    find: (filter: Record<string, unknown>) => {
+      h.catalogFilters.push(filter);
+      return h.chain(() => h.catalog);
+    },
+  },
 }));
 
 import {
@@ -77,10 +84,13 @@ import {
   buildShowcasePreview,
   findPublishedShowcase,
   listPublishedShowcaseCards,
-  listShowcaseSitemapPages,
+  loadShowcaseCatalog,
+  loadShowcaseDirectory,
 } from "@/lib/showcase-queries";
 
 const PRO = "0123456789abcdef01234567";
+const ZOE = "0123456789abcdef0123zzzz";
+const ANXIETY = "0123456789abcdef0123aaaa";
 const content = { displayName: "Amel Sassi", headline: { fr: "Psychologue" }, expertiseIds: [] };
 
 beforeEach(() => {
@@ -90,8 +100,10 @@ beforeEach(() => {
   h.user = { _id: PRO, firstName: "Amel", lastName: "Sassi" };
   h.users = [];
   h.profile = { userId: PRO, specialty: "psychologist", sessionTypes: ["Individual"] };
+  h.catalog = [];
   h.pageFilters = [];
   h.userFilters = [];
+  h.catalogFilters = [];
   h.profileSelects = [];
 });
 
@@ -131,33 +143,76 @@ describe("findPublishedShowcase", () => {
 });
 
 describe("listPublishedShowcaseCards", () => {
-  it("lists a city's published pages, skipping professionals no longer active, by name", async () => {
-    const zoe = "0123456789abcdef0123zzzz";
+  beforeEach(() => {
     h.pages = [
-      { userId: zoe, slug: "zoe", cityKey: "mascouche", published: { displayName: "Zoé Tremblay" } },
-      { userId: PRO, slug: "sassi", cityKey: "mascouche", published: { displayName: "Amel Sassi" } },
+      { userId: ZOE, slug: "zoe", cityKey: "mascouche", published: { displayName: "Zoé Tremblay", expertiseIds: [ANXIETY] } },
+      { userId: PRO, slug: "sassi", cityKey: "terrebonne", published: { displayName: "Amel Sassi" } },
       { userId: "0123456789abcdef0123gone", slug: "gone", cityKey: "mascouche", published: { displayName: "Parti" } },
     ];
     h.users = [
-      { _id: zoe, firstName: "Zoé", lastName: "Tremblay" },
+      { _id: ZOE, firstName: "Zoé", lastName: "Tremblay" },
       { _id: PRO, firstName: "Amel", lastName: "Sassi" },
     ];
+    h.catalog = [{ _id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" }];
+  });
+
+  it("lists a city's published pages, skipping professionals no longer active, by name", async () => {
     const cards = await listPublishedShowcaseCards("mascouche", "fr");
     expect(cards.map((card) => card.slug)).toEqual(["sassi", "zoe"]);
     expect(h.pageFilters[0]).toEqual({ cityKey: "mascouche", status: "published" });
     expect(h.userFilters[0]).toMatchObject({ role: "professional", status: "active" });
   });
+
+  it("lists several cities at once, for a region", async () => {
+    await listPublishedShowcaseCards(["mascouche", "terrebonne"], "fr");
+    expect(h.pageFilters[0]).toEqual({ cityKey: { $in: ["mascouche", "terrebonne"] }, status: "published" });
+    expect(await listPublishedShowcaseCards([], "fr")).toEqual([]);
+  });
+
+  it("keeps only the professionals who carry an expertise, when asked", async () => {
+    const cards = await listPublishedShowcaseCards("mascouche", "fr", { expertiseSlug: "anxiete" });
+    expect(cards.map((card) => card.slug)).toEqual(["zoe"]);
+    expect(cards[0].expertiseSlugs).toEqual(["anxiete"]);
+  });
 });
 
-describe("listShowcaseSitemapPages", () => {
-  it("lists only pages of active professionals", async () => {
+describe("loadShowcaseDirectory", () => {
+  it("lists published pages of active professionals in registry cities, reduced to what search pages need", async () => {
     const updatedAt = new Date("2026-09-10");
     h.pages = [
-      { userId: PRO, slug: "sassi", updatedAt },
-      { userId: "0123456789abcdef0123gone", slug: "gone", updatedAt },
+      { userId: PRO, cityKey: "mascouche", slug: "sassi", published: { expertiseIds: [{ toString: () => ANXIETY }] }, updatedAt },
+      { userId: "0123456789abcdef0123gone", cityKey: "mascouche", slug: "gone", published: {}, updatedAt },
+      { userId: ZOE, cityKey: "atlantis", slug: "zoe", published: {}, updatedAt },
     ];
-    h.users = [{ _id: PRO }];
-    expect(await listShowcaseSitemapPages("mascouche")).toEqual([{ slug: "sassi", lastModified: updatedAt }]);
+    h.users = [{ _id: PRO }, { _id: ZOE }];
+    expect(await loadShowcaseDirectory()).toEqual([
+      { cityKey: "mascouche", slug: "sassi", expertiseIds: [ANXIETY], lastModified: updatedAt },
+    ]);
+    expect(h.pageFilters[0]).toEqual({ status: "published" });
+    expect(h.userFilters[0]).toMatchObject({ role: "professional", status: "active" });
+  });
+
+  it("does not look up users when nothing is published", async () => {
+    expect(await loadShowcaseDirectory()).toEqual([]);
+    expect(h.userFilters).toEqual([]);
+  });
+});
+
+describe("loadShowcaseCatalog", () => {
+  it("returns the active expertises offered on pages that have an address", async () => {
+    h.catalog = [
+      { _id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
+      { _id: "x", slug: "", labelFr: "Sans adresse", labelEn: "" },
+    ];
+    expect(await loadShowcaseCatalog()).toEqual([
+      { id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
+    ]);
+    expect(h.catalogFilters[0]).toEqual({
+      category: "expertise",
+      showcase: true,
+      active: true,
+      slug: { $type: "string" },
+    });
   });
 });
 
