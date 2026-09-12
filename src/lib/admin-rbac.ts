@@ -2,7 +2,7 @@ import type { IAdminPermissions } from "@/models/Admin";
 import Admin from "@/models/Admin";
 import connectToDatabase from "@/lib/mongodb";
 import { maskPhoneForDisplay } from "@/lib/contact-mask";
-import type { AdminUiPermissions } from "@/lib/admin-nav";
+import { NO_ADMIN_UI_PERMISSIONS, type AdminUiPermissions } from "@/lib/admin-nav";
 
 /**
  * Moindre privilège : masquer le téléphone si l’admin gère la facturation mais pas les dossiers patients.
@@ -30,21 +30,24 @@ export async function getActiveAdminPermissions(
 
 /**
  * What the admin screens may show this admin, for the menu and the pages. The
- * same rule as `requireBillingAdmin`, so the menu never offers a screen the API
- * refuses. Only the display: every route still checks for itself. Never
- * throws; anything unexpected hides.
+ * same rules as `requireBillingAdmin` and `requireProfessionalsAdmin`, so the
+ * menu never offers a screen the API refuses. Only the display: every route
+ * still checks for itself. Never throws; anything unexpected hides.
  */
 export async function getAdminUiPermissions(
   user: { id?: string | null; isAdmin?: boolean | null } | null | undefined,
 ): Promise<AdminUiPermissions> {
-  if (!user?.id || !user.isAdmin) return { manageBilling: false };
+  if (!user?.id || !user.isAdmin) return { ...NO_ADMIN_UI_PERMISSIONS };
   try {
     await connectToDatabase();
     const permissions = await getActiveAdminPermissions(user.id);
-    return { manageBilling: permissions?.manageBilling === true };
+    return {
+      manageBilling: permissions?.manageBilling === true,
+      manageProfessionals: permissions?.manageProfessionals === true,
+    };
   } catch (e) {
     console.error("[admin-rbac] could not read the admin's permissions:", e);
-    return { manageBilling: false };
+    return { ...NO_ADMIN_UI_PERMISSIONS };
   }
 }
 

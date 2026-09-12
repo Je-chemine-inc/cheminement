@@ -79,7 +79,7 @@ Manual trigger: `gh workflow run deploy-whc.yml -R ProgixDev/cheminement --ref m
 
 ## 5. DNS & Email
 
-- **DNS**: managed at **Namecheap** (nameservers `dns1/dns2.registrar-servers.com`). `@`, `www`, `staging` A-records → `173.209.43.39`.
+- **DNS**: managed at **Namecheap** (nameservers `dns1/dns2.registrar-servers.com`). `@`, `www`, `staging` A-records → `173.209.43.39`. No wildcard record yet: the showcase city hosts (`psy<city>.jechemine.ca`, spec 003) need one, added only **after** the wildcard certificate and vhost exist — see §11.
 - **Mail server**: WHC **Business Email** (separate box, `mailpro5.whc.ca` = `173.209.51.234`, Canada). IMAP 993 / SMTP 465. Mailboxes: **`support@jechemine.ca`** (general) and **`paiement@jechemine.ca`** (payments). The app sends outbound via `mailpro5.whc.ca:465` as `support@jechemine.ca` (`SMTP_*`/`MAIL_FROM` in env). PrivateEmail dropped.
 - **Auth records** (Namecheap → Advanced DNS): MX `@`→`mailpro5.whc.ca`; SPF `v=spf1 +a +ip4:173.209.51.234 +include:spf.web-dns1.com ~all`; DKIM `default._domainkey` (2048-bit, from cPanel → Email Deliverability); DMARC `p=none rua=mailto:support@jechemine.ca`. All verified valid; IP clean on major blocklists.
 - **Interac deposit email** = `paiement@jechemine.ca` (`PlatformSettings.interacDepositEmail`; env `INTERAC_DEPOSIT_EMAIL` unset ⇒ DB wins). Payment-category emails set Reply-To to it.
@@ -191,6 +191,7 @@ lives under `/var/lib/mongo` as root. This script is the only database backup.
 - **Backups are staged for off-site but not yet leaving the box** — `/root/backups/mongo/` lives on the VPS, and cPanel's account backups do not cover `/var/lib/mongo` or `/root`. Since 2026-09-06 each validated archive is also copied to `/home/jechemin/db-backups/` so a JetBackup **account** job can carry it to the WHC S3 destination (confirmed stored in Canada, so Loi 25 is satisfied for the PHI in the archives). **What remains is one click in the WHC client area**: create + schedule a daily account backup job for `jechemin`. The purchased 50 GB is untouched (0 MB used) and ~360 MB/month is needed, so quota is a non-issue. Note the installed edition is **JetBackup Base**, which is account-oriented — pointing a job directly at `/root/backups/mongo` would need a tier that offers directory jobs, which is why the archives are staged inside the account instead. **Highest-value open ops item until that job runs.**
 - **No full restore rehearsal** — the app's Mongo user is scoped to the `jechemine` database, so restoring an archive into a scratch database fails `not authorized`. `--dryRun` validates the archive parses completely, which is weaker than a real restore. Needs a Mongo admin credential (or a throwaway mongod on another port) to rehearse properly. Do this before relying on the backup in anger.
 - **Bank debit (DPA) for organizations — before its switch is turned on** (Admin → Organismes payeurs; off, and organization billing itself is off): (1) the LIVE Stripe webhook must also receive `payment_intent.processing`: copy the repo's `scripts/add-stripe-webhook-events.ts` over `/root/jechemine/scripts/` (the copy there is older and lists only 3 events), then run it on the box with the LIVE key read in place — `cd /root/jechemine && STRIPE_SECRET_KEY="$(grep -m1 '^STRIPE_SECRET_KEY=' /root/jechemine.env | cut -d= -f2- | tr -d '"')" npx tsx scripts/add-stripe-webhook-events.ts` (idempotent: it only adds events, never removes; it prints endpoint ids and event names, never the key); (2) in the Stripe dashboard, check that pre-authorized debits (ACSS) are active and PAD customer emails are on; (3) pilot on one small invoice from a business account. Why and what to watch: debt-map, 2026-09-12 bank-debit entry.
+- **Showcase city hosts (spec 003)** — once the code is deployed (it is dark: `showcaseEnabled` off), no city host resolves until the owner picks a DNS API (Cloudflare DNS-only recommended, or the Namecheap API), then the wildcard certificate and vhost are installed and only then the `*` record added — in that order (§11). Before turning the switch on: a Search Console **Domain** property.
 - **Email deliverability** — confirm whether welcome emails land in Gmail Promotions vs Primary (last live test sent; awaiting which-tab confirmation); improve Primary placement if needed.
 - **Admin-alert PHI** — a few admin-alert emails put client name + motif in the body/subject; strip to a deep-link (Loi 25).
 - **Field encryption** — enable `FIELD_ENCRYPTION_KEY` + backfill (§8).
@@ -226,6 +227,56 @@ pnpm test && pnpm exec tsc --noEmit
 # --- external site check ---
 curl -s -o /dev/null -w '%{http_code}\n' https://www.jechemine.ca
 ```
+
+---
+
+## 11. Showcase city hosts — wildcard DNS, certificate and vhost (spec 003)
+
+The showcase pages live on one host per Quebec city (`psymascouche.jechemine.ca/sassi`), served by the same app: `src/middleware.ts` rewrites a city host to `src/app/showcase/[cityKey]/…` (rules in `src/lib/showcase-hosts.ts`; why: [ADR-0003](../architecture/decisions/0003-per-city-showcase-hosts.md)). The code is inert until this section is done, and the pages stay dark until an admin turns `showcaseEnabled` on. **Adding a city later is a code change only** (`src/data/canadaCities.ts`) — nothing on the server.
+
+**State on 2026-09-12, checked from outside:** no wildcard record (`psyzz9test.jechemine.ca` → NXDOMAIN); nameservers are Namecheap BasicDNS; `jechemine.ca` is **not** on the HSTS preload list (hstspreload.org: status `unknown`, not preloadable because plain-http apex redirects to www first). But `https://jechemine.ca` already answers with `Strict-Transport-Security: …; includeSubDomains`, so every browser that once opened it refuses any subdomain without a valid certificate. **Hence the order below: certificate and vhost first, DNS record last.**
+
+**Why a wildcard certificate:** AutoSSL issues one certificate per hostname, validated over http. ~110 city hosts would mean ~110 certificates (Let's Encrypt allows 50 new ones per registered domain per week) and a server step per city. One `*.jechemine.ca` certificate covers every city, today's and future ones. Let's Encrypt issues wildcards only through a **DNS-01** challenge, so the DNS provider needs an API — **the owner's choice:**
+
+| Option | What it takes | Notes |
+|---|---|---|
+| **A. Cloudflare DNS, DNS-only (recommended)** | Free account; import the zone and **compare every record** with the snapshot (MX, SPF, DKIM, DMARC, Stripe's domain records), all grey-cloud (DNS only — no proxy, no CDN); switch the nameservers at Namecheap; an API token limited to `Zone.DNS:Edit` on this zone | acme.sh `dns_cf`. The domain stays registered at Namecheap |
+| B. Namecheap API | API access requires 20+ domains in the account, **or** a $50 balance, **or** $50 spent in the last 2 years; allow-list `173.209.43.39` | acme.sh `dns_namecheap`. No nameserver change, but its API rewrites the **whole** record list on each update — diff the zone against the snapshot after the first issuance |
+| C. DNS hosted on this server | Nameservers pointed at the VPS's cPanel DNS | AutoSSL then issues the wildcard itself. But the site's and mail's DNS would depend on this oversubscribed box — not recommended |
+| Pilot only | One cPanel subdomain + AutoSSL per city | 50 certificates a week, a server step per city |
+
+**Sequence (A or B). No step touches www or staging:**
+
+1. **Pre-flight, read-only, on the box:** `apachectl -S` (note the vhost order); `grep -n ProxyPreserveHost /etc/apache2/conf.d/userdata/ssl/2_4/jechemin/jechemine.ca/proxy.conf` — the app routes on the Host header, so it must be `On`; `uapi --user=jechemin SSL installed_hosts`; save the zone (`dig +noall +answer` for `@`/`www`/`staging` A, MX, TXT, `_dmarc`, `default._domainkey` and Stripe's records) to `/root/jechemine/dns-snapshot-<date>.txt`.
+2. **DNS API.** A: create the Cloudflare zone, compare it with the snapshot, switch the nameservers, wait until `dig NS jechemine.ca` answers Cloudflare. B: enable API access and allow-list the IP. **Do not add the `*` record yet.**
+3. **Wildcard vhost:** `uapi --user=jechemin SubDomain addsubdomain domain='*' rootdomain=jechemine.ca dir=public_html/_wildcard_` (or cPanel → Domains → create `*.jechemine.ca` without sharing the document root). cPanel names it `_wildcard_.jechemine.ca` on disk — confirm with `uapi --user=jechemin DomainInfo list_domains`. Keep AutoSSL away from it: `uapi --user=jechemin SSL add_autossl_excluded_domains domains='*.jechemine.ca'`. `apachectl -S` must still list `www` and `staging` **before** the wildcard vhost.
+4. **Certificate, as root:** `curl https://get.acme.sh | sh -s email=support@jechemine.ca`, then `acme.sh --set-default-ca --server letsencrypt`. Issue against the **staging CA first** — Let's Encrypt allows 5 duplicate certificates a week, never loop `--force`:
+   - A: `CF_Token=… CF_Zone_ID=… acme.sh --issue --dns dns_cf -d '*.jechemine.ca' --keylength 2048 --staging`
+   - B: `NAMECHEAP_USERNAME=… NAMECHEAP_API_KEY=… NAMECHEAP_SOURCEIP=173.209.43.39 acme.sh --issue --dns dns_namecheap -d '*.jechemine.ca' --keylength 2048 --staging`
+
+   Then the same command once more without `--staging`, with `--force` that one time to replace the test certificate.
+5. **Install, with a renewal hook:** `acme.sh --install-cert -d '*.jechemine.ca' --key-file /root/jechemine/certs/wildcard.key --fullchain-file /root/jechemine/certs/wildcard.fullchain.pem --cert-file /root/jechemine/certs/wildcard.cert.pem --ca-file /root/jechemine/certs/wildcard.ca.pem --reloadcmd /root/jechemine/install-wildcard-cert.sh`. The script (`chmod 700`) runs `uapi --user=jechemin SSL install_ssl domain='*.jechemine.ca' cert="$(cat /root/jechemine/certs/wildcard.cert.pem)" key="$(cat /root/jechemine/certs/wildcard.key)" cabundle="$(cat /root/jechemine/certs/wildcard.ca.pem)"`; acme.sh re-runs it at every renewal from its own line in root's crontab (not `/etc/cron.d`, so §7's duplicate trap does not apply). If `install_ssl` refuses `*.jechemine.ca`, use the name `installed_hosts` reports for the wildcard vhost.
+6. **Proxy includes** — the www ones, in the wildcard's directory:
+   - `/etc/apache2/conf.d/userdata/ssl/2_4/jechemin/_wildcard_.jechemine.ca/proxy.conf`: the same lines as `…/jechemine.ca/proxy.conf` (`ProxyPreserveHost On`, `RequestHeader set X-Forwarded-Proto "https"`, `ProxyPass`/`ProxyPassReverse` to `http://127.0.0.1:3000/`).
+   - `/etc/apache2/conf.d/userdata/std/2_4/jechemin/_wildcard_.jechemine.ca/proxy.conf`: **no ProxyPass** (§3) — `RewriteEngine On`, `RewriteCond %{REQUEST_URI} !^/\.well-known/`, `RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]` (to the same host, not to www).
+   - `/scripts/ensure_vhost_includes --user=jechemin && apachectl configtest && apachectl graceful`.
+7. **Only now the DNS record:** `*` A → `173.209.43.39` (Cloudflare: DNS only). Existing names (`www`, `staging`, mail, Stripe) keep their own records; a wildcard never overrides a name that exists.
+8. **Verify from outside the box.** If the certificate seen from outside differs from `openssl s_client -connect 127.0.0.1:443 -servername psymascouche.jechemine.ca` on the box, look at Imunify360's WebShield (`systemctl restart imunify360-webshield`).
+   ```bash
+   openssl s_client -connect 173.209.43.39:443 -servername psymascouche.jechemine.ca </dev/null 2>/dev/null | openssl x509 -noout -subject -dates  # CN = *.jechemine.ca
+   curl -sI https://psymascouche.jechemine.ca/             # 307 → https://www.jechemine.ca while the switch is off
+   curl -sI http://psymascouche.jechemine.ca/              # 301 → https://psymascouche.jechemine.ca/
+   curl -s  https://psymascouche.jechemine.ca/robots.txt   # "Disallow: /" while off
+   curl -sI https://psyatlantis.jechemine.ca/              # 307 → https://www.jechemine.ca/
+   curl -sI https://www.jechemine.ca/showcase/mascouche    # 308 → https://psymascouche.jechemine.ca/
+   curl -sI https://www.jechemine.ca/ ; curl -sI https://staging.jechemine.ca/  # unchanged
+   ```
+   Renewal drill, once: `acme.sh --renew -d '*.jechemine.ca' --force`, then `installed_hosts` shows the new dates. Add a line to `/etc/cron.d/jechemine` that emails `support@jechemine.ca` when the certificate has fewer than 14 days left (and keep no backup copy in that directory, §7).
+9. **Search Console:** add a **Domain property** for `jechemine.ca` (DNS TXT record); it covers every city host. Once the switch is on, each city's robots.txt names its own sitemap.
+
+**Rollback** (www and staging untouched): remove the `*` record; delete the two include files → `ensure_vhost_includes` → `configtest` → `graceful`; `uapi --user=jechemin SubDomain delsubdomain domain=_wildcard_.jechemine.ca`; `acme.sh --remove -d '*.jechemine.ca'`.
+
+**To expect afterwards:** every undefined name (`webmail.`, `cpanel.`, typos) reaches the app, which sends it to www with a temporary redirect — reach WHM/cPanel by the server's address as today. Cookies are per host: signing in or accepting cookies on www does not carry over to a city host.
 
 ---
 

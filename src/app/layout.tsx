@@ -4,8 +4,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd";
+import { SITE_URL } from "@/lib/site-url";
 
-const SITE_URL = "https://www.jechemine.ca";
 const SITE_TITLE = "Je chemine - Soins en santé mentale";
 const SITE_DESCRIPTION =
   "Plateforme de santé mentale du Québec : jumelage avec des professionnels qualifiés, prise de rendez-vous et accompagnement bilingue, en personne ou en ligne.";

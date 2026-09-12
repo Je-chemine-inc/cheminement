@@ -7284,5 +7284,34 @@
     "verifyArrival": "Expected around {date}.",
     "verifyLink": "Open the verification page",
     "methodUnavailable": "This payment method is not available right now. Pay by card or by another method shown below."
+  },
+  "Showcase": {
+    "brand": "Je chemine",
+    "cityBadge": "Psy {city}",
+    "nav": {
+      "book": "Request an appointment"
+    },
+    "footer": {
+      "tagline": "Quebec's mental-health platform",
+      "site": "jechemine.ca",
+      "privacy": "Privacy",
+      "terms": "Terms of use",
+      "emergency": "Je chemine is not an emergency service. If you are in immediate danger, call 911. In distress or having suicidal thoughts: 988, available 24/7.",
+      "rights": "© {year} Je chemine. All rights reserved."
+    },
+    "city": {
+      "eyebrow": "Mental health in {city}",
+      "title": "Mental-health professionals in {city}",
+      "metaTitle": "Psychologist and psychotherapist in {city}",
+      "metaDescription": "Find a mental-health professional in {city} ({region}): profile, fees and online appointment requests with Je chemine.",
+      "empty": "No professional is presented in {city} yet. Je chemine can match you with a professional in the region, in person or by video.",
+      "emptyCta": "Request a match"
+    },
+    "notFound": {
+      "title": "This page does not exist",
+      "body": "The professional or page you are looking for is not, or no longer, presented here.",
+      "backCity": "See the city's professionals",
+      "backSite": "Go to jechemine.ca"
+    }
   }
 }

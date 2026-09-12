@@ -6,9 +6,9 @@ This describes **Je chemine** as it actually runs today, not as it was originall
 
 - **Next.js 16 App Router**, React 19.2 with the **React Compiler** enabled (`next.config.ts: reactCompiler: true`). TypeScript strict.
 - The UI is **heavily client-side**: ~192 files carry `"use client"`. Server components are essentially the route-group `layout.tsx` files, which call `getServerSession`/`auth()` to gate by role. Dashboards self-fetch their data in `useEffect` (raw `fetch()` or a thin `apiClient` singleton) — there is **no RSC data-loading layer, no SWR/React Query, and no global store**. "Real-time" is 30–60s polling.
-- **Locale** is cookie-driven (`NEXT_LOCALE`), **not** a URL segment. `src/i18n/request.ts` defaults to **French** unless the cookie is exactly `en` (French-first by design). Copy lives in `messages/en.json` + `messages/fr.json` (lockstep). There is no `sitemap.ts`/`robots.ts`/`hreflang`.
+- **Locale** is cookie-driven (`NEXT_LOCALE`), **not** a URL segment. `src/i18n/request.ts` defaults to **French** unless the cookie is exactly `en` (French-first by design). Copy lives in `messages/en.json` + `messages/fr.json` (lockstep). `src/app/sitemap.ts` and `robots.ts` serve www; each showcase city host serves its own (spec 003). There is no `hreflang`: one URL per page, French canonical.
 - **Auth**: NextAuth v4 Credentials (bcrypt) + `@auth/mongodb-adapter`, **JWT sessions, 30-min maxAge**. Role/status/license are copied onto the token at login — so admin changes to a logged-in user are invisible until re-login (the pro dashboard works around this by re-fetching `/api/users/me`).
-- **No edge auth**: `src/middleware.ts` only injects an `x-pathname` header for `/professional/*`. All access control lives inside route handlers and server layouts.
+- **No edge auth**: `src/middleware.ts` routes by host — the bare domain to www, a showcase city host (`psy<city>.jechemine.ca`, spec 003) rewritten to `src/app/showcase/[cityKey]/…` (rules and tests in `src/lib/showcase-hosts.ts`) — and injects an `x-pathname` header. All access control lives inside route handlers and server layouts.
 - **Persistence**: MongoDB via a cached Mongoose singleton (`src/lib/mongodb.ts`, retrying transient errors) + a separate `clientPromise` for the NextAuth adapter. **No multi-document transactions** anywhere — consistency relies on single-document atomic `findOneAndUpdate` "claims".
 
 ## Directory layout (role of each top-level folder)
@@ -24,7 +24,8 @@ src/
     pay/             Token-based guest payment + payment-method setup (Stripe Elements)
     api/             ~154 route.ts handlers (see below)
     actions/         server actions (locale.ts)
-    layout.tsx · loading.tsx · not-found.tsx · error.tsx
+    showcase/        city hosts psy<city>.jechemine.ca, rewritten here by the middleware (spec 003)
+    layout.tsx · not-found.tsx · error.tsx (no root loading.tsx: it turned every notFound() into an HTTP 200 — debt-map 2026-09-07)
   components/        ~141 .tsx, by domain: admin, appointments, auth, billing, dashboard, inbox, layout, legal, media, payments, sections, ui (shadcn)
   lib/              ~71 business-logic/service modules (the "brain") — see below
   models/           25 Mongoose models
@@ -71,7 +72,7 @@ A service request **is** an `Appointment` document (it may have no `professional
 
 ## Entry points
 
-- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`.
+- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`. A showcase city host enters at `src/app/showcase/[cityKey]/` through the middleware's rewrite.
 - **API**: each `src/app/api/**/route.ts` exporting `GET/POST/PATCH/PUT/DELETE`. Stripe → `api/payments/webhook`. Crons → `api/cron/*`.
 - **Background**: the 5 cron runners in `lib/*-reminders.ts` / `lib/proposal-timeout.ts`.
 

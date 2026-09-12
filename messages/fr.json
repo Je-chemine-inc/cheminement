@@ -7283,5 +7283,34 @@
     "verifyArrival": "Arrivée prévue vers le {date}.",
     "verifyLink": "Ouvrir la page de vérification",
     "methodUnavailable": "Ce mode de paiement n’est pas offert pour le moment. Payez par carte ou par un autre moyen indiqué ci-dessous."
+  },
+  "Showcase": {
+    "brand": "Je chemine",
+    "cityBadge": "Psy {city}",
+    "nav": {
+      "book": "Demander un rendez-vous"
+    },
+    "footer": {
+      "tagline": "La plateforme québécoise de santé mentale",
+      "site": "jechemine.ca",
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation",
+      "emergency": "Je chemine n'est pas un service d'urgence. En cas de danger immédiat, composez le 911. En détresse ou avec des pensées suicidaires : 988, 24 h/24, 7 j/7.",
+      "rights": "© {year} Je chemine. Tous droits réservés."
+    },
+    "city": {
+      "eyebrow": "Santé mentale à {city}",
+      "title": "Professionnels en santé mentale à {city}",
+      "metaTitle": "Psychologue et psychothérapeute à {city}",
+      "metaDescription": "Trouvez un professionnel en santé mentale à {city} ({region}) : présentation, tarifs et demande de rendez-vous en ligne avec Je chemine.",
+      "empty": "Aucun professionnel n'est encore présenté à {city}. Je chemine peut vous jumeler avec un professionnel de la région, en personne ou en téléconsultation.",
+      "emptyCta": "Faire une demande de jumelage"
+    },
+    "notFound": {
+      "title": "Cette page n'existe pas",
+      "body": "Le professionnel ou la page que vous cherchez n'est pas, ou n'est plus, présenté ici.",
+      "backCity": "Voir les professionnels de la ville",
+      "backSite": "Aller sur jechemine.ca"
+    }
   }
 }

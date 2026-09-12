@@ -9,6 +9,7 @@ const sections = [
       { url: "/admin/dashboard/patients" },
       { url: "/admin/dashboard/billing", requires: "manageBilling" as const },
       { url: "/admin/dashboard/accounting", requires: "manageBilling" as const },
+      { url: "/admin/dashboard/showcases", requires: "manageProfessionals" as const },
     ],
   },
   { title: "Facturation", items: [{ url: "/admin/dashboard/organizations", requires: "manageBilling" as const }] },
@@ -18,18 +19,26 @@ const urls = (s: typeof sections) => s.map((x) => [x.title, x.items.map((i) => i
 
 describe("visibleNavSections", () => {
   it("drops the billing screens for an admin without billing rights", () => {
-    expect(urls(visibleNavSections(sections, { manageBilling: false }))).toEqual([
+    expect(urls(visibleNavSections(sections, { manageBilling: false, manageProfessionals: true }))).toEqual([
       ["Tableau de bord", ["/admin/dashboard"]],
-      ["Gestion", ["/admin/dashboard/patients"]],
+      ["Gestion", ["/admin/dashboard/patients", "/admin/dashboard/showcases"]],
     ]);
   });
 
-  it("keeps everything for a billing admin", () => {
-    expect(visibleNavSections(sections, { manageBilling: true })).toEqual(sections);
+  it("drops the showcase screen for an admin who does not manage professionals", () => {
+    expect(urls(visibleNavSections(sections, { manageBilling: true, manageProfessionals: false }))).toEqual([
+      ["Tableau de bord", ["/admin/dashboard"]],
+      ["Gestion", ["/admin/dashboard/patients", "/admin/dashboard/billing", "/admin/dashboard/accounting"]],
+      ["Facturation", ["/admin/dashboard/organizations"]],
+    ]);
+  });
+
+  it("keeps everything for an admin with both rights", () => {
+    expect(visibleNavSections(sections, { manageBilling: true, manageProfessionals: true })).toEqual(sections);
   });
 
   it("does not change the menu it was given", () => {
-    visibleNavSections(sections, { manageBilling: false });
-    expect(sections[1].items).toHaveLength(3);
+    visibleNavSections(sections, { manageBilling: false, manageProfessionals: false });
+    expect(sections[1].items).toHaveLength(4);
   });
 });

@@ -1,8 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listPublishedContent } from "@/lib/content-entry";
 import { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE } from "@/lib/content-kind";
-
-const SITE_URL = "https://www.jechemine.ca";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Served at /sitemap.xml.

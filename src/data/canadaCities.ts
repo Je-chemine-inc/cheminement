@@ -37,6 +37,7 @@ const LAN = "Lanaudière";
 const LAU = "Laurentides";
 const MON = "Montérégie";
 const CDQ = "Centre-du-Québec";
+const NDQ = "Nord-du-Québec";
 
 const qc = (city: string, region: string): CityEntry => ({
   city,
@@ -171,6 +172,8 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Chandler", GIM),
   qc("Carleton-sur-Mer", GIM),
   qc("Les Îles-de-la-Madeleine", GIM),
+  // --- Nord-du-Québec ---
+  qc("Chibougamau", NDQ),
 
   // --- Major Canadian cities (region = province name) ---
   { city: "Toronto", province: "ON", region: "Ontario" },

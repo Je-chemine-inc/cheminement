@@ -209,6 +209,12 @@ export interface IPlatformSettings extends Document {
    * microdeposit path cannot be tested without real Stripe keys.
    */
   organizationPadEnabled?: boolean;
+  /**
+   * Spec 003 kill switch: the showcase pages (psy<city>.jechemine.ca), their
+   * booking requests and waitlists. Off by default: every city host sends its
+   * visitors to www and no showcase API answers.
+   */
+  showcaseEnabled?: boolean;
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -498,6 +504,7 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     },
     organizationBillingEnabled: { type: Boolean, default: false },
     organizationPadEnabled: { type: Boolean, default: false },
+    showcaseEnabled: { type: Boolean, default: false },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },
