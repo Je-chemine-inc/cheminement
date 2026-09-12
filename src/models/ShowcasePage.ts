@@ -1,0 +1,186 @@
+import mongoose, { Schema, Document, Model } from "mongoose";
+import {
+  PROFESSIONAL_ORDER_CODES,
+  SHOWCASE_REVIEW_STATES,
+  SHOWCASE_STATUSES,
+  type ProfessionalOrderCode,
+  type ShowcaseActor,
+  type ShowcaseReviewState,
+  type ShowcaseStatus,
+} from "@/lib/showcase-constants";
+
+/**
+ * A professional's showcase page (spec 003): psy<city>.jechemine.ca/<slug>.
+ *
+ * One per professional, created when an admin invites them. The editorial
+ * content exists twice: `draft`, which the professional (or an admin) edits,
+ * and `published`, the snapshot an admin approved — the only copy the public
+ * ever sees. Identity facts (title, permit number, languages, modalities,
+ * fees) are NOT copied here: the page reads them live from the profile, so it
+ * never disagrees with what the platform bills.
+ */
+
+export interface ILocalizedText {
+  fr: string;
+  en: string;
+}
+
+export interface IShowcaseContent {
+  displayName: string;
+  headline: ILocalizedText;
+  intro: ILocalizedText;
+  /** Plain text; paragraphs separated by a blank line. Never HTML. */
+  bio: ILocalizedText;
+  approach: ILocalizedText;
+  values: ILocalizedText[];
+  /** ProCatalogItem ids (category "expertise", offered on showcase pages). */
+  expertiseIds: mongoose.Types.ObjectId[];
+  orderCode?: ProfessionalOrderCode;
+  /** The order's name when `orderCode` is "other". */
+  orderLabel: string;
+  insuranceNote: ILocalizedText;
+  /** StoredFile of kind "showcase-photo". */
+  photoFileId?: mongoose.Types.ObjectId;
+}
+
+export interface IShowcaseHistoryEntry {
+  at: Date;
+  actor: ShowcaseActor | "system";
+  by?: mongoose.Types.ObjectId;
+  action: string;
+  note?: string;
+}
+
+export interface IShowcasePage extends Document {
+  userId: mongoose.Types.ObjectId;
+  slug: string;
+  /** Former slugs, answered with a permanent redirect to the current page. */
+  previousSlugs: string[];
+  cityKey: string;
+  status: ShowcaseStatus;
+  review: {
+    state: ShowcaseReviewState;
+    submittedAt?: Date;
+    reviewedAt?: Date;
+    reviewedBy?: mongoose.Types.ObjectId;
+    notes?: string;
+  };
+  draft: IShowcaseContent;
+  /** +1 on every saved change; an approval names the revision it looked at. */
+  draftRevision: number;
+  draftUpdatedAt?: Date;
+  draftUpdatedBy?: ShowcaseActor;
+  published?: IShowcaseContent;
+  publishedRevision?: number;
+  publishedAt?: Date;
+  publishedBy?: mongoose.Types.ObjectId;
+  unpublishedAt?: Date;
+  unpublishedBy?: ShowcaseActor;
+  /** Offered on the page. Live settings: they apply without a new review. */
+  services: { standard: boolean; quick: boolean };
+  /** The professional's acceptance of publication (Loi 25), versioned. */
+  consent?: { acceptedAt?: Date; version?: string };
+  invitedAt: Date;
+  invitedBy?: mongoose.Types.ObjectId;
+  remindedAt?: Date;
+  history: IShowcaseHistoryEntry[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const LocalizedTextSchema = new Schema<ILocalizedText>(
+  {
+    fr: { type: String, trim: true, default: "" },
+    en: { type: String, trim: true, default: "" },
+  },
+  { _id: false },
+);
+
+const localized = () => ({ type: LocalizedTextSchema, default: () => ({ fr: "", en: "" }) });
+
+const ShowcaseContentSchema = new Schema<IShowcaseContent>(
+  {
+    displayName: { type: String, trim: true, default: "" },
+    headline: localized(),
+    intro: localized(),
+    bio: localized(),
+    approach: localized(),
+    values: { type: [LocalizedTextSchema], default: [] },
+    expertiseIds: { type: [{ type: Schema.Types.ObjectId, ref: "ProCatalogItem" }], default: [] },
+    orderCode: { type: String, enum: PROFESSIONAL_ORDER_CODES },
+    orderLabel: { type: String, trim: true, default: "" },
+    insuranceNote: localized(),
+    photoFileId: { type: Schema.Types.ObjectId, ref: "StoredFile" },
+  },
+  { _id: false },
+);
+
+const HistoryEntrySchema = new Schema<IShowcaseHistoryEntry>(
+  {
+    at: { type: Date, required: true },
+    actor: { type: String, enum: ["professional", "admin", "system"], required: true },
+    by: { type: Schema.Types.ObjectId, ref: "User" },
+    action: { type: String, required: true },
+    note: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
+const ShowcasePageSchema = new Schema<IShowcasePage>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: /^[a-z0-9]+(-[a-z0-9]+)*$/,
+    },
+    previousSlugs: { type: [String], default: [] },
+    cityKey: { type: String, required: true, trim: true },
+    status: { type: String, enum: SHOWCASE_STATUSES, default: "invited" },
+    review: {
+      state: { type: String, enum: SHOWCASE_REVIEW_STATES, default: "none" },
+      submittedAt: Date,
+      reviewedAt: Date,
+      reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      notes: { type: String, trim: true },
+    },
+    draft: { type: ShowcaseContentSchema, default: () => ({}) },
+    draftRevision: { type: Number, default: 0 },
+    draftUpdatedAt: Date,
+    draftUpdatedBy: { type: String, enum: ["professional", "admin"] },
+    published: { type: ShowcaseContentSchema, default: undefined },
+    publishedRevision: Number,
+    publishedAt: Date,
+    publishedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    unpublishedAt: Date,
+    unpublishedBy: { type: String, enum: ["professional", "admin"] },
+    services: {
+      standard: { type: Boolean, default: true },
+      quick: { type: Boolean, default: false },
+    },
+    consent: {
+      acceptedAt: Date,
+      version: String,
+    },
+    invitedAt: { type: Date, required: true },
+    invitedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    remindedAt: Date,
+    history: { type: [HistoryEntrySchema], default: [] },
+  },
+  { timestamps: true },
+);
+
+ShowcasePageSchema.index({ status: 1, cityKey: 1 });
+ShowcasePageSchema.index({ previousSlugs: 1 });
+ShowcasePageSchema.index({ "review.state": 1, "review.submittedAt": 1 });
+ShowcasePageSchema.index({ "published.expertiseIds": 1, status: 1 });
+ShowcasePageSchema.index({ "published.photoFileId": 1 }, { sparse: true });
+
+const ShowcasePage: Model<IShowcasePage> =
+  mongoose.models.ShowcasePage ||
+  mongoose.model<IShowcasePage>("ShowcasePage", ShowcasePageSchema);
+
+export default ShowcasePage;

@@ -29,6 +29,9 @@ export interface IStoredFile extends Document {
     | "content-image"
     | "referral"
     | "organization-form"
+    // A professional's photo for their showcase page (spec 003). Public only
+    // once a published page shows it — see GET /api/files/[id].
+    | "showcase-photo"
     | "generic";
   uploadedBy?: mongoose.Types.ObjectId;
   /**
@@ -61,6 +64,7 @@ const StoredFileSchema = new Schema<IStoredFile>(
         "content-image",
         "referral",
         "organization-form",
+        "showcase-photo",
         "generic",
       ],
       default: "generic",

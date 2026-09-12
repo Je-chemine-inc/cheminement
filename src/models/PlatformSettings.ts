@@ -58,7 +58,14 @@ export type EmailNotificationType =
   | "interac_payment_reminder"
   // Professional rate-change requests (spec 001 AC-22).
   | "rate_proposal_submitted"
-  | "rate_proposal_decision";
+  | "rate_proposal_decision"
+  // Spec 003: showcase pages.
+  | "showcase_invitation"
+  | "showcase_reminder"
+  | "showcase_published"
+  | "showcase_changes_requested"
+  | "showcase_unpublished"
+  | "admin_showcase_submitted";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -404,6 +411,30 @@ const defaultEmailTemplates: Record<
   rate_proposal_decision: {
     enabled: true,
     subject: "Votre demande de tarif — Je chemine",
+  },
+  showcase_invitation: {
+    enabled: true,
+    subject: "Votre page vitrine sur Je chemine",
+  },
+  showcase_reminder: {
+    enabled: true,
+    subject: "Rappel : votre page vitrine vous attend",
+  },
+  showcase_published: {
+    enabled: true,
+    subject: "Votre page vitrine est approuvée",
+  },
+  showcase_changes_requested: {
+    enabled: true,
+    subject: "Quelques modifications à votre page vitrine",
+  },
+  showcase_unpublished: {
+    enabled: true,
+    subject: "Votre page vitrine est retirée",
+  },
+  admin_showcase_submitted: {
+    enabled: true,
+    subject: "Page vitrine à vérifier — Je chemine",
   },
 };
 

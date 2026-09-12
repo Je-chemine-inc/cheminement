@@ -26,9 +26,11 @@ export async function ShowcaseHeader({ city }: { city: ShowcaseCity }) {
         <nav className="flex items-center gap-2 text-sm">
           <a
             href={canonicalSiteUrl(`/appointment?from=showcase&city=${encodeURIComponent(city.key)}`)}
-            className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="whitespace-nowrap rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            {t("nav.book")}
+            {/* On a phone the long label would squeeze the city badge. */}
+            <span className="sm:hidden">{t("nav.bookShort")}</span>
+            <span className="hidden sm:inline">{t("nav.book")}</span>
           </a>
         </nav>
       </div>

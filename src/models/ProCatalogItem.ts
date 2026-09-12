@@ -24,6 +24,13 @@ export interface IProCatalogItem extends Document {
   labelEn?: string;
   aliases: string[];
   active: boolean;
+  /**
+   * Expertises only (spec 003): offered as a tag on showcase pages, with this
+   * URL segment for its city pages (psy<city>.jechemine.ca/specialite/<slug>).
+   * Changing a slug moves public URLs.
+   */
+  showcase?: boolean;
+  slug?: string;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -46,6 +53,9 @@ const ProCatalogItemSchema = new Schema<IProCatalogItem>(
     labelEn: { type: String, trim: true, default: "" },
     aliases: { type: [String], default: [] },
     active: { type: Boolean, default: true },
+    showcase: { type: Boolean, default: false },
+    // Never stored empty: the unique index below applies to every string.
+    slug: { type: String, trim: true, lowercase: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
@@ -55,6 +65,10 @@ const ProCatalogItemSchema = new Schema<IProCatalogItem>(
 // Same label may exist in different categories, but is unique within one.
 ProCatalogItemSchema.index({ category: 1, labelFr: 1 }, { unique: true });
 ProCatalogItemSchema.index({ category: 1, active: 1 });
+ProCatalogItemSchema.index(
+  { category: 1, slug: 1 },
+  { unique: true, partialFilterExpression: { slug: { $type: "string" } } },
+);
 
 const ProCatalogItem: Model<IProCatalogItem> =
   mongoose.models.ProCatalogItem ||

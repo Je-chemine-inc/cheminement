@@ -28,7 +28,7 @@ src/
     layout.tsx · not-found.tsx · error.tsx (no root loading.tsx: it turned every notFound() into an HTTP 200 — debt-map 2026-09-07)
   components/        ~141 .tsx, by domain: admin, appointments, auth, billing, dashboard, inbox, layout, legal, media, payments, sections, ui (shadcn)
   lib/              ~71 business-logic/service modules (the "brain") — see below
-  models/           25 Mongoose models
+  models/           33 Mongoose models
   hooks/            use-mobile, useInactivityLogout, useMotifs, useMotifSearch
   config/           clinical-availability-grid, motifSearch, colors
   data/             static FR-first taxonomies (problematics, diagnostics, approaches, motifs, professionalTitles)
@@ -72,7 +72,7 @@ A service request **is** an `Appointment` document (it may have no `professional
 
 ## Entry points
 
-- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`. A showcase city host enters at `src/app/showcase/[cityKey]/` through the middleware's rewrite.
+- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`. A showcase city host enters at `src/app/showcase/[cityKey]/` through the middleware's rewrite. A professional's page there is a `ShowcasePage` with a draft and an approved copy; public pages read only the approved copy, and only through `src/lib/showcase-public.ts`, which builds what the public may see key by key.
 - **API**: each `src/app/api/**/route.ts` exporting `GET/POST/PATCH/PUT/DELETE`. Stripe → `api/payments/webhook`. Crons → `api/cron/*`.
 - **Background**: the 5 cron runners in `lib/*-reminders.ts` / `lib/proposal-timeout.ts`.
 

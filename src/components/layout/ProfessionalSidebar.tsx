@@ -20,6 +20,7 @@ import {
   Star,
   Layers,
   MessageSquare,
+  Store,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -46,6 +47,17 @@ export function ProfessionalSidebar() {
   const t = useTranslations("Dashboard.sidebar");
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
+  // « Ma page vitrine » exists only for a professional an admin invited (spec 003).
+  const [showcaseInvited, setShowcaseInvited] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/professional/showcase")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => setShowcaseInvited(body?.invited === true))
+      .catch(() => {
+        // silent: the entry simply stays hidden
+      });
+  }, []);
 
   useEffect(() => {
     const loadUnread = async () => {
@@ -95,6 +107,15 @@ export function ProfessionalSidebar() {
           url: "/professional/dashboard/profile",
           icon: User,
         },
+        ...(showcaseInvited
+          ? [
+              {
+                title: t("showcase"),
+                url: "/professional/dashboard/showcase",
+                icon: Store,
+              },
+            ]
+          : []),
         {
           title: t("schedule"),
           url: "/professional/dashboard/schedule",

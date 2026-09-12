@@ -209,6 +209,42 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l’adresse de facturation d’un organisme quand un administrateur le rembourse depuis « Factures aux organismes » (case cochée par défaut). Montant, façon dont il est rendu et solde restant, avec le lien de paiement s’il reste un montant dû. Jamais la raison, aucun nom de client.",
     category: "Paiements",
   },
+  showcase_invitation: {
+    name: "Invitation à préparer sa page vitrine",
+    description:
+      "Envoyé au professionnel quand un administrateur l'invite à préparer sa page vitrine (psy<ville>.jechemine.ca). Lien vers son tableau de bord ; rien n'est publié sans qu'il l'envoie et qu'un administrateur l'approuve.",
+    category: "Pages vitrines",
+  },
+  showcase_reminder: {
+    name: "Rappel — page vitrine à terminer",
+    description:
+      "Envoyé au professionnel quand un administrateur le relance (au plus une fois par jour) tant que sa page n'est pas envoyée.",
+    category: "Pages vitrines",
+  },
+  showcase_published: {
+    name: "Page vitrine approuvée",
+    description:
+      "Envoyé au professionnel quand un administrateur publie sa page ou ses modifications, avec l'adresse publique si les pages vitrines sont ouvertes.",
+    category: "Pages vitrines",
+  },
+  showcase_changes_requested: {
+    name: "Modifications demandées (page vitrine)",
+    description:
+      "Envoyé au professionnel avec les commentaires de l'administrateur qui a relu sa page avant publication.",
+    category: "Pages vitrines",
+  },
+  showcase_unpublished: {
+    name: "Page vitrine retirée",
+    description:
+      "Envoyé au professionnel quand un administrateur retire sa page du site. Pas envoyé quand le professionnel la retire lui-même.",
+    category: "Pages vitrines",
+  },
+  admin_showcase_submitted: {
+    name: "Alerte équipe — page vitrine à vérifier",
+    description:
+      "Envoyé à l'équipe quand un professionnel envoie sa page vitrine, ou des modifications, pour vérification.",
+    category: "Alertes administratives",
+  },
   admin_organization_invoice_overdue: {
     name: "Alerte équipe — factures aux organismes en retard",
     description:
@@ -347,6 +383,7 @@ const TEMPLATE_CATEGORIES = [
   "Professionnels",
   "Ressources",
   "Alertes administratives",
+  "Pages vitrines",
 ];
 
 export default function SettingsPage() {

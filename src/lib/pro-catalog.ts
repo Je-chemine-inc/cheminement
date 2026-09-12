@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import { getActiveAdminPermissions } from "@/lib/admin-rbac";
 import type { IProCatalogItem } from "@/models/ProCatalogItem";
+import { slugify } from "@/lib/content-kind";
 
 /** Same `manageContent` gate the Motif admin routes use. */
 export async function requireContentAdmin() {
@@ -45,7 +46,7 @@ export function serializeCatalogItem(
   d: Pick<
     IProCatalogItem,
     "category" | "labelFr" | "labelEn" | "aliases" | "active" | "createdAt" | "updatedAt"
-  > & { _id: unknown },
+  > & { _id: unknown; showcase?: boolean; slug?: string },
 ) {
   return {
     id: String(d._id),
@@ -54,7 +55,23 @@ export function serializeCatalogItem(
     labelEn: d.labelEn || "",
     aliases: d.aliases || [],
     active: d.active !== false,
+    showcase: d.showcase === true,
+    slug: d.slug || "",
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
   };
+}
+
+const CATALOG_SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * The URL segment of an expertise's showcase pages (spec 003): the one asked
+ * for, or one made from the French label. Null when neither is usable.
+ */
+export function catalogSlug(requested: unknown, labelFr: string): string | null {
+  const raw =
+    typeof requested === "string" && requested.trim()
+      ? requested.trim().toLowerCase()
+      : slugify(labelFr).replace(/^-+|-+$/g, "");
+  return raw.length >= 2 && raw.length <= 60 && CATALOG_SLUG_RE.test(raw) ? raw : null;
 }

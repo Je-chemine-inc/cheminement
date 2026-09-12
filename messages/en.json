@@ -766,7 +766,12 @@
       "refresh": "Refresh",
       "cancel": "Cancel",
       "save": "Save",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "showcaseLabel": "Offered on showcase pages",
+      "showcaseHint": "Professionals can show it on their showcase page, and it can get its own city pages.",
+      "slugLabel": "URL segment",
+      "slugHint": "Used in the address of city pages, for example /specialite/anxiete. Leave empty to build it from the French label.",
+      "showcaseBadge": "Showcase pages"
     },
     "motifs": {
       "title": "Consultation reasons",
@@ -3321,7 +3326,9 @@
       "employees": "Employees",
       "administration": "Administration",
       "organizations": "Paying organizations",
-      "organizationInvoices": "Organization invoices"
+      "organizationInvoices": "Organization invoices",
+      "showcases": "Showcase pages",
+      "showcase": "My showcase page"
     },
     "overview": {
       "title": "Welcome Back",
@@ -7289,7 +7296,8 @@
     "brand": "Je chemine",
     "cityBadge": "Psy {city}",
     "nav": {
-      "book": "Request an appointment"
+      "book": "Request an appointment",
+      "bookShort": "Book"
     },
     "footer": {
       "tagline": "Quebec's mental-health platform",
@@ -7305,13 +7313,389 @@
       "metaTitle": "Psychologist and psychotherapist in {city}",
       "metaDescription": "Find a mental-health professional in {city} ({region}): profile, fees and online appointment requests with Je chemine.",
       "empty": "No professional is presented in {city} yet. Je chemine can match you with a professional in the region, in person or by video.",
-      "emptyCta": "Request a match"
+      "emptyCta": "Request a match",
+      "count": "{count, plural, one {# professional presented} other {# professionals presented}}"
     },
     "notFound": {
       "title": "This page does not exist",
       "body": "The professional or page you are looking for is not, or no longer, presented here.",
       "backCity": "See the city's professionals",
       "backSite": "Go to jechemine.ca"
+    },
+    "card": {
+      "viewProfile": "View profile"
+    },
+    "profile": {
+      "previewBanner": "Preview: this version is not visible to the public.",
+      "photoAlt": "Photo of {name}",
+      "location": "{city} · {region}",
+      "memberOf": "{order}",
+      "permit": "Permit no. {number}",
+      "officeIn": "Office in {city}",
+      "experience": "{years, plural, =0 {Less than a year of experience} one {# year of experience} other {# years of experience}}",
+      "bookCta": "Request an appointment",
+      "matchCta": "Get matched with a professional",
+      "presentationTitle": "About",
+      "approachTitle": "My approach",
+      "valuesTitle": "Values",
+      "expertisesTitle": "Areas of expertise",
+      "servicesTitle": "Services and fees",
+      "standardTitle": "Standard consultation",
+      "notAccepting": "{name} is not taking new clients at the moment. Je chemine can match you with another professional.",
+      "pricesUnavailable": "Fees are confirmed with your request.",
+      "duration": "{minutes} minutes",
+      "quickTitle": "Quick one-time consultation",
+      "quickOffered": "Offered for a specific, one-time need. The fee and length are confirmed with your request.",
+      "receipt": "A receipt is issued for every paid session.",
+      "cancellation": "Free cancellation up to {hours} hours before the appointment.",
+      "bookTitle": "Book an appointment",
+      "bookBody": "Send your request online in a few minutes. Je chemine confirms your appointment.",
+      "metaTitle": "{name}, {title} in {city}",
+      "metaTitleNoTitle": "{name}, mental health in {city}",
+      "metaDescription": "{name}, mental-health professional in {city} ({region}): profile, areas of expertise, fees and appointment requests with Je chemine."
+    },
+    "titles": {
+      "psychologist": "Psychologist",
+      "psychotherapist": "Psychotherapist",
+      "neuropsychologist": "Neuropsychologist",
+      "psychoeducator": "Psychoeducator",
+      "occupationalTherapistMentalHealth": "Occupational therapist (mental health)",
+      "psychiatrist": "Psychiatrist",
+      "otherProfessionals": "Other professionals"
+    },
+    "orders": {
+      "OPQ": "Ordre des psychologues du Québec",
+      "OPPQ": "Ordre des psychoéducateurs et psychoéducatrices du Québec",
+      "OTSTCFQ": "Ordre des travailleurs sociaux et des thérapeutes conjugaux et familiaux du Québec",
+      "OCCOQ": "Ordre des conseillers et conseillères d'orientation du Québec",
+      "OEQ": "Ordre des ergothérapeutes du Québec",
+      "CMQ": "Collège des médecins du Québec",
+      "OIIQ": "Ordre des infirmières et infirmiers du Québec",
+      "OPSQ": "Ordre professionnel des sexologues du Québec"
+    },
+    "modalities": {
+      "inPerson": "In person",
+      "video": "Video consultation",
+      "phone": "Phone",
+      "chat": "Chat"
+    },
+    "languages": {
+      "french": "French",
+      "english": "English",
+      "arabic": "Arabic",
+      "spanish": "Spanish",
+      "mandarin": "Mandarin"
+    },
+    "therapyTypes": {
+      "solo": "Individual session",
+      "couple": "Couples session",
+      "group": "Group session"
+    }
+  },
+  "ShowcasePro": {
+    "title": "My showcase page",
+    "subtitle": "Your public page on Je chemine presents your practice to people looking for a professional in your city. Nothing is published without your consent and the team's approval.",
+    "loadError": "Your showcase page could not be loaded. Try again in a moment.",
+    "cancel": "Cancel",
+    "notInvited": {
+      "title": "Showcase pages are by invitation",
+      "body": "The Je chemine team invites professionals to prepare their public page. You will get an email when yours is ready to fill in."
+    },
+    "status": {
+      "label": "Page status",
+      "invited": "To complete",
+      "draft": "Draft",
+      "pending": "In review",
+      "changes_requested": "Changes requested",
+      "published": "Live",
+      "approvedClosed": "Approved",
+      "unpublished": "Taken down"
+    },
+    "statusText": {
+      "draft": "Complete your page, check the preview, then send it to the team for review.",
+      "pending": "Your page was sent to the team, who is reviewing it.",
+      "changes_requested": "The team asks for a few changes before publication:",
+      "published": "Your page is live:",
+      "approvedClosed": "Your page is approved. The public will see it as soon as showcase pages open.",
+      "pendingChanges": "You have changes that are not published yet. Send them for review: the current version stays live meanwhile.",
+      "unpublishedByProfessional": "You took your page down. You can put it back online at any time.",
+      "unpublishedByAdmin": "The team took your page down. Write to us to learn more.",
+      "stillLive": "The published version of your page stays live meanwhile."
+    },
+    "missingTitle": "Still to complete:",
+    "missing": {
+      "photo": "A photo",
+      "displayName": "The display name",
+      "headline": "The headline in French",
+      "bio": "A presentation in French of at least 200 characters",
+      "expertises": "At least 3 areas of expertise",
+      "order": "The professional order",
+      "title": "The professional title, in the profile",
+      "license": "The permit number, in the profile",
+      "modalities": "The consultation modes, in the profile",
+      "city": "A valid city for the page, chosen by the team"
+    },
+    "actions": {
+      "preview": "Preview",
+      "submit": "Send for review",
+      "viewPublic": "View the public page",
+      "unpublish": "Take my page down",
+      "republish": "Put back online"
+    },
+    "consent": {
+      "title": "Consent to publication",
+      "intro": "Read and accept this text to send your page to the team.",
+      "text": "I authorize Je chemine to publish my showcase page on its websites and to let it appear in search engines. It includes my photo, my name, my professional title, my order and permit number, the city where I practise, my presentation, my areas of expertise and my fees.\n\nI confirm that this information is accurate and follows the advertising rules of my professional order, and that I have the right to use the photo I provided.\n\nI can take my page down at any time from my dashboard. The team reviews every change before it is published.",
+      "version": "Text version: {version}",
+      "checkbox": "I have read this text and I accept it",
+      "submit": "Accept and send"
+    },
+    "unpublishDialog": {
+      "title": "Take your page down?",
+      "body": "The public will no longer see your page. You can put it back online whenever you want.",
+      "confirm": "Take my page down"
+    },
+    "facts": {
+      "title": "Information from the profile",
+      "hint": "It appears as is on the page. To change it, edit the profile.",
+      "editProfile": "Edit my profile",
+      "none": "Not provided",
+      "titleLabel": "Professional title",
+      "license": "Permit number",
+      "modalities": "Consultation modes",
+      "languages": "Languages",
+      "officeCity": "Office city",
+      "pageAddress": "Page address"
+    },
+    "photo": {
+      "title": "Photo",
+      "hint": "A recent professional photo, facing the camera and well lit. JPEG, PNG or WebP, 5 MB at most, at least 400 pixels on each side.",
+      "alt": "Showcase page photo",
+      "upload": "Add a photo",
+      "replace": "Replace the photo",
+      "remove": "Remove the photo"
+    },
+    "presentation": {
+      "title": "Presentation",
+      "language": "Text language",
+      "french": "French",
+      "english": "English",
+      "englishHint": "English is optional. Without a translation, English-speaking visitors see the French text."
+    },
+    "fields": {
+      "displayName": "Display name",
+      "displayNameHint": "As it appears at the top of the page.",
+      "headline": "Headline",
+      "headlinePlaceholder": "E.g. I help adults build lasting well-being.",
+      "intro": "Introduction",
+      "introPlaceholder": "A few sentences to introduce yourself.",
+      "bio": "Presentation",
+      "bioPlaceholder": "Your background, your practice and the people you work with. Leave an empty line between paragraphs.",
+      "approach": "My approach",
+      "approachPlaceholder": "How your sessions go and what your approach is based on.",
+      "values": "Values",
+      "valuesHint": "Up to 5 words or short phrases, for example \"Kindness\".",
+      "addValue": "Add a value",
+      "removeValue": "Remove this value",
+      "insuranceNote": "Insurance note",
+      "insuranceNotePlaceholder": "E.g. My services can be reimbursed by most group insurance plans.",
+      "characters": "{count} / {max} characters"
+    },
+    "expertises": {
+      "title": "Areas of expertise",
+      "hint": "Choose 3 to 12 areas. They help people find you by city and by need.",
+      "count": "{count, plural, =0 {None selected} one {# selected} other {# selected}}",
+      "none": "The team has not opened any areas of expertise for showcase pages yet."
+    },
+    "order": {
+      "title": "Professional order",
+      "select": "Choose the order",
+      "other": "Other order",
+      "otherLabel": "Name of the order"
+    },
+    "services": {
+      "title": "Services offered on the page",
+      "hint": "These choices apply right away, without a new review. Fees come from the pricing grid.",
+      "standard": "Standard consultation",
+      "standardHint": "The usual sessions, at the grid's fees.",
+      "quick": "Quick one-time consultation",
+      "quickHint": "A one-time meeting for a specific need.",
+      "notAcceptingClients": "The profile says new clients are not accepted: this service does not appear on the page.",
+      "notAcceptingQuick": "The profile says quick one-time consultations are not accepted: this service does not appear on the page."
+    },
+    "editor": {
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "unsaved": "Unsaved changes"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "No connection. Check your network and try again.",
+      "TOO_LONG": "A field is longer than allowed.",
+      "INVALID_FIELD": "A field has an invalid value.",
+      "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
+      "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
+      "TOO_MANY_VALUES": "Enter at most 5 values.",
+      "INVALID_ORDER": "Choose a professional order from the list.",
+      "NOTHING_TO_SAVE": "There are no changes to save.",
+      "NOT_FOUND": "Showcase page not found.",
+      "NO_FILE": "Choose a file.",
+      "PHOTO_TOO_LARGE": "The photo is larger than 5 MB.",
+      "PHOTO_INVALID": "Format refused. Use a JPEG, PNG or WebP image.",
+      "PHOTO_TOO_SMALL": "The photo is too small: it needs at least 400 pixels on each side.",
+      "PHOTO_INFECTED": "The antivirus scan refused this file.",
+      "SCAN_UNAVAILABLE": "The antivirus scan is unavailable. Try again in a few minutes.",
+      "RATE_LIMITED": "Too many attempts. Try again later.",
+      "CONSENT_REQUIRED": "Consent to publication is required.",
+      "INCOMPLETE": "The page is not complete. See the list of missing items.",
+      "ALREADY_SUBMITTED": "The page is already in review.",
+      "NOT_PUBLISHED": "The page is not live.",
+      "NOT_UNPUBLISHED": "The page is not taken down.",
+      "FORBIDDEN": "This action is not allowed.",
+      "PROFESSIONAL_NOT_ACTIVE": "The professional's account is not active.",
+      "PROFESSIONAL_NOT_FOUND": "Professional not found.",
+      "WITHDRAWN_BY_PROFESSIONAL": "The professional took their page down: only they can put it back online or submit it again.",
+      "NOTHING_TO_PUBLISH": "There is nothing new to publish.",
+      "REVISION_CHANGED": "The page changed since you loaded it. Reload it before going on.",
+      "NOTES_REQUIRED": "Describe the changes you are asking for.",
+      "NOT_SUBMITTED": "The page is not in review.",
+      "REMINDED_RECENTLY": "A reminder was already sent in the last 24 hours.",
+      "NOT_REMINDABLE": "A reminder can only be sent for a page still to complete.",
+      "SLUG_TAKEN": "This address is already in use.",
+      "INVALID_SLUG": "Invalid address: lowercase letters, digits and hyphens only.",
+      "INVALID_CITY": "Choose a city from the list.",
+      "ALREADY_INVITED": "This professional was already invited.",
+      "CONFLICT": "The page was changed at the same time. Reload it.",
+      "INVALID_ACTION": "Unknown action.",
+      "ACCOUNT_NOT_ACTIVE": "Your account must be active to edit your page."
+    }
+  },
+  "ShowcaseAdmin": {
+    "title": "Showcase pages",
+    "subtitle": "Choose the professionals presented to the public, invite them to prepare their page, then review and publish.",
+    "cancel": "Cancel",
+    "access": {
+      "title": "Restricted access",
+      "body": "This screen is for admins who manage professionals. Ask a super admin for this permission."
+    },
+    "badges": {
+      "notInvited": "Not invited",
+      "invited": "Invited",
+      "draft": "Draft",
+      "pending": "To review",
+      "changes_requested": "Changes requested",
+      "published": "Live",
+      "approvedClosed": "Approved, pages closed",
+      "unpublished": "Taken down"
+    },
+    "switch": {
+      "title": "Public access",
+      "on": "Open: approved pages are visible to the public.",
+      "off": "Closed: the city addresses, such as psymontreal.jechemine.ca, send visitors to jechemine.ca. You can invite, review and approve meanwhile.",
+      "turnOn": "Open to the public",
+      "turnOff": "Close to the public",
+      "confirmOnTitle": "Open showcase pages to the public?",
+      "confirmOnBody": "Approved pages become visible at the city addresses and can be indexed by search engines. First check that the certificate and DNS for the city addresses are in place.",
+      "confirmOffTitle": "Close showcase pages?",
+      "confirmOffBody": "The city addresses will send visitors to jechemine.ca. Pages stay approved and come back when you reopen.",
+      "confirm": "Confirm"
+    },
+    "cities": {
+      "title": "Live cities",
+      "none": "No page is published yet.",
+      "count": "{count, plural, one {# published page} other {# published pages}}"
+    },
+    "list": {
+      "title": "Approved professionals",
+      "refresh": "Refresh",
+      "search": "Search by name or email",
+      "filters": {
+        "all": "All",
+        "toReview": "To review",
+        "inProgress": "In preparation",
+        "published": "Live",
+        "unpublished": "Taken down",
+        "notInvited": "Not invited"
+      },
+      "empty": "No professional matches.",
+      "columns": {
+        "professional": "Professional",
+        "city": "City",
+        "page": "Page",
+        "actions": "Actions"
+      },
+      "accountInactive": "Inactive account",
+      "changes": "Unpublished changes",
+      "open": "Open",
+      "invite": "Invite"
+    },
+    "invite": {
+      "title": "Invite {name}",
+      "body": "A showcase page is created for this professional, prefilled from their profile, and an email invites them to complete it. Nothing is published before your approval.",
+      "city": "Page city",
+      "chooseCity": "Choose a city",
+      "citySuggested": "City suggested from the office address: {city}",
+      "slug": "Page address (optional)",
+      "slugHint": "Leave empty to use the last name. Lowercase letters, digits and hyphens only.",
+      "preview": "Address: {url}",
+      "submit": "Send the invitation",
+      "sent": "Invitation sent."
+    },
+    "detail": {
+      "back": "Back to showcase pages",
+      "notFound": "This professional has no showcase page.",
+      "loadError": "The showcase page could not be loaded.",
+      "done": "Done.",
+      "profileLink": "Professional's file",
+      "publicLink": "View the public page",
+      "reviewTitle": "Review and publication",
+      "revision": "Revision {revision}",
+      "submittedAt": "Sent for review on {date}",
+      "consentCurrent": "Consent to publication accepted on {date}",
+      "consentMissing": "The professional has not accepted the current consent text yet: the page cannot be published.",
+      "notSubmittedWarning": "The professional has not sent this version for review.",
+      "previewDraft": "Preview the draft",
+      "previewPublished": "Preview the live version",
+      "approve": "Approve and publish",
+      "approveTitle": "Publish revision {revision}?",
+      "approveBody": "This draft revision becomes the public page. The professional is notified by email.",
+      "requestChanges": "Request changes",
+      "changesTitle": "Request changes",
+      "changesBody": "The professional gets your notes by email. They fix their page, then send it back for review.",
+      "notes": "Changes requested",
+      "unpublish": "Take the page down",
+      "unpublishTitle": "Take the page down?",
+      "unpublishBody": "The public no longer sees the page. The professional is notified by email, with the reason if you give one.",
+      "reason": "Reason (optional)",
+      "republish": "Put back online",
+      "remind": "Send a reminder",
+      "move": "Change the address",
+      "moveTitle": "Change the city or the address",
+      "moveBody": "If the page was ever published, the old address redirects to the new one.",
+      "city": "City",
+      "slug": "Address",
+      "send": "Send",
+      "save": "Save",
+      "editorTitle": "Page content",
+      "editorHint": "Your corrections change the draft and go public when the page is approved. The services offered change right away.",
+      "historyTitle": "History",
+      "historyEmpty": "No events.",
+      "history": {
+        "invite": "Invitation",
+        "submit": "Sent for review",
+        "approve": "Approved and published",
+        "request_changes": "Changes requested",
+        "unpublish": "Taken down",
+        "republish": "Put back online",
+        "remind": "Reminder sent",
+        "move": "Address changed"
+      },
+      "actors": {
+        "professional": "Professional",
+        "admin": "Admin",
+        "system": "System"
+      }
     }
   }
 }

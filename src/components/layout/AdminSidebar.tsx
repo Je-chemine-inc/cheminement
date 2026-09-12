@@ -30,6 +30,7 @@ import {
   Layers,
   Building2,
   Receipt,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -97,6 +98,12 @@ export function AdminSidebar() {
           title: t("professionals"),
           url: "/admin/dashboard/professionals",
           icon: Users,
+        },
+        {
+          title: t("showcases"),
+          url: "/admin/dashboard/showcases",
+          icon: Store,
+          requires: "manageProfessionals",
         },
         {
           title: t("patients"),

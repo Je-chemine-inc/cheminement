@@ -7,6 +7,7 @@ import {
   requireContentAdmin,
   normalizeAliases,
   serializeCatalogItem,
+  catalogSlug,
 } from "@/lib/pro-catalog";
 
 // GET /api/admin/pro-catalog — full list (active + inactive), all categories.
@@ -17,7 +18,7 @@ export async function GET() {
   try {
     const docs = await ProCatalogItem.find({})
       .sort({ category: 1, labelFr: 1 })
-      .select("category labelFr labelEn aliases active createdAt updatedAt")
+      .select("category labelFr labelEn aliases active showcase slug createdAt updatedAt")
       .lean();
     return NextResponse.json({ items: docs.map(serializeCatalogItem) });
   } catch (error) {
@@ -62,12 +63,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Spec 003: an expertise may be offered as a tag on showcase pages, with a
+    // URL segment for its city pages.
+    const showcase = category === "expertise" && body?.showcase === true;
+    let slug: string | undefined;
+    const slugAsked = typeof body?.slug === "string" && body.slug.trim() !== "";
+    if (category === "expertise" && (showcase || slugAsked)) {
+      const candidate = catalogSlug(body?.slug, labelFr);
+      if (!candidate) {
+        return NextResponse.json({ error: "Segment d'adresse invalide" }, { status: 400 });
+      }
+      const slugTaken = await ProCatalogItem.findOne({ category, slug: candidate })
+        .select("_id")
+        .lean();
+      if (slugTaken) {
+        return NextResponse.json(
+          { error: "Ce segment d'adresse est déjà utilisé par une autre expertise" },
+          { status: 409 },
+        );
+      }
+      slug = candidate;
+    }
+
     const created = await ProCatalogItem.create({
       category,
       labelFr,
       labelEn,
       aliases,
       active,
+      showcase,
+      ...(slug ? { slug } : {}),
       createdBy: auth.session!.user.id,
       updatedBy: auth.session!.user.id,
     });

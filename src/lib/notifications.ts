@@ -8422,3 +8422,313 @@ export async function sendRateProposalDecisionEmail(data: {
     "rate_proposal_decision",
   );
 }
+
+// =============================================================================
+// Showcase pages (spec 003)
+// =============================================================================
+
+function showcaseAppUrl(path: string): string {
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  return `${base}${path}`;
+}
+
+const SHOWCASE_DASHBOARD_PATH = "/professional/dashboard/showcase";
+
+const SHOWCASE_SIGNATURE = {
+  fr: "Merci,\nL'équipe de Je chemine",
+  en: "Thank you,\nThe Je chemine team",
+};
+
+/**
+ * An admin invited a professional to prepare their showcase page, or reminded
+ * them to finish it. Says plainly that nothing goes online without the
+ * professional sending it and an admin approving it.
+ */
+export async function sendShowcaseInvitationEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  cityName: string;
+  locale?: string;
+  reminder?: boolean;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const url = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: data.reminder
+        ? "Rappel : votre page vitrine vous attend"
+        : "Votre page vitrine sur Je chemine",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: data.reminder
+        ? "Votre page vitrine n'a pas encore été envoyée pour vérification. Quelques minutes suffisent pour la terminer."
+        : `Je chemine vous invite à préparer votre page vitrine : une page publique à votre nom qui présente votre pratique aux personnes qui cherchent un professionnel à ${data.cityName}.`,
+      prepareTitle: "Ce qu'il vous faut",
+      prepare:
+        "• Une photo portrait récente et nette\n• Une courte présentation, votre approche et vos valeurs\n• Au moins trois expertises\n• Votre ordre professionnel et votre numéro de permis",
+      cta: "Préparer ma page",
+      outro: `Vous relisez votre page avant de l'envoyer, puis notre équipe la vérifie avant sa mise en ligne. Rien n'est publié sans votre accord.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: data.reminder
+        ? "Reminder: your showcase page is waiting"
+        : "Your showcase page on Je chemine",
+      greeting: `Hello ${data.professionalName},`,
+      intro: data.reminder
+        ? "Your showcase page has not been sent for review yet. A few minutes are enough to finish it."
+        : `Je chemine invites you to prepare your showcase page: a public page in your name that presents your practice to people looking for a professional in ${data.cityName}.`,
+      prepareTitle: "What you will need",
+      prepare:
+        "• A recent, sharp portrait photo\n• A short presentation, your approach and your values\n• At least three areas of expertise\n• Your professional order and your permit number",
+      cta: "Prepare my page",
+      outro: `You review your page before sending it, then our team checks it before it goes online. Nothing is published without your consent.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    infoBox: { title: copy.prepareTitle, content: copy.prepare, theme: "info" },
+    button: { text: copy.cta, url },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.prepareTitle} :\n${copy.prepare}`, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    data.reminder ? "showcase_reminder" : "showcase_invitation",
+  );
+}
+
+/** A professional sent their showcase page for review. French-only team alert. */
+export async function sendAdminShowcaseSubmittedAlert(data: {
+  professionalName: string;
+  professionalId: string;
+  cityName: string;
+  resubmission: boolean;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminShowcaseSubmittedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl(`/admin/dashboard/showcases/${data.professionalId}`);
+  const title = data.resubmission
+    ? "Modifications de page vitrine à vérifier"
+    : "Page vitrine à vérifier";
+  const intro = data.resubmission
+    ? `${data.professionalName} a envoyé des modifications à sa page vitrine. La version en ligne ne change qu'après votre approbation.`
+    : `${data.professionalName} a envoyé sa page vitrine pour vérification. Elle n'est publiée qu'après votre approbation.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Ville", value: data.cityName },
+    ],
+    button: { text: "Vérifier la page", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Vérifier la page : ${url}`], "fr");
+  const subject = await getSubject("admin_showcase_submitted", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_showcase_submitted");
+  }
+}
+
+/**
+ * An admin published a professional's page or their changes. While the
+ * showcase pages are not open to the public yet (`live` false), the email
+ * says the page is approved rather than sending them to an address that
+ * would only redirect.
+ */
+export async function sendShowcasePublishedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  publicUrl: string;
+  live: boolean;
+  firstPublication: boolean;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: data.firstPublication
+        ? "Votre page vitrine est approuvée"
+        : "Les modifications de votre page vitrine sont approuvées",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: !data.live
+        ? "Votre page vitrine est approuvée. Elle sera visible dès que les pages vitrines seront ouvertes au public."
+        : data.firstPublication
+          ? "Votre page vitrine est en ligne. Vous pouvez la partager dès maintenant."
+          : "Les modifications de votre page vitrine sont en ligne.",
+      address: "Adresse",
+      viewPage: "Voir ma page",
+      viewDashboard: "Voir mon tableau de bord",
+      outro: `Vous pouvez modifier votre page à tout moment depuis votre tableau de bord ; chaque modification est vérifiée avant sa mise en ligne. Vous pouvez aussi retirer votre page en un clic.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: data.firstPublication
+        ? "Your showcase page is approved"
+        : "The changes to your showcase page are approved",
+      greeting: `Hello ${data.professionalName},`,
+      intro: !data.live
+        ? "Your showcase page is approved. It will be visible as soon as the showcase pages open to the public."
+        : data.firstPublication
+          ? "Your showcase page is online. You can share it right away."
+          : "The changes to your showcase page are online.",
+      address: "Address",
+      viewPage: "View my page",
+      viewDashboard: "Open my dashboard",
+      outro: `You can change your page at any time from your dashboard; every change is checked before it goes online. You can also take your page down in one click.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    ...(data.live
+      ? { details: [{ label: copy.address, value: data.publicUrl, isLink: true }] }
+      : {}),
+    button: data.live
+      ? { text: copy.viewPage, url: data.publicUrl }
+      : { text: copy.viewDashboard, url: dashboardUrl },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.intro,
+      data.live ? `${copy.address} : ${data.publicUrl}` : `${copy.viewDashboard} : ${dashboardUrl}`,
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "showcase_published",
+  );
+}
+
+/** An admin asked for changes before publishing. Carries the admin's comments. */
+export async function sendShowcaseChangesRequestedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  notes: string;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const url = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: "Quelques modifications à votre page vitrine",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro:
+        "Notre équipe a relu votre page vitrine et vous demande quelques modifications avant de la publier.",
+      notesTitle: "Commentaires de l'équipe",
+      cta: "Modifier ma page",
+      outro: `Une fois les modifications faites, renvoyez la page pour vérification.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: "A few changes to your showcase page",
+      greeting: `Hello ${data.professionalName},`,
+      intro:
+        "Our team reviewed your showcase page and asks for a few changes before publishing it.",
+      notesTitle: "Comments from the team",
+      cta: "Edit my page",
+      outro: `Once the changes are made, send the page for review again.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "warning",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    infoBox: { title: copy.notesTitle, content: data.notes, theme: "warning" },
+    button: { text: copy.cta, url },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.notesTitle} :\n${data.notes}`, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "showcase_changes_requested",
+  );
+}
+
+/** An admin took a professional's page off the site. */
+export async function sendShowcaseUnpublishedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  note?: string;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const url = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: "Votre page vitrine est retirée",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro:
+        "Notre équipe a retiré votre page vitrine du site. Elle n'est plus visible par le public.",
+      noteTitle: "Motif",
+      cta: "Voir ma page vitrine",
+      outro: `Pour toute question, répondez simplement à ce courriel.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: "Your showcase page was taken down",
+      greeting: `Hello ${data.professionalName},`,
+      intro:
+        "Our team took your showcase page off the site. It is no longer visible to the public.",
+      noteTitle: "Reason",
+      cta: "Open my showcase page",
+      outro: `If you have any question, simply reply to this email.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "warning",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    ...(data.note ? { infoBox: { title: copy.noteTitle, content: data.note, theme: "info" as const } } : {}),
+    button: { text: copy.cta, url },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.note ? `${copy.noteTitle} : ${data.note}` : "", `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "showcase_unpublished",
+  );
+}

@@ -29,6 +29,7 @@ import {
   toWriterRole,
   type AppointmentPatchInput,
 } from "@/lib/appointment-writable-fields";
+import { FREE_CANCELLATION_HOURS } from "@/lib/cancellation-policy";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -53,7 +54,8 @@ const APPOINTMENT_PAYMENT_STATUSES_WITH_MONEY = [
   "refunded",
   "partially_refunded",
 ];
-const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = 48;
+// The same constant the showcase pages quote to the public.
+const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = FREE_CANCELLATION_HOURS;
 
 export async function GET(
   req: NextRequest,
