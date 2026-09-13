@@ -14,7 +14,6 @@ describe("classifyHost", () => {
   it("recognises the site's own hosts", () => {
     expect(classifyHost("www.jechemine.ca")).toEqual({ kind: "canonical" });
     expect(classifyHost("jechemine.ca")).toEqual({ kind: "apex" });
-    expect(classifyHost("staging.jechemine.ca")).toEqual({ kind: "staging" });
     expect(classifyHost("psymascouche.jechemine.ca")).toEqual({ kind: "city", cityKey: "mascouche" });
   });
 
@@ -27,6 +26,8 @@ describe("classifyHost", () => {
     expect(classifyHost("psyatlantis.jechemine.ca")).toEqual({ kind: "unknown-city" });
     expect(classifyHost("mail.jechemine.ca")).toEqual({ kind: "other-subdomain" });
     expect(classifyHost("psy-mascouche.jechemine.ca")).toEqual({ kind: "other-subdomain" });
+    // Retired on 2026-09-13: now just another subdomain.
+    expect(classifyHost("staging.jechemine.ca")).toEqual({ kind: "other-subdomain" });
   });
 
   it("never mistakes a lookalike domain for ours", () => {
@@ -80,8 +81,8 @@ describe("routeRequest", () => {
     });
   });
 
-  it("leaves www, staging and internal hosts alone", () => {
-    for (const host of ["www.jechemine.ca", "staging.jechemine.ca", "127.0.0.1:3000", "", "localhost:3100"]) {
+  it("leaves www and internal hosts alone", () => {
+    for (const host of ["www.jechemine.ca", "127.0.0.1:3000", "", "localhost:3100"]) {
       expect(routeRequest({ host, pathname: "/appointment" })).toEqual({ action: "next" });
     }
   });
@@ -119,7 +120,6 @@ describe("routeRequest", () => {
       cityKey: "mascouche",
     });
     expect(routeRequest({ host: "127.0.0.1:3000", pathname: "/showcase/atlantis" })).toEqual({ action: "next" });
-    expect(routeRequest({ host: "staging.jechemine.ca", pathname: "/showcase/mascouche" })).toEqual({ action: "next" });
   });
 
   it("lets a city host reach Next's files and its own APIs, and sends any other API to www", () => {
@@ -141,7 +141,7 @@ describe("routeRequest", () => {
   });
 
   it("never serves the internal path under its own name", () => {
-    for (const host of ["www.jechemine.ca", city, "psyquebec.jechemine.ca"]) {
+    for (const host of ["www.jechemine.ca", city, "psyquebec.jechemine.ca", "staging.jechemine.ca"]) {
       expect(routeRequest({ host, pathname: "/showcase/mascouche/sassi", search: "?a=1" })).toEqual({
         action: "redirect",
         location: "https://psymascouche.jechemine.ca/sassi?a=1",
@@ -168,6 +168,12 @@ describe("routeRequest", () => {
       location: "https://www.jechemine.ca/x?q=1",
       status: 307,
     });
+    // staging.jechemine.ca was retired on 2026-09-13; the wildcard record still answers for it.
+    expect(routeRequest({ host: "staging.jechemine.ca", pathname: "/appointment" })).toEqual({
+      action: "redirect",
+      location: "https://www.jechemine.ca/appointment",
+      status: 307,
+    });
   });
 
   it("sends the bare domain's internal path straight to its city host", () => {
@@ -179,7 +185,7 @@ describe("routeRequest", () => {
   });
 
   it("lands every redirect where no rule redirects again (one hop, never a loop)", () => {
-    const hosts = ["www.jechemine.ca", "jechemine.ca", city, "psyatlantis.jechemine.ca", "blog.jechemine.ca"];
+    const hosts = ["www.jechemine.ca", "jechemine.ca", city, "psyatlantis.jechemine.ca", "blog.jechemine.ca", "staging.jechemine.ca"];
     const paths = ["/", "/sassi", "/api/x", "/showcase/mascouche/sassi", "/showcase/atlantis/x", "/psy"];
     for (const host of hosts) {
       for (const pathname of paths) {

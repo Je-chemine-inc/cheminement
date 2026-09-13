@@ -44,8 +44,14 @@ describe("middleware", () => {
     expect(res.headers.get("location")).toBe("https://www.jechemine.ca/book?x=1");
   });
 
-  it("passes www, staging and the internal host through with x-pathname", () => {
-    for (const host of ["www.jechemine.ca", "staging.jechemine.ca", "127.0.0.1:3000"]) {
+  it("sends the retired staging host to www like any other subdomain, temporarily", () => {
+    const res = run("staging.jechemine.ca", "/professional/dashboard?x=1");
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://www.jechemine.ca/professional/dashboard?x=1");
+  });
+
+  it("passes www and the internal host through with x-pathname", () => {
+    for (const host of ["www.jechemine.ca", "127.0.0.1:3000"]) {
       const res = run(host, "/professional/dashboard");
       expect(res.headers.get("x-middleware-next")).toBe("1");
       expect(res.headers.get("x-middleware-request-x-pathname")).toBe("/professional/dashboard");

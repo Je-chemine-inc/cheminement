@@ -16,8 +16,5 @@ export const APEX_HOST = "jechemine.ca";
 /** The canonical host: auth, dashboards, the booking funnel, the hubs. */
 export const CANONICAL_HOST = "www.jechemine.ca";
 
-/** Answers on the same server; the middleware leaves it alone. */
-export const STAGING_HOST = "staging.jechemine.ca";
-
 /** The canonical origin, for absolute URLs (metadata, sitemaps, emails). */
 export const SITE_URL = `https://${CANONICAL_HOST}`;

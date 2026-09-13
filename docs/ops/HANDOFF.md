@@ -79,7 +79,8 @@ Manual trigger: `gh workflow run deploy-whc.yml -R ProgixDev/cheminement --ref m
 
 ## 5. DNS & Email
 
-- **DNS**: managed at **Namecheap** (nameservers `dns1/dns2.registrar-servers.com`). `@`, `www`, `staging` A-records → `173.209.43.39`. No wildcard record yet: the showcase city hosts (`psy<city>.jechemine.ca`, spec 003) need one, added only **after** the wildcard certificate and vhost exist — see §11.
+- **DNS**: the domain is registered at **Namecheap**, but since **2026-09-13** the zone is served by **Cloudflare** (free plan; nameservers `edna.ns.cloudflare.com` / `marek.ns.cloudflare.com`; every record « DNS only », never proxied — the box keeps its own certificates and routing). `@`, `www` and the wildcard `*` A-records → `173.209.43.39` (`*` serves the showcase city hosts, §11). Rollback: Namecheap → Nameservers → « Namecheap BasicDNS » (Namecheap still holds the old records, without `*`). **`staging` was retired on 2026-09-13**: its record and the unused Apache includes are gone (backup `/root/jechemine/apache-backups/staging-removed-20260913T180440Z/`); it never had an app of its own (it proxied to the production app on :3000). The name now falls under `*`, and once spec 003 is deployed it redirects to www like any unknown subdomain.
+- **Stripe custom email domain** (confirmed 2026-09-13): TXT `stripe-verification=…` on `@`, CNAME `bounce` → `custom-email-domain.stripe.com`, and six CNAMEs `<token>._domainkey` → `<token>.dkim.custom-email-domain.stripe.com`. Cloudflare's import missed the six DKIM records; they were added by hand. Keep all of them through any DNS change.
 - **Mail server**: WHC **Business Email** (separate box, `mailpro5.whc.ca` = `173.209.51.234`, Canada). IMAP 993 / SMTP 465. Mailboxes: **`support@jechemine.ca`** (general) and **`paiement@jechemine.ca`** (payments). The app sends outbound via `mailpro5.whc.ca:465` as `support@jechemine.ca` (`SMTP_*`/`MAIL_FROM` in env). PrivateEmail dropped.
 - **Auth records** (Namecheap → Advanced DNS): MX `@`→`mailpro5.whc.ca`; SPF `v=spf1 +a +ip4:173.209.51.234 +include:spf.web-dns1.com ~all`; DKIM `default._domainkey` (2048-bit, from cPanel → Email Deliverability); DMARC `p=none rua=mailto:support@jechemine.ca`. All verified valid; IP clean on major blocklists.
 - **Interac deposit email** = `paiement@jechemine.ca` (`PlatformSettings.interacDepositEmail`; env `INTERAC_DEPOSIT_EMAIL` unset ⇒ DB wins). Payment-category emails set Reply-To to it.
@@ -274,12 +275,13 @@ The showcase pages live on one host per Quebec city (`psymascouche.jechemine.ca/
    curl -s  https://psymascouche.jechemine.ca/robots.txt   # "Disallow: /" while off
    curl -sI https://psyatlantis.jechemine.ca/              # 307 → https://www.jechemine.ca/psy
    curl -sI https://www.jechemine.ca/showcase/mascouche    # 308 → https://psymascouche.jechemine.ca/
-   curl -sI https://www.jechemine.ca/ ; curl -sI https://staging.jechemine.ca/  # unchanged
+   curl -sI https://www.jechemine.ca/                      # unchanged
+   curl -sI https://staging.jechemine.ca/                  # retired 2026-09-13: 307 → https://www.jechemine.ca/ once spec 003 is deployed
    ```
    Renewal drill, once: `acme.sh --renew -d '*.jechemine.ca' --force`, then `installed_hosts` shows the new dates. (Not run yet: it would use one of Let's Encrypt's 5 duplicate certificates a week; the install hook itself was run by hand and works.) Expiry alert: done 2026-09-13 — `/root/jechemine/check-wildcard-cert.sh`, daily from `/etc/cron.d/jechemine` (§7), emails `support@jechemine.ca` if fewer than 14 days are left.
 9. **Search Console:** add a **Domain property** for `jechemine.ca` (DNS TXT record); it covers every city host. Once the switch is on, each city's robots.txt names its own sitemap.
 
-**Rollback** (www and staging untouched): remove the `*` record; delete the two include files → `ensure_vhost_includes` → `configtest` → `graceful`; `uapi --user=jechemin SubDomain delsubdomain domain=_wildcard_.jechemine.ca`; `acme.sh --remove -d '*.jechemine.ca'`.
+**Rollback** (www untouched): remove the `*` record; delete the two include files → `ensure_vhost_includes` → `configtest` → `graceful`; `uapi --user=jechemin SubDomain delsubdomain domain=_wildcard_.jechemine.ca`; `acme.sh --remove -d '*.jechemine.ca'`.
 
 **To expect afterwards (checked 2026-09-13):** any other name (typos, `whm.`, `psy<anything>.`) reaches the app through the wildcard vhost — on `main` it shows the home page with its canonical on www; once spec 003 is deployed, unknown names 307 to www. `mail.`, `webmail.`, `cpanel.`, `webdisk.`, `autodiscover.`, `cpcalendars.` and `cpcontacts.` now resolve too, but they are aliases of the main `jechemine.ca` vhost, whose certificate covers only the apex and `www`: a browser shows a certificate error there. Mail clients use `mailpro5.whc.ca`, so nothing depends on them; reach WHM/cPanel by the server's address as today. Cookies are per host: signing in or accepting cookies on www does not carry over to a city host.
 

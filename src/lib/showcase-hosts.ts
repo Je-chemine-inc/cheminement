@@ -1,4 +1,4 @@
-import { APEX_HOST, CANONICAL_HOST, SITE_URL, STAGING_HOST } from "@/lib/site-url";
+import { APEX_HOST, CANONICAL_HOST, SITE_URL } from "@/lib/site-url";
 import { SHOWCASE_HOST_PREFIX, isShowcaseCityKey } from "@/lib/showcase-cities";
 
 /**
@@ -52,11 +52,11 @@ const CITY_HOST_API_EXACT = new Set(["/api/auth/session", "/api/auth/csrf", "/ap
 export type HostKind =
   | { kind: "canonical" }
   | { kind: "apex" }
-  | { kind: "staging" }
   | { kind: "city"; cityKey: string }
   /** psy<something>.jechemine.ca that is not in the registry. */
   | { kind: "unknown-city" }
-  /** Any other *.jechemine.ca name (the wildcard DNS record answers for all). */
+  /** Any other *.jechemine.ca name (the wildcard DNS record answers for all),
+   *  staging.jechemine.ca included since it was retired on 2026-09-13. */
   | { kind: "other-subdomain" }
   /** 127.0.0.1:3000 (watchdog, deploy health check), localhost, or no host at
    *  all (Next's image optimizer fetches /api/files in-process, headerless). */
@@ -74,7 +74,6 @@ export function classifyHost(raw: string | null | undefined): HostKind {
   const host = normalizeHost(raw);
   if (host === CANONICAL_HOST) return { kind: "canonical" };
   if (host === APEX_HOST) return { kind: "apex" };
-  if (host === STAGING_HOST) return { kind: "staging" };
   const match = CITY_HOST_RE.exec(host);
   if (match) {
     return isShowcaseCityKey(match[1])
@@ -148,11 +147,11 @@ export type HostRouting =
 
 /**
  * What the middleware does with a request. In order:
- *  1. staging and foreign hosts are left alone — except that a foreign host's
- *     internal path of a known city is marked as a city page: Next runs the
- *     middleware a second time for a rewrite's destination, on the internal
- *     host (localhost:3000/showcase/<city>/…), and that pass must say again
- *     what the first one said, or the render never hears it. Derived from the
+ *  1. Foreign hosts are left alone — except that a foreign host's internal
+ *     path of a known city is marked as a city page: Next runs the middleware
+ *     a second time for a rewrite's destination, on the internal host
+ *     (localhost:3000/showcase/<city>/…), and that pass must say again what
+ *     the first one said, or the render never hears it. Derived from the
  *     path, never from a header a client could send.
  *  2. The internal /showcase/<city>/… path is never served under its own
  *     name on a public host: it moves to its city host, so Google sees one
@@ -181,7 +180,6 @@ export function routeRequest(input: {
       ? { action: "next", cityKey: internal.cityKey }
       : { action: "next" };
   }
-  if (host.kind === "staging") return { action: "next" };
   if (internal && isShowcaseCityKey(internal.cityKey)) {
     return {
       action: "redirect",
