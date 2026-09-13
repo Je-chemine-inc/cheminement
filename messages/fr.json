@@ -7838,6 +7838,7 @@
     "soon": "Aucun professionnel présenté pour l'instant",
     "breadcrumbLabel": "Fil d'Ariane",
     "breadcrumbQuebec": "Québec",
+    "source": "Liste des villes : Répertoire des municipalités du Québec, ministère des Affaires municipales et de l'Habitation (Données Québec, licence CC BY 4.0).",
     "region": {
       "title": "Professionnels en santé mentale {regionIn}",
       "heading": "{titles} {regionIn}",

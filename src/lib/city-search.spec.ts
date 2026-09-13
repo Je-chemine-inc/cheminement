@@ -14,6 +14,12 @@ describe("searchCities", () => {
     expect(searchCities("levis")).toContain("Lévis, QC");
   });
 
+  it("finds the smaller Quebec towns of the official list", () => {
+    expect(searchCities("berthier")).toContain("Berthierville, QC");
+    expect(searchCities("saint-lin")).toContain("Saint-Lin–Laurentides, QC");
+    expect(searchCities("ile perrot")).toContain("L'Île-Perrot, QC");
+  });
+
   it("finds major Canadian cities outside Quebec", () => {
     expect(searchCities("toron")).toContain("Toronto, ON");
     expect(searchCities("vancou")).toContain("Vancouver, BC");

@@ -100,6 +100,7 @@ export default async function ShowcaseHubPage() {
             </li>
           ))}
         </ul>
+        <p className="mt-8 text-xs text-muted-foreground">{t("source")}</p>
       </section>
 
       <ShowcaseMatchBand href="/appointment?from=showcase" />

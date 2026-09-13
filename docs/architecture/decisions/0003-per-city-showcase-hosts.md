@@ -25,7 +25,9 @@ the middleware only redirected the bare domain to www.
    any other subdomain to the same path on www. The city registry grows, and a permanent redirect
    cached by a browser would outlive the day a city is added.
 5. **The registry is data, not DNS.** Cities are the Quebec entries of `src/data/canadaCities.ts`
-   (host label: the name without accents, spaces or punctuation). Adding a city is a code change; the
+   (host label: the name without accents, spaces or punctuation); since 2026-09-13 they are every
+   official « Ville » of the government's Répertoire des municipalités, plus a few smaller
+   municipalities, while boroughs and former cities (`partOf`) get no host. Adding a city is a code change; the
    server answers for every name through a wildcard DNS record, a wildcard certificate and a wildcard
    vhost ([HANDOFF §11](../../ops/HANDOFF.md)).
 6. **City hosts reach only what they need.** Next's assets, `/api/showcase/*`, `/api/files/*` and the

@@ -59,6 +59,9 @@ behind `PlatformSettings.showcaseEnabled` (default off), exactly like organizati
   `src/data/canadaCities.ts` (host key = `psy` + name stripped of accents/non-alphanumerics:
   `troisrivieres`, `saintjerome`, `valdor`; region path key with hyphens). Add Nord-du-Québec
   (Chibougamau) to the data file; optional `parentKey` to fold boroughs into `montreal` / `quebec`.
+  *(2026-09-13, owner's go-ahead: the list now holds every official « Ville » of the MAMH
+  Répertoire des municipalités — 238 hosts with the four smaller municipalities already listed;
+  boroughs and former cities carry `partOf` and get no host for now.)*
 - **Data.** New `ShowcasePage` (1:1 professional: slug, city, workflow status, `draft` and
   `published` content snapshots, photo, consent). Identity facts (title, licence, languages,
   modalities, office city, prices) are **read live** from `User`/`Profile`/pricing, never copied.
@@ -581,4 +584,6 @@ chrome with absolute www links.
    once remittance starts; Stripe Tax later.
 3. Wording to validate with the orders: fee grid, title/permit display, the professional consent
    text; the rights attestation and product terms for professionals.
-4. Which cities/boroughs get a host at launch (registry `parentKey` list).
+4. ~~Which cities get a host at launch~~ — every official « Ville » (2026-09-13). Still open:
+   whether boroughs and former cities (Plateau-Mont-Royal, Verdun, Sainte-Foy, Chicoutimi, Hull…)
+   get their own host, and whether smaller municipalities are added up front or one by one.

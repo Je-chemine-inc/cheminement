@@ -8,7 +8,8 @@ import { APEX_HOST } from "@/lib/site-url";
  * booking funnel's city search and the matcher already use, so a city exists
  * once. Adding a Quebec city there gives it a host at the next deploy — the
  * server answers for every *.jechemine.ca name (wildcard DNS + certificate),
- * nothing else has to change.
+ * nothing else has to change. Boroughs and former cities (entries with
+ * `partOf`) stay in the city search but get no host of their own.
  *
  * ⚠ The host key is part of public URLs. Renaming a city in the data file
  * changes its host and breaks every link to it; showcase-cities.spec.ts pins
@@ -87,7 +88,7 @@ export function regionPathKey(region: string): string {
 }
 
 export const SHOWCASE_CITIES: readonly ShowcaseCity[] = CANADA_CITIES.filter(
-  (c) => c.province === "QC",
+  (c) => c.province === "QC" && !c.partOf,
 ).map((c) => {
   const key = cityHostKey(c.city);
   return {

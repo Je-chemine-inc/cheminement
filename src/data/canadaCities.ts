@@ -1,12 +1,22 @@
 /**
  * Quebec municipalities (with their administrative region, for proximity-based
- * jumelage) + major Canadian cities. Drives the city autocomplete and the
- * matcher's location proximity bonus.
+ * jumelage) + major Canadian cities. Drives the city autocomplete, the
+ * matcher's location proximity bonus and the showcase city hosts
+ * (psy<city>.jechemine.ca, src/lib/showcase-cities.ts).
  *
- * NOT exhaustive (Quebec alone has ~1100 municipalities) — it covers the major
- * population centres across every Quebec region plus the largest Canadian cities.
- * The autocomplete allows a free-typed value for anything not listed, so a small
- * town is never blocked; it simply won't earn the location bonus until matched.
+ * Quebec: every municipality designated « Ville » in the Répertoire des
+ * municipalités du Québec (ministère des Affaires municipales et de
+ * l'Habitation, Données Québec, CC BY 4.0 — credited on www/psy), names and
+ * regions as published on 2026-09-11, plus a few smaller municipalities and the
+ * boroughs and former cities people still type (`borough`). NOT exhaustive
+ * (Quebec has ~1,100 municipalities): the autocomplete allows a free-typed
+ * value for anything not listed, so a small town is never blocked; it simply
+ * won't earn the location bonus until matched. Within a region block, the
+ * first entries come first in the autocomplete; new ones go at the end,
+ * biggest first.
+ *
+ * ⚠ A Quebec entry's name is its public host. Never rename or remove one whose
+ * host may be live; showcase-cities.spec.ts pins them.
  *
  * `region` is the Quebec administrative region (used for the "same region" bonus
  * when two people aren't in the exact same city). Non-Quebec cities use the
@@ -18,6 +28,8 @@ export interface CityEntry {
   province: string;
   /** Grouping for proximity (QC administrative region, else province name). */
   region: string;
+  /** A borough or former city: the city it is part of today. No showcase host. */
+  partOf?: string;
 }
 
 // Quebec administrative regions (labels reused as the `region` value).
@@ -45,19 +57,24 @@ const qc = (city: string, region: string): CityEntry => ({
   region,
 });
 
+const borough = (city: string, region: string, partOf: string): CityEntry => ({
+  ...qc(city, region),
+  partOf,
+});
+
 export const CANADA_CITIES: CityEntry[] = [
   // --- Montréal ---
   qc("Montréal", MTL),
-  qc("Montréal-Nord", MTL),
+  borough("Montréal-Nord", MTL, "Montréal"),
   qc("Montréal-Ouest", MTL),
   qc("Westmount", MTL),
-  qc("Outremont", MTL),
-  qc("Verdun", MTL),
-  qc("LaSalle", MTL),
-  qc("Lachine", MTL),
-  qc("Saint-Laurent", MTL),
-  qc("Anjou", MTL),
-  qc("Pierrefonds", MTL),
+  borough("Outremont", MTL, "Montréal"),
+  borough("Verdun", MTL, "Montréal"),
+  borough("LaSalle", MTL, "Montréal"),
+  borough("Lachine", MTL, "Montréal"),
+  borough("Saint-Laurent", MTL, "Montréal"),
+  borough("Anjou", MTL, "Montréal"),
+  borough("Pierrefonds", MTL, "Montréal"),
   qc("Dollard-des-Ormeaux", MTL),
   qc("Pointe-Claire", MTL),
   qc("Kirkland", MTL),
@@ -66,12 +83,16 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Côte-Saint-Luc", MTL),
   qc("Hampstead", MTL),
   qc("Mont-Royal", MTL),
+  qc("Sainte-Anne-de-Bellevue", MTL),
+  qc("Montréal-Est", MTL),
+  qc("Baie-D'Urfé", MTL),
+  qc("L'Île-Dorval", MTL),
   // --- Laval ---
   qc("Laval", LAV),
   // --- Montérégie ---
   qc("Longueuil", MON),
   qc("Brossard", MON),
-  qc("Saint-Hubert", MON),
+  borough("Saint-Hubert", MON, "Longueuil"),
   qc("Boucherville", MON),
   qc("Saint-Lambert", MON),
   qc("Saint-Bruno-de-Montarville", MON),
@@ -79,7 +100,6 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Châteauguay", MON),
   qc("Saint-Hyacinthe", MON),
   qc("Vaudreuil-Dorion", MON),
-  qc("Granby", MON),
   qc("Sorel-Tracy", MON),
   qc("Beloeil", MON),
   qc("Chambly", MON),
@@ -89,9 +109,37 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Varennes", MON),
   qc("Saint-Constant", MON),
   qc("Salaberry-de-Valleyfield", MON),
-  qc("Cowansville", MON),
   qc("Mont-Saint-Hilaire", MON),
   qc("Saint-Basile-le-Grand", MON),
+  qc("Saint-Lazare", MON),
+  qc("Sainte-Catherine", MON),
+  qc("Mercier", MON),
+  qc("Beauharnois", MON),
+  qc("Pincourt", MON),
+  qc("Saint-Amable", MON),
+  qc("Carignan", MON),
+  qc("Marieville", MON),
+  qc("L'Île-Perrot", MON),
+  qc("Notre-Dame-de-l'Île-Perrot", MON),
+  qc("Contrecoeur", MON),
+  qc("Saint-Zotique", MON),
+  qc("Saint-Rémi", MON),
+  qc("Otterburn Park", MON),
+  qc("Delson", MON),
+  qc("Saint-Philippe", MON),
+  qc("Rigaud", MON),
+  qc("Acton Vale", MON),
+  qc("Coteau-du-Lac", MON),
+  qc("Saint-Césaire", MON),
+  qc("McMasterville", MON),
+  qc("Saint-Pie", MON),
+  qc("Richelieu", MON),
+  qc("Hudson", MON),
+  qc("Huntingdon", MON),
+  qc("Léry", MON),
+  qc("Saint-Ours", MON),
+  qc("Saint-Joseph-de-Sorel", MON),
+  qc("L'Île-Cadieux", MON),
   // --- Lanaudière ---
   qc("Terrebonne", LAN),
   qc("Repentigny", LAN),
@@ -101,6 +149,13 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Lavaltrie", LAN),
   qc("Saint-Charles-Borromée", LAN),
   qc("Rawdon", LAN),
+  qc("Saint-Lin–Laurentides", LAN),
+  qc("Notre-Dame-des-Prairies", LAN),
+  qc("L'Épiphanie", LAN),
+  qc("Charlemagne", LAN),
+  qc("Berthierville", LAN),
+  qc("Crabtree", LAN),
+  qc("Saint-Gabriel", LAN),
   // --- Laurentides ---
   qc("Blainville", LAU),
   qc("Mirabel", LAU),
@@ -113,6 +168,20 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Sainte-Anne-des-Plaines", LAU),
   qc("Mont-Tremblant", LAU),
   qc("Saint-Sauveur", LAU),
+  qc("Sainte-Marthe-sur-le-Lac", LAU),
+  qc("Saint-Colomban", LAU),
+  qc("Lachute", LAU),
+  qc("Sainte-Adèle", LAU),
+  qc("Mont-Laurier", LAU),
+  qc("Prévost", LAU),
+  qc("Sainte-Agathe-des-Monts", LAU),
+  qc("Bois-des-Filion", LAU),
+  qc("Lorraine", LAU),
+  qc("Brownsburg-Chatham", LAU),
+  qc("Rivière-Rouge", LAU),
+  qc("Sainte-Marguerite-du-Lac-Masson", LAU),
+  qc("Estérel", LAU),
+  qc("Barkmere", LAU),
   // --- Capitale-Nationale ---
   qc("Québec", CN),
   qc("L'Ancienne-Lorette", CN),
@@ -120,60 +189,150 @@ export const CANADA_CITIES: CityEntry[] = [
   qc("Boischatel", CN),
   qc("Stoneham-et-Tewkesbury", CN),
   qc("Baie-Saint-Paul", CN),
+  qc("Saint-Raymond", CN),
+  qc("Pont-Rouge", CN),
+  qc("Sainte-Catherine-de-la-Jacques-Cartier", CN),
+  qc("Sainte-Brigitte-de-Laval", CN),
+  qc("La Malbaie", CN),
+  qc("Donnacona", CN),
+  qc("Shannon", CN),
+  qc("Château-Richer", CN),
+  qc("Neuville", CN),
+  qc("Beaupré", CN),
+  qc("Cap-Santé", CN),
+  qc("Portneuf", CN),
+  qc("Sainte-Anne-de-Beaupré", CN),
+  qc("Clermont", CN),
+  qc("Saint-Marc-des-Carrières", CN),
+  qc("Saint-Basile", CN),
+  qc("Fossambault-sur-le-Lac", CN),
+  qc("Lac-Delage", CN),
+  qc("Lac-Sergent", CN),
+  qc("Lac-Saint-Joseph", CN),
   // --- Chaudière-Appalaches ---
   qc("Lévis", CA),
   qc("Saint-Georges", CA),
   qc("Thetford Mines", CA),
   qc("Sainte-Marie", CA),
   qc("Montmagny", CA),
+  qc("Beauceville", CA),
+  qc("Saint-Joseph-de-Beauce", CA),
+  qc("Saint-Pamphile", CA),
+  qc("Disraeli", CA),
   // --- Mauricie ---
   qc("Trois-Rivières", MAU),
   qc("Shawinigan", MAU),
-  qc("Cap-de-la-Madeleine", MAU),
+  borough("Cap-de-la-Madeleine", MAU, "Trois-Rivières"),
   qc("La Tuque", MAU),
+  qc("Louiseville", MAU),
+  qc("Saint-Tite", MAU),
   // --- Centre-du-Québec ---
   qc("Drummondville", CDQ),
   qc("Victoriaville", CDQ),
   qc("Bécancour", CDQ),
   qc("Nicolet", CDQ),
+  qc("Plessisville", CDQ),
+  qc("Princeville", CDQ),
+  qc("Warwick", CDQ),
+  qc("Daveluyville", CDQ),
+  qc("Kingsey Falls", CDQ),
   // --- Estrie ---
   qc("Sherbrooke", EST),
   qc("Magog", EST),
   qc("Coaticook", EST),
   qc("Lac-Mégantic", EST),
+  qc("Granby", EST),
+  qc("Cowansville", EST),
+  qc("Bromont", EST),
+  qc("Farnham", EST),
+  qc("Val-des-Sources", EST),
+  qc("Lac-Brome", EST),
+  qc("Waterloo", EST),
+  qc("Cookshire-Eaton", EST),
+  qc("Windsor", EST),
+  qc("Sutton", EST),
+  qc("East Angus", EST),
+  qc("Danville", EST),
+  qc("Dunham", EST),
+  qc("Richmond", EST),
+  qc("Stanstead", EST),
+  qc("Bedford", EST),
+  qc("Waterville", EST),
+  qc("Valcourt", EST),
+  qc("Scotstown", EST),
   // --- Outaouais ---
   qc("Gatineau", OUT),
-  qc("Hull", OUT),
-  qc("Aylmer", OUT),
-  qc("Buckingham", OUT),
+  borough("Hull", OUT, "Gatineau"),
+  borough("Aylmer", OUT, "Gatineau"),
+  borough("Buckingham", OUT, "Gatineau"),
+  qc("Maniwaki", OUT),
+  qc("Thurso", OUT),
+  qc("Gracefield", OUT),
   // --- Saguenay–Lac-Saint-Jean ---
   qc("Saguenay", SLSJ),
-  qc("Chicoutimi", SLSJ),
-  qc("Jonquière", SLSJ),
+  borough("Chicoutimi", SLSJ, "Saguenay"),
+  borough("Jonquière", SLSJ, "Saguenay"),
   qc("Alma", SLSJ),
   qc("Dolbeau-Mistassini", SLSJ),
   qc("Roberval", SLSJ),
+  qc("Saint-Félicien", SLSJ),
+  qc("Saint-Honoré", SLSJ),
+  qc("Métabetchouan–Lac-à-la-Croix", SLSJ),
+  qc("Normandin", SLSJ),
+  qc("Desbiens", SLSJ),
   // --- Bas-Saint-Laurent ---
   qc("Rimouski", BSL),
   qc("Rivière-du-Loup", BSL),
   qc("Matane", BSL),
   qc("Mont-Joli", BSL),
+  qc("La Pocatière", BSL),
+  qc("Amqui", BSL),
+  qc("Témiscouata-sur-le-Lac", BSL),
+  qc("Saint-Antonin", BSL),
+  qc("Saint-Pascal", BSL),
+  qc("Trois-Pistoles", BSL),
+  qc("Dégelis", BSL),
+  qc("Pohénégamook", BSL),
+  qc("Causapscal", BSL),
+  qc("Lac-des-Aigles", BSL),
+  qc("Métis-sur-Mer", BSL),
   // --- Abitibi-Témiscamingue ---
   qc("Rouyn-Noranda", AT),
   qc("Val-d'Or", AT),
   qc("Amos", AT),
   qc("La Sarre", AT),
+  qc("Malartic", AT),
+  qc("Senneterre", AT),
+  qc("Macamic", AT),
+  qc("Ville-Marie", AT),
+  qc("Témiscaming", AT),
+  qc("Duparquet", AT),
+  qc("Belleterre", AT),
   // --- Côte-Nord ---
   qc("Baie-Comeau", COTE_NORD),
   qc("Sept-Îles", COTE_NORD),
   qc("Port-Cartier", COTE_NORD),
+  qc("Forestville", COTE_NORD),
+  qc("Fermont", COTE_NORD),
+  qc("Schefferville", COTE_NORD),
   // --- Gaspésie–Îles-de-la-Madeleine ---
   qc("Gaspé", GIM),
   qc("Chandler", GIM),
   qc("Carleton-sur-Mer", GIM),
   qc("Les Îles-de-la-Madeleine", GIM),
+  qc("Sainte-Anne-des-Monts", GIM),
+  qc("New Richmond", GIM),
+  qc("Grande-Rivière", GIM),
+  qc("Paspébiac", GIM),
+  qc("Percé", GIM),
+  qc("Bonaventure", GIM),
+  qc("Cap-Chat", GIM),
+  qc("Murdochville", GIM),
   // --- Nord-du-Québec ---
   qc("Chibougamau", NDQ),
+  qc("Lebel-sur-Quévillon", NDQ),
+  qc("Chapais", NDQ),
+  qc("Matagami", NDQ),
 
   // --- Major Canadian cities (region = province name) ---
   { city: "Toronto", province: "ON", region: "Ontario" },

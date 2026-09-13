@@ -7839,6 +7839,7 @@
     "soon": "No professional presented yet",
     "breadcrumbLabel": "Breadcrumb",
     "breadcrumbQuebec": "Quebec",
+    "source": "City list: Répertoire des municipalités du Québec, Ministère des Affaires municipales et de l'Habitation (Données Québec, CC BY 4.0 licence).",
     "region": {
       "title": "Mental-health professionals {regionIn}",
       "heading": "{titles} {regionIn}",
