@@ -195,7 +195,13 @@ describe("inviteToShowcase", () => {
       cityKey: "mascouche",
       status: "invited",
       invitedBy: ADMIN,
-      draft: { displayName: "Amel Sassi", bio: { fr: "Mon parcours.", en: "" }, expertiseIds: ["e1", "e2"], orderCode: "OPQ" },
+      draft: {
+        displayName: "Amel Sassi",
+        bio: { fr: "Mon parcours.", en: "" },
+        expertiseIds: ["e1", "e2"],
+        orderCode: "OPQ",
+        cityKey: "mascouche",
+      },
     });
     expect(h.sendInvitation).not.toHaveBeenCalled();
     await runDeferred(result);
@@ -270,6 +276,39 @@ describe("saveShowcaseDraft", () => {
     expect(await saveShowcaseDraft({ userId: PRO, body: { displayName: "X" }, actor: "admin" })).toMatchObject({ status: 404 });
     expect(h.updateOne).toEqual([]);
   });
+
+  it("moves a page never published to the city the professional picks, at once", async () => {
+    h.page = page({ status: "draft" });
+    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" })).toMatchObject({ ok: true });
+    const [, update] = h.updateOne[0];
+    expect(update.$set).toMatchObject({ "draft.cityKey": "berthierville", cityKey: "berthierville" });
+    expect(update.$push).toMatchObject({ history: { $each: [{ actor: "professional", by: PRO, action: "move", note: "mascouche > berthierville" }] } });
+  });
+
+  it("keeps a page that has been public where it is: the city it asks for waits for approval", async () => {
+    h.page = page({ status: "published", publishedAt: new Date("2026-09-01"), publishedRevision: 3, published: completeDraft });
+    await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" });
+    const [, update] = h.updateOne[0];
+    expect(update.$set).toMatchObject({ "draft.cityKey": "berthierville" });
+    expect(update.$set).not.toHaveProperty("cityKey");
+    expect(update).not.toHaveProperty("$push");
+
+    h.updateOne = [];
+    h.page = page({ status: "unpublished", publishedAt: new Date("2026-09-01"), published: completeDraft });
+    await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" });
+    expect(h.updateOne[0][1].$set).not.toHaveProperty("cityKey");
+  });
+
+  it("refuses a city that has no host", async () => {
+    h.page = page();
+    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "verdun" }, actor: "professional" })).toEqual({
+      ok: false,
+      status: 400,
+      code: "INVALID_CITY",
+      details: { field: "cityKey" },
+    });
+    expect(h.updateOne).toEqual([]);
+  });
 });
 
 describe("submitShowcase", () => {
@@ -312,6 +351,12 @@ describe("submitShowcase", () => {
     });
   });
 
+  it("tells the team the city the draft asks for", async () => {
+    h.page = page({ status: "published", publishedAt: new Date("2026-09-01"), published: completeDraft, draft: { ...completeDraft, cityKey: "terrebonne" } });
+    await runDeferred(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION }));
+    expect(h.sendAdminAlert).toHaveBeenCalledWith(expect.objectContaining({ cityName: "Terrebonne", resubmission: true }));
+  });
+
   it("refuses a page already waiting for review, before writing, and a lost race", async () => {
     h.page = page({ review: { state: "pending" } });
     expect(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION })).toMatchObject({
@@ -346,6 +391,28 @@ describe("approveShowcase", () => {
       "review.state": "none",
     });
     expect(update.$unset).toEqual({ unpublishedAt: "", unpublishedBy: "" });
+    expect(update.$set).not.toHaveProperty("cityKey");
+  });
+
+  it("moves a live page to the city its draft asks for, on approval, from the city it was decided on", async () => {
+    h.page = page({
+      review: { state: "pending" },
+      status: "published",
+      publishedAt: new Date("2026-09-01"),
+      publishedRevision: 2,
+      published: { ...completeDraft, cityKey: "mascouche" },
+      draft: { ...completeDraft, cityKey: "terrebonne" },
+    });
+    const result = await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN });
+    expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://psyterrebonne.jechemine.ca/sassi" } });
+    const [filter, update] = h.findOneAndUpdate[0];
+    expect(filter).toEqual({ _id: "p1", draftRevision: 4, cityKey: "mascouche" });
+    expect(update.$set).toMatchObject({ cityKey: "terrebonne", published: { cityKey: "terrebonne" } });
+    expect(update.$push).toMatchObject({ history: { $each: [{ action: "approve", note: "revision 4 · mascouche > terrebonne" }] } });
+    await runDeferred(result);
+    expect(h.sendPublished).toHaveBeenCalledWith(
+      expect.objectContaining({ publicUrl: "https://psyterrebonne.jechemine.ca/sassi" }),
+    );
   });
 
   it("refuses another revision, a missing consent, an inactive professional or an incomplete page — without writing", async () => {
@@ -488,6 +555,26 @@ describe("moveShowcase", () => {
     h.page = page({ previousSlugs: ["dre-sassi"] });
     await moveShowcase({ userId: PRO, slug: "dre-sassi", cityKey: "terrebonne", adminId: ADMIN });
     expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ slug: "dre-sassi", cityKey: "terrebonne", previousSlugs: [] });
+  });
+
+  it("lines the draft (and a published copy) up with the new city, so an approval cannot move the page back", async () => {
+    h.page = page({
+      status: "published",
+      publishedAt: new Date("2026-09-01"),
+      published: { ...completeDraft, cityKey: "mascouche" },
+      draft: { ...completeDraft, cityKey: "berthierville" },
+    });
+    await moveShowcase({ userId: PRO, cityKey: "terrebonne", adminId: ADMIN });
+    expect(h.findOneAndUpdate[0][1].$set).toEqual({
+      cityKey: "terrebonne",
+      "draft.cityKey": "terrebonne",
+      "published.cityKey": "terrebonne",
+    });
+
+    h.findOneAndUpdate = [];
+    h.page = page();
+    await moveShowcase({ userId: PRO, cityKey: "terrebonne", adminId: ADMIN });
+    expect(h.findOneAndUpdate[0][1].$set).toEqual({ cityKey: "terrebonne", "draft.cityKey": "terrebonne" });
   });
 
   it("refuses a slug in use, an unknown city and a reserved slug", async () => {

@@ -23,6 +23,8 @@ import {
   missingShowcaseRequirements,
   normalizeShowcaseDraft,
   pickShowcaseSlug,
+  requestedShowcaseCityKey,
+  showcaseCityKeyOf,
   showcaseSlugCandidates,
   type ShowcaseRequirement,
   type ShowcaseWorkflowState,
@@ -212,6 +214,7 @@ function contentView(content: ContentLean | undefined) {
     orderCode: content?.orderCode ?? null,
     orderLabel: content?.orderLabel ?? "",
     photoUrl: photoUrl(content?.photoFileId),
+    cityKey: content?.cityKey ?? null,
   };
 }
 
@@ -232,14 +235,18 @@ export async function loadShowcaseEditor(userId: string) {
   const missing: ShowcaseRequirement[] = missingShowcaseRequirements({
     draft: page.draft ?? {},
     profile,
-    cityKey: page.cityKey,
+    cityKey: showcaseCityKeyOf(page),
   });
+  const requested = findShowcaseCity(requestedShowcaseCityKey(page));
   return {
     page: {
       slug: page.slug,
       cityKey: page.cityKey,
       cityName: city?.name ?? page.cityKey,
       publicUrl: absoluteShowcaseUrl(page.cityKey, `/${page.slug}`),
+      requestedCity: requested
+        ? { key: requested.key, name: requested.name, publicUrl: absoluteShowcaseUrl(requested.key, `/${page.slug}`) }
+        : null,
       status: page.status,
       review: {
         state: page.review?.state ?? "none",
@@ -472,6 +479,7 @@ export async function inviteToShowcase(input: {
         bio: { fr: bio.ok ? bio.value : "", en: "" },
         expertiseIds: suggestExpertiseIds(profile?.problematics ?? [], options),
         ...(orderCode ? { orderCode } : {}),
+        cityKey: city.key,
       },
       history: [{ at: now, actor: "admin", by: input.adminId, action: "invite", note: `${city.key}/${slug}` }],
     });
@@ -505,15 +513,23 @@ export async function saveShowcaseDraft(input: {
   if (Object.keys(normalized.set).length === 0 && normalized.unset.length === 0) {
     return fail(400, "NOTHING_TO_SAVE");
   }
+  // A page never published has no public address to protect: the city it asks for applies at once.
+  // Once it has been public, the move waits for an admin to approve the revision (approveShowcase).
+  const askedCity = normalized.set["draft.cityKey"];
+  const moveNow = typeof askedCity === "string" && !page.publishedAt && askedCity !== page.cityKey;
   const update: Record<string, unknown> = {
     $set: {
       ...normalized.set,
+      ...(moveNow ? { cityKey: askedCity } : {}),
       draftUpdatedAt: new Date(),
       draftUpdatedBy: input.actor,
       ...(page.status === "invited" ? { status: "draft" } : {}),
     },
     $inc: { draftRevision: 1 },
   };
+  if (moveNow) {
+    update.$push = historyEntry(input.actor, input.actor === "professional" ? page.userId : undefined, "move", `${page.cityKey} > ${askedCity}`);
+  }
   if (normalized.unset.length > 0) {
     update.$unset = Object.fromEntries(normalized.unset.map((path) => [path, ""]));
   }
@@ -594,7 +610,8 @@ export async function submitShowcase(input: {
     return fail(400, "CONSENT_REQUIRED");
   }
   const profile = await profileFacts(input.userId);
-  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey: page.cityKey });
+  const cityKey = showcaseCityKeyOf(page);
+  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey });
   if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
 
   const now = new Date();
@@ -620,7 +637,7 @@ export async function submitShowcase(input: {
   const alert = {
     professionalName: nameOf(user),
     professionalId: input.userId,
-    cityName: findShowcaseCity(page.cityKey)?.name ?? page.cityKey,
+    cityName: findShowcaseCity(cityKey)?.name ?? cityKey,
     resubmission: Boolean(page.published),
   };
   return success(null, [() => sendAdminShowcaseSubmittedAlert(alert)]);
@@ -643,12 +660,16 @@ export async function approveShowcase(input: {
     .lean();
   if (!user || user.status !== "active") return fail(409, "PROFESSIONAL_NOT_ACTIVE");
   const profile = await profileFacts(input.userId);
-  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey: page.cityKey });
+  const cityKey = showcaseCityKeyOf(page);
+  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey });
   if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
 
+  // Approving the revision approves the city it asks for: the page moves, and
+  // its old address redirects (the page route sends a slug on the wrong host to its city).
+  const moving = requestedShowcaseCityKey(page);
   const now = new Date();
   const updated = (await ShowcasePage.findOneAndUpdate(
-    { _id: page._id, draftRevision: revision },
+    moving ? { _id: page._id, draftRevision: revision, cityKey: page.cityKey } : { _id: page._id, draftRevision: revision },
     {
       $set: {
         published: page.draft,
@@ -660,9 +681,15 @@ export async function approveShowcase(input: {
         "review.reviewedAt": now,
         "review.reviewedBy": input.adminId,
         "review.notes": "",
+        ...(moving ? { cityKey: moving } : {}),
       },
       $unset: { unpublishedAt: "", unpublishedBy: "" },
-      $push: historyEntry("admin", input.adminId, "approve", `revision ${revision}`),
+      $push: historyEntry(
+        "admin",
+        input.adminId,
+        "approve",
+        moving ? `revision ${revision} · ${page.cityKey} > ${moving}` : `revision ${revision}`,
+      ),
     },
     { new: true },
   )
@@ -675,7 +702,7 @@ export async function approveShowcase(input: {
     [updated.draft?.photoFileId, updated.published?.photoFileId],
   );
 
-  const publicUrl = absoluteShowcaseUrl(page.cityKey, `/${page.slug}`);
+  const publicUrl = absoluteShowcaseUrl(cityKey, `/${page.slug}`);
   const email = {
     professionalName: nameOf(user),
     professionalEmail: user.email,
@@ -851,6 +878,11 @@ export async function moveShowcase(input: {
   if (!findShowcaseCity(nextCity)) return fail(400, "INVALID_CITY");
 
   const set: Record<string, unknown> = { cityKey: nextCity };
+  if (nextCity !== page.cityKey) {
+    // The copies name the city too: left behind, an approval would move the page back.
+    set["draft.cityKey"] = nextCity;
+    if (page.published) set["published.cityKey"] = nextCity;
+  }
   if (nextSlug !== page.slug) {
     if (!isValidShowcaseSlug(nextSlug)) return fail(400, "INVALID_SLUG");
     if ((await takenSlugs([nextSlug], page._id)).has(nextSlug)) return fail(409, "SLUG_TAKEN");

@@ -7561,7 +7561,7 @@
       "title": "Le titre professionnel, dans le profil",
       "license": "Le numéro de permis, dans le profil",
       "modalities": "Les modes de consultation, dans le profil",
-      "city": "Une ville valide pour la page, choisie par l'équipe"
+      "city": "La ville de la page, choisie dans la liste"
     },
     "actions": {
       "preview": "Aperçu",
@@ -7640,6 +7640,16 @@
       "select": "Choisir l'ordre",
       "other": "Autre ordre",
       "otherLabel": "Nom de l'ordre"
+    },
+    "city": {
+      "title": "Ville de la page",
+      "hint": "La ville où vous recevez vos clients. Elle donne l'adresse de votre page. Si votre ville n'est pas dans la liste, choisissez la plus proche.",
+      "select": "Choisir une ville",
+      "officeCity": "Ville du bureau dans votre profil : {city}",
+      "useOfficeCity": "Utiliser {city}",
+      "address": "Adresse de la page : {url}",
+      "afterApproval": "Votre page est en ligne : la nouvelle ville s'applique quand l'équipe approuve la modification. L'ancienne adresse redirigera alors vers la nouvelle.",
+      "pending": "Changement de ville en attente d'approbation : {city} ({url})"
     },
     "services": {
       "title": "Services offerts sur la page",
@@ -7803,6 +7813,7 @@
       "move": "Changer l'adresse",
       "moveTitle": "Changer la ville ou l'adresse",
       "moveBody": "Si la page a déjà été publiée, l'ancienne adresse redirige vers la nouvelle.",
+      "cityChange": "Le brouillon demande de passer de {from} à {to} ({url}). La ville change à l'approbation ; l'ancienne adresse redirigera vers la nouvelle.",
       "city": "Ville",
       "slug": "Adresse",
       "send": "Envoyer",

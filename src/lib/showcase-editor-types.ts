@@ -28,6 +28,8 @@ export interface ShowcaseContentJson {
   orderCode: ProfessionalOrderCode | null;
   orderLabel: string;
   photoUrl: string | null;
+  /** The city this copy asks for; null on pages saved before the choice existed. */
+  cityKey: string | null;
 }
 
 export interface ShowcaseEditorJson {
@@ -36,6 +38,8 @@ export interface ShowcaseEditorJson {
     cityKey: string;
     cityName: string;
     publicUrl: string;
+    /** A published page's move the draft asks for, applied when an admin approves. */
+    requestedCity: { key: string; name: string; publicUrl: string } | null;
     status: ShowcaseStatus;
     review: {
       state: ShowcaseReviewState;

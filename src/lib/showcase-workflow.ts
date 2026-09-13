@@ -161,7 +161,8 @@ export type DraftRefusal =
   | "UNKNOWN_EXPERTISE"
   | "TOO_MANY_EXPERTISES"
   | "TOO_MANY_VALUES"
-  | "INVALID_ORDER";
+  | "INVALID_ORDER"
+  | "INVALID_CITY";
 
 export type DraftNormalization =
   | { ok: true; set: Record<string, unknown>; unset: string[] }
@@ -260,7 +261,37 @@ export function normalizeShowcaseDraft(
     set["draft.orderLabel"] = label.value;
   }
 
+  if (has("cityKey")) {
+    const key = input.cityKey;
+    if (key === null || key === "") {
+      unset.push("draft.cityKey");
+    } else if (typeof key === "string" && isShowcaseCityKey(key)) {
+      set["draft.cityKey"] = key;
+    } else {
+      return { ok: false, code: "INVALID_CITY", field: "cityKey" };
+    }
+  }
+
   return { ok: true, set, unset };
+}
+
+// ------------------------------------------------------------------- city
+
+interface PageCity {
+  cityKey?: string | null;
+  draft?: { cityKey?: string | null } | null;
+}
+
+/** The city the draft is written for: the one it asks for, else the page's. */
+export function showcaseCityKeyOf(page: PageCity): string {
+  const asked = page.draft?.cityKey;
+  return asked && isShowcaseCityKey(asked) ? asked : (page.cityKey ?? "");
+}
+
+/** The city a draft asks the page to move to, or null when it asks for none. */
+export function requestedShowcaseCityKey(page: PageCity): string | null {
+  const asked = showcaseCityKeyOf(page);
+  return asked && asked !== page.cityKey ? asked : null;
 }
 
 // ------------------------------------------------------------ completeness

@@ -272,5 +272,7 @@ export async function buildShowcasePreview(
     .lean()) as unknown as PageDoc | null;
   const content = page?.[source];
   if (!page || !content) return null;
-  return buildFromPage(page, content, locale, false);
+  // The draft is previewed in the city it asks for, before an admin approves the move.
+  const cityKey = source === "draft" && content.cityKey && isShowcaseCityKey(content.cityKey) ? content.cityKey : page.cityKey;
+  return buildFromPage({ ...page, cityKey }, content, locale, false);
 }

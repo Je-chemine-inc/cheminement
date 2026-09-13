@@ -37,6 +37,8 @@ export type ShowcaseTitleKey = Exclude<(typeof PROFESSIONAL_TITLES)[number]["val
 type LocalizedSource = { fr?: string | null; en?: string | null } | null | undefined;
 
 export interface ShowcaseContentSource {
+  /** The city the copy asks for; the public page always uses the page's own city. */
+  cityKey?: string | null;
   displayName?: string | null;
   headline?: LocalizedSource;
   intro?: LocalizedSource;

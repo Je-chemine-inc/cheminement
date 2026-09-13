@@ -41,6 +41,12 @@ export interface IShowcaseContent {
   insuranceNote: ILocalizedText;
   /** StoredFile of kind "showcase-photo". */
   photoFileId?: mongoose.Types.ObjectId;
+  /**
+   * The city the page asks to be on (registry key). Before the first
+   * publication it moves the page at once; after, the page's `cityKey` changes
+   * only when an admin approves this revision.
+   */
+  cityKey?: string;
 }
 
 export interface IShowcaseHistoryEntry {
@@ -111,6 +117,7 @@ const ShowcaseContentSchema = new Schema<IShowcaseContent>(
     orderLabel: { type: String, trim: true, default: "" },
     insuranceNote: localized(),
     photoFileId: { type: Schema.Types.ObjectId, ref: "StoredFile" },
+    cityKey: { type: String, trim: true },
   },
   { _id: false },
 );

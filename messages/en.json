@@ -7562,7 +7562,7 @@
       "title": "The professional title, in the profile",
       "license": "The permit number, in the profile",
       "modalities": "The consultation modes, in the profile",
-      "city": "A valid city for the page, chosen by the team"
+      "city": "The page's city, chosen from the list"
     },
     "actions": {
       "preview": "Preview",
@@ -7641,6 +7641,16 @@
       "select": "Choose the order",
       "other": "Other order",
       "otherLabel": "Name of the order"
+    },
+    "city": {
+      "title": "Page city",
+      "hint": "The city where you see your clients. It gives your page its address. If your city is not in the list, choose the nearest one.",
+      "select": "Choose a city",
+      "officeCity": "Office city in your profile: {city}",
+      "useOfficeCity": "Use {city}",
+      "address": "Page address: {url}",
+      "afterApproval": "Your page is live: the new city applies when the team approves the change. The old address will then redirect to the new one.",
+      "pending": "City change waiting for approval: {city} ({url})"
     },
     "services": {
       "title": "Services offered on the page",
@@ -7804,6 +7814,7 @@
       "move": "Change the address",
       "moveTitle": "Change the city or the address",
       "moveBody": "If the page was ever published, the old address redirects to the new one.",
+      "cityChange": "The draft asks to move from {from} to {to} ({url}). The city changes on approval; the old address will redirect to the new one.",
       "city": "City",
       "slug": "Address",
       "send": "Send",

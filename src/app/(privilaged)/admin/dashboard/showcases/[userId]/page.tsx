@@ -201,6 +201,15 @@ export default function AdminShowcaseDetailPage() {
 
         <div className="space-y-2 text-sm">
           <p className="break-all text-foreground">{page.publicUrl}</p>
+          {page.requestedCity ? (
+            <p className="break-all rounded-lg bg-amber-50 p-3 text-amber-900">
+              {t("detail.cityChange", {
+                from: page.cityName,
+                to: page.requestedCity.name,
+                url: page.requestedCity.publicUrl,
+              })}
+            </p>
+          ) : null}
           {review === "pending" && page.review.submittedAt ? (
             <p className="text-muted-foreground">{t("detail.submittedAt", { date: formatDate(page.review.submittedAt) })}</p>
           ) : null}
