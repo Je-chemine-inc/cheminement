@@ -8357,7 +8357,8 @@
       "titleEn": "English title",
       "summaryEn": "English summary",
       "previewEn": "English teaser",
-      "contentEn": "English content"
+      "contentEn": "English content",
+      "webinarRemindersHint": "Buyers get an email reminder the day before and an hour before it starts."
     },
     "missing": {
       "title": "What's missing",
@@ -8508,5 +8509,27 @@
       "title": "Access required",
       "body": "Content management rights are needed to review products. Ask a super admin for access."
     }
+  },
+  "ContentEditor": {
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "paragraph": "Paragraph",
+    "heading2": "Section title (H2)",
+    "heading3": "Subsection (H3)",
+    "bulletList": "Bullet list",
+    "orderedList": "Numbered list",
+    "blockquote": "Callout (blockquote)",
+    "link": "Insert link",
+    "image": "Insert image",
+    "undo": "Undo",
+    "redo": "Redo",
+    "linkPrompt": "Link address (leave empty to remove the link)",
+    "uploadTooLarge": "This image is too large.",
+    "uploadType": "This image format is not accepted.",
+    "uploadInfected": "The antivirus refused this file.",
+    "uploadScanUnavailable": "The antivirus is not answering right now. Try again in a few minutes.",
+    "uploadFailed": "The image could not be uploaded. Please try again."
   }
 }

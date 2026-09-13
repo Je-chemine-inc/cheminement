@@ -78,7 +78,8 @@ export type EmailNotificationType =
   // Spec 003 phase 5: products professionals sell.
   | "product_sold"
   | "product_moderation_decision"
-  | "admin_product_submitted";
+  | "admin_product_submitted"
+  | "product_webinar_reminder";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -495,6 +496,10 @@ const defaultEmailTemplates: Record<
   admin_product_submitted: {
     enabled: true,
     subject: "Produit à vérifier — Je chemine",
+  },
+  product_webinar_reminder: {
+    enabled: true,
+    subject: "Rappel : votre webinaire — Je chemine",
   },
 };
 

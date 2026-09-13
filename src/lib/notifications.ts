@@ -9390,3 +9390,97 @@ export async function sendAdminProductSubmittedAlert(data: {
     await sendEmail({ to, subject, html, text }, "admin_product_submitted");
   }
 }
+
+/**
+ * A webinar someone bought starts within a day, or within the hour. Links to
+ * the webinar's page, where the room link is — never to the room itself — so
+ * a refund or a new room link is honoured. A guest's link carries their access
+ * token, like the purchase email.
+ */
+export async function sendProductWebinarReminderEmail(data: {
+  buyerEmail: string;
+  buyerName?: string;
+  productTitle: string;
+  professionalName: string;
+  startsAt: Date;
+  durationMinutes: number | null;
+  accessUrl: string;
+  /** The link carries a guest's access token. */
+  personalLink: boolean;
+  reminder: "day" | "hour";
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const when = formatMontrealInstant(data.startsAt, lang);
+  const name = data.buyerName?.trim();
+  const title = data.productTitle;
+  const pro = data.professionalName;
+  const copy = {
+    fr: {
+      title: data.reminder === "day" ? "Votre webinaire approche" : "Votre webinaire commence bientôt",
+      greeting: name ? `Bonjour ${name},` : "Bonjour,",
+      intro:
+        data.reminder === "day"
+          ? `Petit rappel : « ${title} », avec ${pro}, a lieu le ${when} (heure de Montréal).`
+          : `« ${title} », avec ${pro}, commence dans moins d'une heure : le ${when} (heure de Montréal).`,
+      labels: { webinar: "Webinaire", when: "Date et heure", length: "Durée", with: "Avec" },
+      whenValue: `${when} (heure de Montréal)`,
+      boxTitle: "Rejoindre la salle",
+      box: data.personalLink
+        ? "Le bouton ouvre la page du webinaire, où se trouve le lien de la salle. Ce lien vous est personnel : ne le transférez pas."
+        : "Le bouton ouvre la page du webinaire, où se trouve le lien de la salle. Connectez-vous avec cette adresse courriel si on vous le demande.",
+      cta: "Accéder au webinaire",
+    },
+    en: {
+      title: data.reminder === "day" ? "Your webinar is coming up" : "Your webinar starts soon",
+      greeting: name ? `Hello ${name},` : "Hello,",
+      intro:
+        data.reminder === "day"
+          ? `A quick reminder: “${title}”, with ${pro}, takes place on ${when} (Montréal time).`
+          : `“${title}”, with ${pro}, starts in less than an hour: ${when} (Montréal time).`,
+      labels: { webinar: "Webinar", when: "Date and time", length: "Length", with: "With" },
+      whenValue: `${when} (Montréal time)`,
+      boxTitle: "Joining the room",
+      box: data.personalLink
+        ? "The button opens the webinar's page, where the room link is. This link is personal: please don't forward it."
+        : "The button opens the webinar's page, where the room link is. Sign in with this email address if asked.",
+      cta: "Go to the webinar",
+    },
+  }[lang];
+  const details = [
+    { label: copy.labels.webinar, value: title },
+    { label: copy.labels.when, value: copy.whenValue },
+    ...(data.durationMinutes ? [{ label: copy.labels.length, value: `${data.durationMinutes} minutes` }] : []),
+    { label: copy.labels.with, value: pro },
+  ];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details,
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.accessUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  // French puts a space before the colon; English does not.
+  const colon = lang === "en" ? ":" : " :";
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.greeting,
+      copy.intro,
+      ...details.map((detail) => `${detail.label}${colon} ${detail.value}`),
+      copy.box,
+      `${copy.cta}${colon} ${data.accessUrl}`,
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.buyerEmail, subject: `${copy.title} — ${title}`, html, text },
+    "product_webinar_reminder",
+  );
+}

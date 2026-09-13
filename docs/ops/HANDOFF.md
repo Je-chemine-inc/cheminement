@@ -116,6 +116,7 @@ imunify360-agent rules update-shared-disabled-rules
 | `40 * * * *` | unscheduled-match-reminders |
 | `50 * * * *` | **organization-billing** (spec 002) — drafts organization statements/invoices, the team review email, overdue marking. Does nothing while the switch in Admin → Organismes payeurs is off. Line: `50 * * * * root /root/jechemine/run-cron.sh organization-billing` |
 | `*/2 * * * *` | **waitlist-offers** (spec 003 phase 4) — expires direct requests past their deadline and waitlist offers past their 15 minutes, ends places after three misses or 90 days, purges old closed entries, and offers freed times while the showcase switch is on. Must run every two minutes: an offer lasts 15. Line: `*/2 * * * * root /root/jechemine/run-cron.sh waitlist-offers` |
+| `*/10 * * * *` | **products** (spec 003 phase 5) — reminds webinar buyers the day before and an hour before (each reminder is claimed on its purchase, so a rerun never sends it twice), and takes a product off sale — or puts it back — when its stored status disagrees with its professional's account. Runs every ten minutes so the hour-before reminder leaves 50 to 60 minutes ahead. Line: `*/10 * * * * root /root/jechemine/run-cron.sh products` |
 | `7,22,37,52 * * * *` | interac-reconciliation (settles exact Interac matches — see debt-map 2026-09-04) |
 | `*/5 * * * *` | inbound-email-sync (support@ + paiement@ → Réception) |
 | `*/3 * * * *` | **app watchdog** — `/root/jechemine/healthcheck.sh` restarts `jechemine` if it stops responding |

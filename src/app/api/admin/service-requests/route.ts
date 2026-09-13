@@ -10,6 +10,7 @@ import {
   triggerDuePaymentReminders,
   triggerDueInteracReconciliation,
   triggerDueAppointmentReminders,
+  triggerDueProductJobs,
 } from "@/lib/lazy-cron";
 import { resolveServiceRequestParties } from "@/lib/service-request-parties";
 
@@ -53,6 +54,9 @@ export async function GET() {
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
     // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
+    // Webinar reminders and product status upkeep (spec 003 phase 5).
+    // Throttled (10 min).
+    after(() => triggerDueProductJobs());
 
     // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
     // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the

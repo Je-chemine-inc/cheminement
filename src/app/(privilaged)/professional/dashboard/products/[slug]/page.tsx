@@ -838,6 +838,7 @@ export default function ProfessionalProductEditorPage() {
                     {errorFor("webinarDurationMinutes")}
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">{t("fields.webinarRemindersHint")}</p>
                 <div className="grid gap-2">
                   <Label htmlFor="webinarJoinUrl">{t("fields.webinarJoinUrl")}</Label>
                   <Input

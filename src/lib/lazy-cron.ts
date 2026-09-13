@@ -5,6 +5,7 @@ import { runPaymentReminders } from "@/lib/payment-reminders";
 import { runAppointmentReminders } from "@/lib/appointment-reminders";
 import { runInteracReconciliation } from "@/lib/interac-reconciler";
 import { runWaitlistOffers } from "@/lib/waitlist-offers";
+import { runProductJobs } from "@/lib/product-jobs";
 
 /**
  * "Lazy cron": advance the matching cascade off normal authenticated traffic
@@ -182,5 +183,35 @@ export async function triggerDueWaitlistOffers(): Promise<void> {
     await runWaitlistOffers();
   } catch (err) {
     console.error("[lazy-cron] waitlist offers trigger failed:", err);
+  }
+}
+
+// The products job (spec 003 phase 5): webinar reminders the day before and an
+// hour before, and product statuses kept in step with their professionals'
+// accounts. Every ten minutes from the VPS cron; this keeps the hour-before
+// reminder going off dashboard traffic if that cron stops.
+const PRODUCT_JOBS_KEY = "product-jobs";
+const PRODUCT_JOBS_THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
+let lastProductJobsLocalCheck = 0;
+
+export async function triggerDueProductJobs(): Promise<void> {
+  const now = Date.now();
+  if (now - lastProductJobsLocalCheck < LOCAL_GUARD_MS) return;
+  lastProductJobsLocalCheck = now;
+  try {
+    await connectToDatabase();
+    await CronRun.updateOne(
+      { key: PRODUCT_JOBS_KEY },
+      { $setOnInsert: { key: PRODUCT_JOBS_KEY, lastRunAt: new Date(0) } },
+      { upsert: true },
+    );
+    const claimed = await CronRun.findOneAndUpdate(
+      { key: PRODUCT_JOBS_KEY, lastRunAt: { $lt: new Date(now - PRODUCT_JOBS_THROTTLE_MS) } },
+      { $set: { lastRunAt: new Date(now) } },
+    );
+    if (!claimed) return;
+    await runProductJobs();
+  } catch (err) {
+    console.error("[lazy-cron] product jobs trigger failed:", err);
   }
 }

@@ -4,6 +4,7 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { authOptions } from "@/lib/auth";
 import { recordAccountActionRequest } from "@/lib/account-action-alerts";
+import { syncProfessionalProducts } from "@/lib/products";
 
 /**
  * POST /api/users/me/deactivate
@@ -51,6 +52,13 @@ export async function POST() {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
       return NextResponse.json({ success: true });
+    }
+
+    // A professional's products leave the site with the account (spec 003 phase 5).
+    if (user.role === "professional") {
+      await syncProfessionalProducts(user._id.toString()).catch((err) =>
+        console.error("deactivate products sync failed:", err),
+      );
     }
 
     // Notify admins (email + in-app inbox) that the user deactivated their

@@ -8356,7 +8356,8 @@
       "titleEn": "Titre en anglais",
       "summaryEn": "Résumé en anglais",
       "previewEn": "Aperçu en anglais",
-      "contentEn": "Contenu en anglais"
+      "contentEn": "Contenu en anglais",
+      "webinarRemindersHint": "Les personnes inscrites reçoivent un rappel par courriel la veille et une heure avant le début."
     },
     "missing": {
       "title": "Ce qui manque",
@@ -8507,5 +8508,27 @@
       "title": "Accès requis",
       "body": "La gestion du contenu est nécessaire pour vérifier les produits. Demandez l'accès à un·e super-administrateur·trice."
     }
+  },
+  "ContentEditor": {
+    "toolbar": "Mise en forme",
+    "bold": "Gras",
+    "italic": "Italique",
+    "underline": "Souligné",
+    "paragraph": "Paragraphe",
+    "heading2": "Titre de section (H2)",
+    "heading3": "Sous-titre (H3)",
+    "bulletList": "Liste à puces",
+    "orderedList": "Liste numérotée",
+    "blockquote": "Encadré (citation)",
+    "link": "Insérer un lien",
+    "image": "Insérer une image",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "linkPrompt": "Adresse du lien (laissez vide pour retirer le lien)",
+    "uploadTooLarge": "Cette image est trop lourde.",
+    "uploadType": "Ce format d'image n'est pas accepté.",
+    "uploadInfected": "L'antivirus a refusé ce fichier.",
+    "uploadScanUnavailable": "L'antivirus ne répond pas pour le moment. Réessayez dans quelques minutes.",
+    "uploadFailed": "L'image n'a pas pu être téléversée. Réessayez."
   }
 }

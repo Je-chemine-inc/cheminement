@@ -75,6 +75,8 @@ const chain = (result: unknown) => {
   return query;
 };
 
+const extra = vi.hoisted(() => ({ entryDistinct: vi.fn(), userFind: vi.fn() }));
+
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/models/ContentEntry", () => ({
@@ -84,6 +86,7 @@ vi.mock("@/models/ContentEntry", () => ({
     insertMany: h.entryInsertMany,
     deleteMany: h.entryDeleteMany,
     findOne: h.entryFindOne,
+    distinct: extra.entryDistinct,
   },
 }));
 vi.mock("@/models/ResourceEntitlement", () => ({
@@ -92,7 +95,7 @@ vi.mock("@/models/ResourceEntitlement", () => ({
 vi.mock("@/models/StoredFile", () => ({
   default: { exists: h.fileExists, deleteMany: h.fileDeleteMany, findById: h.fileFindById },
 }));
-vi.mock("@/models/User", () => ({ default: { exists: h.userExists, findById: h.userFindById } }));
+vi.mock("@/models/User", () => ({ default: { exists: h.userExists, findById: h.userFindById, find: extra.userFind } }));
 vi.mock("@/models/ShowcasePage", () => ({ default: { findOne: h.showcaseFindOne } }));
 vi.mock("@/lib/showcase-hosts", () => ({
   canonicalSiteUrl: (path: string) => `https://www.jechemine.ca${path}`,
@@ -110,8 +113,10 @@ import {
   createProduct,
   deleteProduct,
   professionalProductAction,
+  reconcileProductLiveStatus,
   settleProductPurchase,
   syncProductLiveStatus,
+  syncProfessionalProducts,
   updateProduct,
 } from "@/lib/products";
 
@@ -508,6 +513,57 @@ describe("syncProductLiveStatus", () => {
     setPair({ status: "draft" });
     await syncProductLiveStatus(SLUG);
     expect(fr.save).not.toHaveBeenCalled();
+  });
+});
+
+describe("syncProfessionalProducts", () => {
+  it("syncs every product the professional owns, so they leave the site with the account", async () => {
+    extra.entryDistinct.mockResolvedValue([SLUG, "autre-produit"]);
+    setPair({ status: "published", moderation: { status: "approved", revision: 1, approvedRevision: 1 } });
+    h.userExists.mockResolvedValue(null);
+
+    expect(await syncProfessionalProducts(PRO)).toBe(2);
+    expect(extra.entryDistinct).toHaveBeenCalledWith("slug", { kind: "resource", ownerProfessionalId: PRO });
+    expect(h.entryFind.mock.calls.map((call) => (call[0] as { slug: string }).slug)).toEqual([SLUG, "autre-produit"]);
+    expect([fr.status, en.status]).toEqual(["draft", "draft"]);
+  });
+
+  it("does nothing for an id that is not one", async () => {
+    expect(await syncProfessionalProducts("not-an-id")).toBe(0);
+    expect(extra.entryDistinct).not.toHaveBeenCalled();
+  });
+});
+
+describe("reconcileProductLiveStatus", () => {
+  it("syncs only the products whose stored status disagrees with the moderation and the account", async () => {
+    h.entryFind.mockImplementationOnce(() =>
+      chain([
+        { slug: "live-owner-inactive", status: "published", ownerProfessionalId: OTHER_PRO, moderation: { status: "approved" } },
+        { slug: "hidden-owner-active", status: "draft", ownerProfessionalId: PRO, moderation: { status: "approved" } },
+        { slug: "fine", status: "published", ownerProfessionalId: PRO, moderation: { status: "approved" } },
+        { slug: "taken-down-still-live", status: "published", ownerProfessionalId: PRO, moderation: { status: "unpublished" } },
+      ]),
+    );
+    extra.userFind.mockImplementation(() => chain([{ _id: PRO }]));
+
+    expect(await reconcileProductLiveStatus()).toBe(3);
+    expect(h.entryFind.mock.calls[0][0]).toMatchObject({ kind: "resource", ownerProfessionalId: { $exists: true } });
+    expect(extra.userFind.mock.calls[0][0]).toMatchObject({
+      _id: { $in: [OTHER_PRO, PRO] },
+      role: "professional",
+      status: "active",
+    });
+    const synced = h.entryFind.mock.calls.slice(1).map((call) => (call[0] as { slug: string }).slug);
+    expect(synced.sort()).toEqual(["hidden-owner-active", "live-owner-inactive", "taken-down-still-live"]);
+  });
+
+  it("changes nothing when every product agrees", async () => {
+    h.entryFind.mockImplementationOnce(() =>
+      chain([{ slug: SLUG, status: "published", ownerProfessionalId: PRO, moderation: { status: "approved" } }]),
+    );
+    extra.userFind.mockImplementation(() => chain([{ _id: PRO }]));
+    expect(await reconcileProductLiveStatus()).toBe(0);
+    expect(h.entryFind).toHaveBeenCalledTimes(1);
   });
 });
 

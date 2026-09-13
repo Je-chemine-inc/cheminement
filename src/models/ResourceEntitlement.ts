@@ -78,6 +78,13 @@ export interface IResourceEntitlement extends Document {
   productType?: string;
   /** Prices include taxes; the platform does not remit TPS/TVQ on products yet (owner decision). */
   taxTreatment?: "inclusive_untracked";
+  /**
+   * Webinar reminders sent for this purchase, as `<kind>:<start ISO>`
+   * (webinarReminderKey). Each is claimed here before its email goes out, so
+   * two runs never send it twice; the key carries the date, so a moved webinar
+   * reminds again. Absent until the first reminder.
+   */
+  webinarRemindersSent?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +126,8 @@ const ResourceEntitlementSchema = new Schema<IResourceEntitlement>(
     commissionBps: { type: Number, min: 0, max: 10_000 },
     productType: { type: String },
     taxTreatment: { type: String, enum: ["inclusive_untracked"] },
+    // No empty array by default: the team's resources never gain the key.
+    webinarRemindersSent: { type: [String], default: undefined },
   },
   { timestamps: true },
 );

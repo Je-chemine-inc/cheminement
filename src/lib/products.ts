@@ -106,6 +106,57 @@ export async function syncProductLiveStatus(slug: string): Promise<boolean> {
   return live;
 }
 
+/**
+ * Publish or hide every product of one professional after their account
+ * changed — deactivated, reactivated, anonymized or deleted — so a product
+ * leaves the site with its professional at once. Returns how many products it
+ * looked at.
+ */
+export async function syncProfessionalProducts(professionalId: string): Promise<number> {
+  if (!mongoose.Types.ObjectId.isValid(professionalId)) return 0;
+  await connectToDatabase();
+  const slugs = (await ContentEntry.distinct("slug", {
+    kind: "resource",
+    ownerProfessionalId: professionalId,
+  })) as string[];
+  for (const slug of slugs) await syncProductLiveStatus(slug);
+  return slugs.length;
+}
+
+/**
+ * Put right every product whose stored status disagrees with its moderation
+ * and its professional's account: an account changed by a path that does not
+ * sync, or a sync that failed half-way. Run by the products job; returns how
+ * many products it corrected.
+ */
+export async function reconcileProductLiveStatus(): Promise<number> {
+  await connectToDatabase();
+  // Every other row is a draft that should stay one.
+  const rows = await ContentEntry.find({
+    kind: "resource",
+    ownerProfessionalId: { $exists: true },
+    $or: [{ status: "published" }, { "moderation.status": "approved" }],
+  })
+    .select("slug status ownerProfessionalId moderation.status")
+    .lean<{ slug: string; status: string; ownerProfessionalId: unknown; moderation?: { status?: ProductModerationStatus } }[]>();
+  if (rows.length === 0) return 0;
+  const owners = [...new Set(rows.map((row) => String(row.ownerProfessionalId)))];
+  const active = await User.find({ _id: { $in: owners }, role: "professional", status: "active" })
+    .select("_id")
+    .lean<{ _id: unknown }[]>();
+  const activeIds = new Set(active.map((user) => String(user._id)));
+  const stale = new Set<string>();
+  for (const row of rows) {
+    const live = productIsLive({
+      moderation: row.moderation?.status ?? "draft",
+      ownerActive: activeIds.has(String(row.ownerProfessionalId)),
+    });
+    if ((row.status === "published") !== live) stale.add(row.slug);
+  }
+  for (const slug of stale) await syncProductLiveStatus(slug);
+  return stale.size;
+}
+
 /* ------------------------------------------------------------------------ */
 /* The professional's side                                                    */
 /* ------------------------------------------------------------------------ */

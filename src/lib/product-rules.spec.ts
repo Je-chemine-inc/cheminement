@@ -10,6 +10,8 @@ import {
   productTransition,
   splitProductSaleCents,
   validateProductPrice,
+  webinarReminderDue,
+  webinarReminderKey,
 } from "@/lib/product-rules";
 
 describe("commission", () => {
@@ -169,5 +171,42 @@ describe("productMissing", () => {
     expect(productMissing({ ...base, type: "video", mediaUrlFr: null })).toEqual(["media"]);
     expect(productMissing({ ...base, type: "webinar", webinarStartsAt: null })).toEqual(["webinar"]);
     expect(productMissing({ ...base, type: "external", priceCents: 0, externalUrl: null })).toEqual(["link"]);
+  });
+});
+
+describe("webinar reminders", () => {
+  // 19 h in Montréal.
+  const startsAt = new Date("2026-10-01T23:00:00.000Z");
+  const at = (hoursBefore: number) => new Date(startsAt.getTime() - hoursBefore * 3_600_000);
+  const longAgo = new Date("2026-09-01T12:00:00.000Z");
+
+  it("reminds the day before, then an hour before, and never once the webinar has started", () => {
+    const due = (now: Date) => webinarReminderDue({ startsAt, paidAt: longAgo, now });
+    expect(due(at(25))).toBeNull();
+    expect(due(at(24))).toBe("day");
+    expect(due(at(2))).toBe("day");
+    expect(due(at(1.01))).toBe("day");
+    expect(due(at(1))).toBe("hour");
+    expect(due(at(0.1))).toBe("hour");
+    expect(due(startsAt)).toBeNull();
+    expect(due(at(-1))).toBeNull();
+  });
+
+  it("skips a window the purchase was made in: the purchase email has just gone out", () => {
+    expect(webinarReminderDue({ startsAt, paidAt: at(10), now: at(5) })).toBeNull();
+    expect(webinarReminderDue({ startsAt, paidAt: at(10), now: at(0.5) })).toBe("hour");
+    expect(webinarReminderDue({ startsAt, paidAt: at(0.5), now: at(0.25) })).toBeNull();
+    expect(webinarReminderDue({ startsAt, paidAt: at(24), now: at(20) })).toBeNull();
+  });
+
+  it("treats a purchase without a payment date as made long before", () => {
+    expect(webinarReminderDue({ startsAt, paidAt: null, now: at(3) })).toBe("day");
+    expect(webinarReminderDue({ startsAt, now: at(0.5) })).toBe("hour");
+  });
+
+  it("keys a reminder on its kind and the start it announced, so a moved webinar reminds again", () => {
+    expect(webinarReminderKey("day", startsAt)).toBe("day:2026-10-01T23:00:00.000Z");
+    expect(webinarReminderKey("day", new Date("2026-10-08T23:00:00.000Z"))).not.toBe(webinarReminderKey("day", startsAt));
+    expect(webinarReminderKey("hour", startsAt)).not.toBe(webinarReminderKey("day", startsAt));
   });
 });

@@ -358,3 +358,39 @@ export function productMissing(product: {
   if (!product.attested) missing.push("attestation");
   return missing;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Webinar reminders                                                          */
+/* ------------------------------------------------------------------------ */
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/** A webinar's buyers are reminded the day before and an hour before (lib/product-jobs.ts). */
+export const WEBINAR_REMINDERS = [
+  { kind: "day", hoursBefore: 24 },
+  { kind: "hour", hoursBefore: 1 },
+] as const;
+export type WebinarReminderKind = (typeof WEBINAR_REMINDERS)[number]["kind"];
+
+/**
+ * The reminder due now, if any: the latest one whose window has opened, until
+ * the webinar starts. None for a purchase made after that window opened — the
+ * buyer has just had the purchase email. A purchase without a payment date
+ * counts as made long before.
+ */
+export function webinarReminderDue(input: { startsAt: Date; paidAt?: Date | null; now: Date }): WebinarReminderKind | null {
+  const start = input.startsAt.getTime();
+  const now = input.now.getTime();
+  if (Number.isNaN(start) || now >= start) return null;
+  const open = [...WEBINAR_REMINDERS]
+    .sort((a, b) => a.hoursBefore - b.hoursBefore)
+    .find((reminder) => now >= start - reminder.hoursBefore * HOUR_MS);
+  if (!open) return null;
+  const paidAt = input.paidAt ? input.paidAt.getTime() : Number.NEGATIVE_INFINITY;
+  return paidAt < start - open.hoursBefore * HOUR_MS ? open.kind : null;
+}
+
+/** How a sent reminder is recorded on its purchase: its kind and the start it announced. */
+export function webinarReminderKey(kind: WebinarReminderKind, startsAt: Date): string {
+  return `${kind}:${startsAt.toISOString()}`;
+}

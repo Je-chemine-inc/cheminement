@@ -4,6 +4,7 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
+import { syncProfessionalProducts } from "@/lib/products";
 
 // Allow headroom for cold-start Mongo.
 export const maxDuration = 30;
@@ -104,6 +105,14 @@ export async function POST(
       : { $set: { status: "inactive", deactivatedAt: new Date() } };
 
     await User.findByIdAndUpdate(id, update);
+
+    // A professional's products follow the account: off sale while it is
+    // inactive, back on sale once it is active again (spec 003 phase 5).
+    if (user.role === "professional") {
+      await syncProfessionalProducts(id).catch((err) =>
+        console.error("Admin account-activation: products sync failed:", err),
+      );
+    }
 
     return NextResponse.json({
       success: true,

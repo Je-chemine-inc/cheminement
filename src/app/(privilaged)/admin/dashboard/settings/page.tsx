@@ -297,6 +297,12 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé au professionnel quand l'équipe approuve, refuse (avec ses commentaires) ou retire un de ses produits.",
     category: "Pages vitrines",
   },
+  product_webinar_reminder: {
+    name: "Rappel de webinaire (acheteur)",
+    description:
+      "Envoyé aux personnes qui ont acheté le webinaire d'un professionnel, la veille puis une heure avant le début, avec le lien vers la page du webinaire où se trouve la salle.",
+    category: "Ressources",
+  },
   admin_product_submitted: {
     name: "Alerte équipe — produit à vérifier",
     description:

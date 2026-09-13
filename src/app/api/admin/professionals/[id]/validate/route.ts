@@ -10,6 +10,7 @@ import {
   hashVerificationSecret,
 } from "@/lib/account-init";
 import { sendAccountEmailVerificationEmail } from "@/lib/notifications";
+import { syncProfessionalProducts } from "@/lib/products";
 
 // SMTP send can be slow on cold start; give the route headroom.
 export const maxDuration = 30;
@@ -140,6 +141,14 @@ export async function POST(
       } catch (err) {
         console.error("Admin approve: activation email send failed:", err);
       }
+    }
+
+    // Products approved before come back on sale once the account is active
+    // (spec 003 phase 5).
+    if (user.status === "active") {
+      await syncProfessionalProducts(id).catch((err) =>
+        console.error("Admin approve: products sync failed:", err),
+      );
     }
 
     return NextResponse.json({

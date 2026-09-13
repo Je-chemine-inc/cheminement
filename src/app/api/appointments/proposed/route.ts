@@ -9,6 +9,7 @@ import {
   triggerDueWaitlistOffers,
   triggerDuePaymentReminders,
   triggerDueAppointmentReminders,
+  triggerDueProductJobs,
 } from "@/lib/lazy-cron";
 
 /**
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
     // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
+    // Webinar reminders and product status upkeep (spec 003 phase 5).
+    // Throttled (10 min).
+    after(() => triggerDueProductJobs());
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // Optional filter
