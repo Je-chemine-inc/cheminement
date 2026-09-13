@@ -31,6 +31,7 @@ import {
   Building2,
   Receipt,
   Store,
+  ListOrdered,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -103,6 +104,12 @@ export function AdminSidebar() {
           title: t("showcases"),
           url: "/admin/dashboard/showcases",
           icon: Store,
+          requires: "manageProfessionals",
+        },
+        {
+          title: t("waitlists"),
+          url: "/admin/dashboard/waitlist",
+          icon: ListOrdered,
           requires: "manageProfessionals",
         },
         {

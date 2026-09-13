@@ -10,7 +10,10 @@ const h = vi.hoisted(() => ({
   enabled: true,
   bookable: null as Record<string, unknown> | null,
   slotFree: true,
-  hold: { ok: true, holdId: "0123456789abcdef0123cccc" } as { ok: boolean; holdId?: string; code?: string },
+  slotFreeArgs: [] as unknown[][],
+  convert: true,
+  converts: [] as Record<string, unknown>[],
+  hold:{ ok: true, holdId: "0123456789abcdef0123cccc" } as { ok: boolean; holdId?: string; code?: string },
   holdCalls: [] as Record<string, unknown>[],
   pricingCalls: [] as unknown[][],
   releases: [] as unknown[][],
@@ -28,7 +31,10 @@ vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/lib/showcase-settings", () => ({ isShowcaseEnabled: async () => h.enabled }));
 vi.mock("@/lib/showcase-booking", () => ({
   loadBookableShowcase: async () => h.bookable,
-  isShowcaseSlotFree: async () => h.slotFree,
+  isShowcaseSlotFree: async (...args: unknown[]) => {
+    h.slotFreeArgs.push(args);
+    return h.slotFree;
+  },
 }));
 vi.mock("@/lib/pricing", () => ({
   calculateAppointmentPricing: async (...args: unknown[]) => {
@@ -42,6 +48,10 @@ vi.mock("@/lib/slot-holds", () => ({
     return h.hold;
   },
   attachSlotHoldToAppointment: async () => true,
+  convertOfferHoldToRequest: async (input: Record<string, unknown>) => {
+    h.converts.push(input);
+    return h.convert;
+  },
   releaseSlotHold: async (...args: unknown[]) => {
     h.releases.push(args);
     return true;
@@ -114,6 +124,9 @@ beforeEach(() => {
   h.enabled = true;
   h.bookable = bookable();
   h.slotFree = true;
+  h.slotFreeArgs = [];
+  h.convert = true;
+  h.converts = [];
   h.hold = { ok: true, holdId: HOLD };
   h.holdCalls = [];
   h.pricingCalls = [];
@@ -187,6 +200,32 @@ describe("prepareDirectRequest", () => {
     h.bookable = bookable();
     h.slotFree = false;
     expect(await run()).toEqual({ ok: false, status: 409, code: "SLOT_TAKEN" });
+    expect(h.holdCalls).toEqual([]);
+  });
+
+  it("turns a claimed waitlist offer's hold into the request's hold instead of taking a new one", async () => {
+    const ENTRY = "0123456789abcdef0123dddd";
+    const result = await prepareDirectRequest({ intent, therapyType: "solo", now, waitlist: { entryId: ENTRY, holdId: HOLD } });
+    if (!result.ok) throw new Error("expected a prepared request");
+    expect(h.holdCalls).toEqual([]);
+    expect(h.converts).toEqual([
+      { holdId: HOLD, waitlistEntryId: ENTRY, expiresAt: new Date("2026-09-15T13:00:00Z"), now },
+    ]);
+    // The offer's own hold never makes its time look taken.
+    expect(h.slotFreeArgs[0][5]).toEqual({ exceptHoldId: HOLD });
+    expect(result.fields.directRequest.source).toBe("waitlist");
+    expect(String(result.fields.directRequest.waitlistEntryId)).toBe(ENTRY);
+    expect(String(result.fields.directRequest.holdId)).toBe(HOLD);
+  });
+
+  it("refuses a waitlist claim whose offer hold is no longer live", async () => {
+    h.convert = false;
+    const waitlist = { entryId: "0123456789abcdef0123dddd", holdId: HOLD };
+    expect(await prepareDirectRequest({ intent, therapyType: "solo", now, waitlist })).toEqual({
+      ok: false,
+      status: 409,
+      code: "SLOT_TAKEN",
+    });
     expect(h.holdCalls).toEqual([]);
   });
 

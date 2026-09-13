@@ -69,11 +69,14 @@ export async function loadOccupiedIntervals(input: {
   now?: Date;
   /** Leave this request out: it never collides with itself. */
   exceptAppointmentId?: string;
+  /** Leave this hold out: a waitlist offer being claimed holds the very time it asks for. */
+  exceptHoldId?: string;
 }): Promise<OccupiedInterval[]> {
   const professionalId = objectId(input.professionalId);
   if (!professionalId || !isDayKey(input.fromDay) || !isDayKey(input.toDay)) return [];
   await connectToDatabase();
   const except = objectId(input.exceptAppointmentId);
+  const exceptHold = objectId(input.exceptHoldId);
   const sessionFilter: Record<string, unknown> = {
     professionalId,
     status: { $in: OCCUPYING_STATUSES },
@@ -88,6 +91,7 @@ export async function loadOccupiedIntervals(input: {
     sessionFilter._id = { $ne: except };
     holdFilter.appointmentId = { $ne: except };
   }
+  if (exceptHold) holdFilter._id = { $ne: exceptHold };
   const [sessions, holds] = await Promise.all([
     Appointment.find(sessionFilter).select("date time duration").lean<SessionRow[]>(),
     SlotHold.find(holdFilter).select("startsAt durationMinutes").lean<HoldRow[]>(),

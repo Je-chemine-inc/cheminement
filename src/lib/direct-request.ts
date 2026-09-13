@@ -8,7 +8,12 @@ import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { isShowcaseSlotFree, loadBookableShowcase } from "@/lib/showcase-booking";
 import { slotStartsAt } from "@/lib/available-slots";
 import { parseAppointmentDate } from "@/lib/appointment-date";
-import { acquireSlotHold, attachSlotHoldToAppointment, releaseSlotHold } from "@/lib/slot-holds";
+import {
+  acquireSlotHold,
+  attachSlotHoldToAppointment,
+  convertOfferHoldToRequest,
+  releaseSlotHold,
+} from "@/lib/slot-holds";
 import {
   DIRECT_REQUEST_REROUTE_TOKEN_DAYS,
   directRequestDeadline,
@@ -71,7 +76,7 @@ export interface PreparedDirectRequest {
       showcaseSlug: string;
       cityKey: string;
       service: DirectIntent["service"];
-      source: "showcase";
+      source: "showcase" | "waitlist";
       dayKey: string;
       time: string;
       startsAt: Date;
@@ -80,6 +85,7 @@ export interface PreparedDirectRequest {
       holdId: mongoose.Types.ObjectId;
       respondBy: Date;
       state: "pending";
+      waitlistEntryId?: mongoose.Types.ObjectId;
     };
   };
 }
@@ -96,23 +102,29 @@ function fail(status: 404 | 409, code: DirectRequestFailure["code"]): DirectRequ
  * A quick consultation is booked as a solo session, flagged `isEmergency`
  * (the "consultation ponctuelle rapide" the rest of the platform knows), with
  * its own length and price.
+ *
+ * A claimed waitlist offer (phase 4) already holds its time: `waitlist` names
+ * the entry and that hold, which is converted into the request's hold instead
+ * of a new one being taken.
  */
 export async function prepareDirectRequest(input: {
   intent: DirectIntent;
   therapyType: "solo" | "couple" | "group";
   now?: Date;
+  waitlist?: { entryId: string; holdId: string };
 }): Promise<PreparedDirectRequest | DirectRequestFailure> {
   const now = input.now ?? new Date();
-  const { intent } = input;
+  const { intent, waitlist } = input;
   if (!(await isShowcaseEnabled())) return fail(404, "SHOWCASE_NOT_FOUND");
 
   const bookable = await loadBookableShowcase(intent.slug);
   if (!bookable) return fail(404, "SHOWCASE_NOT_FOUND");
   const offer = bookable.services[intent.service];
   if (!offer.offered) return fail(409, "SERVICE_UNAVAILABLE");
-  if (!(await isShowcaseSlotFree(bookable, intent.service, intent.date, intent.time, now))) {
-    return fail(409, "SLOT_TAKEN");
-  }
+  const free = await isShowcaseSlotFree(bookable, intent.service, intent.date, intent.time, now, {
+    exceptHoldId: waitlist?.holdId,
+  });
+  if (!free) return fail(409, "SLOT_TAKEN");
 
   const startsAt = slotStartsAt(intent.date, intent.time);
   const respondBy = startsAt ? directRequestDeadline({ now, startsAt, service: intent.service }) : null;
@@ -125,22 +137,35 @@ export async function prepareDirectRequest(input: {
 
   // Last check, first write: the hold's unique index is the lock. It lasts as
   // long as the professional has to answer.
-  const hold = await acquireSlotHold({
-    professionalId: bookable.professionalId,
-    dayKey: intent.date,
-    time: intent.time,
-    startsAt,
-    durationMinutes: offer.durationMinutes,
-    kind: "direct_request",
-    expiresAt: respondBy,
-    now,
-  });
-  if (!hold.ok) return fail(409, "SLOT_TAKEN");
+  let holdId: string;
+  if (waitlist) {
+    const converted = await convertOfferHoldToRequest({
+      holdId: waitlist.holdId,
+      waitlistEntryId: waitlist.entryId,
+      expiresAt: respondBy,
+      now,
+    });
+    if (!converted) return fail(409, "SLOT_TAKEN");
+    holdId = waitlist.holdId;
+  } else {
+    const hold = await acquireSlotHold({
+      professionalId: bookable.professionalId,
+      dayKey: intent.date,
+      time: intent.time,
+      startsAt,
+      durationMinutes: offer.durationMinutes,
+      kind: "direct_request",
+      expiresAt: respondBy,
+      now,
+    });
+    if (!hold.ok) return fail(409, "SLOT_TAKEN");
+    holdId = hold.holdId;
+  }
 
   const professional = new mongoose.Types.ObjectId(bookable.professionalId);
   return {
     ok: true,
-    holdId: hold.holdId,
+    holdId,
     professionalId: bookable.professionalId,
     pricing,
     fields: {
@@ -157,15 +182,16 @@ export async function prepareDirectRequest(input: {
         showcaseSlug: bookable.slug,
         cityKey: bookable.cityKey,
         service: intent.service,
-        source: "showcase",
+        source: waitlist ? "waitlist" : "showcase",
         dayKey: intent.date,
         time: intent.time,
         startsAt,
         professionalId: professional,
         professionalName: bookable.displayName,
-        holdId: new mongoose.Types.ObjectId(hold.holdId),
+        holdId: new mongoose.Types.ObjectId(holdId),
         respondBy,
         state: "pending",
+        ...(waitlist ? { waitlistEntryId: new mongoose.Types.ObjectId(waitlist.entryId) } : {}),
       },
     },
   };

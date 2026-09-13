@@ -16,12 +16,15 @@ export function ShowcaseSlotPicker({
   slug,
   services,
   bookingBaseUrl,
+  waitlistAnchor,
 }: {
   slug: string;
   /** The consultations this page offers, the default first. */
   services: DirectRequestService[];
   /** The funnel's URL on www, without the service and slot parameters. */
   bookingBaseUrl: string;
+  /** The id of the waitlist section on the page, offered when no time suits. */
+  waitlistAnchor?: string;
 }) {
   const t = useTranslations("ShowcaseBooking");
   const locale = useLocale();
@@ -126,9 +129,16 @@ export function ShowcaseSlotPicker({
     </button>
   ) : null;
   const matchLink = (
-    <a href={bookingBaseUrl} data-showcase-cta="" className="inline-flex text-sm text-primary hover:underline">
-      {t("matchInstead")}
-    </a>
+    <span className="flex flex-col items-start gap-2">
+      {waitlistAnchor ? (
+        <a href={`#${waitlistAnchor}`} className="inline-flex text-sm text-primary hover:underline">
+          {t("joinWaitlist")}
+        </a>
+      ) : null}
+      <a href={bookingBaseUrl} data-showcase-cta="" className="inline-flex text-sm text-primary hover:underline">
+        {t("matchInstead")}
+      </a>
+    </span>
   );
 
   return (
@@ -226,6 +236,11 @@ export function ShowcaseSlotPicker({
             ) : null}
             {moreButton ? <div className="mt-4">{moreButton}</div> : null}
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{t("howItWorks")}</p>
+            {waitlistAnchor ? (
+              <a href={`#${waitlistAnchor}`} className="mt-2 inline-flex text-xs text-primary hover:underline">
+                {t("noTimeSuits")}
+              </a>
+            ) : null}
           </>
         )}
       </div>

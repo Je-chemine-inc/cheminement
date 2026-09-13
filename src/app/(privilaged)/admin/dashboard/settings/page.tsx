@@ -271,6 +271,24 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l'équipe quand une demande faite depuis une page vitrine est déclinée ou reste sans réponse et revient dans les demandes de service.",
     category: "Alertes administratives",
   },
+  waitlist_joined: {
+    name: "Inscription à la liste d'attente",
+    description:
+      "Envoyé à la personne qui s'inscrit sur la liste d'attente d'un professionnel depuis sa page vitrine. Explique la suite et contient le lien pour quitter la liste.",
+    category: "Pages vitrines",
+  },
+  waitlist_offer: {
+    name: "Créneau libéré (liste d'attente)",
+    description:
+      "Envoyé à la première personne de la liste à qui convient un créneau qui se libère. Le créneau lui est réservé 15 minutes ; un texto part aussi si elle y a consenti.",
+    category: "Pages vitrines",
+  },
+  waitlist_removed: {
+    name: "Fin d'inscription à la liste d'attente",
+    description:
+      "Envoyé quand une inscription prend fin : trois créneaux restés sans réponse, 90 jours écoulés, ou retrait par le professionnel ou l'équipe. Pas envoyé quand la personne quitte la liste elle-même.",
+    category: "Pages vitrines",
+  },
   admin_organization_invoice_overdue: {
     name: "Alerte équipe — factures aux organismes en retard",
     description:

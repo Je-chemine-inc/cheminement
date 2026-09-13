@@ -96,15 +96,44 @@ export async function attachSlotHoldToAppointment(holdId: string, appointmentId:
  */
 export async function releaseSlotHold(
   holdId: string,
-  owner: { appointmentId?: string; waitlistEntryId?: string } = {},
+  owner: { appointmentId?: string; waitlistEntryId?: string; kind?: SlotHoldKind } = {},
 ): Promise<boolean> {
   if (!mongoose.Types.ObjectId.isValid(holdId)) return false;
   await connectToDatabase();
   const filter: Record<string, unknown> = { _id: holdId };
   if (owner.appointmentId) filter.appointmentId = owner.appointmentId;
   if (owner.waitlistEntryId) filter.waitlistEntryId = owner.waitlistEntryId;
+  if (owner.kind) filter.kind = owner.kind;
   const res = await SlotHold.deleteOne(filter);
   return res.deletedCount === 1;
+}
+
+/**
+ * A waitlist offer was claimed (spec 003 phase 4): the time it held becomes
+ * the request's hold, for as long as the professional has to answer. Only a
+ * live offer made to that entry converts — never an offer that already
+ * expired or one that was converted by a concurrent claim.
+ */
+export async function convertOfferHoldToRequest(input: {
+  holdId: string;
+  waitlistEntryId: string;
+  expiresAt: Date;
+  now?: Date;
+}): Promise<boolean> {
+  if (!mongoose.Types.ObjectId.isValid(input.holdId) || !mongoose.Types.ObjectId.isValid(input.waitlistEntryId)) {
+    return false;
+  }
+  await connectToDatabase();
+  const res = await SlotHold.updateOne(
+    {
+      _id: input.holdId,
+      waitlistEntryId: input.waitlistEntryId,
+      kind: "waitlist_offer",
+      expiresAt: { $gt: input.now ?? new Date() },
+    },
+    { $set: { kind: "direct_request", expiresAt: input.expiresAt } },
+  );
+  return res.modifiedCount === 1;
 }
 
 /** The live hold on a slot, if any. */

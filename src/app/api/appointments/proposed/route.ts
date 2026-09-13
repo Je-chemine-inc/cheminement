@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import {
   triggerDueCascadeCron,
+  triggerDueWaitlistOffers,
   triggerDuePaymentReminders,
   triggerDueAppointmentReminders,
 } from "@/lib/lazy-cron";
@@ -36,6 +37,8 @@ export async function GET(req: NextRequest) {
     // general pool without an external scheduler. Throttled + idempotent (see
     // lazy-cron.ts); after() runs it post-response.
     after(() => triggerDueCascadeCron());
+    // Waitlist offers and direct request deadlines (spec 003 phase 4).
+    after(() => triggerDueWaitlistOffers());
     // Same opportunistic trigger for the post-session invoice dunning
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());

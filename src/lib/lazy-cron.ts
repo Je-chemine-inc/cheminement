@@ -4,6 +4,7 @@ import { runProposalTimeouts } from "@/lib/proposal-timeout";
 import { runPaymentReminders } from "@/lib/payment-reminders";
 import { runAppointmentReminders } from "@/lib/appointment-reminders";
 import { runInteracReconciliation } from "@/lib/interac-reconciler";
+import { runWaitlistOffers } from "@/lib/waitlist-offers";
 
 /**
  * "Lazy cron": advance the matching cascade off normal authenticated traffic
@@ -152,5 +153,34 @@ export async function triggerDueInteracReconciliation(): Promise<void> {
     await runInteracReconciliation();
   } catch (err) {
     console.error("[lazy-cron] interac reconciliation trigger failed:", err);
+  }
+}
+
+// Waitlist offers (spec 003 phase 4). An offer lasts 15 minutes, so the job
+// runs every two minutes from the VPS cron; this keeps it going off dashboard
+// and showcase traffic if that cron stops. It also expires direct requests.
+const WAITLIST_OFFERS_KEY = "waitlist-offers";
+const WAITLIST_OFFERS_THROTTLE_MS = 2 * 60 * 1000; // 2 minutes
+let lastWaitlistLocalCheck = 0;
+
+export async function triggerDueWaitlistOffers(): Promise<void> {
+  const now = Date.now();
+  if (now - lastWaitlistLocalCheck < LOCAL_GUARD_MS) return;
+  lastWaitlistLocalCheck = now;
+  try {
+    await connectToDatabase();
+    await CronRun.updateOne(
+      { key: WAITLIST_OFFERS_KEY },
+      { $setOnInsert: { key: WAITLIST_OFFERS_KEY, lastRunAt: new Date(0) } },
+      { upsert: true },
+    );
+    const claimed = await CronRun.findOneAndUpdate(
+      { key: WAITLIST_OFFERS_KEY, lastRunAt: { $lt: new Date(now - WAITLIST_OFFERS_THROTTLE_MS) } },
+      { $set: { lastRunAt: new Date(now) } },
+    );
+    if (!claimed) return;
+    await runWaitlistOffers();
+  } catch (err) {
+    console.error("[lazy-cron] waitlist offers trigger failed:", err);
   }
 }

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { notifyDirectRequestReleased, releaseDirectRequest } from "@/lib/direct-request";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 import {
   DIRECT_REQUEST_DECLINE_NOTE_MAX,
   isDirectRequestDeclineReason,
@@ -66,6 +67,9 @@ export async function POST(
         console.error("[decline-direct] emails failed:", error),
       ),
     );
+    // The freed time goes to the professional's waitlist (phase 4).
+    const professionalId = session.user.id;
+    after(() => afterSlotFreed(professionalId));
     return NextResponse.json({ id, state: "declined" });
   } catch (error) {
     console.error("decline-direct error:", error);

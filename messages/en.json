@@ -3347,7 +3347,9 @@
       "organizations": "Paying organizations",
       "organizationInvoices": "Organization invoices",
       "showcases": "Showcase pages",
-      "showcase": "My showcase page"
+      "showcase": "My showcase page",
+      "waitlist": "Waitlist",
+      "waitlists": "Waitlists"
     },
     "overview": {
       "title": "Welcome Back",
@@ -7840,7 +7842,9 @@
     "slotAction": "Request an appointment on {day} at {time}",
     "more": "Show the following two weeks",
     "howItWorks": "Choose a time, then send your request: the time is held for you until the professional answers.",
-    "matchInstead": "Get matched with another professional"
+    "matchInstead": "Get matched with another professional",
+    "joinWaitlist": "Join the waitlist",
+    "noTimeSuits": "No time suits you? Join the waitlist."
   },
   "DirectRequests": {
     "services": {
@@ -7923,6 +7927,277 @@
         "SERVICE_UNAVAILABLE": "This professional is not taking this type of request right now.",
         "SHOWCASE_NOT_FOUND": "This professional's page is no longer available."
       }
+    }
+  },
+  "ShowcaseWaitlist": {
+    "title": "Waitlist",
+    "exclusiveTitle": "{name}'s waitlist",
+    "exclusiveBody": "No time suits you? Leave your details: as soon as a time that suits you opens up, it is offered to you and held for 15 minutes.",
+    "join": "Join the list",
+    "generalTitle": "Je chemine's general waitlist",
+    "generalBody": "Rather not wait for this professional in particular? Je chemine matches you with the professional who suits you.",
+    "generalCta": "Get matched with a professional",
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone (optional)",
+      "phoneHelp": "To get a text message when a time opens up.",
+      "service": "Consultation type",
+      "modality": "Modality",
+      "motifs": "Reason for consulting (up to {max}, optional)",
+      "periods": "Times of day that suit you",
+      "days": "Days that suit you",
+      "anyTimeHelp": "With nothing selected, any time and any day suits you."
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "periods": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "days": {
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat",
+      "sunday": "Sun"
+    },
+    "consent": "I agree that Je chemine keeps my details to offer me a time with {name}, for 90 days at most. I can leave the list at any time with the link I receive by email.",
+    "smsConsent": "I also agree to receive a text message when a time opens up.",
+    "submit": "Join",
+    "sending": "Joining…",
+    "doneTitle": "Done",
+    "doneBody": "You are on {name}'s waitlist. We just sent you an email, and will write as soon as a time that suits you opens up.",
+    "errors": {
+      "consent": "Tick the consent box to join.",
+      "email": "Check the email address.",
+      "phone": "Check the phone number, or leave it empty.",
+      "invalid": "Check the form fields.",
+      "full": "This professional's waitlist is full for now. Je chemine can match you with another professional.",
+      "rateLimited": "Too many attempts. Try again in a few minutes.",
+      "unavailable": "This professional's waitlist is not available right now.",
+      "generic": "Your place could not be saved. Try again in a moment."
+    }
+  },
+  "Waitlist": {
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "claim": {
+      "loading": "Loading…",
+      "title": "A time is waiting for you",
+      "intro": "A time with {name} opened up and is held for you.",
+      "service": "Consultation",
+      "when": "Time",
+      "duration": "Length",
+      "minutes": "{minutes} minutes",
+      "price": "Fee",
+      "slot": "{day} at {time}",
+      "heldFor": "Held for you for {countdown} more",
+      "whatNext": "When you book it, your request goes to {name}, who confirms the appointment. The payment instructions follow their confirmation.",
+      "cta": "Book this time",
+      "booking": "Booking…",
+      "viewPage": "View the professional's page",
+      "error": "The time could not be booked. Try again.",
+      "doneTitle": "Request sent",
+      "doneBody": "{name} received your request for {slot} and will answer by {deadline} at the latest. A confirmation email was sent to you.",
+      "expiredTitle": "This time is no longer held",
+      "expiredBody": "The 15 minutes passed and the time was offered to someone else. You keep your place on the list, unless three times were left unanswered.",
+      "claimedTitle": "This time was already booked",
+      "claimedBody": "This link was already used. The confirmation of your request is in your email.",
+      "invalidTitle": "This link is not valid",
+      "invalidBody": "Check that the link is complete, or open it straight from the email or text message you received.",
+      "unavailableTitle": "This time can no longer be requested",
+      "unavailableBody": "The professional changed their availability. You keep your place on the waitlist, and this time does not count as unanswered.",
+      "offTitle": "Waitlist unavailable",
+      "offBody": "Waitlists are not available right now.",
+      "errorTitle": "Something went wrong",
+      "errorBody": "Try again in a moment.",
+      "home": "Back to the home page"
+    },
+    "leave": {
+      "title": "Leave the waitlist",
+      "body": "You will no longer be offered times with this professional. You can join again from their page.",
+      "cta": "Leave the waitlist",
+      "working": "Sending…",
+      "doneTitle": "You left the waitlist",
+      "doneBody": "Your details will no longer be used to offer you a time.",
+      "invalidTitle": "This link is no longer valid",
+      "invalidBody": "You may have left the list already, or your place ended.",
+      "error": "Something went wrong. Try again in a moment.",
+      "home": "Back to the home page"
+    }
+  },
+  "WaitlistPro": {
+    "title": "Waitlist",
+    "subtitle": "People who could not find a suitable time on your showcase page can join this list. When a time frees up, it is offered to the first person it suits: they get an email, and a text message if they agreed to it, and the time is held for them for 15 minutes. If they confirm, you receive a request to accept or decline in \"Direct requests\". After 3 unanswered offers or 90 days, their place on the list ends.",
+    "loadError": "Your waitlist could not be loaded.",
+    "retry": "Try again",
+    "count": "{count, plural, one {# person waiting} other {# people waiting}}",
+    "empty": {
+      "title": "No one is waiting right now",
+      "body": "When someone joins the waitlist from your showcase page, they will appear here."
+    },
+    "card": {
+      "position": "Position {position}",
+      "offer": "Offered time: {day} at {time} — held until {until}",
+      "modality": "Modality:",
+      "moments": "Availability:",
+      "anyTime": "Any time",
+      "anyMoment": "Any time of day",
+      "anyDay": "Any day",
+      "joined": "Joined:",
+      "ends": "Place ends:",
+      "motifs": "Reasons for consultation",
+      "remove": "Remove from list"
+    },
+    "remove": {
+      "title": "Remove this person from the list?",
+      "body": "{name} will no longer be on your waitlist and will be told by email. Any time currently offered to them will be freed.",
+      "cancel": "Cancel",
+      "confirm": "Remove from list",
+      "done": "{name} was removed from your waitlist.",
+      "gone": "{name} can no longer be removed: they may be booking right now, or their place has already ended. The list has been updated.",
+      "error": "The removal did not go through. Please try again."
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "periods": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+  },
+  "WaitlistAdmin": {
+    "title": "Waitlists",
+    "subtitle": "People who found no suitable time on a professional's page. When a time frees up, the first person it suits is emailed (and texted if they agreed) and the time is held for them for 15 minutes. If they confirm, a request goes to the professional. After 3 unanswered offers or 90 days, the place ends.",
+    "contactNote": "Contact details are shown only with the permission to manage patients.",
+    "refresh": "Refresh",
+    "search": "Search a professional or a person",
+    "count": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+    "empty": "No entries to show.",
+    "contactHidden": "Contact details hidden",
+    "endsOn": "Ends {date}",
+    "closedOn": "Closed {date}",
+    "consent": "{date} (v. {version})",
+    "smsYes": "Text: yes",
+    "smsNo": "Text: no",
+    "cancel": "Cancel",
+    "access": {
+      "title": "Restricted access",
+      "body": "You need the permission to manage professionals to see the waitlists."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Could not reach the server. Check your connection."
+    },
+    "scopes": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "columns": {
+      "offers": "Offers",
+      "professional": "Professional",
+      "person": "Person",
+      "contact": "Contact",
+      "consultation": "Consultation",
+      "status": "Status",
+      "position": "Position",
+      "missed": "Missed offers",
+      "joined": "Joined",
+      "ends": "Place ends",
+      "consent": "Consent",
+      "actions": "Actions"
+    },
+    "locales": {
+      "fr": "French",
+      "en": "English"
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "statuses": {
+      "active": "Waiting",
+      "offered": "Offer sent",
+      "converted": "Request created",
+      "expired": "Ended",
+      "left": "Left",
+      "removed": "Removed"
+    },
+    "reasons": {
+      "missed": "3 unanswered offers",
+      "expired": "90 days passed",
+      "professional": "Removed by the professional",
+      "admin": "Removed by the team"
+    },
+    "outcomes": {
+      "pending": "No answer yet",
+      "claiming": "Confirming",
+      "claimed": "Confirmed",
+      "expired": "Time ran out",
+      "slot_lost": "Time no longer available",
+      "withdrawn": "Withdrawn"
+    },
+    "channels": {
+      "email": "Email",
+      "sms": "Text"
+    },
+    "offers": {
+      "toggle": "Show offer history ({count})",
+      "title": "Offer history",
+      "none": "No offers sent.",
+      "time": "Time",
+      "sent": "Sent",
+      "heldUntil": "Held until",
+      "outcome": "Outcome",
+      "channels": "Channels",
+      "requestCreated": "Request created"
+    },
+    "remove": {
+      "action": "Remove",
+      "title": "Remove {name} from the waitlist?",
+      "body": "They will no longer get offers for {professional} and will be notified by email.",
+      "confirm": "Remove",
+      "done": "The person was removed from the waitlist.",
+      "gone": "This entry can no longer be removed: it is already closed or the person is booking right now. The list was refreshed."
     }
   }
 }

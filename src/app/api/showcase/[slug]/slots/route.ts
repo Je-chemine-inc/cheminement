@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { triggerDueWaitlistOffers } from "@/lib/lazy-cron";
 import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { listShowcaseSlots, loadBookableShowcase } from "@/lib/showcase-booking";
 import { isDirectRequestService } from "@/lib/direct-request-rules";
@@ -25,6 +26,8 @@ export async function GET(
   if (!rateLimit(`showcase-slots:${getClientIp(req)}`, 60, 60 * 1000).allowed) {
     return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
   }
+  // Keeps waitlist offers and request deadlines moving if the VPS cron stops (phase 4).
+  after(() => triggerDueWaitlistOffers());
 
   const { slug } = await params;
   const service = req.nextUrl.searchParams.get("service") ?? "standard";

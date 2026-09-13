@@ -11,6 +11,11 @@ const h = vi.hoisted(() => ({
   lists: [] as unknown[][],
 }));
 
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: () => {},
+}));
+vi.mock("@/lib/lazy-cron", () => ({ triggerDueWaitlistOffers: async () => undefined }));
 vi.mock("@/lib/showcase-settings", () => ({ isShowcaseEnabled: async () => h.enabled }));
 vi.mock("@/lib/rate-limit", () => ({
   getClientIp: () => "203.0.113.9",

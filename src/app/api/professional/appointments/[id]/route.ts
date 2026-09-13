@@ -7,6 +7,7 @@ import Appointment from "@/models/Appointment";
 import { sendAppointmentChangeNotification } from "@/lib/notifications";
 import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
 import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 
 type PopulatedParty = {
   firstName?: string;
@@ -165,6 +166,12 @@ export async function PATCH(
 
     await appointment.save();
 
+    // The old time of a moved session goes to the professional's waitlist (spec 003 phase 4).
+    if (isReschedule && appointment.status === "scheduled") {
+      const freedFor = appointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
+    }
+
     const client = appointment.clientId as unknown as PopulatedParty;
     const professional = appointment.professionalId as unknown as PopulatedParty;
     if (
@@ -233,11 +240,16 @@ export async function DELETE(
       : undefined;
     const previousTime = appointment.time;
 
+    const wasScheduled = appointment.status === "scheduled";
     appointment.status = "cancelled";
     appointment.cancelledBy = "professional";
     appointment.cancelledAt = new Date();
     appointment.cancelReason = "professional_cancelled";
     await appointment.save();
+    if (wasScheduled) {
+      const freedFor = appointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
+    }
 
     const client = appointment.clientId as unknown as PopulatedParty;
     const professional = appointment.professionalId as unknown as PopulatedParty;

@@ -47,6 +47,7 @@ vi.mock("@/models/SlotHold", () => {
 import {
   acquireSlotHold,
   attachSlotHoldToAppointment,
+  convertOfferHoldToRequest,
   findLiveSlotHold,
   releaseSlotHold,
 } from "@/lib/slot-holds";
@@ -129,6 +130,39 @@ describe("releaseSlotHold", () => {
   it("does not query with a malformed id", async () => {
     expect(await releaseSlotHold("../x")).toBe(false);
     expect(h.deleteFilters).toEqual([]);
+  });
+
+  it("frees a waitlist offer's hold only while it is still an offer", async () => {
+    await releaseSlotHold("0123456789abcdef0123bbbb", { waitlistEntryId: "0123456789abcdef0123eeee", kind: "waitlist_offer" });
+    expect(h.deleteFilters[0]).toEqual({
+      _id: "0123456789abcdef0123bbbb",
+      waitlistEntryId: "0123456789abcdef0123eeee",
+      kind: "waitlist_offer",
+    });
+  });
+});
+
+describe("convertOfferHoldToRequest", () => {
+  const input = {
+    holdId: "0123456789abcdef0123bbbb",
+    waitlistEntryId: "0123456789abcdef0123eeee",
+    expiresAt: new Date("2026-09-15T13:00:00Z"),
+    now,
+  };
+
+  it("turns only a live offer made to that entry into a request's hold", async () => {
+    expect(await convertOfferHoldToRequest(input)).toBe(true);
+    expect(h.updateCalls[0]).toEqual([
+      { _id: input.holdId, waitlistEntryId: input.waitlistEntryId, kind: "waitlist_offer", expiresAt: { $gt: now } },
+      { $set: { kind: "direct_request", expiresAt: input.expiresAt } },
+    ]);
+    h.modifiedCount = 0;
+    expect(await convertOfferHoldToRequest(input)).toBe(false);
+  });
+
+  it("does not query with a malformed id", async () => {
+    expect(await convertOfferHoldToRequest({ ...input, waitlistEntryId: "x" })).toBe(false);
+    expect(h.updateCalls).toEqual([]);
   });
 });
 

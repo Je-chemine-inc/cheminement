@@ -28,7 +28,7 @@ src/
     layout.tsx · not-found.tsx · error.tsx (no root loading.tsx: it turned every notFound() into an HTTP 200 — debt-map 2026-09-07)
   components/        ~141 .tsx, by domain: admin, appointments, auth, billing, dashboard, inbox, layout, legal, media, payments, sections, ui (shadcn)
   lib/              ~71 business-logic/service modules (the "brain") — see below
-  models/           35 Mongoose models
+  models/           36 Mongoose models
   hooks/            use-mobile, useInactivityLogout, useMotifs, useMotifSearch
   config/           clinical-availability-grid, motifSearch, colors
   data/             static FR-first taxonomies (problematics, diagnostics, approaches, motifs, professionalTitles)
@@ -68,7 +68,7 @@ A service request **is** an `Appointment` document (it may have no `professional
 - **Stripe 19** (`apiVersion 2025-10-29.clover`) — **separate charges & transfers** model: PaymentIntents carry no `application_fee`/`transfer_data`; the platform collects the full charge then pays pros later via admin-triggered `transfers.create` to Express Connect accounts (the platform holds the float). The **webhook** (`api/payments/webhook`, raw body, signature-verified, idempotent via `StripeWebhookEvent`) handles 7 event types (payment success/fail/cancel, full/partial refund with receipt void/restore, dispute, `setup_intent.succeeded`).
 - **SMTP email** via Nodemailer (`lib/email-transport.ts`), **fail-soft** (skips silently if unconfigured). `MAIL_FROM` must equal `SMTP_USER` or be a verified Gmail alias.
 - **Twilio** SMS via raw REST (`lib/sms.ts`), best-effort; `SMS_DRY_RUN` for local.
-- **Crons**: 7 routes scheduled **hourly** from `/etc/cron.d/jechemine` on the VPS (via `run-cron.sh`, which curls `127.0.0.1:3000`), guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent.
+- **Crons**: 7 routes scheduled **hourly** from `/etc/cron.d/jechemine` on the VPS (via `run-cron.sh`, which curls `127.0.0.1:3000`), guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent. The showcase waitlist job (`api/cron/waitlist-offers`, spec 003) is the exception to hourly: its offers last 15 minutes, so it runs every two minutes, with its own lazy trigger off the proposals poll, the admin queue and the public slots route.
 
 ## Entry points
 

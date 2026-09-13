@@ -6,6 +6,7 @@ import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
 import {
   triggerDueCascadeCron,
+  triggerDueWaitlistOffers,
   triggerDuePaymentReminders,
   triggerDueInteracReconciliation,
   triggerDueAppointmentReminders,
@@ -43,6 +44,8 @@ export async function GET() {
     // progresses without an external scheduler. Throttled + idempotent — see
     // lazy-cron.ts. after() runs it post-response so it never slows the queue.
     after(() => triggerDueCascadeCron());
+    // Waitlist offers and direct request deadlines (spec 003 phase 4).
+    after(() => triggerDueWaitlistOffers());
     // Same opportunistic trigger for the post-session invoice dunning
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());

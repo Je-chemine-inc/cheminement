@@ -21,6 +21,7 @@ import {
   Layers,
   MessageSquare,
   Store,
+  ListOrdered,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -113,6 +114,11 @@ export function ProfessionalSidebar() {
                 title: t("showcase"),
                 url: "/professional/dashboard/showcase",
                 icon: Store,
+              },
+              {
+                title: t("waitlist"),
+                url: "/professional/dashboard/waitlist",
+                icon: ListOrdered,
               },
             ]
           : []),

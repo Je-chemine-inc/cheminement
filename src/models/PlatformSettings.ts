@@ -70,7 +70,11 @@ export type EmailNotificationType =
   | "direct_request_received"
   | "direct_request_confirmation"
   | "direct_request_unavailable"
-  | "admin_direct_request_returned";
+  | "admin_direct_request_returned"
+  // Spec 003 phase 4: a professional's waitlist.
+  | "waitlist_joined"
+  | "waitlist_offer"
+  | "waitlist_removed";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -458,6 +462,18 @@ const defaultEmailTemplates: Record<
   admin_direct_request_returned: {
     enabled: true,
     subject: "Demande directe revenue — Je chemine",
+  },
+  waitlist_joined: {
+    enabled: true,
+    subject: "Vous êtes sur la liste d'attente",
+  },
+  waitlist_offer: {
+    enabled: true,
+    subject: "Un créneau s'est libéré",
+  },
+  waitlist_removed: {
+    enabled: true,
+    subject: "Votre inscription à la liste d'attente a pris fin",
   },
 };
 

@@ -387,6 +387,8 @@ export interface IDirectRequest {
   /** sha256 of the client's "let Je chemine match me" link token. */
   rerouteTokenHash?: string;
   rerouteTokenExpiresAt?: Date;
+  /** The waitlist entry whose offer became this request (phase 4). */
+  waitlistEntryId?: mongoose.Types.ObjectId;
 }
 
 const PayerDeclarationSchema = new Schema<IPayerDeclaration>(
@@ -773,6 +775,7 @@ const AppointmentSchema = new Schema<IAppointment>(
           declineNote: { type: String, maxlength: 500 },
           rerouteTokenHash: { type: String },
           rerouteTokenExpiresAt: Date,
+          waitlistEntryId: { type: Schema.Types.ObjectId },
         },
         { _id: false },
       ),

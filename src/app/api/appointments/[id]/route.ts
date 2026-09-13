@@ -30,6 +30,7 @@ import {
   type AppointmentPatchInput,
 } from "@/lib/appointment-writable-fields";
 import { FREE_CANCELLATION_HOURS } from "@/lib/cancellation-policy";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -222,6 +223,8 @@ export async function PATCH(
           { status: 409 },
         );
       }
+      const freedFor = oldAppointment.directRequest?.professionalId;
+      after(() => afterSlotFreed(freedFor));
       return NextResponse.json({ message: "Demande retirée", appointment: released.appointment });
     }
 
@@ -406,6 +409,21 @@ export async function PATCH(
         { error: "Appointment not found" },
         { status: 404 },
       );
+    }
+
+    // A scheduled session cancelled or moved frees its time for the
+    // professional's waitlist (spec 003 phase 4).
+    const movedDay =
+      data.date instanceof Date &&
+      (!oldAppointment.date || data.date.getTime() !== oldAppointment.date.getTime());
+    const movedTime = data.time !== undefined && data.time !== oldAppointment.time;
+    if (
+      oldAppointment.status === "scheduled" &&
+      oldAppointment.professionalId &&
+      (appointment.status === "cancelled" || movedDay || movedTime)
+    ) {
+      const freedFor = oldAppointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
     }
 
     // Interac / virement : paiement attendu dans les 24h après la séance (référence = fin de séance)

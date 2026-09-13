@@ -9034,3 +9034,193 @@ export async function sendAdminDirectRequestReturnedAlert(data: {
     await sendEmail({ to, subject, html, text }, "admin_direct_request_returned");
   }
 }
+
+/* ------------------------------------------------------------------------ */
+/* A professional's waitlist (spec 003 phase 4)                              */
+/* ------------------------------------------------------------------------ */
+
+/** The person joined a professional's waitlist from the showcase page. Carries the link to leave it. */
+export async function sendWaitlistJoinedEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  sms: boolean;
+  pageUrl: string;
+  leaveUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Vous êtes sur la liste d'attente",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: `Votre nom est sur la liste d'attente de ${data.professionalName}.`,
+      service: "Consultation",
+      boxTitle: "Et ensuite ?",
+      box: `Dès qu'un créneau qui vous convient se libère, nous vous l'écrivons${data.sms ? ", par courriel et par texto" : ""}. Il vous est alors réservé 15 minutes : il suffit de le confirmer, puis ${data.professionalName} confirme le rendez-vous. Votre inscription dure 90 jours.`,
+      cta: "Voir la page du professionnel",
+      preamble: "Vous n'attendez plus ?",
+      leave: "Quitter la liste d'attente",
+    },
+    en: {
+      title: "You are on the waitlist",
+      greeting: `Hello ${data.firstName},`,
+      intro: `Your name is on ${data.professionalName}'s waitlist.`,
+      service: "Consultation",
+      boxTitle: "What happens next?",
+      box: `As soon as a time that suits you opens up, we write to you${data.sms ? ", by email and text message" : ""}. It is then held for you for 15 minutes: you only need to confirm it, then ${data.professionalName} confirms the appointment. Your place lasts 90 days.`,
+      cta: "View the professional's page",
+      preamble: "No longer waiting?",
+      leave: "Leave the waitlist",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [{ label: copy.service, value: service }],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.pageUrl },
+    secondaryButton: { preamble: copy.preamble, text: copy.leave, url: data.leaveUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.service} : ${service}`, copy.box, `${copy.cta} : ${data.pageUrl}`, `${copy.leave} : ${data.leaveUrl}`],
+    lang,
+  );
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_joined");
+}
+
+/** A time freed up and is held 15 minutes for the person. Confirming makes a request the professional answers. */
+export async function sendWaitlistOfferEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  durationMinutes: number;
+  expiresAt: Date;
+  claimUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const until = formatMontrealInstant(data.expiresAt, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Un créneau s'est libéré",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: `Un créneau avec ${data.professionalName} vient de se libérer. Il vous est réservé jusqu'au ${until}.`,
+      labels: { service: "Consultation", slot: "Créneau", duration: "Durée" },
+      duration: `${data.durationMinutes} minutes`,
+      cta: "Réserver ce créneau",
+      boxTitle: "Bon à savoir",
+      box: `En le réservant, votre demande part à ${data.professionalName}, qui confirme le rendez-vous. Passé ce délai, le créneau est proposé à la personne suivante. S'il ne vous convient pas, ignorez ce courriel : vous restez sur la liste. Après trois créneaux restés sans réponse, l'inscription prend fin.`,
+    },
+    en: {
+      title: "A time opened up",
+      greeting: `Hello ${data.firstName},`,
+      intro: `A time with ${data.professionalName} just opened up. It is held for you until ${until}.`,
+      labels: { service: "Consultation", slot: "Time", duration: "Length" },
+      duration: `${data.durationMinutes} minutes`,
+      cta: "Book this time",
+      boxTitle: "Good to know",
+      box: `When you book it, your request goes to ${data.professionalName}, who confirms the appointment. After that, the time is offered to the next person. If it does not suit you, ignore this email: you stay on the list. After three times left unanswered, your place ends.`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+      { label: copy.labels.duration, value: copy.duration },
+    ],
+    button: { text: copy.cta, url: data.claimUrl },
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.intro,
+      `${copy.labels.service} : ${service}`,
+      `${copy.labels.slot} : ${slot}`,
+      `${copy.labels.duration} : ${copy.duration}`,
+      `${copy.cta} : ${data.claimUrl}`,
+      copy.box,
+    ],
+    lang,
+  );
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_offer");
+}
+
+/**
+ * The person's place on a waitlist ended: three offers left unanswered, 90
+ * days passed, or the professional or the team removed it. Not sent when the
+ * person leaves the list themselves.
+ */
+export async function sendWaitlistRemovedEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  reason: "missed" | "expired" | "professional" | "admin";
+  pageUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const name = data.professionalName;
+  const copy = {
+    fr: {
+      title: "Votre inscription à la liste d'attente a pris fin",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: {
+        missed: `Trois créneaux avec ${name} vous ont été proposés sans réponse : votre inscription à sa liste d'attente a donc pris fin.`,
+        expired: `Votre inscription à la liste d'attente de ${name} a pris fin après 90 jours.`,
+        professional: `Votre inscription à la liste d'attente de ${name} a été retirée.`,
+        admin: `Votre inscription à la liste d'attente de ${name} a été retirée.`,
+      }[data.reason],
+      box: `Vous pouvez vous réinscrire depuis la page de ${name}, ou laisser Je chemine vous jumeler avec le professionnel qui vous convient.`,
+      cta: "Voir la page du professionnel",
+    },
+    en: {
+      title: "Your place on the waitlist ended",
+      greeting: `Hello ${data.firstName},`,
+      intro: {
+        missed: `Three times with ${name} were offered to you without an answer, so your place on their waitlist ended.`,
+        expired: `Your place on ${name}'s waitlist ended after 90 days.`,
+        professional: `Your place on ${name}'s waitlist was removed.`,
+        admin: `Your place on ${name}'s waitlist was removed.`,
+      }[data.reason],
+      box: `You can join again from ${name}'s page, or let Je chemine match you with the professional who suits you.`,
+      cta: "View the professional's page",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    infoBox: { title: lang === "en" ? "What now?" : "Et maintenant ?", content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.pageUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText([copy.title, copy.intro, copy.box, `${copy.cta} : ${data.pageUrl}`], lang);
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_removed");
+}

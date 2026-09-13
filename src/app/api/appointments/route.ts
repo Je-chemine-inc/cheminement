@@ -585,6 +585,9 @@ export async function POST(req: NextRequest) {
           cancelledBy: "client",
           cancelledAt: nowDate,
         });
+        // The freed time goes to the previous professional's waitlist (spec 003 phase 4).
+        const freedFor = oldApt.professionalId;
+        after(async () => (await import("@/lib/waitlist-slot-freed")).afterSlotFreed(freedFor));
 
         const oldClient = oldApt.clientId as unknown as {
           firstName?: string;

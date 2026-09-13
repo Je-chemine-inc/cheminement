@@ -181,6 +181,7 @@ export async function isShowcaseSlotFree(
   dayKey: string,
   time: string,
   now: Date = new Date(),
+  options: { exceptHoldId?: string } = {},
 ): Promise<boolean> {
   const offer = bookable.services[service];
   if (!offer.offered || !isDayKey(dayKey) || !isSlotTime(time)) return false;
@@ -191,6 +192,7 @@ export async function isShowcaseSlotFree(
     fromDay: dayKey,
     toDay: dayKey,
     now,
+    exceptHoldId: options.exceptHoldId,
   });
   const [day] = computeFreeSlots({
     availability: bookable.availability,

@@ -3348,7 +3348,9 @@
       "organizations": "Organismes payeurs",
       "organizationInvoices": "Factures aux organismes",
       "showcases": "Pages vitrines",
-      "showcase": "Ma page vitrine"
+      "showcase": "Ma page vitrine",
+      "waitlist": "Liste d'attente",
+      "waitlists": "Listes d'attente"
     },
     "overview": {
       "title": "Bienvenue",
@@ -7839,7 +7841,9 @@
     "slotAction": "Demander un rendez-vous le {day} à {time}",
     "more": "Voir les deux semaines suivantes",
     "howItWorks": "Choisissez un créneau, puis faites votre demande : le créneau vous est réservé jusqu'à la réponse du professionnel.",
-    "matchInstead": "Être jumelé avec un autre professionnel"
+    "matchInstead": "Être jumelé avec un autre professionnel",
+    "joinWaitlist": "M'inscrire sur la liste d'attente",
+    "noTimeSuits": "Aucun créneau ne vous convient ? Inscrivez-vous sur la liste d'attente."
   },
   "DirectRequests": {
     "services": {
@@ -7922,6 +7926,277 @@
         "SERVICE_UNAVAILABLE": "Ce professionnel ne prend plus ce type de demande pour le moment.",
         "SHOWCASE_NOT_FOUND": "La page de ce professionnel n'est plus disponible."
       }
+    }
+  },
+  "ShowcaseWaitlist": {
+    "title": "Liste d'attente",
+    "exclusiveTitle": "La liste d'attente de {name}",
+    "exclusiveBody": "Aucun créneau ne vous convient ? Laissez vos coordonnées : dès qu'un créneau qui vous convient se libère, il vous est proposé et réservé 15 minutes.",
+    "join": "M'inscrire sur la liste",
+    "generalTitle": "La liste d'attente générale de Je chemine",
+    "generalBody": "Vous préférez ne pas attendre ce professionnel en particulier ? Je chemine vous jumelle avec le professionnel qui vous convient.",
+    "generalCta": "Être jumelé avec un professionnel",
+    "fields": {
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Courriel",
+      "phone": "Téléphone (facultatif)",
+      "phoneHelp": "Pour recevoir un texto quand un créneau se libère.",
+      "service": "Type de consultation",
+      "modality": "Modalité",
+      "motifs": "Motif de consultation (jusqu'à {max}, facultatif)",
+      "periods": "Moments qui vous conviennent",
+      "days": "Jours qui vous conviennent",
+      "anyTimeHelp": "Sans choix, tous les moments et tous les jours vous conviennent."
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "days": {
+      "monday": "Lun.",
+      "tuesday": "Mar.",
+      "wednesday": "Mer.",
+      "thursday": "Jeu.",
+      "friday": "Ven.",
+      "saturday": "Sam.",
+      "sunday": "Dim."
+    },
+    "consent": "J'accepte que Je chemine conserve mes coordonnées pour me proposer un créneau avec {name}, pendant 90 jours au plus. Je peux quitter la liste à tout moment grâce au lien reçu par courriel.",
+    "smsConsent": "J'accepte aussi de recevoir un texto quand un créneau se libère.",
+    "submit": "M'inscrire",
+    "sending": "Inscription…",
+    "doneTitle": "C'est noté",
+    "doneBody": "Vous êtes sur la liste d'attente de {name}. Un courriel vient de vous être envoyé ; nous vous écrirons dès qu'un créneau qui vous convient se libère.",
+    "errors": {
+      "consent": "Cochez la case de consentement pour vous inscrire.",
+      "email": "Vérifiez l'adresse courriel.",
+      "phone": "Vérifiez le numéro de téléphone, ou laissez-le vide.",
+      "invalid": "Vérifiez les champs du formulaire.",
+      "full": "La liste d'attente de ce professionnel est complète pour le moment. Je chemine peut vous jumeler avec un autre professionnel.",
+      "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+      "unavailable": "La liste d'attente de ce professionnel n'est pas disponible pour le moment.",
+      "generic": "L'inscription n'a pas pu être enregistrée. Réessayez dans un instant."
+    }
+  },
+  "Waitlist": {
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "claim": {
+      "loading": "Chargement…",
+      "title": "Un créneau vous attend",
+      "intro": "Un créneau avec {name} s'est libéré et vous est réservé.",
+      "service": "Consultation",
+      "when": "Créneau",
+      "duration": "Durée",
+      "minutes": "{minutes} minutes",
+      "price": "Tarif",
+      "slot": "{day} à {time}",
+      "heldFor": "Réservé pour vous encore {countdown}",
+      "whatNext": "En le réservant, votre demande part à {name}, qui confirme le rendez-vous. Les instructions de paiement suivent sa confirmation.",
+      "cta": "Réserver ce créneau",
+      "booking": "Réservation…",
+      "viewPage": "Voir la page du professionnel",
+      "error": "La réservation n'a pas pu être faite. Réessayez.",
+      "doneTitle": "Demande envoyée",
+      "doneBody": "{name} a reçu votre demande pour le {slot} et vous répondra au plus tard le {deadline}. Un courriel de confirmation vous a été envoyé.",
+      "expiredTitle": "Ce créneau n'est plus réservé",
+      "expiredBody": "Le délai de 15 minutes est passé et le créneau a été proposé à une autre personne. Vous gardez votre place sur la liste, sauf après trois créneaux restés sans réponse.",
+      "claimedTitle": "Ce créneau a déjà été réservé",
+      "claimedBody": "Ce lien a déjà servi. La confirmation de votre demande se trouve dans vos courriels.",
+      "invalidTitle": "Ce lien n'est pas valide",
+      "invalidBody": "Vérifiez que le lien est complet, ou ouvrez-le directement depuis le courriel ou le texto reçu.",
+      "unavailableTitle": "Ce créneau ne peut plus être demandé",
+      "unavailableBody": "Le professionnel a modifié ses disponibilités. Vous gardez votre place sur la liste d'attente, et ce créneau ne compte pas comme une absence de réponse.",
+      "offTitle": "Liste d'attente indisponible",
+      "offBody": "Les listes d'attente ne sont pas disponibles pour le moment.",
+      "errorTitle": "Une erreur est survenue",
+      "errorBody": "Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    },
+    "leave": {
+      "title": "Quitter la liste d'attente",
+      "body": "Vous ne recevrez plus de créneau de ce professionnel. Vous pourrez vous réinscrire depuis sa page.",
+      "cta": "Quitter la liste d'attente",
+      "working": "Envoi…",
+      "doneTitle": "Vous avez quitté la liste d'attente",
+      "doneBody": "Vos coordonnées ne serviront plus à vous proposer de créneau.",
+      "invalidTitle": "Ce lien n'est plus valide",
+      "invalidBody": "Vous avez peut-être déjà quitté la liste, ou votre inscription a pris fin.",
+      "error": "Une erreur est survenue. Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    }
+  },
+  "WaitlistPro": {
+    "title": "Liste d'attente",
+    "subtitle": "Les personnes qui n'ont pas trouvé de moment qui leur convient sur votre page vitrine peuvent s'inscrire ici. Quand un créneau se libère, il est proposé à la première personne à qui il convient : elle le reçoit par courriel, et par texto si elle l'a accepté, et le créneau lui est réservé 15 minutes. Si elle confirme, vous recevez une demande à accepter ou à refuser dans « Demandes directes ». Après 3 offres sans réponse ou 90 jours, sa place sur la liste prend fin.",
+    "loadError": "Impossible de charger votre liste d'attente.",
+    "retry": "Réessayer",
+    "count": "{count, plural, one {# personne en attente} other {# personnes en attente}}",
+    "empty": {
+      "title": "Personne n'attend pour le moment",
+      "body": "Lorsqu'une personne s'inscrira à la liste d'attente depuis votre page vitrine, elle apparaîtra ici."
+    },
+    "card": {
+      "position": "Position {position}",
+      "offer": "Créneau proposé : {day} à {time} — réservé jusqu'à {until}",
+      "modality": "Modalité :",
+      "moments": "Disponibilités :",
+      "anyTime": "N'importe quand",
+      "anyMoment": "N'importe quel moment",
+      "anyDay": "N'importe quel jour",
+      "joined": "Inscription :",
+      "ends": "Fin de la place :",
+      "motifs": "Motifs de consultation",
+      "remove": "Retirer de la liste"
+    },
+    "remove": {
+      "title": "Retirer cette personne de la liste?",
+      "body": "{name} ne figurera plus sur votre liste d'attente. Un courriel l'en avisera. Tout créneau qui lui est proposé en ce moment sera libéré.",
+      "cancel": "Annuler",
+      "confirm": "Retirer de la liste",
+      "done": "Nous avons retiré {name} de votre liste d'attente.",
+      "gone": "Il n'est plus possible de retirer {name} de la liste : une réservation est peut-être en cours, ou sa place a déjà pris fin. La liste a été mise à jour.",
+      "error": "Le retrait n'a pas fonctionné. Veuillez réessayer."
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "days": {
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    }
+  },
+  "WaitlistAdmin": {
+    "title": "Listes d'attente",
+    "subtitle": "Les personnes qui n'ont pas trouvé de créneau libre sur la page d'un professionnel. Quand un créneau se libère, la première personne à qui il convient reçoit un courriel (et un texto si elle l'a accepté) et le créneau lui est réservé 15 minutes. Si elle confirme, une demande est envoyée au professionnel. Après 3 offres sans réponse ou 90 jours, la place prend fin.",
+    "contactNote": "Les coordonnées ne sont visibles qu'avec la permission de gérer les patients.",
+    "refresh": "Actualiser",
+    "search": "Rechercher un professionnel ou une personne",
+    "count": "{count, plural, =0 {Aucune inscription} one {# inscription} other {# inscriptions}}",
+    "empty": "Aucune inscription à afficher.",
+    "contactHidden": "Coordonnées masquées",
+    "endsOn": "Prend fin le {date}",
+    "closedOn": "Fermée le {date}",
+    "consent": "{date} (v. {version})",
+    "smsYes": "Texto : oui",
+    "smsNo": "Texto : non",
+    "cancel": "Annuler",
+    "access": {
+      "title": "Accès réservé",
+      "body": "Il faut la permission de gérer les professionnels pour voir les listes d'attente."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Impossible de joindre le serveur. Vérifiez votre connexion."
+    },
+    "scopes": {
+      "open": "En cours",
+      "closed": "Fermées",
+      "all": "Toutes"
+    },
+    "columns": {
+      "offers": "Offres",
+      "professional": "Professionnel",
+      "person": "Personne",
+      "contact": "Coordonnées",
+      "consultation": "Consultation",
+      "status": "Statut",
+      "position": "Rang",
+      "missed": "Offres manquées",
+      "joined": "Inscription",
+      "ends": "Fin de la place",
+      "consent": "Consentement",
+      "actions": "Actions"
+    },
+    "locales": {
+      "fr": "Français",
+      "en": "Anglais"
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "statuses": {
+      "active": "En attente",
+      "offered": "Offre envoyée",
+      "converted": "Demande créée",
+      "expired": "Terminée",
+      "left": "Partie",
+      "removed": "Retirée"
+    },
+    "reasons": {
+      "missed": "3 offres sans réponse",
+      "expired": "90 jours écoulés",
+      "professional": "Retirée par le professionnel",
+      "admin": "Retirée par l'équipe"
+    },
+    "outcomes": {
+      "pending": "Sans réponse pour l'instant",
+      "claiming": "Confirmation en cours",
+      "claimed": "Confirmée",
+      "expired": "Délai écoulé",
+      "slot_lost": "Créneau plus disponible",
+      "withdrawn": "Retirée"
+    },
+    "channels": {
+      "email": "Courriel",
+      "sms": "Texto"
+    },
+    "offers": {
+      "toggle": "Voir l'historique des offres ({count})",
+      "title": "Historique des offres",
+      "none": "Aucune offre envoyée.",
+      "time": "Créneau",
+      "sent": "Envoyée",
+      "heldUntil": "Réservée jusqu'à",
+      "outcome": "Résultat",
+      "channels": "Canaux",
+      "requestCreated": "Demande créée"
+    },
+    "remove": {
+      "action": "Retirer",
+      "title": "Retirer {name} de la liste d'attente?",
+      "body": "La personne ne recevra plus d'offres pour {professional} et sera avisée par courriel.",
+      "confirm": "Retirer",
+      "done": "La personne a été retirée de la liste d'attente.",
+      "gone": "Cette inscription ne peut plus être retirée : elle est déjà fermée ou la personne est en train de réserver. La liste a été actualisée."
     }
   }
 }

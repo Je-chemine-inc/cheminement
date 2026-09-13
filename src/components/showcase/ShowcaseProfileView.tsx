@@ -15,7 +15,9 @@ import type { DirectRequestService } from "@/lib/direct-request-rules";
 import { SHOWCASE_SLOTS_ANCHOR } from "@/lib/showcase-booking-types";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
+import { SHOWCASE_WAITLIST_ANCHOR, type WaitlistModality } from "@/lib/waitlist-rules";
 import { ShowcaseSlotPicker } from "@/components/showcase/ShowcaseSlotPicker";
+import { ShowcaseWaitlistForm } from "@/components/showcase/ShowcaseWaitlistForm";
 
 /**
  * A professional's showcase page (spec 003), from the public data object only.
@@ -37,6 +39,15 @@ const MODALITY_ICONS: Record<ShowcaseModalityKey, LucideIcon> = {
 export function showcaseBookingUrl(profile: Pick<ShowcasePublicProfile, "slug" | "city">): string {
   const query = new URLSearchParams({ from: "showcase", pro: profile.slug, city: profile.city.key });
   return canonicalSiteUrl(`/appointment?${query.toString()}`);
+}
+
+/** How one can wait for this professional: the ways they consult, or all of them when none is listed. */
+function waitlistModalitiesOf(keys: readonly ShowcaseModalityKey[]): WaitlistModality[] {
+  const modalities: WaitlistModality[] = [];
+  if (keys.includes("video")) modalities.push("video");
+  if (keys.includes("inPerson")) modalities.push("in-person");
+  if (keys.includes("phone")) modalities.push("phone");
+  return modalities.length > 0 ? modalities : ["video", "in-person", "phone"];
 }
 
 function initialsOf(name: string): string {
@@ -253,7 +264,12 @@ export async function ShowcaseProfileView({
 
         <aside className="min-w-0 space-y-6">
           {showSlots ? (
-            <ShowcaseSlotPicker slug={profile.slug} services={bookable} bookingBaseUrl={bookingUrl} />
+            <ShowcaseSlotPicker
+              slug={profile.slug}
+              services={bookable}
+              bookingBaseUrl={bookingUrl}
+              waitlistAnchor={SHOWCASE_WAITLIST_ANCHOR}
+            />
           ) : null}
 
           <section aria-labelledby="showcase-services" className="rounded-2xl border border-border/60 bg-card p-6">
@@ -310,6 +326,17 @@ export async function ShowcaseProfileView({
               <p>{t("profile.cancellation", { hours: profile.freeCancellationHours })}</p>
             </div>
           </section>
+
+          {preview ? null : (
+            <ShowcaseWaitlistForm
+              slug={profile.slug}
+              professionalName={name}
+              services={["standard", ...(quick.offered ? (["quick"] as const) : [])]}
+              modalities={waitlistModalitiesOf(profile.modalities)}
+              motifOptions={profile.expertises.map((expertise) => expertise.label)}
+              matchUrl={bookingUrl}
+            />
+          )}
 
           {showSlots ? null : (
             <section className="rounded-2xl bg-primary/5 p-6">
