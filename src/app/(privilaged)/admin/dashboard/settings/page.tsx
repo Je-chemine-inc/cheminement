@@ -247,6 +247,30 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé à l'équipe quand un professionnel envoie sa page vitrine, ou des modifications, pour vérification.",
     category: "Alertes administratives",
   },
+  direct_request_received: {
+    name: "Demande directe reçue (professionnel)",
+    description:
+      "Envoyé au professionnel quand un client choisit un de ses créneaux sur sa page vitrine. Le créneau est réservé jusqu'à sa réponse (24 h, 12 h pour une consultation rapide).",
+    category: "Pages vitrines",
+  },
+  direct_request_confirmation: {
+    name: "Demande directe envoyée (client)",
+    description:
+      "Envoyé au client après sa demande depuis une page vitrine : à qui elle est partie, le créneau réservé et l'heure limite de réponse.",
+    category: "Pages vitrines",
+  },
+  direct_request_unavailable: {
+    name: "Créneau non disponible (client)",
+    description:
+      "Envoyé au client quand le professionnel décline sa demande ou n'y répond pas à temps, avec deux choix : un autre créneau ou le jumelage par Je chemine.",
+    category: "Pages vitrines",
+  },
+  admin_direct_request_returned: {
+    name: "Alerte équipe — demande directe revenue",
+    description:
+      "Envoyé à l'équipe quand une demande faite depuis une page vitrine est déclinée ou reste sans réponse et revient dans les demandes de service.",
+    category: "Alertes administratives",
+  },
   admin_organization_invoice_overdue: {
     name: "Alerte équipe — factures aux organismes en retard",
     description:

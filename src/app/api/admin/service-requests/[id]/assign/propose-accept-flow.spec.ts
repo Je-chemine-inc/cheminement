@@ -69,6 +69,12 @@ vi.mock("next/server", () => ({
 vi.mock("next-auth", () => ({ getServerSession: h.getServerSession }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
+// No showcase slot is held in these cases (spec 003).
+vi.mock("@/lib/slot-occupancy", () => ({
+  findSlotCollision: vi.fn().mockResolvedValue(null),
+  slotCollisionError: () => ({ error: "held", code: "SLOT_HELD" }),
+}));
+vi.mock("@/lib/direct-request", () => ({}));
 vi.mock("@/lib/notifications", () => h.notif);
 vi.mock("@/lib/pricing", () => ({
   calculateAppointmentPricing: vi.fn().mockResolvedValue({

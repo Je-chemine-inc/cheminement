@@ -1,4 +1,9 @@
 import { ORG_BILLING_CONSENT_VERSION } from "@/models/OrganizationCoverage";
+import { isDayKey, isSlotTime } from "@/lib/available-slots";
+import {
+  isDirectRequestService,
+  type DirectRequestService,
+} from "@/lib/direct-request-rules";
 
 /**
  * Which appointment fields a caller is allowed to set — one allow-list per route.
@@ -22,11 +27,16 @@ import { ORG_BILLING_CONSENT_VERSION } from "@/models/OrganizationCoverage";
  */
 
 /**
- * What the booking funnel (`src/app/appointment/page.tsx`) sends. `professionalId`,
- * `date`, `time` and `duration` are kept because the guest route deliberately
- * supports booking straight into a professional's slot, with its own existence
- * and availability checks. Money and state fields are never in this list: the
- * routes compute them server-side.
+ * What the booking funnel (`src/app/appointment/page.tsx`) sends. Money, state
+ * and scheduling fields are never in this list: the routes compute them
+ * server-side.
+ *
+ * `professionalId`, `date`, `time` and `duration` used to be kept for booking
+ * straight into a professional's slot. No screen ever sent them, and through the
+ * guest route anyone could attach any professional to a request as already
+ * accepted, with no hold on the time. A request for a professional's slot now
+ * arrives as `direct` (see parseDirectIntent), and the route checks, holds and
+ * proposes it itself (spec 003 phase 3).
  */
 export const BOOKING_INTAKE_FIELDS = [
   "type",
@@ -47,10 +57,6 @@ export const BOOKING_INTAKE_FIELDS = [
   "linkGuardian",
   "guardianUserId",
   "referralInfo",
-  "professionalId",
-  "date",
-  "time",
-  "duration",
 ] as const;
 
 /**
@@ -88,6 +94,43 @@ export function buildPayerDeclaration(
     source: "client_booking",
     status: "pending",
   };
+}
+
+/** A request for one professional's slot, from their showcase page (spec 003). */
+export interface DirectIntent {
+  slug: string;
+  service: DirectRequestService;
+  /** Montréal calendar day, "YYYY-MM-DD". */
+  date: string;
+  /** Montréal wall-clock start, "HH:mm". */
+  time: string;
+}
+
+const SHOWCASE_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * The funnel sends `direct: { slug, service, date, time }` when the visitor
+ * chose a time on a showcase page. Only the shape is checked here; the route
+ * re-checks the time against the professional's free slots and holds it.
+ * Absent is fine (an ordinary request); present but malformed is refused.
+ */
+export function parseDirectIntent(
+  value: unknown,
+): { ok: true; intent: DirectIntent | null } | { ok: false } {
+  if (value === undefined || value === null) return { ok: true, intent: null };
+  if (!isPlainObject(value)) return { ok: false };
+  const { slug, service, date, time } = value;
+  if (
+    typeof slug !== "string" ||
+    slug.length > 80 ||
+    !SHOWCASE_SLUG.test(slug) ||
+    !isDirectRequestService(service) ||
+    !isDayKey(date) ||
+    !isSlotTime(time)
+  ) {
+    return { ok: false };
+  }
+  return { ok: true, intent: { slug, service, date, time } };
 }
 
 /** Payment methods a client may pick at booking. Never "manual" — that one means
@@ -156,6 +199,8 @@ export function pickBookingIntake<T extends object>(
       else if (value !== null && value !== undefined) dropped.push(key);
       continue;
     }
+    // Read by parseDirectIntent, never copied into the appointment.
+    if (key === "direct") continue;
     if (allowed.has(key) && !isPathOrOperatorKey(key)) data[key] = value;
     else dropped.push(key);
   }

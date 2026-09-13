@@ -29,6 +29,11 @@ vi.mock("next/server", () => ({
 }));
 vi.mock("next-auth", () => ({ getServerSession: h.getServerSession }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
+// No showcase request holds a time in these cases (spec 003).
+vi.mock("@/lib/slot-occupancy", () => ({
+  findSlotCollision: vi.fn(async () => null),
+  slotCollisionError: () => ({ error: "held", code: "SLOT_HELD" }),
+}));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/pricing", () => ({
   calculateAppointmentPricing: vi

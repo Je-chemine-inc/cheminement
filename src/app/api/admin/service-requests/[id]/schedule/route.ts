@@ -8,7 +8,8 @@ import User from "@/models/User";
 import Profile from "@/models/Profile";
 import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
-import { parseAppointmentDate } from "@/lib/appointment-date";
+import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
+import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
 import {
   sendAppointmentConfirmation,
   sendProfessionalNotification,
@@ -109,6 +110,14 @@ export async function POST(
         { status: 409 },
       );
     }
+    // A client's request from a showcase page waits for the professional they
+    // chose; it comes back here only once declined or expired (spec 003).
+    if (appointment.directRequest?.state === "pending") {
+      return NextResponse.json(
+        { error: "This request is waiting for the professional the client chose", code: "DIRECT_REQUEST_PENDING" },
+        { status: 409 },
+      );
+    }
 
     const professional = await User.findOne({
       _id: professionalId,
@@ -145,6 +154,18 @@ export async function POST(
         { error: "This time slot is already booked" },
         { status: 409 },
       );
+    }
+    // A client's pending request from a showcase page holds its time (spec 003).
+    const held = await findSlotCollision({
+      professionalId,
+      dayKey: appointmentDayKey(appointmentDate),
+      time,
+      durationMinutes: appointment.duration || 60,
+      exceptAppointmentId: id,
+      holdsOnly: true,
+    });
+    if (held) {
+      return NextResponse.json(slotCollisionError(held), { status: 409 });
     }
 
     const resolvedType = (type || appointment.type) as

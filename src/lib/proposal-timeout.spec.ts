@@ -12,8 +12,13 @@ const h = vi.hoisted(() => {
   const find = vi.fn();
   const findOneAndUpdate = vi.fn();
   const route = vi.fn();
-  return { find, findOneAndUpdate, route };
+  const directTimeouts = vi.fn();
+  return { find, findOneAndUpdate, route, directTimeouts };
 });
+
+vi.mock("@/lib/direct-request", () => ({
+  runDirectRequestTimeouts: h.directTimeouts,
+}));
 
 vi.mock("@/lib/mongodb", () => ({
   default: vi.fn().mockResolvedValue(undefined),
@@ -51,6 +56,32 @@ beforeEach(() => {
     success: true,
     matches: [],
     routingStatus: "proposed",
+  });
+  h.directTimeouts.mockResolvedValue({ expired: 0 });
+});
+
+describe("direct requests from a showcase page (spec 003)", () => {
+  it("expire on their own deadline first, and never enter the cascade", async () => {
+    h.directTimeouts.mockResolvedValue({ expired: 2 });
+    h.find.mockReturnValue(makeFindResult([{ _id: "id1", proposedTo: ["proA"] }]));
+    h.findOneAndUpdate.mockResolvedValue({ _id: "claimed" });
+
+    expect(await runProposalTimeouts()).toEqual({ timedOut: 1, directExpired: 2 });
+
+    const query = h.find.mock.calls[0][0] as Record<string, unknown>;
+    expect(query["directRequest.state"]).toEqual({ $ne: "pending" });
+    const [filter, update] = h.findOneAndUpdate.mock.calls[0] as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ];
+    expect(filter["directRequest.state"]).toEqual({ $ne: "pending" });
+    expect(update.$inc).toEqual({ cascadeAttempts: 1 });
+  });
+
+  it("never stop the proposal timeouts when they fail", async () => {
+    h.directTimeouts.mockRejectedValue(new Error("boom"));
+    h.find.mockReturnValue(makeFindResult([]));
+    expect(await runProposalTimeouts()).toEqual({ timedOut: 0, directExpired: 0 });
   });
 });
 

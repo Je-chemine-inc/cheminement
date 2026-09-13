@@ -5,7 +5,8 @@ import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { sendAppointmentChangeNotification } from "@/lib/notifications";
-import { parseAppointmentDate } from "@/lib/appointment-date";
+import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
+import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
 
 type PopulatedParty = {
   firstName?: string;
@@ -130,6 +131,19 @@ export async function PATCH(
           { error: "This time slot is already booked" },
           { status: 409 },
         );
+      }
+      // A client's pending request from a showcase page holds its time (spec 003).
+      const held = await findSlotCollision({
+        professionalId: String(appointment.professionalId?._id ?? ""),
+        dayKey: appointmentDayKey(newDate),
+        time: newTime,
+        durationMinutes:
+          typeof body.duration === "number" && body.duration > 0 ? body.duration : appointment.duration,
+        exceptAppointmentId: id,
+        holdsOnly: true,
+      });
+      if (held) {
+        return NextResponse.json(slotCollisionError(held), { status: 409 });
       }
     }
 

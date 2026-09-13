@@ -28,7 +28,7 @@ src/
     layout.tsx · not-found.tsx · error.tsx (no root loading.tsx: it turned every notFound() into an HTTP 200 — debt-map 2026-09-07)
   components/        ~141 .tsx, by domain: admin, appointments, auth, billing, dashboard, inbox, layout, legal, media, payments, sections, ui (shadcn)
   lib/              ~71 business-logic/service modules (the "brain") — see below
-  models/           34 Mongoose models
+  models/           35 Mongoose models
   hooks/            use-mobile, useInactivityLogout, useMotifs, useMotifSearch
   config/           clinical-availability-grid, motifSearch, colors
   data/             static FR-first taxonomies (problematics, diagnostics, approaches, motifs, professionalTitles)

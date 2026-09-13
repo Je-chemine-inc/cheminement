@@ -93,7 +93,44 @@ interface ServiceRequestRow {
     documentUrl?: string;
     documentName?: string;
   } | null;
+  /** Spec 003: the client picked one of a professional's showcase slots. */
+  directRequest?: DirectRequestInfo | null;
 }
+
+interface DirectRequestInfo {
+  state:
+    | "pending"
+    | "accepted"
+    | "declined"
+    | "expired"
+    | "withdrawn"
+    | "rerouted";
+  service: "standard" | "quick";
+  /** Montréal calendar day (YYYY-MM-DD) and wall-clock start (HH:mm). */
+  dayKey: string;
+  time: string;
+  respondBy: string;
+  professionalName: string;
+  declineReason?:
+    | "slot_unavailable"
+    | "not_a_fit"
+    | "not_accepting"
+    | "other"
+    | null;
+  declineNote?: string | null;
+}
+
+/** A pending direct request waits for the chosen professional: the server
+ *  refuses assign / schedule / re-route on it (409 DIRECT_REQUEST_PENDING). */
+const isDirectPending = (r: ServiceRequestRow) =>
+  r.directRequest?.state === "pending";
+
+const DECLINE_REASON_KEYS = {
+  slot_unavailable: "directReasonSlotUnavailable",
+  not_a_fit: "directReasonNotAFit",
+  not_accepting: "directReasonNotAccepting",
+  other: "directReasonOther",
+} as const;
 
 /**
  * Shared admin request queue. Drives BOTH the "Demande de service" tab (all
@@ -274,6 +311,91 @@ export default function RequestsQueueTable({
         return { label: t("routingRefused"), color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300" };
       default:
         return { label: status, color: "bg-muted text-muted-foreground" };
+    }
+  };
+
+  // dayKey/time are already Montréal wall clock: anchor them as UTC and format
+  // in UTC so the admin's own timezone never shifts the slot.
+  const formatDirectSlot = (d: DirectRequestInfo) => {
+    const date = new Date(`${d.dayKey}T${d.time}:00Z`);
+    if (Number.isNaN(date.getTime())) return `${d.dayKey} ${d.time}`;
+    return new Intl.DateTimeFormat(locale, {
+      timeZone: "UTC",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+
+  const formatDirectDeadline = (d: DirectRequestInfo) => {
+    const date = new Date(d.respondBy);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat(locale, {
+      timeZone: "America/Toronto",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+
+  const renderDirectRequest = (d: DirectRequestInfo) => {
+    const badgeBase =
+      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium";
+    switch (d.state) {
+      case "pending":
+        return (
+          <div className="mt-1 space-y-0.5">
+            <span
+              className={`${badgeBase} bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300`}
+            >
+              {t("directPendingBadge", { name: d.professionalName })}
+            </span>
+            <div className="text-xs text-muted-foreground">
+              {formatDirectSlot(d)} ·{" "}
+              {t("directRespondBy", { deadline: formatDirectDeadline(d) })}
+            </div>
+          </div>
+        );
+      case "declined":
+      case "expired":
+        return (
+          <div className="mt-1 space-y-0.5">
+            <span
+              className={`${badgeBase} bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300`}
+            >
+              {d.state === "declined"
+                ? t("directDeclinedBadge")
+                : t("directExpiredBadge")}
+            </span>
+            <div className="text-xs text-muted-foreground">
+              {d.professionalName} · {formatDirectSlot(d)}
+            </div>
+            {d.state === "declined" && d.declineReason ? (
+              <div className="text-xs text-muted-foreground">
+                {t(DECLINE_REASON_KEYS[d.declineReason])}
+              </div>
+            ) : null}
+            {d.state === "declined" && d.declineNote ? (
+              <div className="text-xs italic text-muted-foreground whitespace-pre-wrap">
+                {t("directDeclineNote", { note: d.declineNote })}
+              </div>
+            ) : null}
+          </div>
+        );
+      case "rerouted":
+        return (
+          <div className="mt-1">
+            <span className={`${badgeBase} bg-muted text-muted-foreground`}>
+              {t("directReroutedBadge")}
+            </span>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -752,6 +874,7 @@ export default function RequestsQueueTable({
                         </span>
                       );
                     })()}
+                    {r.directRequest ? renderDirectRequest(r.directRequest) : null}
                     {typeof r.cascadeAttempts === "number" &&
                     r.cascadeAttempts > 0 ? (
                       <div className="mt-1 text-xs text-muted-foreground">
@@ -802,17 +925,19 @@ export default function RequestsQueueTable({
                             </Button>
                           </>
                         )}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openSchedule(r)}
-                          disabled={loading}
-                          className="whitespace-nowrap"
-                        >
-                          <CalendarPlus className="h-4 w-4 mr-1" />
-                          {t("scheduleAction")}
-                        </Button>
+                        {!isDirectPending(r) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openSchedule(r)}
+                            disabled={loading}
+                            className="whitespace-nowrap"
+                          >
+                            <CalendarPlus className="h-4 w-4 mr-1" />
+                            {t("scheduleAction")}
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           size="sm"
@@ -851,6 +976,14 @@ export default function RequestsQueueTable({
                           {t("delete")}
                         </Button>
                       </div>
+                      {isDirectPending(r) ? (
+                        <p className="pt-2 border-t border-border/30 text-xs text-muted-foreground">
+                          {t("directPendingActionsHint", {
+                            name: r.directRequest?.professionalName ?? "",
+                          })}
+                        </p>
+                      ) : (
+                      <>
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/30">
                         <Select
                           value={assignDraft[r.id] || undefined}
@@ -918,6 +1051,8 @@ export default function RequestsQueueTable({
                             {t("notAcceptingEmergencyWarning")}
                           </p>
                         )}
+                      </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

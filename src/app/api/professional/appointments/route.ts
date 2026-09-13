@@ -8,7 +8,8 @@ import Profile from "@/models/Profile";
 import Appointment from "@/models/Appointment";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import { getValidMotifLabels } from "@/lib/motifs";
-import { parseAppointmentDate } from "@/lib/appointment-date";
+import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
+import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
 import { paymentMethodForNewAppointment } from "@/lib/client-payment-guarantee";
 import {
   sendAppointmentConfirmation,
@@ -135,6 +136,18 @@ export async function POST(req: NextRequest) {
       typeof duration === "number" && duration > 0
         ? duration
         : profile?.availability?.sessionDurationMinutes || 60;
+
+    // A client's pending request from a showcase page holds its time (spec 003).
+    const held = await findSlotCollision({
+      professionalId,
+      dayKey: appointmentDayKey(appointmentDate),
+      time,
+      durationMinutes: resolvedDuration,
+      holdsOnly: true,
+    });
+    if (held) {
+      return NextResponse.json(slotCollisionError(held), { status: 409 });
+    }
 
     const appointment = new Appointment({
       clientId,

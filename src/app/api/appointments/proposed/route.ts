@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
+import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import {
   triggerDueCascadeCron,
   triggerDuePaymentReminders,
@@ -67,7 +68,12 @@ export async function GET(req: NextRequest) {
     // for the same defense against orphan records.
     const safe = appointments.filter((apt) => apt.clientId != null);
 
-    return NextResponse.json(safe);
+    // A professional never sees what the client pays nor the platform's margin
+    // (they used to, here only). A request from a showcase page carries its
+    // price from the start.
+    return NextResponse.json(
+      redactPaymentForProfessionalAll(safe.map((apt) => apt.toObject())),
+    );
   } catch (error) {
     console.error("Get proposed appointments error:", error);
     return NextResponse.json(

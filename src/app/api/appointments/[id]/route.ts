@@ -206,6 +206,25 @@ export async function PATCH(
       scheduledStartAt?: Date;
     } = { ...picked.data };
 
+    // A client withdrawing their pending request from a showcase page frees the
+    // held slot and closes the request (spec 003). It is not a session yet, so
+    // the 48h rule below does not apply to it.
+    if (
+      data.status === "cancelled" &&
+      (role === "client" || role === "guest" || role === "prospect") &&
+      oldAppointment.directRequest?.state === "pending"
+    ) {
+      const { releaseDirectRequest } = await import("@/lib/direct-request");
+      const released = await releaseDirectRequest({ appointmentId: id, outcome: "withdrawn" });
+      if (!released) {
+        return NextResponse.json(
+          { error: "This request is no longer pending", code: "DIRECT_REQUEST_CLOSED" },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ message: "Demande retirée", appointment: released.appointment });
+    }
+
     // Strict 48h cancellation rule: a client cannot self-cancel within 48h
     // of the appointment. Admin/pro keep the ability to mark it cancelled
     // (handled via their dashboards; this endpoint is used by clients too).
@@ -319,6 +338,14 @@ export async function PATCH(
       !oldAppointment.professionalId &&
       session.user.role === "professional"
     ) {
+      // A pending request from a showcase page is declined through
+      // decline-direct, which frees its slot and never cascades (spec 003).
+      if (oldAppointment.directRequest?.state === "pending") {
+        return NextResponse.json(
+          { error: "Answer this request from its direct request card", code: "USE_DIRECT_ROUTES" },
+          { status: 409 },
+        );
+      }
       const wasProposedToThisPro =
         oldAppointment.routingStatus === "proposed" &&
         (oldAppointment.proposedTo ?? []).some(

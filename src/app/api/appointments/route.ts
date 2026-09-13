@@ -25,7 +25,15 @@ import {
 } from "@/lib/referral-patient-account";
 import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import { coverageBadgesFor } from "@/lib/coverage-badges";
-import { pickBookingIntake } from "@/lib/appointment-writable-fields";
+import { parseDirectIntent, pickBookingIntake } from "@/lib/appointment-writable-fields";
+import {
+  abandonDirectRequest,
+  attachDirectRequest,
+  notifyDirectRequestCreated,
+  prepareDirectRequest,
+  type PreparedDirectRequest,
+} from "@/lib/direct-request";
+import { DIRECT_REQUEST_ERROR_MESSAGES } from "@/lib/direct-request-rules";
 import {
   linkGuardian,
   isMinor,
@@ -165,10 +173,24 @@ export async function POST(req: NextRequest) {
     // Only intake fields reach the appointment. The body used to be passed whole
     // to `new Appointment(data)`, so a client could book with
     // `payment: { status: "paid" }` and be emailed a receipt for an unpaid session.
-    const { data, dropped } = pickBookingIntake(await req.json());
+    const rawBody = await req.json();
+    const { data, dropped } = pickBookingIntake(rawBody);
     if (dropped.length > 0) {
       console.warn(
         `[appointments POST] ignored non-intake fields: ${dropped.join(", ")}`,
+      );
+    }
+    // A time chosen on a professional's showcase page (spec 003), checked below.
+    const direct = parseDirectIntent(
+      (rawBody as { direct?: unknown } | null)?.direct,
+    );
+    if (!direct.ok) {
+      return NextResponse.json(
+        {
+          error: DIRECT_REQUEST_ERROR_MESSAGES.INVALID_DIRECT_REQUEST,
+          code: "INVALID_DIRECT_REQUEST",
+        },
+        { status: 400 },
       );
     }
 
@@ -366,6 +388,33 @@ export async function POST(req: NextRequest) {
           );
         }
       }
+    }
+
+    // A request for one professional's slot from their showcase page (spec 003):
+    // the time is checked and held, the request is proposed to that professional
+    // only and priced at their rate — see lib/direct-request.ts. It is never a
+    // "change of professional", which cancels the client's other sessions.
+    let prepared: PreparedDirectRequest | null = null;
+    if (direct.intent) {
+      const result = await prepareDirectRequest({
+        intent: direct.intent,
+        therapyType: data.therapyType,
+      });
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: DIRECT_REQUEST_ERROR_MESSAGES[result.code], code: result.code },
+          { status: result.status },
+        );
+      }
+      prepared = result;
+      delete data.changeProfessional;
+      data.payment = {
+        ...(data.payment ?? {}),
+        price: result.pricing.sessionPrice,
+        platformFee: result.pricing.platformFee,
+        professionalPayout: result.pricing.professionalPayout,
+        status: "pending",
+      };
     }
 
     // Only validate professional if one is specified
@@ -718,40 +767,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // A direct request's routing, slot and request record win.
+    if (prepared) Object.assign(data, prepared.fields);
     const appointment = new Appointment(data);
-    await appointment.save();
+    try {
+      await appointment.save();
+    } catch (error) {
+      if (prepared) await abandonDirectRequest(prepared);
+      throw error;
+    }
+    if (prepared) await attachDirectRequest(prepared, String(appointment._id));
 
     // Notify admins of the new service request.
     // after() defers the work until the response has been sent, so a 1-2s SMTP
     // round-trip never delays the client. Production is a long-lived Node
     // server on the WHC VPS, so nothing is torn down mid-send.
-    after(async () => {
-      try {
-        // `data.clientId` — not the session — so a referral files the alert
-        // under the PATIENT. On every other booking the two are the same user.
-        const requester = await User.findById(data.clientId).select(
-          "firstName lastName email",
-        );
-        if (requester?.email) {
-          await sendAdminNewServiceRequestAlert({
-            clientName: `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() || "Client",
-            clientEmail: requester.email,
-            bookingFor: data.bookingFor || "self",
-            motifs: motifs as string[],
-            appointmentId: appointment._id.toString(),
-            isEmergency: Boolean(data.isEmergency),
-            payerDeclaration: appointment.payerDeclaration ?? null,
-          });
+    // A direct request needs no triage: the team hears of it only if it comes
+    // back declined or expired.
+    if (!prepared) {
+      after(async () => {
+        try {
+          // `data.clientId` — not the session — so a referral files the alert
+          // under the PATIENT. On every other booking the two are the same user.
+          const requester = await User.findById(data.clientId).select(
+            "firstName lastName email",
+          );
+          if (requester?.email) {
+            await sendAdminNewServiceRequestAlert({
+              clientName: `${requester.firstName ?? ""} ${requester.lastName ?? ""}`.trim() || "Client",
+              clientEmail: requester.email,
+              bookingFor: data.bookingFor || "self",
+              motifs: motifs as string[],
+              appointmentId: appointment._id.toString(),
+              isEmergency: Boolean(data.isEmergency),
+              payerDeclaration: appointment.payerDeclaration ?? null,
+            });
+          }
+        } catch (e) {
+          console.error("Error sending admin new service request alert:", e);
         }
-      } catch (e) {
-        console.error("Error sending admin new service request alert:", e);
-      }
-    });
+      });
+    }
 
     // Route the appointment to professionals if no professional is assigned.
     // Skip auto-routing for returning clients explicitly asking for a different
-    // professional — those land directly in the general list.
-    if (!data.professionalId && !isReturningClient) {
+    // professional — those land directly in the general list — and for a direct
+    // request, proposed to the professional the client chose.
+    if (!data.professionalId && !isReturningClient && !prepared) {
       // Route in background (non-blocking)
       after(() =>
         routeAppointmentToProfessionals(appointment._id.toString()).catch(
@@ -817,6 +879,15 @@ export async function POST(req: NextRequest) {
           sendProfessionalNotification(emailData),
         ]).catch((err) =>
           console.error("Error sending notifications:", err),
+        ),
+      );
+    } else if (prepared) {
+      // A direct request gets its own emails: the professional is asked, and the
+      // client is told who was asked and until when the time is held.
+      const appointmentId = String(appointment._id);
+      after(() =>
+        notifyDirectRequestCreated(appointmentId).catch((err) =>
+          console.error("Error sending direct request emails:", err),
         ),
       );
     } else {

@@ -251,7 +251,7 @@ export async function ShowcaseProfileView({
           ) : null}
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           {showSlots ? (
             <ShowcaseSlotPicker slug={profile.slug} services={bookable} bookingBaseUrl={bookingUrl} />
           ) : null}

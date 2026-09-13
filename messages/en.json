@@ -1756,7 +1756,18 @@
     "notAcceptingMarker": "not accepting new clients",
     "notAcceptingWarning": "This professional has turned off new client requests. You can still assign them, but they chose not to receive new clients.",
     "notAcceptingEmergencyMarker": "not accepting quick consultations",
-    "notAcceptingEmergencyWarning": "This professional has turned off quick one-time (urgent) consultations. You can still assign them, but they chose not to receive urgent requests."
+    "notAcceptingEmergencyWarning": "This professional has turned off quick one-time (urgent) consultations. You can still assign them, but they chose not to receive urgent requests.",
+    "directPendingBadge": "Direct request — waiting for {name}",
+    "directRespondBy": "reply by {deadline}",
+    "directPendingActionsHint": "Direct request waiting for a reply from {name}: matching, scheduling and the general pool are unavailable until the professional replies or the deadline passes.",
+    "directDeclinedBadge": "Direct request declined",
+    "directExpiredBadge": "Direct request not answered",
+    "directReasonSlotUnavailable": "Slot does not suit them",
+    "directReasonNotAFit": "Outside their practice",
+    "directReasonNotAccepting": "Not accepting new clients",
+    "directReasonOther": "Other reason",
+    "directDeclineNote": "Note: {note}",
+    "directReroutedBadge": "Direct request → matching"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Availability grid by period (morning, afternoon, evening) and week type",
@@ -4008,7 +4019,9 @@
         "addLinkFirst": "Please add a meeting link before starting the session.",
         "updateLinkFailed": "Failed to update meeting link. Please try again.",
         "startFailed": "Failed to start session. Please try again."
-      }
+      },
+      "directRequestPending": "Pending request",
+      "directRequestHint": "Answer this request in Proposals"
     },
     "analytics": {
       "badge": "Analytics",
@@ -5533,7 +5546,20 @@
         "noReasonProvided": "No reason provided",
         "failedToCancel": "Failed to cancel appointment",
         "currencySuffix": "CAD"
-      }
+      },
+      "directRequestSentTo": "Request sent to {name}",
+      "directRequestServiceStandard": "Standard consultation",
+      "directRequestServiceQuick": "Quick one-time consultation",
+      "directRequestRespondBy": "Answer expected by {deadline}",
+      "directRequestWithdraw": "Withdraw my request",
+      "directRequestWithdrawTitle": "Withdraw your request?",
+      "directRequestWithdrawMessage": "The time slot will be released and the professional will no longer see your request. You will not be charged.",
+      "directRequestKeep": "Keep my request",
+      "directRequestWithdrawing": "Withdrawing…",
+      "directRequestWithdrawn": "Your request has been withdrawn.",
+      "directRequestClosed": "The professional has already answered your request.",
+      "directRequestWithdrawError": "Unable to withdraw the request right now. Please try again.",
+      "directRequestUnavailable": "This time slot was not available — check the email you received to choose another slot or be matched."
     },
     "medicalProfile": {
       "loading": "Loading...",
@@ -7815,5 +7841,88 @@
     "more": "Show the following two weeks",
     "howItWorks": "Choose a time, then send your request: the time is held for you until the professional answers.",
     "matchInstead": "Get matched with another professional"
+  },
+  "DirectRequests": {
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "reasons": {
+      "slot_unavailable": "The time does not work for me",
+      "not_a_fit": "The request does not fit my practice",
+      "not_accepting": "I am not taking new clients",
+      "other": "Another reason"
+    },
+    "card": {
+      "title": "Direct requests",
+      "description": "These people chose one of your times on your showcase page. The time is held for them until you answer.",
+      "slot": "Time",
+      "modality": "Modality",
+      "reason": "Reason",
+      "for": "For",
+      "minutes": "{minutes} min",
+      "answerBy": "Answer before {time}",
+      "view": "View the request",
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "answer": {
+      "acceptTitle": "Accept the request",
+      "acceptBody": "The appointment with {name} will be confirmed for {slot}.",
+      "acceptWhatNext": "The person immediately receives the appointment confirmation and the payment instructions.",
+      "declineTitle": "Decline the request",
+      "declineBody": "{name} will be told the time on {slot} is not available, and can choose another one or be matched. The reason is not shared with them.",
+      "address": "Session address",
+      "addressPlaceholder": "Office address",
+      "saveOffice": "Save as my office address",
+      "note": "Note for the team (optional)",
+      "noteHelp": "Seen only by the Je chemine team.",
+      "cancel": "Cancel",
+      "confirmAccept": "Confirm the appointment",
+      "confirmDecline": "Decline"
+    },
+    "errors": {
+      "SLOT_CONFLICT": "This time now overlaps another session in your schedule.",
+      "SLOT_HELD": "This time is held for another request.",
+      "DIRECT_REQUEST_CLOSED": "This request is no longer waiting for an answer.",
+      "DIRECT_REQUEST_EXPIRED": "The time to answer this request has passed.",
+      "OFFICE_ADDRESS_REQUIRED": "Enter the address of the in-person session.",
+      "generic": "The answer could not be saved. Try again."
+    },
+    "reroute": {
+      "title": "Get matched with a professional",
+      "body": "Je chemine finds the professional who suits you, from the request you already made. There is nothing new to fill in.",
+      "cta": "Match me with a professional",
+      "working": "Sending…",
+      "doneTitle": "Done",
+      "doneBody": "Your request went to matching. You will receive an email as soon as a professional accepts it.",
+      "invalidTitle": "This link is no longer valid",
+      "invalidBody": "It was already used, it expired, or our team is already handling your request. For any question, write to us.",
+      "error": "Something went wrong. Try again in a moment.",
+      "home": "Back to the home page"
+    },
+    "funnel": {
+      "loading": "Checking the time you chose…",
+      "unavailable": "This time can no longer be requested online. Your request will go to our matching, which will suggest a professional.",
+      "eyebrow": "Time chosen on the professional's page",
+      "minutes": "{minutes} min",
+      "holdNote": "The time is held for you as soon as you send your request, until the professional answers.",
+      "changeSlot": "Choose another time",
+      "reviewLabel": "Appointment request",
+      "reviewValue": "{name}, {slot}",
+      "whatNextBody": "{name} receives your request and answers promptly. As soon as they confirm, you receive the appointment details and the payment instructions.",
+      "successBody": "Your request was sent to {name} for {slot}. The time is held for you until they answer; a confirmation email was sent to you.",
+      "errors": {
+        "SLOT_TAKEN": "Someone else just booked this time. Choose another time on the professional's page.",
+        "SERVICE_UNAVAILABLE": "This professional is not taking this type of request right now.",
+        "SHOWCASE_NOT_FOUND": "This professional's page is no longer available."
+      }
+    }
   }
 }

@@ -130,6 +130,20 @@ export async function GET() {
               documentName: a.referralInfo.documentName ?? null,
             }
           : null,
+        // Spec 003: a request for one professional's showcase slot. Minimal
+        // projection — never the reroute token hash or the hold id.
+        directRequest: a.directRequest
+          ? {
+              state: a.directRequest.state,
+              service: a.directRequest.service,
+              dayKey: a.directRequest.dayKey,
+              time: a.directRequest.time,
+              respondBy: a.directRequest.respondBy,
+              professionalName: a.directRequest.professionalName,
+              declineReason: a.directRequest.declineReason ?? null,
+              declineNote: a.directRequest.declineNote ?? null,
+            }
+          : null,
       };
     });
 

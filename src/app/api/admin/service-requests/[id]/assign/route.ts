@@ -78,6 +78,14 @@ export async function POST(
           { status: 409 },
         );
       }
+      // A client's request from a showcase page waits for the professional
+      // they chose; it comes back here only once declined or expired (spec 003).
+      if (appt.directRequest?.state === "pending") {
+        return NextResponse.json(
+          { error: "This request is waiting for the professional the client chose", code: "DIRECT_REQUEST_PENDING" },
+          { status: 409 },
+        );
+      }
 
       if (mode === "general") {
         await Appointment.findByIdAndUpdate(id, {
@@ -145,6 +153,12 @@ export async function POST(
     ]);
     if (!appointment) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (appointment.directRequest?.state === "pending") {
+      return NextResponse.json(
+        { error: "This request is waiting for the professional the client chose", code: "DIRECT_REQUEST_PENDING" },
+        { status: 409 },
+      );
     }
     if (!professional) {
       return NextResponse.json(

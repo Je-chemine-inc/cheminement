@@ -1756,7 +1756,18 @@
     "notAcceptingMarker": "n'accepte pas de nouveaux clients",
     "notAcceptingWarning": "Ce professionnel a désactivé les nouvelles demandes de clients. Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de nouveaux clients.",
     "notAcceptingEmergencyMarker": "n'accepte pas les consultations rapides",
-    "notAcceptingEmergencyWarning": "Ce professionnel a désactivé les consultations ponctuelles rapides (urgentes). Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de demandes urgentes."
+    "notAcceptingEmergencyWarning": "Ce professionnel a désactivé les consultations ponctuelles rapides (urgentes). Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de demandes urgentes.",
+    "directPendingBadge": "Demande directe — attend {name}",
+    "directRespondBy": "réponse avant {deadline}",
+    "directPendingActionsHint": "Demande directe en attente de la réponse de {name} : jumelage, planification et liste générale sont indisponibles tant que le professionnel n'a pas répondu ou que le délai n'est pas écoulé.",
+    "directDeclinedBadge": "Demande directe déclinée",
+    "directExpiredBadge": "Demande directe sans réponse",
+    "directReasonSlotUnavailable": "Créneau ne lui convient pas",
+    "directReasonNotAFit": "Hors de sa pratique",
+    "directReasonNotAccepting": "N'accepte pas de nouveaux clients",
+    "directReasonOther": "Autre raison",
+    "directDeclineNote": "Note : {note}",
+    "directReroutedBadge": "Demande directe → jumelage"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Grille de disponibilités par période (matin, après-midi, soir) et type de semaine",
@@ -4008,7 +4019,9 @@
         "addLinkFirst": "Veuillez ajouter un lien de réunion avant de commencer la séance.",
         "updateLinkFailed": "Échec de la mise à jour du lien de réunion. Veuillez réessayer.",
         "startFailed": "Échec du démarrage de la séance. Veuillez réessayer."
-      }
+      },
+      "directRequestPending": "Demande en attente",
+      "directRequestHint": "Répondre à cette demande dans Propositions"
     },
     "analytics": {
       "badge": "Analytics",
@@ -5532,7 +5545,20 @@
         "noReasonProvided": "Aucun motif fourni",
         "failedToCancel": "Impossible d'annuler le rendez-vous",
         "currencySuffix": "CAD"
-      }
+      },
+      "directRequestSentTo": "Demande envoyée à {name}",
+      "directRequestServiceStandard": "Consultation standard",
+      "directRequestServiceQuick": "Consultation ponctuelle rapide",
+      "directRequestRespondBy": "Réponse au plus tard le {deadline}",
+      "directRequestWithdraw": "Retirer ma demande",
+      "directRequestWithdrawTitle": "Retirer votre demande?",
+      "directRequestWithdrawMessage": "Le créneau sera libéré et le professionnel ne recevra plus votre demande. Aucun montant ne sera facturé.",
+      "directRequestKeep": "Conserver ma demande",
+      "directRequestWithdrawing": "Retrait en cours…",
+      "directRequestWithdrawn": "Votre demande a été retirée.",
+      "directRequestClosed": "Le professionnel a déjà répondu à votre demande.",
+      "directRequestWithdrawError": "Impossible de retirer la demande pour le moment. Veuillez réessayer.",
+      "directRequestUnavailable": "Ce créneau n'était pas disponible — consultez le courriel reçu pour choisir un autre créneau ou être jumelé."
     },
     "medicalProfile": {
       "loading": "Chargement...",
@@ -7814,5 +7840,88 @@
     "more": "Voir les deux semaines suivantes",
     "howItWorks": "Choisissez un créneau, puis faites votre demande : le créneau vous est réservé jusqu'à la réponse du professionnel.",
     "matchInstead": "Être jumelé avec un autre professionnel"
+  },
+  "DirectRequests": {
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "reasons": {
+      "slot_unavailable": "Le créneau ne me convient pas",
+      "not_a_fit": "La demande ne correspond pas à ma pratique",
+      "not_accepting": "Je n'accepte pas de nouveaux clients",
+      "other": "Autre raison"
+    },
+    "card": {
+      "title": "Demandes directes",
+      "description": "Ces personnes ont choisi un de vos créneaux sur votre page vitrine. Le créneau leur est réservé jusqu'à votre réponse.",
+      "slot": "Créneau",
+      "modality": "Modalité",
+      "reason": "Motif",
+      "for": "Pour",
+      "minutes": "{minutes} min",
+      "answerBy": "Répondre avant le {time}",
+      "view": "Voir la demande",
+      "accept": "Accepter",
+      "decline": "Décliner"
+    },
+    "answer": {
+      "acceptTitle": "Accepter la demande",
+      "acceptBody": "Le rendez-vous avec {name} sera confirmé pour le {slot}.",
+      "acceptWhatNext": "La personne reçoit aussitôt la confirmation du rendez-vous et les instructions de paiement.",
+      "declineTitle": "Décliner la demande",
+      "declineBody": "Un courriel informe {name} que le créneau du {slot} n'est pas disponible et lui propose un autre créneau ou le jumelage. Le motif ne lui est pas communiqué.",
+      "address": "Adresse de la séance",
+      "addressPlaceholder": "Adresse du bureau",
+      "saveOffice": "Enregistrer comme adresse de mon bureau",
+      "note": "Note pour l'équipe (facultatif)",
+      "noteHelp": "Visible seulement par l'équipe de Je chemine.",
+      "cancel": "Annuler",
+      "confirmAccept": "Confirmer le rendez-vous",
+      "confirmDecline": "Décliner"
+    },
+    "errors": {
+      "SLOT_CONFLICT": "Ce créneau chevauche maintenant une autre séance à votre horaire.",
+      "SLOT_HELD": "Ce créneau est réservé pour une autre demande.",
+      "DIRECT_REQUEST_CLOSED": "Cette demande n'attend plus de réponse.",
+      "DIRECT_REQUEST_EXPIRED": "Le délai pour répondre à cette demande est passé.",
+      "OFFICE_ADDRESS_REQUIRED": "Indiquez l'adresse de la séance en personne.",
+      "generic": "La réponse n'a pas pu être enregistrée. Réessayez."
+    },
+    "reroute": {
+      "title": "Être jumelé avec un professionnel",
+      "body": "Je chemine trouve pour vous le professionnel qui vous convient, à partir de la demande que vous avez déjà faite. Vous n'avez rien à remplir de nouveau.",
+      "cta": "Me jumeler avec un professionnel",
+      "working": "Envoi…",
+      "doneTitle": "C'est noté",
+      "doneBody": "Votre demande est transmise au jumelage. Vous recevrez un courriel dès qu'un professionnel l'accepte.",
+      "invalidTitle": "Ce lien n'est plus valide",
+      "invalidBody": "Il a déjà servi, il a expiré, ou notre équipe s'occupe déjà de votre demande. Pour toute question, écrivez-nous.",
+      "error": "Une erreur est survenue. Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    },
+    "funnel": {
+      "loading": "Vérification du créneau choisi…",
+      "unavailable": "Ce créneau ne peut plus être demandé en ligne. Votre demande sera transmise à notre jumelage, qui vous proposera un professionnel.",
+      "eyebrow": "Créneau choisi sur la page du professionnel",
+      "minutes": "{minutes} min",
+      "holdNote": "Le créneau vous est réservé dès l'envoi de votre demande, jusqu'à la réponse du professionnel.",
+      "changeSlot": "Choisir un autre créneau",
+      "reviewLabel": "Demande de rendez-vous",
+      "reviewValue": "{name}, {slot}",
+      "whatNextBody": "{name} reçoit votre demande et y répond rapidement. Dès sa confirmation, vous recevez les détails du rendez-vous et les instructions de paiement.",
+      "successBody": "Votre demande a été envoyée à {name} pour le {slot}. Le créneau vous est réservé jusqu'à sa réponse; un courriel de confirmation vous a été envoyé.",
+      "errors": {
+        "SLOT_TAKEN": "Ce créneau vient d'être réservé par une autre personne. Choisissez un autre créneau sur la page du professionnel.",
+        "SERVICE_UNAVAILABLE": "Ce professionnel ne prend plus ce type de demande pour le moment.",
+        "SHOWCASE_NOT_FOUND": "La page de ce professionnel n'est plus disponible."
+      }
+    }
   }
 }

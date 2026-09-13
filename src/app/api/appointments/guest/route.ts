@@ -21,7 +21,15 @@ import {
   resolveReferralPatientIdentity,
 } from "@/lib/referral-patient-account";
 import type { IUser } from "@/models/User";
-import { pickBookingIntake } from "@/lib/appointment-writable-fields";
+import { parseDirectIntent, pickBookingIntake } from "@/lib/appointment-writable-fields";
+import {
+  abandonDirectRequest,
+  attachDirectRequest,
+  notifyDirectRequestCreated,
+  prepareDirectRequest,
+  type PreparedDirectRequest,
+} from "@/lib/direct-request";
+import { DIRECT_REQUEST_ERROR_MESSAGES } from "@/lib/direct-request-rules";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,6 +49,18 @@ export async function POST(req: NextRequest) {
     if (dropped.length > 0) {
       console.warn(
         `[appointments/guest POST] ignored non-intake fields: ${dropped.join(", ")}`,
+      );
+    }
+
+    // A time chosen on a professional's showcase page (spec 003), checked below.
+    const direct = parseDirectIntent(rawAppointmentData.direct);
+    if (!direct.ok) {
+      return NextResponse.json(
+        {
+          error: DIRECT_REQUEST_ERROR_MESSAGES.INVALID_DIRECT_REQUEST,
+          code: "INVALID_DIRECT_REQUEST",
+        },
+        { status: 400 },
       );
     }
 
@@ -427,6 +447,27 @@ export async function POST(req: NextRequest) {
       appointmentData.professionalPayout = pricingResult.professionalPayout;
     }
 
+    // A request for one professional's slot from their showcase page (spec 003):
+    // the time is checked and held, the request is proposed to that professional
+    // only and priced at their rate — see lib/direct-request.ts.
+    let prepared: PreparedDirectRequest | null = null;
+    if (direct.intent) {
+      const result = await prepareDirectRequest({
+        intent: direct.intent,
+        therapyType: appointmentData.therapyType,
+      });
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: DIRECT_REQUEST_ERROR_MESSAGES[result.code], code: result.code },
+          { status: result.status },
+        );
+      }
+      prepared = result;
+      appointmentData.price = result.pricing.sessionPrice;
+      appointmentData.platformFee = result.pricing.platformFee;
+      appointmentData.professionalPayout = result.pricing.professionalPayout;
+    }
+
     // Set default duration from profile or default to 60 minutes
     if (!appointmentData.duration) {
       appointmentData.duration =
@@ -476,11 +517,20 @@ export async function POST(req: NextRequest) {
         status: "pending",
         method: paymentMethod,
       },
+      // A direct request's routing, slot and request record win.
+      ...(prepared?.fields ?? {}),
     });
-    await appointment.save();
+    try {
+      await appointment.save();
+    } catch (error) {
+      if (prepared) await abandonDirectRequest(prepared);
+      throw error;
+    }
+    if (prepared) await attachDirectRequest(prepared, String(appointment._id));
 
-    // Route the appointment to professionals if no professional is assigned
-    if (!appointmentData.professionalId) {
+    // Route the appointment to professionals if no professional is assigned.
+    // A direct request is proposed to the professional the client chose, never matched.
+    if (!appointmentData.professionalId && !prepared) {
       // Route in background (non-blocking)
       after(() =>
         routeAppointmentToProfessionals(appointment._id.toString()).catch(
@@ -532,21 +582,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Notify admins of the new service request
-    const adminAlertArgs = {
-      clientName: clientDisplayName,
-      clientEmail: clientContactEmail,
-      bookingFor: appointmentData.bookingFor || "self",
-      motifs: motifs as string[],
-      appointmentId: String(appointment._id),
-      isEmergency: Boolean(appointmentData.isEmergency),
-      payerDeclaration: appointment.payerDeclaration ?? null,
-    };
-    after(() =>
-      sendAdminNewServiceRequestAlert(adminAlertArgs).catch((err) =>
-        console.error("Error sending admin alert:", err),
-      ),
-    );
+    // Notify admins of the new service request. A direct request needs no
+    // triage: the team hears of it only if it comes back declined or expired.
+    if (!prepared) {
+      const adminAlertArgs = {
+        clientName: clientDisplayName,
+        clientEmail: clientContactEmail,
+        bookingFor: appointmentData.bookingFor || "self",
+        motifs: motifs as string[],
+        appointmentId: String(appointment._id),
+        isEmergency: Boolean(appointmentData.isEmergency),
+        payerDeclaration: appointment.payerDeclaration ?? null,
+      };
+      after(() =>
+        sendAdminNewServiceRequestAlert(adminAlertArgs).catch((err) =>
+          console.error("Error sending admin alert:", err),
+        ),
+      );
+    }
 
     // Automatically send onboarding invitation (Email 1 — Confirmation immédiate)
     // Recipient rules (see resolveServiceRequestRecipient):
@@ -561,8 +614,17 @@ export async function POST(req: NextRequest) {
     //                              patient email was provided (it is optional).
     // Sent on EVERY new request (not just first-ever), so a returning requester
     // still gets an acknowledgement and isn't left with only the admin alert.
+    // A direct request gets its own emails instead: the professional is asked,
+    // and the client is told who was asked and until when the time is held.
     let onboardingToEmail = clientContactEmail;
-    {
+    if (prepared) {
+      const appointmentId = String(appointment._id);
+      after(() =>
+        notifyDirectRequestCreated(appointmentId).catch((err) =>
+          console.error("Error sending direct request emails:", err),
+        ),
+      );
+    } else {
       const emailLocale: "fr" | "en" =
         notificationLocale === "en" ? "en" : "fr";
       const bookingFor = appointmentData.bookingFor || "self";

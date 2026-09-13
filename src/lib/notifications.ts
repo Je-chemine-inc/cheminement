@@ -8732,3 +8732,305 @@ export async function sendShowcaseUnpublishedEmail(data: {
     "showcase_unpublished",
   );
 }
+
+/* ------------------------------------------------------------------------ */
+/* Direct requests from a showcase page (spec 003 phase 3)                   */
+/* ------------------------------------------------------------------------ */
+
+type DirectRequestServiceKey = "standard" | "quick";
+
+const DIRECT_REQUEST_SERVICE_LABELS: Record<"fr" | "en", Record<DirectRequestServiceKey, string>> = {
+  fr: { standard: "Consultation standard", quick: "Consultation ponctuelle rapide" },
+  en: { standard: "Standard consultation", quick: "Quick one-time consultation" },
+};
+
+const DIRECT_REQUEST_DECLINE_LABELS_FR: Record<string, string> = {
+  slot_unavailable: "Le créneau ne lui convient pas",
+  not_a_fit: "La demande ne correspond pas à sa pratique",
+  not_accepting: "N'accepte pas de nouveaux clients",
+  other: "Autre raison",
+};
+
+const toEmailLang = (locale?: string | null): "fr" | "en" => (locale === "en" ? "en" : "fr");
+
+/** A slot's Montréal day and time as stored: "jeudi 17 septembre 2026 à 10 h 00". */
+function formatShowcaseSlot(dayKey: string, time: string, lang: "fr" | "en"): string {
+  const at = new Date(`${dayKey}T${time}:00Z`);
+  const tag = lang === "en" ? "en-CA" : "fr-CA";
+  const day = new Intl.DateTimeFormat(tag, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(at);
+  const clock = new Intl.DateTimeFormat(tag, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(at);
+  return lang === "en" ? `${day} at ${clock}` : `${day} à ${clock}`;
+}
+
+/** An instant as read in Montréal. */
+function formatMontrealInstant(at: Date, lang: "fr" | "en"): string {
+  const tag = lang === "en" ? "en-CA" : "fr-CA";
+  const day = new Intl.DateTimeFormat(tag, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Toronto",
+  }).format(at);
+  const clock = new Intl.DateTimeFormat(tag, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Toronto",
+  }).format(at);
+  return lang === "en" ? `${day} at ${clock}` : `${day} à ${clock}`;
+}
+
+/**
+ * A client asked the professional for one of their slots from the showcase
+ * page. The slot is held until the professional answers. Names the client by
+ * first name and initial only; the rest is on the dashboard.
+ */
+export async function sendDirectRequestReceivedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  clientName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  respondBy: Date;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/professional/dashboard/proposals");
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const deadline = formatMontrealInstant(data.respondBy, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Nouvelle demande de rendez-vous",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: `${data.clientName} a choisi un de vos créneaux sur votre page vitrine et vous demande un rendez-vous. Le créneau lui est réservé jusqu'à votre réponse.`,
+      labels: { service: "Consultation", slot: "Créneau", deadline: "Répondre avant" },
+      boxTitle: "Sans réponse",
+      box: "Sans réponse avant l'échéance, la demande est retirée, le créneau est libéré et la personne en est avisée.",
+      cta: "Répondre à la demande",
+    },
+    en: {
+      title: "New appointment request",
+      greeting: `Hello ${data.professionalName},`,
+      intro: `${data.clientName} chose one of your times on your showcase page and is asking you for an appointment. The time is held for them until you answer.`,
+      labels: { service: "Consultation", slot: "Time", deadline: "Answer before" },
+      boxTitle: "Without an answer",
+      box: "Without an answer by the deadline, the request is withdrawn, the time is freed and the person is told.",
+      cta: "Answer the request",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+      { label: copy.labels.deadline, value: deadline },
+    ],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "warning" },
+    button: { text: copy.cta, url },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.service} : ${service}`, `${copy.labels.slot} : ${slot}`, `${copy.labels.deadline} : ${deadline}`, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "direct_request_received",
+  );
+}
+
+/** The client's request went to the professional; the slot is held until they answer. */
+export async function sendDirectRequestConfirmationEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  respondBy: Date;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const deadline = formatMontrealInstant(data.respondBy, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Votre demande de rendez-vous a été envoyée",
+      greeting: `Bonjour ${data.clientName},`,
+      intro: `Votre demande a été envoyée à ${data.professionalName}. Le créneau vous est réservé jusqu'à sa réponse, au plus tard le ${deadline}.`,
+      labels: { professional: "Professionnel", service: "Consultation", slot: "Créneau" },
+      boxTitle: "Et ensuite ?",
+      box: `Dès que ${data.professionalName} confirme, vous recevez la confirmation du rendez-vous et les instructions de paiement. Rien ne vous est demandé avant. Si le créneau ne convient pas, vous pourrez en choisir un autre ou être jumelé avec un autre professionnel.`,
+    },
+    en: {
+      title: "Your appointment request was sent",
+      greeting: `Hello ${data.clientName},`,
+      intro: `Your request was sent to ${data.professionalName}. The time is held for you until they answer, by ${deadline} at the latest.`,
+      labels: { professional: "Professional", service: "Consultation", slot: "Time" },
+      boxTitle: "What happens next?",
+      box: `As soon as ${data.professionalName} confirms, you receive the appointment confirmation and the payment instructions. Nothing is asked of you before. If the time does not work, you will be able to choose another one or be matched with another professional.`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.professional, value: data.professionalName },
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+    ],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.professional} : ${data.professionalName}`, `${copy.labels.service} : ${service}`, `${copy.labels.slot} : ${slot}`, copy.box],
+    lang,
+  );
+  return sendEmail(
+    { to: data.clientEmail, subject: copy.title, html, text },
+    "direct_request_confirmation",
+  );
+}
+
+/**
+ * The professional declined, or did not answer in time. Two ways on: choose
+ * another time on the page, or let Je chemine match the client (a link valid
+ * 14 days). Never gives the professional's reason.
+ */
+export async function sendDirectRequestUnavailableEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  outcome: "declined" | "expired";
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  pageUrl: string;
+  rerouteUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const copy = {
+    fr: {
+      title:
+        data.outcome === "declined"
+          ? "Ce créneau n'est pas disponible"
+          : "Votre demande n'a pas reçu de réponse à temps",
+      greeting: `Bonjour ${data.clientName},`,
+      intro:
+        data.outcome === "declined"
+          ? `${data.professionalName} ne peut pas vous recevoir le ${slot}. Le créneau a été libéré.`
+          : `${data.professionalName} n'a pas pu répondre à temps à votre demande pour le ${slot}. Le créneau a été libéré.`,
+      cta: "Choisir un autre créneau",
+      preamble: "Ou laissez Je chemine vous jumeler avec le professionnel qui vous convient :",
+      secondary: "Être jumelé avec un professionnel",
+      outro: `Ce lien de jumelage est valable 14 jours.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title:
+        data.outcome === "declined"
+          ? "This time is not available"
+          : "Your request was not answered in time",
+      greeting: `Hello ${data.clientName},`,
+      intro:
+        data.outcome === "declined"
+          ? `${data.professionalName} cannot see you on ${slot}. The time was freed.`
+          : `${data.professionalName} could not answer your request for ${slot} in time. The time was freed.`,
+      cta: "Choose another time",
+      preamble: "Or let Je chemine match you with the professional who suits you:",
+      secondary: "Get matched with a professional",
+      outro: `The matching link is valid for 14 days.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [{ label: lang === "en" ? "Consultation" : "Consultation", value: DIRECT_REQUEST_SERVICE_LABELS[lang][data.service] }],
+    button: { text: copy.cta, url: data.pageUrl },
+    secondaryButton: { preamble: copy.preamble, text: copy.secondary, url: data.rerouteUrl },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.cta} : ${data.pageUrl}`, `${copy.preamble} ${data.rerouteUrl}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.clientEmail, subject: copy.title, html, text },
+    "direct_request_unavailable",
+  );
+}
+
+/** A direct request came back to the service-request queue. French-only team alert. */
+export async function sendAdminDirectRequestReturnedAlert(data: {
+  outcome: "declined" | "expired";
+  clientName: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  reason?: string | null;
+  note?: string | null;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminDirectRequestReturnedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/service-requests");
+  const title =
+    data.outcome === "declined" ? "Demande directe déclinée" : "Demande directe sans réponse";
+  const slot = formatShowcaseSlot(data.dayKey, data.time, "fr");
+  const intro = `La demande de ${data.clientName} auprès de ${data.professionalName} pour le ${slot} est revenue dans les demandes de service. La personne a reçu un courriel pour choisir un autre créneau ou être jumelée.`;
+  const details = [
+    { label: "Professionnel", value: data.professionalName },
+    { label: "Client", value: data.clientName },
+    { label: "Consultation", value: DIRECT_REQUEST_SERVICE_LABELS.fr[data.service] },
+    { label: "Créneau", value: slot },
+  ];
+  if (data.outcome === "declined" && data.reason) {
+    details.push({ label: "Motif", value: DIRECT_REQUEST_DECLINE_LABELS_FR[data.reason] ?? data.reason });
+  }
+  if (data.note) details.push({ label: "Note du professionnel", value: data.note });
+  const html = buildEmailHtml({
+    title,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro,
+    details,
+    button: { text: "Voir les demandes de service", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Demandes de service : ${url}`], "fr");
+  const subject = await getSubject("admin_direct_request_returned", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_direct_request_returned");
+  }
+}

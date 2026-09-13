@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
   profile: null as Record<string, unknown> | null,
   profileUpdates: [] as Array<Record<string, unknown>>,
   saved: 0,
+  collision: null as { kind: string } | null,
 }));
 
 vi.mock("next/server", () => ({
@@ -79,6 +80,13 @@ vi.mock("@/models/Profile", () => ({
       return { acknowledged: true };
     },
   },
+}));
+vi.mock("@/lib/slot-occupancy", () => ({
+  findSlotCollision: vi.fn(async () => h.collision),
+  slotCollisionError: (collision: { kind: string }) =>
+    collision.kind === "hold"
+      ? { error: "held", code: "SLOT_HELD" }
+      : { error: "booked", code: "SLOT_CONFLICT" },
 }));
 vi.mock("@/models/Appointment", () => ({
   default: {
@@ -199,5 +207,17 @@ describe("first appointment — in-person requires an address", () => {
 
     expect(res.status).toBe(200);
     expect(h.appointment.location).toBe("Already known clinic");
+  });
+
+  it("refuses a time held for a client's pending request from a showcase page", async () => {
+    h.appointment.type = "video";
+    h.collision = { kind: "hold" };
+
+    const res = await call({ date: FUTURE, time: "10:00" });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("SLOT_HELD");
+    expect(h.saved).toBe(0);
+    h.collision = null;
   });
 });

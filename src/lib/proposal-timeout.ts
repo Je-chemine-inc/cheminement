@@ -2,6 +2,7 @@ import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import "@/models/User"; // register the User model so populate() resolves refs
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
+import { runDirectRequestTimeouts } from "@/lib/direct-request";
 
 const HOUR_MS = 60 * 60 * 1000;
 /**
@@ -28,9 +29,21 @@ export const PROPOSAL_TIMEOUT_HOURS_URGENT = 12;
  * `proposedAt` drives the clock; legacy rows that pre-date the field fall back to
  * `createdAt` (mirrors unscheduled-match-reminders), so stuck legacy proposals
  * are cleaned up too.
+ *
+ * A pending request from a showcase page (spec 003) is also "proposed", but has
+ * its own deadline and must never cascade: it is expired first by
+ * runDirectRequestTimeouts and left out of the query below.
  */
-export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
+export async function runProposalTimeouts(): Promise<{ timedOut: number; directExpired: number }> {
   await connectToDatabase();
+
+  let directExpired = 0;
+  try {
+    directExpired = (await runDirectRequestTimeouts()).expired;
+  } catch (err) {
+    console.error("[proposal-timeout] direct request timeouts failed:", err);
+  }
+
   const now = Date.now();
   const urgentCutoff = new Date(now - PROPOSAL_TIMEOUT_HOURS_URGENT * HOUR_MS);
   const regularCutoff = new Date(now - PROPOSAL_TIMEOUT_HOURS_REGULAR * HOUR_MS);
@@ -38,6 +51,7 @@ export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
   const candidates = await Appointment.find({
     routingStatus: "proposed",
     status: "pending",
+    "directRequest.state": { $ne: "pending" },
     $or: [
       // Urgent "Consultation ponctuelle rapide" → 12h window.
       { isEmergency: true, proposedAt: { $lte: urgentCutoff } },
@@ -75,7 +89,12 @@ export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
     // The previously-proposed pro(s) join refusedBy so the matcher won't re-pick
     // a professional who already let the request lapse.
     const claimed = await Appointment.findOneAndUpdate(
-      { _id: c._id, routingStatus: "proposed", status: "pending" },
+      {
+        _id: c._id,
+        routingStatus: "proposed",
+        status: "pending",
+        "directRequest.state": { $ne: "pending" },
+      },
       {
         $set: { routingStatus: "pending" },
         $unset: { proposedTo: "", proposedAt: "" },
@@ -100,5 +119,5 @@ export async function runProposalTimeouts(): Promise<{ timedOut: number }> {
     }
   }
 
-  return { timedOut };
+  return { timedOut, directExpired };
 }

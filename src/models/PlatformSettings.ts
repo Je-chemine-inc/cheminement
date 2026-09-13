@@ -65,7 +65,12 @@ export type EmailNotificationType =
   | "showcase_published"
   | "showcase_changes_requested"
   | "showcase_unpublished"
-  | "admin_showcase_submitted";
+  | "admin_showcase_submitted"
+  // Spec 003 phase 3: direct requests from a showcase page.
+  | "direct_request_received"
+  | "direct_request_confirmation"
+  | "direct_request_unavailable"
+  | "admin_direct_request_returned";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -437,6 +442,22 @@ const defaultEmailTemplates: Record<
   admin_showcase_submitted: {
     enabled: true,
     subject: "Page vitrine à vérifier — Je chemine",
+  },
+  direct_request_received: {
+    enabled: true,
+    subject: "Nouvelle demande de rendez-vous",
+  },
+  direct_request_confirmation: {
+    enabled: true,
+    subject: "Votre demande de rendez-vous a été envoyée",
+  },
+  direct_request_unavailable: {
+    enabled: true,
+    subject: "Votre demande de rendez-vous",
+  },
+  admin_direct_request_returned: {
+    enabled: true,
+    subject: "Demande directe revenue — Je chemine",
   },
 };
 

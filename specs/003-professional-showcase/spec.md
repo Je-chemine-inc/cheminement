@@ -2,8 +2,10 @@
 
 **Status:** APPROVED 2026-09-12 — owner decisions in §3. Phased plan in [plan.md](plan.md); routing
 decision in [ADR-0003](../../docs/architecture/decisions/0003-per-city-showcase-hosts.md).
-**Progress:** phase 0 (city hosts), phase 1 (pages, invitations, admin review) and phase 2 (city,
-expertise and region pages, visit counts) built, not merged; everything is dark behind `showcaseEnabled`.
+**Progress:** phase 0 (city hosts), phase 1 (pages, invitations, admin review), phase 2 (city,
+expertise and region pages, visit counts) and phase 3 (free times on the pages, requests held until the
+professional answers, quick consultation pricing) built, not merged; everything is dark behind
+`showcaseEnabled`.
 **Created:** 2026-09-12.
 **Origin:** the clinic's cahier des charges « Pages Vitrines Praticiens & Entonnoir SEO » (v1.0,
 2026-09-12): one page per professional that introduces them to the public and feeds a local search
