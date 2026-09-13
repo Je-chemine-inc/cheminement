@@ -65,8 +65,12 @@ export async function GET(
     // etc.), so they must be served without a session. Every other kind stays
     // behind authentication.
     const isShowcasePhoto = file.kind === "showcase-photo";
+    // A professional's product image (spec 003 phase 5) is embedded in public
+    // product pages like the team's content images.
     const isPublic =
-      file.kind === "content-image" || (isShowcasePhoto && (await isPublicShowcasePhoto(file._id)));
+      file.kind === "content-image" ||
+      file.kind === "product-image" ||
+      (isShowcasePhoto && (await isPublicShowcasePhoto(file._id)));
     if (!isPublic) {
       const session = await getServerSession(authOptions);
       if (!session?.user?.id) {

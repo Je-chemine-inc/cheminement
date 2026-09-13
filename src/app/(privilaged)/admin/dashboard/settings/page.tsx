@@ -124,6 +124,8 @@ interface PlatformSettings {
     quick?: number | "" | null;
   };
   platformFeePercentage: number;
+  /** The platform's share of a professional's product sale (spec 003 phase 5). */
+  productCommissionPercentage?: number;
   currency: string;
   cancellationPolicy: {
     clientCancellationHours: number;
@@ -282,6 +284,24 @@ const EMAIL_TEMPLATE_INFO: Record<
     description:
       "Envoyé à la première personne de la liste à qui convient un créneau qui se libère. Le créneau lui est réservé 15 minutes ; un texto part aussi si elle y a consenti.",
     category: "Pages vitrines",
+  },
+  product_sold: {
+    name: "Vente d'un produit (professionnel)",
+    description:
+      "Envoyé au professionnel quand une personne achète une de ses formations ou un de ses produits : le prix payé et sa part. Ne nomme jamais l'acheteur.",
+    category: "Pages vitrines",
+  },
+  product_moderation_decision: {
+    name: "Décision sur un produit (professionnel)",
+    description:
+      "Envoyé au professionnel quand l'équipe approuve, refuse (avec ses commentaires) ou retire un de ses produits.",
+    category: "Pages vitrines",
+  },
+  admin_product_submitted: {
+    name: "Alerte équipe — produit à vérifier",
+    description:
+      "Envoyé à l'équipe quand un professionnel envoie une formation ou un produit pour vérification.",
+    category: "Alertes administratives",
   },
   waitlist_removed: {
     name: "Fin d'inscription à la liste d'attente",
@@ -482,6 +502,10 @@ export default function SettingsPage() {
         body: JSON.stringify({
           defaultPricing: settings.defaultPricing,
           platformFeePercentage: settings.platformFeePercentage,
+          ...(typeof settings.productCommissionPercentage === "number" &&
+          Number.isFinite(settings.productCommissionPercentage)
+            ? { productCommissionPercentage: settings.productCommissionPercentage }
+            : {}),
           currency: settings.currency,
           cancellationPolicy: settings.cancellationPolicy,
           emailSettings: settings.emailSettings,
@@ -1376,6 +1400,28 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Percentage of session fee taken by platform (0-100%)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("productCommission")}
+              </label>
+              <input
+                type="number"
+                value={settings.productCommissionPercentage ?? 20}
+                onChange={(e) =>
+                  updateSettings(
+                    "productCommissionPercentage",
+                    parseFloat(e.target.value),
+                  )
+                }
+                min="0"
+                max="100"
+                step="0.5"
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("productCommissionHelp")}
               </p>
             </div>
 

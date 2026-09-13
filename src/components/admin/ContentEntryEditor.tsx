@@ -182,11 +182,17 @@ export default function ContentEntryEditor({
   value,
   onChange,
   uploadFolder = "content",
+  uploadEndpoint = "/api/admin/uploads",
+  accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml",
 }: {
   value: string;
   onChange: (html: string) => void;
   /** Subfolder under /public/uploads to place inline images. */
   uploadFolder?: "content" | "problematiques" | "misc";
+  /** Where inline images are uploaded: a professional's product uses its own route (spec 003 phase 5). */
+  uploadEndpoint?: string;
+  /** The image types the picker offers. */
+  accept?: string;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -254,7 +260,7 @@ export default function ContentEntryEditor({
       const form = new FormData();
       form.append("file", file);
       form.append("folder", uploadFolder);
-      const res = await fetch("/api/admin/uploads", {
+      const res = await fetch(uploadEndpoint, {
         method: "POST",
         body: form,
       });
@@ -289,7 +295,7 @@ export default function ContentEntryEditor({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        accept={accept}
         className="hidden"
         onChange={handleFileChange}
       />

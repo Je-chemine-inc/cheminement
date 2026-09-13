@@ -18,6 +18,7 @@ import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import { SHOWCASE_WAITLIST_ANCHOR, type WaitlistModality } from "@/lib/waitlist-rules";
 import { ShowcaseSlotPicker } from "@/components/showcase/ShowcaseSlotPicker";
 import { ShowcaseWaitlistForm } from "@/components/showcase/ShowcaseWaitlistForm";
+import type { ShowcaseProductCard } from "@/lib/products";
 
 /**
  * A professional's showcase page (spec 003), from the public data object only.
@@ -62,9 +63,12 @@ function initialsOf(name: string): string {
 export async function ShowcaseProfileView({
   profile,
   preview = false,
+  products = [],
 }: {
   profile: ShowcasePublicProfile;
   preview?: boolean;
+  /** The professional's live trainings and products (spec 003 phase 5), sold on www. */
+  products?: ShowcaseProductCard[];
 }) {
   const t = await getTranslations("Showcase");
   const locale = (await getLocale()) === "en" ? "en-CA" : "fr-CA";
@@ -255,6 +259,44 @@ export async function ShowcaseProfileView({
                     className="rounded-full border border-border/60 bg-card px-3 py-1 text-sm text-foreground"
                   >
                     {expertise.label}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {products.length > 0 ? (
+            <section aria-labelledby="showcase-products">
+              <h2 id="showcase-products" className="font-serif text-2xl font-light text-foreground">
+                {t("profile.productsTitle")}
+              </h2>
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                {products.map((product) => (
+                  <li key={product.slug} className="flex min-w-0 flex-col rounded-2xl border border-border/60 bg-card p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      {t(`profile.productType_${product.type}`)}
+                    </p>
+                    <h3 className="mt-2 break-words font-medium text-foreground">{product.title}</h3>
+                    {product.summary ? (
+                      <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{product.summary}</p>
+                    ) : null}
+                    {product.webinarStartsAt ? (
+                      <p className="mt-2 text-sm text-foreground">
+                        {new Intl.DateTimeFormat(locale, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                          timeZone: "America/Toronto",
+                        }).format(new Date(product.webinarStartsAt))}
+                      </p>
+                    ) : null}
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
+                      <span className="text-sm font-medium text-foreground">
+                        {product.priceCents > 0 ? money.format(product.priceCents / 100) : t("profile.productFree")}
+                      </span>
+                      <a href={product.url} className="text-sm text-primary hover:underline">
+                        {t("profile.productOpen")}
+                      </a>
+                    </div>
                   </li>
                 ))}
               </ul>

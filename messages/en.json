@@ -589,7 +589,9 @@
       "primaryColor": "Primary Color",
       "secondaryColor": "Secondary Color",
       "quickSession": "Quick one-time consultation",
-      "quickSessionHelp": "Default price of a quick one-time consultation. Left empty: the price of an individual session."
+      "quickSessionHelp": "Default price of a quick one-time consultation. Left empty: the price of an individual session.",
+      "productCommission": "Commission on professionals' products (%)",
+      "productCommissionHelp": "The platform's share of each sale of a professional's training or product; it covers Stripe's fees. Each purchase keeps the rate in force when it was paid."
     },
     "admins": {
       "title": "Admin Management",
@@ -2379,7 +2381,21 @@
     "ctaTitle": "Ready to talk to a professional?",
     "ctaButton": "Book an appointment",
     "ownedCtaTitle": "More resources are waiting for you.",
-    "ownedCtaButton": "All resources"
+    "ownedCtaButton": "All resources",
+    "byline": "By {name}",
+    "productType_video": "Video",
+    "productType_audio": "Audio",
+    "productType_pdf": "PDF document",
+    "productType_webinar": "Webinar",
+    "productType_external": "External link",
+    "productPreviewNotice": "Preview: this product is not on sale right now. Only its professional and the team see it.",
+    "productWithdrawnNotice": "This product is no longer on sale, but you bought it: it stays yours.",
+    "productDownloadPdf": "Download the document",
+    "productExternalCta": "View the product",
+    "webinarWhen": "On {date}",
+    "webinarDuration": "{minutes} minutes",
+    "webinarJoin": "Join the webinar",
+    "webinarReplay": "Watch the replay"
   },
   "ResourceCheckout": {
     "title": "Unlock the resource",
@@ -3349,7 +3365,9 @@
       "showcases": "Showcase pages",
       "showcase": "My showcase page",
       "waitlist": "Waitlist",
-      "waitlists": "Waitlists"
+      "waitlists": "Waitlists",
+      "products": "Trainings and products",
+      "productsReview": "Products to review"
     },
     "overview": {
       "title": "Welcome Back",
@@ -7424,7 +7442,15 @@
       "bookBody": "Send your request online in a few minutes. Je chemine confirms your appointment.",
       "metaTitle": "{name}, {title} in {city}",
       "metaTitleNoTitle": "{name}, mental health in {city}",
-      "metaDescription": "{name}, mental-health professional in {city} ({region}): profile, areas of expertise, fees and appointment requests with Je chemine."
+      "metaDescription": "{name}, mental-health professional in {city} ({region}): profile, areas of expertise, fees and appointment requests with Je chemine.",
+      "productsTitle": "Trainings and products",
+      "productType_video": "Video",
+      "productType_audio": "Audio",
+      "productType_pdf": "PDF document",
+      "productType_webinar": "Webinar",
+      "productType_external": "External link",
+      "productFree": "Free",
+      "productOpen": "View"
     },
     "titles": {
       "psychologist": "Psychologist",
@@ -8198,6 +8224,289 @@
       "confirm": "Remove",
       "done": "The person was removed from the waitlist.",
       "gone": "This entry can no longer be removed: it is already closed or the person is booking right now. The list was refreshed."
+    }
+  },
+  "ProductsPro": {
+    "title": "Trainings and products",
+    "subtitle": "Publish and sell your trainings, videos, audio, PDFs and webinars on Je chemine, or promote a link to your own website.",
+    "common": {
+      "cancel": "Cancel"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "review": "The team reviews every product before it goes live. Submit it when it is ready; the team approves it or sends it back with comments.",
+      "commission": "The platform keeps a share of each sale, which covers Stripe fees. The rest is credited to the balance shown in “Billing”.",
+      "access": "People who bought a product keep access to it, even if you later take it down."
+    },
+    "list": {
+      "new": "New product",
+      "loadError": "Your products could not be loaded.",
+      "retry": "Try again",
+      "emptyTitle": "No products yet",
+      "emptyBody": "Create your first product: choose its type, give it a title, then complete it before submitting it to the team.",
+      "price": "Price",
+      "free": "Free",
+      "noPrice": "Not set",
+      "sales": "Sales",
+      "updated": "Updated",
+      "viewPublic": "View public page",
+      "edit": "Edit"
+    },
+    "create": {
+      "title": "New product",
+      "description": "Choose the type of product and its French title. You can complete the rest afterwards.",
+      "type": "Product type",
+      "titleFr": "French title",
+      "titleHint": "The title is also used to create the page address, which cannot be changed later.",
+      "submit": "Create draft"
+    },
+    "types": {
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinar",
+      "external": "External link"
+    },
+    "typeHints": {
+      "video": "A video hosted on YouTube, Vimeo, Dailymotion or Loom, available after purchase.",
+      "audio": "Audio hosted on Spotify, Apple Podcasts or SoundCloud, available after purchase.",
+      "pdf": "A PDF document you upload, downloadable after purchase.",
+      "webinar": "A live session on a set date, with the room link and, if you like, a replay.",
+      "external": "A free link to your own website, to promote an offer sold elsewhere."
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "unpublished": "Taken down"
+    },
+    "badges": {
+      "live": "Live",
+      "changesPending": "Changes to review"
+    },
+    "banner": {
+      "draft": "This product is not visible yet. Complete it, then submit it to the team.",
+      "submitted": "The team is reviewing this product. You will get an email as soon as a decision is made.",
+      "approved": "This product was approved. It is sold on the site as long as your account is active.",
+      "rejected": "The team sent this product back. Make the requested changes, then submit it again.",
+      "unpublishedByProfessional": "You took this product down. Submit it again to bring it back online.",
+      "unpublishedByAdmin": "The team took this product down. Submit it again to bring it back online.",
+      "notes": "Comments from the team",
+      "changesPending": "Your latest changes are already live and the team will review them."
+    },
+    "editor": {
+      "back": "Trainings and products",
+      "loadError": "This product could not be loaded.",
+      "retry": "Try again",
+      "sales": "{count, plural, =0 {no sales} one {# sale} other {# sales}}",
+      "lockedNotice": "This product is under review and cannot be edited. Withdraw the submission to edit it.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "unsaved": "You have unsaved changes."
+    },
+    "fields": {
+      "sectionFrench": "Presentation",
+      "titleFr": "Title",
+      "summaryFr": "Summary",
+      "summaryHint": "{count} / {max} characters. Shown in lists and under the title.",
+      "sectionPrice": "Price and visibility",
+      "price": "Price (taxes included)",
+      "priceHint": "Between $5 and $1,000.",
+      "externalFree": "An external link is always free on Je chemine.",
+      "listInLibrary": "Also list in the site library",
+      "listInLibraryHint": "The product also appears in the resource library, in addition to your page.",
+      "sectionCover": "Cover image",
+      "coverHint": "PNG, JPEG or WebP, 2 MB at most. Landscape format recommended.",
+      "coverAlt": "Cover image preview",
+      "uploadCover": "Add an image",
+      "replaceCover": "Replace image",
+      "removeCover": "Remove image",
+      "sectionDelivery": "What the buyer gets",
+      "mediaUrlFr": "Video or audio link",
+      "mediaUrlEn": "English version link (optional)",
+      "mediaHintVideo": "A YouTube, Vimeo, Dailymotion or Loom link (https).",
+      "mediaHintAudio": "A Spotify, Apple Podcasts or SoundCloud link (https).",
+      "fileFr": "PDF file",
+      "fileEn": "English PDF file (optional)",
+      "fileHint": "PDF, 10 MB at most. The file is uploaded right away, without waiting for you to save.",
+      "fileEnHint": "Without an English file, the French PDF is offered.",
+      "fileUploaded": "File uploaded.",
+      "noFile": "No file",
+      "uploadFile": "Upload a PDF",
+      "replaceFile": "Replace PDF",
+      "webinarStartsAt": "Date and time",
+      "webinarTimezone": "Montréal time.",
+      "webinarDuration": "Length (minutes)",
+      "webinarDurationHint": "Between 15 and {max} minutes.",
+      "webinarJoinUrl": "Room link",
+      "webinarJoinHint": "Zoom, Teams, Google Meet or other (https). Shared only with registered people.",
+      "webinarReplayUrl": "Replay link (optional)",
+      "webinarReplayHint": "Add it after the session for registered people.",
+      "externalUrl": "Link to your website",
+      "externalHint": "The address (https) of the page that presents the offer.",
+      "sectionBody": "Content",
+      "previewFr": "Teaser (optional)",
+      "previewHint": "Shown to everyone, above the price. Without a teaser, the summary is used.",
+      "contentFr": "Content",
+      "contentHint": "Only for people who bought the product.",
+      "contentHintExternal": "The description shown on the link's page.",
+      "sectionEnglish": "English version (optional)",
+      "englishHint": "Any English field left empty uses the French text.",
+      "titleEn": "English title",
+      "summaryEn": "English summary",
+      "previewEn": "English teaser",
+      "contentEn": "English content"
+    },
+    "missing": {
+      "title": "What's missing",
+      "none": "Everything is ready to submit.",
+      "afterSave": "The list updates after you save."
+    },
+    "requirements": {
+      "title": "A French title",
+      "summary": "A French summary",
+      "content": "A description or a summary",
+      "price": "A price between $5 and $1,000",
+      "media": "The video or audio link",
+      "file": "The PDF file",
+      "link": "The link to your website",
+      "webinar": "The webinar date and room link",
+      "attestation": "The content rights attestation"
+    },
+    "actions": {
+      "submit": "Submit to the team",
+      "withdraw": "Withdraw submission",
+      "unpublish": "Take down",
+      "delete": "Delete",
+      "preview": "Preview page"
+    },
+    "submit": {
+      "title": "Submit this product",
+      "body": "The team will review the product before it goes live. You cannot edit it during the review.",
+      "stillMissing": "Still missing:",
+      "attest": "I confirm that I hold the rights to this content and accept the professionals' terms of sale",
+      "confirm": "Submit",
+      "done": "Product submitted. The team will email you as soon as a decision is made.",
+      "saveFirst": "Your changes could not be saved. Fix them before submitting."
+    },
+    "withdraw": {
+      "done": "Submission withdrawn. The product is a draft again."
+    },
+    "unpublish": {
+      "title": "Take this product down?",
+      "body": "It will no longer be sold. People who already bought it keep access. To bring it back online, you will need to submit it again.",
+      "confirm": "Take down",
+      "done": "The product was taken down."
+    },
+    "delete": {
+      "title": "Delete this product?",
+      "body": "The product and its files will be permanently deleted.",
+      "confirm": "Delete",
+      "hasSales": "This product has already been bought: it cannot be deleted, since the people who bought it keep access. You can take it down instead."
+    },
+    "errors": {
+      "INVALID_TITLE": "The title is required and must be 120 characters or fewer.",
+      "INVALID_SUMMARY": "The summary must be 400 characters or fewer.",
+      "INVALID_HTML": "The content could not be read.",
+      "HTML_TOO_LARGE": "The content is too long. Shorten it or remove some images.",
+      "INVALID_PRICE": "The price must be between $5 and $1,000.",
+      "INVALID_MEDIA_URL": "This link is not accepted. Use an https link from one of the listed services.",
+      "INVALID_LINK": "This link is not valid. It must start with https://.",
+      "INVALID_WEBINAR": "The webinar date or length is not valid.",
+      "INVALID_IMAGE": "This image is not valid. Upload it again.",
+      "INVALID_TYPE": "This product type is not available.",
+      "UNDER_REVIEW": "This product is under review. Withdraw the submission to edit it.",
+      "TRANSITION_NOT_ALLOWED": "This action is no longer possible in the product's current state.",
+      "INCOMPLETE": "The product is not complete yet:",
+      "HAS_SALES": "This product has already been bought and cannot be deleted. You can take it down instead.",
+      "NOT_FOUND": "This product could not be found.",
+      "SCAN_UNAVAILABLE": "The virus scan is unavailable right now. Try again in a few minutes.",
+      "ACCOUNT_NOT_ACTIVE": "This section is for professionals whose account is active and approved.",
+      "FILE_TOO_LARGE": "This file is too large.",
+      "FILE_REJECTED": "This file is not accepted. Check its format and size.",
+      "generic": "Something went wrong. Try again."
+    }
+  },
+  "ProductsAdmin": {
+    "title": "Products",
+    "subtitle": "Trainings and digital products that professionals sell on Je chemine. Approve to put them on sale, reject with notes, or take a live product down.",
+    "previewNote": "The team never edits a professional's text: open the preview to see the product as it will be shown.",
+    "refresh": "Refresh",
+    "scopes": {
+      "review": "To review",
+      "all": "All"
+    },
+    "search": "Search by title or professional",
+    "count": "{count, plural, =0 {No products} one {# product} other {# products}}",
+    "empty": "No matching products.",
+    "emptyReview": "Nothing to review right now.",
+    "columns": {
+      "title": "Title",
+      "professional": "Professional",
+      "type": "Type",
+      "price": "Price",
+      "status": "Status",
+      "submitted": "Submitted",
+      "sales": "Sales",
+      "actions": "Actions"
+    },
+    "preview": "Preview",
+    "free": "Free",
+    "changesPending": "Changes to review",
+    "live": "Live",
+    "lastNotes": "Latest notes: {notes}",
+    "types": {
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinar",
+      "external": "External link"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "unpublished": "Taken down"
+    },
+    "actions": {
+      "approve": "Approve",
+      "approveChanges": "Approve changes",
+      "reject": "Reject",
+      "unpublish": "Take down"
+    },
+    "rejectDialog": {
+      "title": "Reject “{title}”",
+      "body": "Your notes will be sent to the professional to help them fix their product.",
+      "notesLabel": "Notes (required)",
+      "notesPlaceholder": "Explain what needs to be fixed…",
+      "confirm": "Reject product"
+    },
+    "unpublishDialog": {
+      "title": "Take down “{title}”",
+      "body": "The product will no longer be on sale. People who already bought it keep their access.",
+      "confirm": "Take down product"
+    },
+    "cancel": "Cancel",
+    "done": {
+      "approve": "“{title}” is approved and on sale.",
+      "approveChanges": "Changes to “{title}” are approved.",
+      "reject": "“{title}” was rejected; the notes were sent.",
+      "unpublish": "“{title}” was taken down."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Could not connect. Check your network and try again.",
+      "NOTES_REQUIRED": "Add notes explaining the rejection.",
+      "TRANSITION_NOT_ALLOWED": "This product changed in the meantime. The list has been refreshed.",
+      "NOT_FOUND": "This product no longer exists. The list has been refreshed.",
+      "INVALID_ACTION": "Unknown action."
+    },
+    "access": {
+      "title": "Access required",
+      "body": "Content management rights are needed to review products. Ask a super admin for access."
     }
   }
 }

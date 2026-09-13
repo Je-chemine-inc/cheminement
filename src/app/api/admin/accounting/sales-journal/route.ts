@@ -101,12 +101,17 @@ export async function GET(req: NextRequest) {
           nameOf(r.professionalId),
           refId(r.appointmentId),
           day(apt?.date),
-          r.sessionActNature,
+          // A product sale (spec 003 phase 5) names its product instead of an act.
+          r.sessionActNature ?? r.productSlug,
           r.grossAmountCad,
           r.platformFeeCad,
           r.netToProfessionalCad,
           r.paymentChannel,
-          "vente",
+          r.source === "product_sale_reversal"
+            ? "remboursement_produit"
+            : r.source === "product_sale" || r.source === "product_sale_recredit"
+              ? "vente_produit"
+              : "vente",
         ],
       };
     });

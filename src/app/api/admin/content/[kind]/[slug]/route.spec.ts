@@ -35,7 +35,8 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/models/Admin", () => ({ default: { findOne: h.adminFindOne } }));
 vi.mock("@/models/ContentEntry", () => ({
-  default: { find: h.entryFind, deleteMany: h.entryDeleteMany },
+  // `exists`: the DELETE guard for a professional's product (spec 003 phase 5); none here.
+  default: { find: h.entryFind, deleteMany: h.entryDeleteMany, exists: async () => null },
   CONTENT_KIND_PUBLIC_BASE: {
     problematique: "/explore",
     traitement: "/approaches",

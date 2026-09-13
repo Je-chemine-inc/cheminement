@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Store,
   ListOrdered,
+  GraduationCap,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -131,6 +132,11 @@ export function ProfessionalSidebar() {
           title: t("billing"),
           url: "/professional/dashboard/billing",
           icon: Wallet,
+        },
+        {
+          title: t("products"),
+          url: "/professional/dashboard/products",
+          icon: GraduationCap,
         },
       ],
     },

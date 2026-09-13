@@ -11,6 +11,8 @@ import ResourceEntitlement from "@/models/ResourceEntitlement";
 import User from "@/models/User";
 import { isPremiumEntry } from "@/lib/content-premium";
 import { RESOURCE_PURCHASE_TYPE, newAccessToken } from "@/lib/resource-entitlement";
+import PlatformSettings from "@/models/PlatformSettings";
+import { commissionBpsOf } from "@/lib/product-rules";
 
 /**
  * Start a purchase of a premium resource.
@@ -86,6 +88,35 @@ export async function POST(
     }
 
     const amountCents = frDoc.priceCents;
+
+    // A professional's product (spec 003 phase 5): on sale only while approved
+    // and while its professional's account is active; the commission is
+    // snapshotted on the purchase so a later settings change cannot alter it.
+    let productSnapshot: {
+      ownerProfessionalId: unknown;
+      commissionBps: number;
+      productType?: string;
+      taxTreatment: "inclusive_untracked";
+    } | null = null;
+    if (frDoc.ownerProfessionalId) {
+      const ownerActive = await User.exists({
+        _id: frDoc.ownerProfessionalId,
+        role: "professional",
+        status: "active",
+      });
+      if (!ownerActive || frDoc.moderation?.status !== "approved") {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const settings = await PlatformSettings.findOne()
+        .select("productCommissionPercentage")
+        .lean<{ productCommissionPercentage?: number } | null>();
+      productSnapshot = {
+        ownerProfessionalId: frDoc.ownerProfessionalId,
+        commissionBps: commissionBpsOf(settings?.productCommissionPercentage),
+        productType: frDoc.productType,
+        taxTreatment: "inclusive_untracked",
+      };
+    }
 
     // --- who is buying -------------------------------------------------------
     const session = await getServerSession(authOptions);
@@ -168,6 +199,7 @@ export async function POST(
           currency: "cad",
           status: "pending",
           stripeCustomerId: customerId,
+          ...(productSnapshot ?? {}),
         },
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
@@ -220,6 +252,12 @@ export async function POST(
           buyerUserId: userId ?? "",
           buyerEmail,
           locale,
+          ...(productSnapshot
+            ? {
+                ownerProfessionalId: String(productSnapshot.ownerProfessionalId),
+                commissionBps: String(productSnapshot.commissionBps),
+              }
+            : {}),
           // appointmentId is deliberately absent.
         },
       },

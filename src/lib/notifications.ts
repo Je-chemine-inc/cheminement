@@ -9224,3 +9224,169 @@ export async function sendWaitlistRemovedEmail(data: {
   const text = buildEmailText([copy.title, copy.intro, copy.box, `${copy.cta} : ${data.pageUrl}`], lang);
   return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_removed");
 }
+
+/* ------------------------------------------------------------------------ */
+/* Products professionals sell (spec 003 phase 5)                            */
+/* ------------------------------------------------------------------------ */
+
+const PRODUCTS_DASHBOARD_PATH = "/professional/dashboard/products";
+
+function formatCents(cents: number, lang: "fr" | "en"): string {
+  return new Intl.NumberFormat(lang === "en" ? "en-CA" : "fr-CA", { style: "currency", currency: "CAD" }).format(cents / 100);
+}
+
+/** A product sold. Never names the buyer. */
+export async function sendProductSoldEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  productTitle: string;
+  amountCents: number;
+  netCents: number;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const url = showcaseAppUrl(PRODUCTS_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: "Vous avez fait une vente",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: `Une personne vient d'acheter « ${data.productTitle} ».`,
+      labels: { price: "Prix payé", net: "Votre part" },
+      box: "Votre part est portée à votre solde et vous est versée avec vos séances. Si l'achat est remboursé ou contesté, elle en est retirée.",
+      cta: "Voir mes produits",
+    },
+    en: {
+      title: "You made a sale",
+      greeting: `Hello ${data.professionalName},`,
+      intro: `Someone just bought “${data.productTitle}”.`,
+      labels: { price: "Price paid", net: "Your share" },
+      box: "Your share is added to your balance and paid out with your sessions. If the purchase is refunded or disputed, it is taken back.",
+      cta: "View my products",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.price, value: formatCents(data.amountCents, lang) },
+      { label: copy.labels.net, value: formatCents(data.netCents, lang) },
+    ],
+    infoBox: { title: lang === "en" ? "Payment" : "Versement", content: copy.box, theme: "info" },
+    button: { text: copy.cta, url },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.price} : ${formatCents(data.amountCents, lang)}`, `${copy.labels.net} : ${formatCents(data.netCents, lang)}`, copy.box, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "product_sold");
+}
+
+/** The team approved, rejected or took down a professional's product. */
+export async function sendProductModerationDecisionEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  productTitle: string;
+  decision: "approved" | "rejected" | "unpublished";
+  notes: string | null;
+  productUrl: string | null;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl(PRODUCTS_DASHBOARD_PATH);
+  const title = data.productTitle;
+  const copy = {
+    fr: {
+      title: {
+        approved: "Votre produit est en ligne",
+        rejected: "Quelques modifications à votre produit",
+        unpublished: "Votre produit est retiré",
+      }[data.decision],
+      intro: {
+        approved: `« ${title} » est approuvé et en vente.`,
+        rejected: `Notre équipe a relu « ${title} » et vous demande quelques modifications avant de le mettre en vente.`,
+        unpublished: `Notre équipe a retiré « ${title} » de la vente. Les personnes qui l'ont acheté y gardent accès.`,
+      }[data.decision],
+      notes: "Commentaires de l'équipe",
+      view: "Voir le produit",
+      dashboard: "Voir mes produits",
+    },
+    en: {
+      title: {
+        approved: "Your product is online",
+        rejected: "A few changes to your product",
+        unpublished: "Your product was taken down",
+      }[data.decision],
+      intro: {
+        approved: `“${title}” is approved and on sale.`,
+        rejected: `Our team reviewed “${title}” and asks for a few changes before putting it on sale.`,
+        unpublished: `Our team took “${title}” off sale. People who bought it keep their access.`,
+      }[data.decision],
+      notes: "Comments from the team",
+      view: "View the product",
+      dashboard: "View my products",
+    },
+  }[lang];
+  const button =
+    data.decision === "approved" && data.productUrl
+      ? { text: copy.view, url: data.productUrl }
+      : { text: copy.dashboard, url: dashboardUrl };
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: data.decision === "approved" ? "success" : "warning",
+    greeting: lang === "en" ? `Hello ${data.professionalName},` : `Bonjour ${data.professionalName},`,
+    intro: copy.intro,
+    ...(data.notes ? { infoBox: { title: copy.notes, content: data.notes, theme: "warning" as const } } : {}),
+    button,
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.notes ? `${copy.notes} :\n${data.notes}` : "", `${button.text} : ${button.url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "product_moderation_decision");
+}
+
+/** A professional sent a product for review. French-only team alert. */
+export async function sendAdminProductSubmittedAlert(data: {
+  professionalName: string;
+  productTitle: string;
+  slug: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminProductSubmittedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/products");
+  const title = "Produit à vérifier";
+  const intro = `${data.professionalName} a envoyé « ${data.productTitle} » pour vérification. Il n'est mis en vente qu'après votre approbation.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Produit", value: data.productTitle },
+    ],
+    button: { text: "Vérifier le produit", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Vérifier le produit : ${url}`], "fr");
+  const subject = await getSubject("admin_product_submitted", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_product_submitted");
+  }
+}

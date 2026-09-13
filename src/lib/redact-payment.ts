@@ -115,6 +115,10 @@ export const PROFESSIONAL_VISIBLE_LEDGER_FIELDS = [
   "payoutAmountCad",
   "payoutReference",
   "payoutNotes",
+  // A product sale and its corrections (spec 003 phase 5): the professional's
+  // own product, and the net they receive — never the gross or the fee.
+  "source",
+  "productSlug",
   "createdAt",
 ] as const;
 

@@ -32,6 +32,7 @@ import {
   Receipt,
   Store,
   ListOrdered,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -111,6 +112,11 @@ export function AdminSidebar() {
           url: "/admin/dashboard/waitlist",
           icon: ListOrdered,
           requires: "manageProfessionals",
+        },
+        {
+          title: t("productsReview"),
+          url: "/admin/dashboard/products",
+          icon: GraduationCap,
         },
         {
           title: t("patients"),

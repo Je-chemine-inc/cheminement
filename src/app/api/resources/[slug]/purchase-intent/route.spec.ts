@@ -20,6 +20,8 @@ const h = vi.hoisted(() => ({
   entFindOneAndUpdate: vi.fn(),
   entUpdateOne: vi.fn(),
   userFindById: vi.fn(),
+  userExists: vi.fn(),
+  settingsFindOne: vi.fn(),
   customersList: vi.fn(),
   customersCreate: vi.fn(),
   piCreate: vi.fn(),
@@ -60,7 +62,8 @@ vi.mock("@/models/ResourceEntitlement", () => ({
     updateOne: h.entUpdateOne,
   },
 }));
-vi.mock("@/models/User", () => ({ default: { findById: h.userFindById } }));
+vi.mock("@/models/User", () => ({ default: { findById: h.userFindById, exists: h.userExists } }));
+vi.mock("@/models/PlatformSettings", () => ({ default: { findOne: h.settingsFindOne } }));
 vi.mock("@/lib/resource-entitlement", () => ({
   RESOURCE_PURCHASE_TYPE: "resource_purchase",
   newAccessToken: () => "f".repeat(64),
@@ -399,5 +402,92 @@ describe("rate limiting", () => {
     expect(res.status).toBe(429);
     expect(h.piCreate).not.toHaveBeenCalled();
     expect(h.entryFind).not.toHaveBeenCalled();
+  });
+});
+
+describe("a professional's product (spec 003 phase 5)", () => {
+  const PRO_ID = "0123456789abcdef01234567";
+  const SNAPSHOT_KEYS = ["ownerProfessionalId", "commissionBps", "productType", "taxTreatment"];
+
+  const productDoc = (locale: string, over: Record<string, unknown> = {}) =>
+    doc(locale, {
+      ownerProfessionalId: PRO_ID,
+      productType: "pdf",
+      moderation: { status: "approved" },
+      ...over,
+    });
+  const settingsQuery = (value: unknown) => ({ select: () => ({ lean: async () => value }) });
+  const entitlementSet = (n = 0) =>
+    (h.entFindOneAndUpdate.mock.calls[n]?.[1] as { $set: Record<string, unknown> }).$set;
+
+  beforeEach(() => {
+    h.entryFind.mockResolvedValue([productDoc("fr"), productDoc("en")]);
+    h.userExists.mockResolvedValue({ _id: PRO_ID });
+    h.settingsFindOne.mockImplementation(() => settingsQuery({ productCommissionPercentage: 12.5 }));
+  });
+
+  it("404s while the professional's account is not active", async () => {
+    h.userExists.mockResolvedValue(null);
+
+    const res = await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(res.status).toBe(404);
+    expect(h.userExists).toHaveBeenCalledWith({ _id: PRO_ID, role: "professional", status: "active" });
+    expect(h.entFindOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.piCreate).not.toHaveBeenCalled();
+  });
+
+  it("404s a product the team has not approved", async () => {
+    for (const moderation of [{ status: "submitted" }, { status: "draft" }, { status: "rejected" }, { status: "unpublished" }, undefined]) {
+      h.entryFind.mockResolvedValue([productDoc("fr", { moderation }), productDoc("en", { moderation })]);
+      const res = await POST(req({ email: "guest@example.com" }), ctx());
+      expect(res.status).toBe(404);
+    }
+    expect(h.entFindOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.piCreate).not.toHaveBeenCalled();
+  });
+
+  it("snapshots the owner, commission, type and tax treatment on the entitlement", async () => {
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(entitlementSet()).toMatchObject({
+      ownerProfessionalId: PRO_ID,
+      commissionBps: 1250,
+      productType: "pdf",
+      taxTreatment: "inclusive_untracked",
+    });
+  });
+
+  it("takes the default 20 % commission when no setting is saved", async () => {
+    for (const settings of [null, {}]) {
+      h.entFindOneAndUpdate.mockClear();
+      h.settingsFindOne.mockImplementation(() => settingsQuery(settings));
+      await POST(req({ email: "guest@example.com" }), ctx());
+      expect(entitlementSet().commissionBps).toBe(2000);
+    }
+  });
+
+  it("carries the owner and the commission in the intent's metadata", async () => {
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    const md = createArgs().metadata;
+    expect(md.ownerProfessionalId).toBe(PRO_ID);
+    expect(md.commissionBps).toBe("1250");
+    expect(md.type).toBe("resource_purchase");
+  });
+
+  it("adds none of these to the team's own resources", async () => {
+    h.entryFind.mockResolvedValue([doc("fr"), doc("en")]);
+
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    const set = entitlementSet();
+    const md = createArgs().metadata;
+    for (const key of SNAPSHOT_KEYS) {
+      expect(key in set).toBe(false);
+      expect(key in md).toBe(false);
+    }
+    expect(h.userExists).not.toHaveBeenCalled();
+    expect(h.settingsFindOne).not.toHaveBeenCalled();
   });
 });

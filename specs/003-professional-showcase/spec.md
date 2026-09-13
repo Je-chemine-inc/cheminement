@@ -4,9 +4,11 @@
 decision in [ADR-0003](../../docs/architecture/decisions/0003-per-city-showcase-hosts.md).
 **Progress:** phase 0 (city hosts), phase 1 (pages, invitations, admin review), phase 2 (city,
 expertise and region pages, visit counts), phase 3 (free times on the pages, requests held until the
-professional answers, quick consultation pricing) and phase 4 (a professional's waitlist: offers held
-15 minutes by email and, with consent, text message) built, not merged; everything is dark behind
-`showcaseEnabled`.
+professional answers, quick consultation pricing), phase 4 (a professional's waitlist: offers held
+15 minutes by email and, with consent, text message) and phase 5 (trainings and digital products
+professionals publish, the team reviews and the platform sells, their share credited to the ledger)
+built, not merged; everything showcase-related is dark behind `showcaseEnabled`. Products are not
+behind that switch: none exists until a professional creates one and the team approves it.
 **Created:** 2026-09-12.
 **Origin:** the clinic's cahier des charges « Pages Vitrines Praticiens & Entonnoir SEO » (v1.0,
 2026-09-12): one page per professional that introduces them to the public and feeds a local search

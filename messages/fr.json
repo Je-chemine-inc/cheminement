@@ -589,7 +589,9 @@
       "primaryColor": "Couleur Primaire",
       "secondaryColor": "Couleur Secondaire",
       "quickSession": "Consultation ponctuelle rapide",
-      "quickSessionHelp": "Prix par défaut d'une consultation ponctuelle rapide. Laissé vide : le prix d'une séance individuelle."
+      "quickSessionHelp": "Prix par défaut d'une consultation ponctuelle rapide. Laissé vide : le prix d'une séance individuelle.",
+      "productCommission": "Commission sur les produits des professionnels (%)",
+      "productCommissionHelp": "Part de la plateforme sur chaque vente d'une formation ou d'un produit d'un professionnel ; elle couvre les frais Stripe. Chaque achat garde le taux en vigueur au moment du paiement."
     },
     "admins": {
       "title": "Gestion des Administrateurs",
@@ -2379,7 +2381,21 @@
     "ctaTitle": "Prêt à parler à un professionnel ?",
     "ctaButton": "Prendre rendez-vous",
     "ownedCtaTitle": "D'autres ressources vous attendent.",
-    "ownedCtaButton": "Toutes les ressources"
+    "ownedCtaButton": "Toutes les ressources",
+    "byline": "Par {name}",
+    "productType_video": "Vidéo",
+    "productType_audio": "Audio",
+    "productType_pdf": "Document PDF",
+    "productType_webinar": "Webinaire",
+    "productType_external": "Lien externe",
+    "productPreviewNotice": "Aperçu : ce produit n'est pas en vente en ce moment. Seuls son professionnel et l'équipe le voient.",
+    "productWithdrawnNotice": "Ce produit n'est plus en vente, mais vous l'avez acheté : il reste à vous.",
+    "productDownloadPdf": "Télécharger le document",
+    "productExternalCta": "Voir le produit",
+    "webinarWhen": "Le {date}",
+    "webinarDuration": "{minutes} minutes",
+    "webinarJoin": "Rejoindre le webinaire",
+    "webinarReplay": "Voir la reprise"
   },
   "ResourceCheckout": {
     "title": "Débloquer la ressource",
@@ -3350,7 +3366,9 @@
       "showcases": "Pages vitrines",
       "showcase": "Ma page vitrine",
       "waitlist": "Liste d'attente",
-      "waitlists": "Listes d'attente"
+      "waitlists": "Listes d'attente",
+      "products": "Formations et produits",
+      "productsReview": "Produits à vérifier"
     },
     "overview": {
       "title": "Bienvenue",
@@ -7423,7 +7441,15 @@
       "bookBody": "Faites votre demande en ligne en quelques minutes. Je chemine vous confirme le rendez-vous.",
       "metaTitle": "{name}, {title} à {city}",
       "metaTitleNoTitle": "{name}, santé mentale à {city}",
-      "metaDescription": "{name}, professionnel en santé mentale à {city} ({region}) : présentation, champs d'expertise, tarifs et demande de rendez-vous avec Je chemine."
+      "metaDescription": "{name}, professionnel en santé mentale à {city} ({region}) : présentation, champs d'expertise, tarifs et demande de rendez-vous avec Je chemine.",
+      "productsTitle": "Formations et produits",
+      "productType_video": "Vidéo",
+      "productType_audio": "Audio",
+      "productType_pdf": "Document PDF",
+      "productType_webinar": "Webinaire",
+      "productType_external": "Lien externe",
+      "productFree": "Gratuit",
+      "productOpen": "Voir"
     },
     "titles": {
       "psychologist": "Psychologue",
@@ -8197,6 +8223,289 @@
       "confirm": "Retirer",
       "done": "La personne a été retirée de la liste d'attente.",
       "gone": "Cette inscription ne peut plus être retirée : elle est déjà fermée ou la personne est en train de réserver. La liste a été actualisée."
+    }
+  },
+  "ProductsPro": {
+    "title": "Formations et produits",
+    "subtitle": "Publiez et vendez vos formations, vidéos, audios, PDF et webinaires sur Je chemine, ou faites connaître un lien vers votre propre site.",
+    "common": {
+      "cancel": "Annuler"
+    },
+    "howItWorks": {
+      "title": "Comment ça fonctionne",
+      "review": "Chaque produit est vérifié par l'équipe avant d'être mis en ligne. Vous le soumettez quand il est prêt; l'équipe l'approuve ou vous le renvoie avec ses commentaires.",
+      "commission": "La plateforme conserve une part de chaque vente, qui couvre les frais Stripe. Le reste est crédité au solde affiché dans « Facturation ».",
+      "access": "Les personnes qui ont acheté un produit y gardent accès, même si vous le retirez du site par la suite."
+    },
+    "list": {
+      "new": "Nouveau produit",
+      "loadError": "Impossible de charger vos produits.",
+      "retry": "Réessayer",
+      "emptyTitle": "Aucun produit pour l'instant",
+      "emptyBody": "Créez votre premier produit : choisissez son type, donnez-lui un titre, puis complétez-le avant de le soumettre à l'équipe.",
+      "price": "Prix",
+      "free": "Gratuit",
+      "noPrice": "À définir",
+      "sales": "Ventes",
+      "updated": "Modifié le",
+      "viewPublic": "Voir la page publique",
+      "edit": "Modifier"
+    },
+    "create": {
+      "title": "Nouveau produit",
+      "description": "Choisissez le type de produit et son titre en français. Vous pourrez compléter le reste ensuite.",
+      "type": "Type de produit",
+      "titleFr": "Titre en français",
+      "titleHint": "Le titre sert aussi à créer l'adresse de la page, qui ne change plus par la suite.",
+      "submit": "Créer le brouillon"
+    },
+    "types": {
+      "video": "Vidéo",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinaire",
+      "external": "Lien externe"
+    },
+    "typeHints": {
+      "video": "Une vidéo hébergée sur YouTube, Vimeo, Dailymotion ou Loom, visible après l'achat.",
+      "audio": "Un audio hébergé sur Spotify, Apple Podcasts ou SoundCloud, à écouter après l'achat.",
+      "pdf": "Un document PDF que vous téléversez, téléchargeable après l'achat.",
+      "webinar": "Une séance en direct à une date précise, avec le lien de la salle et, au besoin, la rediffusion.",
+      "external": "Un lien gratuit vers votre propre site, pour faire connaître une offre vendue ailleurs."
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "En vérification",
+      "approved": "Approuvé",
+      "rejected": "Refusé",
+      "unpublished": "Retiré"
+    },
+    "badges": {
+      "live": "En ligne",
+      "changesPending": "Modifications à vérifier"
+    },
+    "banner": {
+      "draft": "Ce produit n'est pas encore visible. Complétez-le, puis soumettez-le à l'équipe.",
+      "submitted": "L'équipe vérifie ce produit. Vous recevrez un courriel dès qu'une décision sera prise.",
+      "approved": "Ce produit a été approuvé. Il est vendu sur le site tant que votre compte est actif.",
+      "rejected": "L'équipe vous a renvoyé ce produit. Apportez les changements demandés, puis soumettez-le de nouveau.",
+      "unpublishedByProfessional": "Vous avez retiré ce produit du site. Soumettez-le de nouveau pour le remettre en ligne.",
+      "unpublishedByAdmin": "L'équipe a retiré ce produit du site. Soumettez-le de nouveau pour le remettre en ligne.",
+      "notes": "Commentaires de l'équipe",
+      "changesPending": "Vos dernières modifications sont déjà en ligne et l'équipe va les vérifier."
+    },
+    "editor": {
+      "back": "Formations et produits",
+      "loadError": "Impossible de charger ce produit.",
+      "retry": "Réessayer",
+      "sales": "{count, plural, =0 {aucune vente} one {# vente} other {# ventes}}",
+      "lockedNotice": "Ce produit est en vérification et ne peut pas être modifié. Retirez la soumission pour le modifier.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Vous avez des modifications non enregistrées."
+    },
+    "fields": {
+      "sectionFrench": "Présentation",
+      "titleFr": "Titre",
+      "summaryFr": "Résumé",
+      "summaryHint": "{count} / {max} caractères. Affiché dans les listes et sous le titre.",
+      "sectionPrice": "Prix et visibilité",
+      "price": "Prix (taxes incluses)",
+      "priceHint": "Entre 5 $ et 1 000 $.",
+      "externalFree": "Un lien externe est toujours gratuit sur Je chemine.",
+      "listInLibrary": "Aussi lister dans la bibliothèque du site",
+      "listInLibraryHint": "Le produit apparaît aussi dans la bibliothèque de ressources, en plus de votre page.",
+      "sectionCover": "Image de couverture",
+      "coverHint": "PNG, JPEG ou WebP, 2 Mo au maximum. Format paysage conseillé.",
+      "coverAlt": "Aperçu de l'image de couverture",
+      "uploadCover": "Ajouter une image",
+      "replaceCover": "Remplacer l'image",
+      "removeCover": "Retirer l'image",
+      "sectionDelivery": "Ce que la personne reçoit",
+      "mediaUrlFr": "Lien de la vidéo ou de l'audio",
+      "mediaUrlEn": "Lien de la version anglaise (facultatif)",
+      "mediaHintVideo": "Un lien YouTube, Vimeo, Dailymotion ou Loom (https).",
+      "mediaHintAudio": "Un lien Spotify, Apple Podcasts ou SoundCloud (https).",
+      "fileFr": "Fichier PDF",
+      "fileEn": "Fichier PDF en anglais (facultatif)",
+      "fileHint": "PDF, 10 Mo au maximum. Le fichier est téléversé tout de suite, sans attendre l'enregistrement.",
+      "fileEnHint": "Sans fichier anglais, le PDF français est offert.",
+      "fileUploaded": "Fichier téléversé.",
+      "noFile": "Aucun fichier",
+      "uploadFile": "Téléverser un PDF",
+      "replaceFile": "Remplacer le PDF",
+      "webinarStartsAt": "Date et heure",
+      "webinarTimezone": "Heure de Montréal.",
+      "webinarDuration": "Durée (minutes)",
+      "webinarDurationHint": "Entre 15 et {max} minutes.",
+      "webinarJoinUrl": "Lien de la salle",
+      "webinarJoinHint": "Zoom, Teams, Google Meet ou autre (https). Communiqué seulement aux personnes inscrites.",
+      "webinarReplayUrl": "Lien de la rediffusion (facultatif)",
+      "webinarReplayHint": "Ajoutez-le après la séance pour les personnes inscrites.",
+      "externalUrl": "Lien vers votre site",
+      "externalHint": "L'adresse (https) de la page où l'offre est présentée.",
+      "sectionBody": "Contenu",
+      "previewFr": "Aperçu (facultatif)",
+      "previewHint": "Affiché à tout le monde, au-dessus du prix. Sans aperçu, le résumé est utilisé.",
+      "contentFr": "Contenu",
+      "contentHint": "Réservé aux personnes qui ont acheté le produit.",
+      "contentHintExternal": "La description affichée sur la page du lien.",
+      "sectionEnglish": "Version anglaise (facultatif)",
+      "englishHint": "Tout champ laissé vide en anglais reprend le texte français.",
+      "titleEn": "Titre en anglais",
+      "summaryEn": "Résumé en anglais",
+      "previewEn": "Aperçu en anglais",
+      "contentEn": "Contenu en anglais"
+    },
+    "missing": {
+      "title": "Ce qui manque",
+      "none": "Tout est prêt pour la soumission.",
+      "afterSave": "La liste se met à jour après l'enregistrement."
+    },
+    "requirements": {
+      "title": "Un titre en français",
+      "summary": "Un résumé en français",
+      "content": "Une description ou un résumé",
+      "price": "Un prix entre 5 $ et 1 000 $",
+      "media": "Le lien de la vidéo ou de l'audio",
+      "file": "Le fichier PDF",
+      "link": "Le lien vers votre site",
+      "webinar": "La date et le lien de la salle du webinaire",
+      "attestation": "L'attestation des droits sur le contenu"
+    },
+    "actions": {
+      "submit": "Soumettre à l'équipe",
+      "withdraw": "Retirer la soumission",
+      "unpublish": "Retirer du site",
+      "delete": "Supprimer",
+      "preview": "Aperçu de la page"
+    },
+    "submit": {
+      "title": "Soumettre ce produit",
+      "body": "L'équipe vérifiera le produit avant sa mise en ligne. Vous ne pourrez pas le modifier pendant la vérification.",
+      "stillMissing": "Il manque encore :",
+      "attest": "J'atteste détenir les droits sur ce contenu et accepter les conditions de vente des professionnels",
+      "confirm": "Soumettre",
+      "done": "Produit soumis. L'équipe vous écrira dès qu'une décision sera prise.",
+      "saveFirst": "Vos modifications n'ont pas pu être enregistrées. Corrigez-les avant de soumettre."
+    },
+    "withdraw": {
+      "done": "Soumission retirée. Le produit est de nouveau un brouillon."
+    },
+    "unpublish": {
+      "title": "Retirer ce produit du site?",
+      "body": "Il ne sera plus vendu. Les personnes qui l'ont déjà acheté y gardent accès. Pour le remettre en ligne, il faudra le soumettre de nouveau.",
+      "confirm": "Retirer du site",
+      "done": "Le produit a été retiré du site."
+    },
+    "delete": {
+      "title": "Supprimer ce produit?",
+      "body": "Le produit et ses fichiers seront supprimés définitivement.",
+      "confirm": "Supprimer",
+      "hasSales": "Ce produit a déjà été acheté : il ne peut pas être supprimé, puisque les personnes qui l'ont acheté y gardent accès. Vous pouvez plutôt le retirer du site."
+    },
+    "errors": {
+      "INVALID_TITLE": "Le titre est obligatoire et ne doit pas dépasser 120 caractères.",
+      "INVALID_SUMMARY": "Le résumé ne doit pas dépasser 400 caractères.",
+      "INVALID_HTML": "Le contenu n'a pas pu être lu.",
+      "HTML_TOO_LARGE": "Le contenu est trop long. Raccourcissez-le ou retirez des images.",
+      "INVALID_PRICE": "Le prix doit se situer entre 5 $ et 1 000 $.",
+      "INVALID_MEDIA_URL": "Ce lien n'est pas accepté. Utilisez un lien https d'un des services indiqués.",
+      "INVALID_LINK": "Ce lien n'est pas valide. Il doit commencer par https://.",
+      "INVALID_WEBINAR": "La date ou la durée du webinaire n'est pas valide.",
+      "INVALID_IMAGE": "Cette image n'est pas valide. Téléversez-la de nouveau.",
+      "INVALID_TYPE": "Ce type de produit n'est pas offert.",
+      "UNDER_REVIEW": "Ce produit est en vérification. Retirez la soumission pour le modifier.",
+      "TRANSITION_NOT_ALLOWED": "Cette action n'est plus possible dans l'état actuel du produit.",
+      "INCOMPLETE": "Le produit n'est pas encore complet :",
+      "HAS_SALES": "Ce produit a déjà été acheté et ne peut pas être supprimé. Vous pouvez le retirer du site.",
+      "NOT_FOUND": "Ce produit est introuvable.",
+      "SCAN_UNAVAILABLE": "La vérification antivirus est indisponible pour le moment. Réessayez dans quelques minutes.",
+      "ACCOUNT_NOT_ACTIVE": "Cette section est réservée aux professionnels dont le compte est actif et approuvé.",
+      "FILE_TOO_LARGE": "Ce fichier est trop volumineux.",
+      "FILE_REJECTED": "Ce fichier n'est pas accepté. Vérifiez son format et sa taille.",
+      "generic": "Une erreur est survenue. Réessayez."
+    }
+  },
+  "ProductsAdmin": {
+    "title": "Produits",
+    "subtitle": "Les formations et produits numériques que les professionnel·les vendent sur Je chemine. Approuvez pour mettre en vente, refusez avec des notes ou retirez un produit en ligne.",
+    "previewNote": "L'équipe ne modifie jamais le texte d'un·e professionnel·le : ouvrez l'aperçu pour voir le produit tel qu'il sera affiché.",
+    "refresh": "Actualiser",
+    "scopes": {
+      "review": "À vérifier",
+      "all": "Tous"
+    },
+    "search": "Rechercher par titre ou professionnel·le",
+    "count": "{count, plural, =0 {Aucun produit} one {# produit} other {# produits}}",
+    "empty": "Aucun produit ne correspond.",
+    "emptyReview": "Rien à vérifier pour le moment.",
+    "columns": {
+      "title": "Titre",
+      "professional": "Professionnel·le",
+      "type": "Type",
+      "price": "Prix",
+      "status": "Statut",
+      "submitted": "Soumis le",
+      "sales": "Ventes",
+      "actions": "Actions"
+    },
+    "preview": "Aperçu",
+    "free": "Gratuit",
+    "changesPending": "Modifications à vérifier",
+    "live": "En ligne",
+    "lastNotes": "Dernières notes : {notes}",
+    "types": {
+      "video": "Vidéo",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinaire",
+      "external": "Lien externe"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "Soumis",
+      "approved": "Approuvé",
+      "rejected": "Refusé",
+      "unpublished": "Retiré"
+    },
+    "actions": {
+      "approve": "Approuver",
+      "approveChanges": "Approuver les modifications",
+      "reject": "Refuser",
+      "unpublish": "Retirer"
+    },
+    "rejectDialog": {
+      "title": "Refuser « {title} »",
+      "body": "Vos notes seront envoyées à la personne professionnelle pour l'aider à corriger son produit.",
+      "notesLabel": "Notes (obligatoires)",
+      "notesPlaceholder": "Expliquez ce qui doit être corrigé…",
+      "confirm": "Refuser le produit"
+    },
+    "unpublishDialog": {
+      "title": "Retirer « {title} »",
+      "body": "Le produit ne sera plus en vente. Les personnes qui l'ont déjà acheté y gardent l'accès.",
+      "confirm": "Retirer le produit"
+    },
+    "cancel": "Annuler",
+    "done": {
+      "approve": "« {title} » est approuvé et mis en vente.",
+      "approveChanges": "Les modifications de « {title} » sont approuvées.",
+      "reject": "« {title} » est refusé; les notes ont été envoyées.",
+      "unpublish": "« {title} » est retiré de la vente."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "NOTES_REQUIRED": "Ajoutez des notes pour expliquer le refus.",
+      "TRANSITION_NOT_ALLOWED": "Ce produit a changé entre-temps. La liste a été mise à jour.",
+      "NOT_FOUND": "Ce produit n'existe plus. La liste a été mise à jour.",
+      "INVALID_ACTION": "Action non reconnue."
+    },
+    "access": {
+      "title": "Accès requis",
+      "body": "La gestion du contenu est nécessaire pour vérifier les produits. Demandez l'accès à un·e super-administrateur·trice."
     }
   }
 }

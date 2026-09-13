@@ -7,6 +7,7 @@ import {
   findEntitlementForIntent,
   grantResourceEntitlement,
 } from "@/lib/resource-entitlement";
+import { settleProductPurchase } from "@/lib/products";
 
 /**
  * Called by the browser immediately after Stripe confirms a card.
@@ -69,6 +70,15 @@ export async function POST(
     const ent = await findEntitlementForIntent(pi);
     if (!ent || ent.status !== "paid") {
       return NextResponse.json({ error: "Access not granted" }, { status: 409 });
+    }
+
+    // A professional's product (spec 003 phase 5): their share, whichever of
+    // this confirmation and the webhook arrives first. The webhook settles it
+    // again if this fails.
+    if (ent.ownerProfessionalId) {
+      await settleProductPurchase(String(ent._id)).catch((error) =>
+        console.error("[resource] product ledger not settled on confirm:", error),
+      );
     }
 
     // The token is only useful to a guest — a member's access follows their

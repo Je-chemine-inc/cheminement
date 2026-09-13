@@ -53,13 +53,22 @@ export function isPremiumEntry(entry: {
  * happily resurrect a default. A missing key fails loudly at the type level.
  */
 export function stripPremiumPayload<
-  T extends { contentHtml?: string; mediaUrl?: string },
->(dto: T): Omit<T, "contentHtml" | "mediaUrl"> & { locked: true } {
+  T extends { contentHtml?: string; mediaUrl?: string; webinarAccess?: unknown; productFileId?: string },
+>(dto: T): Omit<T, "contentHtml" | "mediaUrl" | "webinarAccess" | "productFileId"> & { locked: true } {
   // Destructure the paid fields out; keep the rest. Never mutate the input —
-  // callers hold the full DTO and may still need it.
-  const { contentHtml: _contentHtml, mediaUrl: _mediaUrl, ...rest } = dto;
+  // callers hold the full DTO and may still need it. A professional's product
+  // (spec 003 phase 5) also sells its webinar room and its PDF.
+  const {
+    contentHtml: _contentHtml,
+    mediaUrl: _mediaUrl,
+    webinarAccess: _webinarAccess,
+    productFileId: _productFileId,
+    ...rest
+  } = dto;
   void _contentHtml;
   void _mediaUrl;
+  void _webinarAccess;
+  void _productFileId;
   return { ...rest, locked: true };
 }
 

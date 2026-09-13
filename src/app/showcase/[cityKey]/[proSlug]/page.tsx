@@ -9,6 +9,7 @@ import type { ShowcaseLocale } from "@/lib/showcase-public";
 import { ShowcaseProfileView } from "@/components/showcase/ShowcaseProfileView";
 import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
 import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
+import { listShowcaseProducts } from "@/lib/products";
 
 /**
  * psy<city>.jechemine.ca/<slug> — a professional's published page (spec 003).
@@ -76,11 +77,17 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
   if (result.kind === "missing") notFound();
   if (result.profile.city.key !== cityKey) permanentRedirect(result.profile.url);
 
+  // Trainings and products the professional sells (spec 003 phase 5), sold on www.
+  const products = await listShowcaseProducts(result.profile.slug, await currentLocale()).catch((error) => {
+    console.error("[showcase] products could not be listed:", error);
+    return [];
+  });
+
   return (
     <>
       <ShowcaseProfileJsonLd profile={result.profile} />
       <ShowcaseBeacon city={result.profile.city.key} slug={result.profile.slug} />
-      <ShowcaseProfileView profile={result.profile} />
+      <ShowcaseProfileView profile={result.profile} products={products} />
     </>
   );
 }

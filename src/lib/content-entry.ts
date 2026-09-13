@@ -10,6 +10,7 @@ import {
   type ContentLocale,
   type MediaType,
 } from "@/lib/content-kind";
+import type { ProductModerationStatus, ProductType } from "@/lib/product-rules";
 
 // --- Seed sources ---
 
@@ -362,6 +363,17 @@ export interface ContentEntryDTO {
   publishedAt?: string;
   updatedAt: string;
   createdAt: string;
+  /** A professional's product (spec 003 phase 5); absent on the team's content. */
+  ownerProfessionalId?: string;
+  productType?: ProductType;
+  externalUrl?: string;
+  /** Paid: stripped with contentHtml for anyone who has not bought. */
+  productFileId?: string;
+  webinar?: { startsAt?: string; durationMinutes?: number };
+  /** Paid: stripped with contentHtml for anyone who has not bought. */
+  webinarAccess?: { joinUrl?: string; replayUrl?: string };
+  listInLibrary?: boolean;
+  moderationStatus?: ProductModerationStatus;
 }
 
 export interface ContentEntryPairDTO {
@@ -393,6 +405,22 @@ function toDTO(doc: IContentEntry): ContentEntryDTO {
     publishedAt: doc.publishedAt?.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
     createdAt: doc.createdAt.toISOString(),
+    ...(doc.ownerProfessionalId
+      ? {
+          ownerProfessionalId: String(doc.ownerProfessionalId),
+          productType: doc.productType,
+          externalUrl: doc.externalUrl,
+          productFileId: doc.productFileId ? String(doc.productFileId) : undefined,
+          webinar: doc.webinar
+            ? { startsAt: doc.webinar.startsAt?.toISOString(), durationMinutes: doc.webinar.durationMinutes }
+            : undefined,
+          webinarAccess: doc.webinarAccess
+            ? { joinUrl: doc.webinarAccess.joinUrl, replayUrl: doc.webinarAccess.replayUrl }
+            : undefined,
+          listInLibrary: doc.listInLibrary === true,
+          moderationStatus: doc.moderation?.status,
+        }
+      : {}),
   };
 }
 
@@ -616,7 +644,9 @@ export async function listContentAdmin(
   const sort: Record<string, 1 | -1> = dateSorted
     ? { publishedAt: -1, createdAt: -1 }
     : { sortOrder: 1, slug: 1 };
-  const docs = await ContentEntry.find({ kind }).sort(sort);
+  // Professionals' products are reviewed in « Produits », never edited in the
+  // team's content screens (spec 003 phase 5).
+  const docs = await ContentEntry.find({ kind, ownerProfessionalId: { $exists: false } }).sort(sort);
   const pairs = groupPairs(docs);
   pairs.sort((a, b) => {
     if (dateSorted) {
@@ -662,6 +692,9 @@ export async function listPublishedContent(
   // (field absent) still count as free.
   if (opts?.premium === "only") filter.isPremium = true;
   else if (opts?.premium === "exclude") filter.isPremium = { $ne: true };
+  // A professional's product appears in the site's library only when they ask
+  // for it (spec 003 phase 5); it is always reachable at /book/<slug>.
+  filter.$or = [{ ownerProfessionalId: { $exists: false } }, { listInLibrary: true }];
 
   const docs = await ContentEntry.find(filter).sort(sort);
   return docs.map(toDTO);
@@ -679,6 +712,21 @@ export async function getPublishedContent(
     locale,
     status: "published",
   });
+  return doc ? toDTO(doc) : null;
+}
+
+/**
+ * Any row, published or not. Only for the reader of a professional's product
+ * (spec 003 phase 5), which decides itself who may see an unpublished one: its
+ * buyers, its professional and admins.
+ */
+export async function getContentAnyStatus(
+  kind: ContentKind,
+  slug: string,
+  locale: ContentLocale,
+): Promise<ContentEntryDTO | null> {
+  await connectToDatabase();
+  const doc = await ContentEntry.findOne({ kind, slug, locale });
   return doc ? toDTO(doc) : null;
 }
 

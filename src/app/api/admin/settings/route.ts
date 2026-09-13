@@ -120,6 +120,20 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // The platform's share of a professional's product sale (spec 003 phase 5).
+    if (
+      data.productCommissionPercentage !== undefined &&
+      (typeof data.productCommissionPercentage !== "number" ||
+        !Number.isFinite(data.productCommissionPercentage) ||
+        data.productCommissionPercentage < 0 ||
+        data.productCommissionPercentage > 100)
+    ) {
+      return NextResponse.json(
+        { error: "Product commission percentage must be between 0 and 100" },
+        { status: 400 },
+      );
+    }
+
     // Validate email settings if provided
     if (data.emailSettings) {
       // Validate branding colors if provided
@@ -168,6 +182,10 @@ export async function PUT(req: NextRequest) {
 
       if (data.platformFeePercentage !== undefined) {
         settings.platformFeePercentage = data.platformFeePercentage;
+      }
+
+      if (data.productCommissionPercentage !== undefined) {
+        settings.productCommissionPercentage = Math.round(data.productCommissionPercentage * 100) / 100;
       }
 
       if (data.currency) {

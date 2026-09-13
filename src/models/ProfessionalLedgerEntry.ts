@@ -22,6 +22,15 @@ export interface IProfessionalLedgerEntry extends Document {
   payoutAmountCad?: number;
   payoutReference?: string;
   payoutNotes?: string;
+  /**
+   * A product sale and its corrections (spec 003 phase 5). Absent on session
+   * credits and payouts. See lib/product-ledger.ts.
+   */
+  source?: "product_sale" | "product_sale_reversal" | "product_sale_recredit";
+  /** Unique: `product:<entitlementId>:<n>`, so a correction is written once. */
+  ledgerKey?: string;
+  entitlementId?: mongoose.Types.ObjectId;
+  productSlug?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -70,6 +79,10 @@ const ProfessionalLedgerEntrySchema = new Schema<IProfessionalLedgerEntry>(
     payoutAmountCad: { type: Number },
     payoutReference: String,
     payoutNotes: String,
+    source: { type: String, enum: ["product_sale", "product_sale_reversal", "product_sale_recredit"] },
+    ledgerKey: { type: String, unique: true, sparse: true },
+    entitlementId: { type: Schema.Types.ObjectId, ref: "ResourceEntitlement", index: true, sparse: true },
+    productSlug: String,
   },
   { timestamps: true },
 );

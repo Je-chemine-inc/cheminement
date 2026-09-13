@@ -67,6 +67,17 @@ export interface IResourceEntitlement extends Document {
 
   lastAccessedAt?: Date;
   accessCount: number;
+
+  /**
+   * A professional's product (spec 003 phase 5): who is credited, and the
+   * commission as it stood at checkout — never read again from the settings,
+   * so a later change cannot alter a sale. Absent on the team's resources.
+   */
+  ownerProfessionalId?: mongoose.Types.ObjectId;
+  commissionBps?: number;
+  productType?: string;
+  /** Prices include taxes; the platform does not remit TPS/TVQ on products yet (owner decision). */
+  taxTreatment?: "inclusive_untracked";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +114,11 @@ const ResourceEntitlementSchema = new Schema<IResourceEntitlement>(
 
     lastAccessedAt: { type: Date },
     accessCount: { type: Number, default: 0 },
+
+    ownerProfessionalId: { type: Schema.Types.ObjectId, ref: "User" },
+    commissionBps: { type: Number, min: 0, max: 10_000 },
+    productType: { type: String },
+    taxTreatment: { type: String, enum: ["inclusive_untracked"] },
   },
   { timestamps: true },
 );

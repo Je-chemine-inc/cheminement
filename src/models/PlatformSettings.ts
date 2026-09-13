@@ -74,7 +74,11 @@ export type EmailNotificationType =
   // Spec 003 phase 4: a professional's waitlist.
   | "waitlist_joined"
   | "waitlist_offer"
-  | "waitlist_removed";
+  | "waitlist_removed"
+  // Spec 003 phase 5: products professionals sell.
+  | "product_sold"
+  | "product_moderation_decision"
+  | "admin_product_submitted";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -233,6 +237,11 @@ export interface IPlatformSettings extends Document {
    * visitors to www and no showcase API answers.
    */
   showcaseEnabled?: boolean;
+  /**
+   * The platform's share of a professional's product sale, in percent (spec
+   * 003 phase 5). It absorbs Stripe's fees. Snapshotted on each purchase.
+   */
+  productCommissionPercentage?: number;
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -475,6 +484,18 @@ const defaultEmailTemplates: Record<
     enabled: true,
     subject: "Votre inscription à la liste d'attente a pris fin",
   },
+  product_sold: {
+    enabled: true,
+    subject: "Vous avez fait une vente — Je chemine",
+  },
+  product_moderation_decision: {
+    enabled: true,
+    subject: "Votre produit — Je chemine",
+  },
+  admin_product_submitted: {
+    enabled: true,
+    subject: "Produit à vérifier — Je chemine",
+  },
 };
 
 /**
@@ -577,6 +598,7 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     organizationBillingEnabled: { type: Boolean, default: false },
     organizationPadEnabled: { type: Boolean, default: false },
     showcaseEnabled: { type: Boolean, default: false },
+    productCommissionPercentage: { type: Number, default: 20, min: 0, max: 100 },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },
