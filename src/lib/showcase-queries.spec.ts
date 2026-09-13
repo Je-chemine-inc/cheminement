@@ -36,8 +36,8 @@ const h = vi.hoisted(() => {
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/lib/pricing", () => ({
-  calculateAppointmentPricing: async (_id: string, type: string) => ({
-    sessionPrice: { solo: 130, couple: 160, group: 90 }[type],
+  calculateAppointmentPricing: async (_id: string, type: string, options?: { quick?: boolean }) => ({
+    sessionPrice: options?.quick ? 70 : { solo: 130, couple: 160, group: 90 }[type],
   }),
 }));
 vi.mock("@/models/ShowcasePage", () => ({

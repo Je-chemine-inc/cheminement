@@ -55,6 +55,14 @@ function configured(value: number | undefined | null): number | undefined {
  *  2. `profile.pricing[...]` — the legacy single number, read as the pro's rate.
  *  3. Platform default price, split by `platformFeePercentage`.
  *
+ * A quick one-time consultation (`options.quick`, spec 003) is booked as a solo
+ * session and priced on its own as soon as anyone priced it:
+ *  1. `profile.rates.quick`, either side set — that pair; the client price
+ *     falls back to the platform's quick price, then to the solo client price.
+ *  2. `PlatformSettings.defaultPricing.quick` — split by the percentage, never
+ *     mixed with the professional's solo rate.
+ *  3. Otherwise exactly an individual session.
+ *
  * Before this, the professional's own number was what the *client* was charged
  * and the platform took a percentage of it — so the platform tarif in Paramètres
  * never applied to any professional who had set a rate.
@@ -62,6 +70,7 @@ function configured(value: number | undefined | null): number | undefined {
 export async function calculateAppointmentPricing(
   profileId: string | null,
   therapyType: "solo" | "couple" | "group",
+  options: { quick?: boolean } = {},
 ): Promise<PricingResult> {
   const profile = profileId
     ? await Profile.findOne({ userId: profileId })
@@ -79,51 +88,75 @@ export async function calculateAppointmentPricing(
 
   const currency = platformSettings.currency || "CAD";
   const platformFeePercentage = platformSettings.platformFeePercentage ?? 10;
-  const defaultPrice =
-    configured(platformSettings.defaultPricing?.[therapyType]) ??
-    HARDCODED_DEFAULT_PRICING[therapyType];
 
-  const adminRate = profile?.rates?.[therapyType];
-  const legacyRate = configured(
-    profile?.pricing?.[LEGACY_PRICING_KEY[therapyType]],
-  );
+  const split = (
+    sessionPrice: number,
+    professionalRate: number | undefined,
+  ): PricingResult => {
+    // No per-professional rate at all → the price split by percentage.
+    if (professionalRate === undefined) {
+      const platformFee = roundMoney(
+        (sessionPrice * platformFeePercentage) / 100,
+      );
+      return {
+        sessionPrice,
+        platformFee,
+        professionalPayout: roundMoney(sessionPrice - platformFee),
+        currency,
+        source: "platform",
+        rateClamped: false,
+      };
+    }
+
+    // Never pay out more than was collected. A rate above the client price is a
+    // misconfiguration (the pro's self-serve form can still produce one until the
+    // admin editor replaces it); cap it at a zero spread and flag it rather than
+    // letting the platform owe money it never took.
+    const rateClamped = professionalRate > sessionPrice;
+    const professionalPayout = roundMoney(
+      rateClamped ? sessionPrice : professionalRate,
+    );
+
+    return {
+      sessionPrice,
+      platformFee: roundMoney(sessionPrice - professionalPayout),
+      professionalPayout,
+      currency,
+      source: "professional",
+      rateClamped,
+    };
+  };
+
+  // The client price: admin-configured per-professional price, else the
+  // platform default for this therapy type.
+  const clientPriceFor = (type: "solo" | "couple" | "group"): number =>
+    configured(profile?.rates?.[type]?.clientPrice) ??
+    configured(platformSettings.defaultPricing?.[type]) ??
+    HARDCODED_DEFAULT_PRICING[type];
+
+  if (options.quick) {
+    const quickRate = profile?.rates?.quick;
+    const quickClientPrice = configured(quickRate?.clientPrice);
+    const quickProfessionalRate = configured(quickRate?.professionalRate);
+    const quickDefault = configured(platformSettings.defaultPricing?.quick);
+    if (quickClientPrice !== undefined || quickProfessionalRate !== undefined) {
+      return split(
+        quickClientPrice ?? quickDefault ?? clientPriceFor("solo"),
+        quickProfessionalRate,
+      );
+    }
+    if (quickDefault !== undefined) return split(quickDefault, undefined);
+  }
+
+  // A quick consultation nobody priced costs an individual session.
+  const type = options.quick ? "solo" : therapyType;
+  const adminRate = profile?.rates?.[type];
+  const legacyRate = configured(profile?.pricing?.[LEGACY_PRICING_KEY[type]]);
 
   // The professional's rate: admin-configured wins, else the legacy number.
   const professionalRate = configured(adminRate?.professionalRate) ?? legacyRate;
-  // The client price: admin-configured per-professional price, else the
-  // platform default for this therapy type.
-  const sessionPrice = configured(adminRate?.clientPrice) ?? defaultPrice;
 
-  // No per-professional rate at all → platform default split by percentage.
-  if (professionalRate === undefined) {
-    const platformFee = roundMoney((sessionPrice * platformFeePercentage) / 100);
-    return {
-      sessionPrice,
-      platformFee,
-      professionalPayout: roundMoney(sessionPrice - platformFee),
-      currency,
-      source: "platform",
-      rateClamped: false,
-    };
-  }
-
-  // Never pay out more than was collected. A rate above the client price is a
-  // misconfiguration (the pro's self-serve form can still produce one until the
-  // admin editor replaces it); cap it at a zero spread and flag it rather than
-  // letting the platform owe money it never took.
-  const rateClamped = professionalRate > sessionPrice;
-  const professionalPayout = roundMoney(
-    rateClamped ? sessionPrice : professionalRate,
-  );
-
-  return {
-    sessionPrice,
-    platformFee: roundMoney(sessionPrice - professionalPayout),
-    professionalPayout,
-    currency,
-    source: "professional",
-    rateClamped,
-  };
+  return split(clientPriceFor(type), professionalRate);
 }
 
 /**

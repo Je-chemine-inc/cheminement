@@ -120,6 +120,8 @@ interface PlatformSettings {
     solo: number;
     couple: number;
     group: number;
+    /** Optional (spec 003); empty means the individual session's price. */
+    quick?: number | "" | null;
   };
   platformFeePercentage: number;
   currency: string;
@@ -1274,6 +1276,29 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Default price per person in group sessions
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("quickSession")} ({settings.currency})
+              </label>
+              <input
+                type="number"
+                value={settings.defaultPricing.quick ?? ""}
+                onChange={(e) =>
+                  updateSettings(
+                    "quick",
+                    e.target.value === "" ? "" : parseFloat(e.target.value),
+                    "defaultPricing",
+                  )
+                }
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("quickSessionHelp")}
               </p>
             </div>
           </div>

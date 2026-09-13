@@ -587,7 +587,9 @@
       "branding": "Branding",
       "companyName": "Company Name",
       "primaryColor": "Primary Color",
-      "secondaryColor": "Secondary Color"
+      "secondaryColor": "Secondary Color",
+      "quickSession": "Quick one-time consultation",
+      "quickSessionHelp": "Default price of a quick one-time consultation. Left empty: the price of an individual session."
     },
     "admins": {
       "title": "Admin Management",
@@ -3274,12 +3276,17 @@
       "types": {
         "individualSession": "Individual session",
         "coupleSession": "Couple session",
-        "groupSession": "Group session"
+        "groupSession": "Group session",
+        "quickConsultation": "Quick one-time consultation"
       },
       "errors": {
         "RATE_EXCEEDS_CLIENT_PRICE": "The professional rate cannot exceed the client price.",
-        "CLIENT_PRICE_MUST_BE_POSITIVE": "The client price must be greater than zero."
-      }
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "The client price must be greater than zero.",
+        "INVALID_QUICK_DURATION": "The length must be a whole number of minutes, from 15 to 90."
+      },
+      "quickDuration": "Length (minutes)",
+      "quickDurationHelp": "A whole number from {min} to {max}. Left empty: {minutes} minutes.",
+      "quickHelp": "Without a rate here, the platform's default price for this service applies, otherwise the individual session's."
     },
     "sidebar": {
       "logo": "Logo",
@@ -7382,7 +7389,7 @@
       "pricesUnavailable": "Fees are confirmed with your request.",
       "duration": "{minutes} minutes",
       "quickTitle": "Quick one-time consultation",
-      "quickOffered": "Offered for a specific, one-time need. The fee and length are confirmed with your request.",
+      "quickOffered": "For a specific, one-time need.",
       "receipt": "A receipt is issued for every paid session.",
       "cancellation": "Free cancellation up to {hours} hours before the appointment.",
       "bookTitle": "Book an appointment",
@@ -7788,5 +7795,25 @@
       "professionalsTitle": "Professionals presented",
       "back": "All regions"
     }
+  },
+  "ShowcaseBooking": {
+    "title": "Availability",
+    "servicesLabel": "Type of consultation",
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "durationOnly": "{minutes}-minute session",
+    "durationAndPrice": "{minutes}-minute session · {price}",
+    "loading": "Loading availability…",
+    "error": "Availability could not be loaded. Try again in a moment.",
+    "unavailable": "This professional is not taking new requests for this type of consultation right now.",
+    "none": "No availability in the weeks shown.",
+    "daysLabel": "Available days",
+    "slotsLabel": "Available times on {day}",
+    "slotAction": "Request an appointment on {day} at {time}",
+    "more": "Show the following two weeks",
+    "howItWorks": "Choose a time, then send your request: the time is held for you until the professional answers.",
+    "matchInstead": "Get matched with another professional"
   }
 }

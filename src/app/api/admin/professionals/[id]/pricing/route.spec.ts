@@ -216,4 +216,52 @@ describe("GET", () => {
     ).rates.group;
     expect(group.clientPrice).toBeNull();
   });
+
+  it("returns the quick consultation row and its length", async () => {
+    const body = (await callGet()).body as {
+      rates: Record<string, { clientPrice: number | null }>;
+      quickConsultation: unknown;
+    };
+    expect(body.rates.quick.clientPrice).toBeNull();
+    expect(body.quickConsultation).toEqual({ durationMinutes: null, defaultMinutes: 30 });
+  });
+});
+
+describe("the quick one-time consultation (spec 003)", () => {
+  const updateOf = () =>
+    h.profileFindOneAndUpdate.mock.calls[0][1] as {
+      $set?: Record<string, number>;
+      $unset?: Record<string, string>;
+    };
+
+  it("stores its price, rate and length", async () => {
+    const res = await callPatch({
+      rates: { quick: { clientPrice: 80, professionalRate: 60 } },
+      quickConsultation: { durationMinutes: 45 },
+    });
+
+    expect(res.status).toBe(200);
+    expect(updateOf().$set).toEqual({
+      "rates.quick.clientPrice": 80,
+      "rates.quick.professionalRate": 60,
+      "quickConsultation.durationMinutes": 45,
+    });
+  });
+
+  it("clears the length back to the default", async () => {
+    await callPatch({ rates: {}, quickConsultation: { durationMinutes: null } });
+    expect(updateOf().$unset).toEqual({ "quickConsultation.durationMinutes": "" });
+  });
+
+  it("refuses a length outside 15 to 90 minutes, and a rate above its price", async () => {
+    const tooLong = await callPatch({ rates: {}, quickConsultation: { durationMinutes: 120 } });
+    expect(tooLong.status).toBe(400);
+    expect(tooLong.body).toMatchObject({ error: "INVALID_QUICK_DURATION" });
+
+    const tooHigh = await callPatch({ rates: { quick: { clientPrice: 60, professionalRate: 75 } } });
+    expect(tooHigh.status).toBe(400);
+    expect(tooHigh.body).toMatchObject({ error: "RATE_EXCEEDS_CLIENT_PRICE", field: "quick" });
+
+    expect(h.profileFindOneAndUpdate).not.toHaveBeenCalled();
+  });
 });

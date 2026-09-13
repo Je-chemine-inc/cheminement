@@ -90,6 +90,23 @@ export async function PUT(req: NextRequest) {
           { status: 400 },
         );
       }
+      // A quick consultation's default price is optional (spec 003): empty or
+      // 0 clears it, so the individual session's price applies.
+      if ("quick" in data.defaultPricing) {
+        const quick = data.defaultPricing.quick;
+        if (quick === "" || quick === null || quick === 0) {
+          data.defaultPricing.quick = null;
+        } else if (
+          typeof quick !== "number" ||
+          !Number.isFinite(quick) ||
+          quick < 0
+        ) {
+          return NextResponse.json(
+            { error: "The quick consultation price must be a positive amount" },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     // Validate platform fee percentage

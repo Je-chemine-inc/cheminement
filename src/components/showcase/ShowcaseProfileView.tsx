@@ -11,14 +11,17 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
+import type { DirectRequestService } from "@/lib/direct-request-rules";
+import { SHOWCASE_SLOTS_ANCHOR } from "@/lib/showcase-booking-types";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
+import { ShowcaseSlotPicker } from "@/components/showcase/ShowcaseSlotPicker";
 
 /**
  * A professional's showcase page (spec 003), from the public data object only.
  * Rendered on the city host, and in the professional's and the admin's
- * preview (`preview`: a banner, and the photo loaded without Next's optimizer,
- * which cannot see an unpublished photo).
+ * preview (`preview`: a banner, the photo loaded without Next's optimizer,
+ * which cannot see an unpublished photo, and no free times).
  *
  * Everything a professional wrote goes through React, never as HTML.
  */
@@ -69,9 +72,20 @@ export async function ShowcaseProfileView({
     : null;
   const orderText = orderName ? t("profile.memberOf", { order: orderName }) : null;
   const permitText = profile.licenseNumber ? t("profile.permit", { number: profile.licenseNumber }) : null;
-  const standard = profile.services.standard;
+  const { standard, quick } = profile.services;
   const bookingUrl = showcaseBookingUrl(profile);
-  const bookingLabel = standard.offered ? t("profile.bookCta") : t("profile.matchCta");
+  const bookable: DirectRequestService[] = [
+    ...(standard.offered ? (["standard"] as const) : []),
+    ...(quick.offered ? (["quick"] as const) : []),
+  ];
+  // With a consultation open, the booking buttons lead to the free times, and
+  // the funnel is reached through a chosen time. With none, they offer Je
+  // chemine's matching instead.
+  const showSlots = !preview && bookable.length > 0;
+  const bookingLabel = bookable.length > 0 ? t("profile.bookCta") : t("profile.matchCta");
+  const bookingLink = showSlots
+    ? { href: `#${SHOWCASE_SLOTS_ANCHOR}` }
+    : { href: bookingUrl, "data-showcase-cta": "" };
   const presentation = [...profile.intro, ...profile.bio];
 
   return (
@@ -161,8 +175,7 @@ export async function ShowcaseProfileView({
 
             <div className="pt-2">
               <a
-                href={bookingUrl}
-                data-showcase-cta=""
+                {...bookingLink}
                 className="inline-flex rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 {bookingLabel}
@@ -239,6 +252,10 @@ export async function ShowcaseProfileView({
         </div>
 
         <aside className="space-y-6">
+          {showSlots ? (
+            <ShowcaseSlotPicker slug={profile.slug} services={bookable} bookingBaseUrl={bookingUrl} />
+          ) : null}
+
           <section aria-labelledby="showcase-services" className="rounded-2xl border border-border/60 bg-card p-6">
             <h2 id="showcase-services" className="font-serif text-xl font-light text-foreground">
               {t("profile.servicesTitle")}
@@ -266,10 +283,20 @@ export async function ShowcaseProfileView({
                   </ul>
                 )}
               </div>
-              {profile.services.quick.offered ? (
+              {quick.offered ? (
                 <div>
                   <h3 className="text-sm font-medium text-foreground">{t("profile.quickTitle")}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("profile.quickOffered")}</p>
+                  <div className="mt-2 flex items-baseline justify-between gap-4 text-sm">
+                    <span className="text-foreground">
+                      {t("profile.quickOffered")}
+                      <span className="block text-xs text-muted-foreground">
+                        {t("profile.duration", { minutes: quick.durationMinutes })}
+                      </span>
+                    </span>
+                    {quick.price !== null ? (
+                      <span className="font-medium text-foreground">{money.format(quick.price)}</span>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -284,17 +311,18 @@ export async function ShowcaseProfileView({
             </div>
           </section>
 
-          <section className="rounded-2xl bg-primary/5 p-6">
-            <h2 className="font-serif text-xl font-light text-foreground">{t("profile.bookTitle", { name })}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{t("profile.bookBody")}</p>
-            <a
-              href={bookingUrl}
-              data-showcase-cta=""
-              className="mt-4 inline-flex w-full justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              {bookingLabel}
-            </a>
-          </section>
+          {showSlots ? null : (
+            <section className="rounded-2xl bg-primary/5 p-6">
+              <h2 className="font-serif text-xl font-light text-foreground">{t("profile.bookTitle", { name })}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{t("profile.bookBody")}</p>
+              <a
+                {...bookingLink}
+                className="mt-4 inline-flex w-full justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {bookingLabel}
+              </a>
+            </section>
+          )}
         </aside>
       </div>
     </article>

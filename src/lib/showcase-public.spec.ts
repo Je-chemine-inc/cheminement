@@ -4,6 +4,7 @@ import {
   buildShowcasePublicProfile,
   showcaseLanguageKey,
   showcaseModalityKey,
+  showcaseServiceOffered,
   toShowcaseCard,
   type BuildShowcaseInput,
 } from "@/lib/showcase-public";
@@ -39,12 +40,14 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       acceptingNewClients: true,
       acceptingEmergencyConsultations: true,
       availability: { sessionDurationMinutes: 50 },
+      quickConsultation: { durationMinutes: 25 },
     },
     expertises: [
       { id: "e1", slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
       { id: "e2", slug: "burn-out", labelFr: "Épuisement professionnel", labelEn: "" },
     ],
     prices: { solo: 130, couple: 160, group: 90 },
+    quickPrice: 70,
     ...over,
   };
 }
@@ -82,7 +85,7 @@ describe("buildShowcasePublicProfile", () => {
             { therapyType: "couple", price: 160 },
           ],
         },
-        quick: { offered: true },
+        quick: { offered: true, durationMinutes: 25, price: 70 },
       },
       insuranceNote: ["Reçus pour assurances."],
       freeCancellationHours: 48,
@@ -106,7 +109,10 @@ describe("buildShowcasePublicProfile", () => {
       payoutInteracEmail: secret,
       payoutChequeUrl: secret,
       calendarFeedToken: secret,
-      rates: { solo: { clientPrice: 130, professionalRate: 99999 } },
+      rates: {
+        solo: { clientPrice: 130, professionalRate: 99999 },
+        quick: { clientPrice: 70, professionalRate: 99999 },
+      },
       pricing: { individualSession: 99999 },
       officeAddress: { city: "Mascouche", street: secret, postalCode: secret },
       officeNotes: secret,
@@ -137,6 +143,29 @@ describe("buildShowcasePublicProfile", () => {
       standard: { offered: true },
       quick: { offered: false },
     });
+  });
+
+  it("applies the same rule to the booking routes", () => {
+    expect(showcaseServiceOffered("standard", undefined, null)).toBe(true);
+    expect(showcaseServiceOffered("quick", undefined, null)).toBe(false);
+    expect(showcaseServiceOffered("quick", { quick: true }, { acceptingEmergencyConsultations: false })).toBe(false);
+    expect(showcaseServiceOffered("standard", { standard: true }, { acceptingNewClients: false })).toBe(false);
+  });
+
+  it("gives the quick consultation its own length and price, or the defaults", () => {
+    const base = input();
+    const quick = (over: Parameters<typeof input>[0]) => buildShowcasePublicProfile(input(over))!.services.quick;
+    expect(quick({ quickPrice: null, profile: { ...base.profile!, quickConsultation: null } })).toEqual({
+      offered: true,
+      durationMinutes: 30,
+      price: null,
+    });
+    expect(quick({ quickPrice: 0, profile: { ...base.profile!, quickConsultation: { durationMinutes: 200 } } })).toEqual({
+      offered: true,
+      durationMinutes: 30,
+      price: null,
+    });
+    expect(buildShowcasePublicProfile(input({ profile: { ...base.profile!, availability: null } }))!.services.standard.durationMinutes).toBe(60);
   });
 
   it("lists prices only for the therapy types offered, individual by default", () => {

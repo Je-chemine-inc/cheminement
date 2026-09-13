@@ -41,6 +41,7 @@ export const SHOWCASE_PROFILE_SELECT = [
   "acceptingNewClients",
   "acceptingEmergencyConsultations",
   "availability.sessionDurationMinutes",
+  "quickConsultation.durationMinutes",
 ].join(" ");
 
 const PAGE_SELECT = "userId slug cityKey services published publishedAt updatedAt";
@@ -79,15 +80,17 @@ async function loadExpertises(ids: readonly unknown[]): Promise<ShowcaseExpertis
   }));
 }
 
-/** What a client pays, per therapy type, under the platform's pricing rules. */
-async function loadClientPrices(
-  professionalId: string,
-): Promise<Partial<Record<ShowcaseTherapyType, number>>> {
+/** What a client pays, per therapy type and for a quick consultation, under the platform's pricing rules. */
+async function loadClientPrices(professionalId: string): Promise<{
+  prices: Partial<Record<ShowcaseTherapyType, number>>;
+  quickPrice: number;
+}> {
   const prices: Partial<Record<ShowcaseTherapyType, number>> = {};
   for (const type of SHOWCASE_THERAPY_TYPES) {
     prices[type] = (await calculateAppointmentPricing(professionalId, type)).sessionPrice;
   }
-  return prices;
+  const quick = await calculateAppointmentPricing(professionalId, "solo", { quick: true });
+  return { prices, quickPrice: quick.sessionPrice };
 }
 
 async function buildFromPage(
@@ -100,7 +103,7 @@ async function buildFromPage(
   const userFilter = requireActive
     ? { _id: userId, role: "professional" as const, status: "active" as const }
     : { _id: userId, role: "professional" as const };
-  const [user, profile, expertises, prices] = await Promise.all([
+  const [user, profile, expertises, pricing] = await Promise.all([
     User.findOne(userFilter).select("firstName lastName").lean(),
     Profile.findOne({ userId }).select(SHOWCASE_PROFILE_SELECT).lean(),
     loadExpertises(content.expertiseIds ?? []),
@@ -114,7 +117,8 @@ async function buildFromPage(
     user,
     profile: profile as unknown as ShowcaseProfileSource | null,
     expertises,
-    prices,
+    prices: pricing.prices,
+    quickPrice: pricing.quickPrice,
   });
 }
 

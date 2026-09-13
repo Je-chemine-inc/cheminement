@@ -1,5 +1,7 @@
 import { PROFESSIONAL_TITLES } from "@/data/professionalTitles";
+import { slotGridOf } from "@/lib/available-slots";
 import { FREE_CANCELLATION_HOURS } from "@/lib/cancellation-policy";
+import { quickConsultationMinutes } from "@/lib/professional-pricing";
 import { findShowcaseCity } from "@/lib/showcase-cities";
 import {
   PROFESSIONAL_ORDER_CODES,
@@ -59,6 +61,7 @@ export interface ShowcaseProfileSource {
   acceptingNewClients?: boolean | null;
   acceptingEmergencyConsultations?: boolean | null;
   availability?: { sessionDurationMinutes?: number | null } | null;
+  quickConsultation?: { durationMinutes?: number | null } | null;
 }
 
 export interface ShowcaseExpertiseSource {
@@ -68,12 +71,14 @@ export interface ShowcaseExpertiseSource {
   labelEn?: string | null;
 }
 
+export type ShowcaseServiceSwitches = { standard?: boolean | null; quick?: boolean | null } | null | undefined;
+
 export interface BuildShowcaseInput {
   locale: ShowcaseLocale;
   page: {
     slug: string;
     cityKey: string;
-    services?: { standard?: boolean | null; quick?: boolean | null } | null;
+    services?: ShowcaseServiceSwitches;
   };
   content: ShowcaseContentSource;
   user: { firstName?: string | null; lastName?: string | null };
@@ -82,6 +87,8 @@ export interface BuildShowcaseInput {
   expertises: readonly ShowcaseExpertiseSource[];
   /** What a client pays per therapy type (from the pricing rules). */
   prices: Partial<Record<ShowcaseTherapyType, number>>;
+  /** What a client pays for a quick one-time consultation (from the pricing rules). */
+  quickPrice?: number | null;
 }
 
 export interface ShowcasePrice {
@@ -110,7 +117,7 @@ export interface ShowcasePublicProfile {
   yearsOfExperience: number | null;
   services: {
     standard: { offered: boolean; durationMinutes: number; prices: ShowcasePrice[] };
-    quick: { offered: boolean };
+    quick: { offered: boolean; durationMinutes: number; price: number | null };
   };
   insuranceNote: string[];
   freeCancellationHours: number;
@@ -140,6 +147,22 @@ export const SHOWCASE_PUBLIC_KEYS = [
   "values",
   "yearsOfExperience",
 ] as const;
+
+/**
+ * Whether a page offers a consultation right now: the page's own switch and
+ * the professional's. Standard is on unless switched off, quick only when
+ * switched on; a professional who takes no new clients (or no quick requests)
+ * closes it. The booking routes apply the same rule.
+ */
+export function showcaseServiceOffered(
+  service: "standard" | "quick",
+  switches: ShowcaseServiceSwitches,
+  profile: Pick<ShowcaseProfileSource, "acceptingNewClients" | "acceptingEmergencyConsultations"> | null | undefined,
+): boolean {
+  return service === "standard"
+    ? switches?.standard !== false && profile?.acceptingNewClients !== false
+    : switches?.quick === true && profile?.acceptingEmergencyConsultations !== false;
+}
 
 function pick(text: LocalizedSource, locale: ShowcaseLocale): string {
   const fr = text?.fr?.trim() ?? "";
@@ -227,6 +250,10 @@ function photoUrlOf(photoFileId: unknown): string | null {
   return OBJECT_ID_RE.test(id) ? `/api/files/${id}` : null;
 }
 
+function priceOf(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcasePublicProfile | null {
   const city = findShowcaseCity(input.page.cityKey);
   if (!city) return null;
@@ -244,11 +271,10 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
   const offeredTypes = uniqueKeys(profile?.sessionTypes, therapyTypeOf, SHOWCASE_THERAPY_TYPES);
   const prices: ShowcasePrice[] = [];
   for (const therapyType of offeredTypes.length > 0 ? offeredTypes : (["solo"] as const)) {
-    const price = input.prices[therapyType];
-    if (typeof price === "number" && Number.isFinite(price) && price > 0) prices.push({ therapyType, price });
+    const price = priceOf(input.prices[therapyType]);
+    if (price !== null) prices.push({ therapyType, price });
   }
 
-  const duration = profile?.availability?.sessionDurationMinutes;
   const years = profile?.yearsOfExperience;
   const displayName =
     content.displayName?.trim() || `${input.user.firstName ?? ""} ${input.user.lastName ?? ""}`.trim();
@@ -275,12 +301,14 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
       typeof years === "number" && Number.isInteger(years) && years >= 0 && years <= 70 ? years : null,
     services: {
       standard: {
-        offered: input.page.services?.standard !== false && profile?.acceptingNewClients !== false,
-        durationMinutes: typeof duration === "number" && duration > 0 ? duration : 60,
+        offered: showcaseServiceOffered("standard", input.page.services, profile),
+        durationMinutes: slotGridOf(profile?.availability).sessionMinutes,
         prices,
       },
       quick: {
-        offered: input.page.services?.quick === true && profile?.acceptingEmergencyConsultations !== false,
+        offered: showcaseServiceOffered("quick", input.page.services, profile),
+        durationMinutes: quickConsultationMinutes(profile?.quickConsultation?.durationMinutes),
+        price: priceOf(input.quickPrice),
       },
     },
     insuranceNote: paragraphsOf(pick(content.insuranceNote, locale)),

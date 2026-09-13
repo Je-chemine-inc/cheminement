@@ -9,9 +9,9 @@
  *
  * ⚠ A client component added to the providers, or to the city pages, must
  * have its namespace listed here — client-messages.spec.ts checks the
- * providers.
+ * providers and the showcase client components rendered on city hosts.
  */
-export const CITY_HOST_CLIENT_NAMESPACES = ["CookieConsent", "InactivityGuard"] as const;
+export const CITY_HOST_CLIENT_NAMESPACES = ["CookieConsent", "InactivityGuard", "ShowcaseBooking"] as const;
 
 export function clientMessagesFor<T extends Record<string, unknown>>(messages: T, onCityHost: boolean): T {
   if (!onCityHost) return messages;

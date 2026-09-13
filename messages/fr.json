@@ -587,7 +587,9 @@
       "branding": "Image de marque",
       "companyName": "Nom de l'entreprise",
       "primaryColor": "Couleur Primaire",
-      "secondaryColor": "Couleur Secondaire"
+      "secondaryColor": "Couleur Secondaire",
+      "quickSession": "Consultation ponctuelle rapide",
+      "quickSessionHelp": "Prix par défaut d'une consultation ponctuelle rapide. Laissé vide : le prix d'une séance individuelle."
     },
     "admins": {
       "title": "Gestion des Administrateurs",
@@ -3275,12 +3277,17 @@
       "types": {
         "individualSession": "Séance individuelle",
         "coupleSession": "Séance de couple",
-        "groupSession": "Séance de groupe"
+        "groupSession": "Séance de groupe",
+        "quickConsultation": "Consultation ponctuelle rapide"
       },
       "errors": {
         "RATE_EXCEEDS_CLIENT_PRICE": "Le tarif du professionnel ne peut pas dépasser le prix client.",
-        "CLIENT_PRICE_MUST_BE_POSITIVE": "Le prix client doit être supérieur à zéro."
-      }
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "Le prix client doit être supérieur à zéro.",
+        "INVALID_QUICK_DURATION": "La durée doit être un nombre entier de minutes, de 15 à 90."
+      },
+      "quickDuration": "Durée (minutes)",
+      "quickDurationHelp": "Nombre entier de {min} à {max}. Laissée vide : {minutes} minutes.",
+      "quickHelp": "Sans tarif ici, le prix par défaut de la plateforme pour ce service s'applique, sinon celui de la séance individuelle."
     },
     "sidebar": {
       "logo": "Logo",
@@ -7381,7 +7388,7 @@
       "pricesUnavailable": "Les tarifs vous sont confirmés avec votre demande.",
       "duration": "{minutes} minutes",
       "quickTitle": "Consultation ponctuelle rapide",
-      "quickOffered": "Offerte pour un besoin précis et ponctuel. Le tarif et la durée vous sont confirmés avec votre demande.",
+      "quickOffered": "Pour un besoin précis et ponctuel.",
       "receipt": "Un reçu est émis pour chaque séance payée.",
       "cancellation": "Annulation sans frais jusqu'à {hours} heures avant le rendez-vous.",
       "bookTitle": "Prendre rendez-vous",
@@ -7787,5 +7794,25 @@
       "professionalsTitle": "Professionnels présentés",
       "back": "Toutes les régions"
     }
+  },
+  "ShowcaseBooking": {
+    "title": "Disponibilités",
+    "servicesLabel": "Type de consultation",
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "durationOnly": "Séance de {minutes} minutes",
+    "durationAndPrice": "Séance de {minutes} minutes · {price}",
+    "loading": "Chargement des disponibilités…",
+    "error": "Les disponibilités n'ont pas pu être chargées. Réessayez dans un instant.",
+    "unavailable": "Ce professionnel ne prend pas de nouvelles demandes pour ce type de consultation en ce moment.",
+    "none": "Aucune disponibilité dans les semaines affichées.",
+    "daysLabel": "Jours disponibles",
+    "slotsLabel": "Heures disponibles le {day}",
+    "slotAction": "Demander un rendez-vous le {day} à {time}",
+    "more": "Voir les deux semaines suivantes",
+    "howItWorks": "Choisissez un créneau, puis faites votre demande : le créneau vous est réservé jusqu'à la réponse du professionnel.",
+    "matchInstead": "Être jumelé avec un autre professionnel"
   }
 }

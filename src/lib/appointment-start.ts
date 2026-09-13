@@ -3,7 +3,7 @@
  * fenêtres H-72 / H-48 et autres calculs « heures avant le RDV ».
  */
 
-const APPOINTMENT_TZ = "America/Toronto";
+export const APPOINTMENT_TZ = "America/Toronto";
 
 /**
  * Minutes by which America/Toronto is offset from UTC at the given instant

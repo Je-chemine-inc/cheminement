@@ -185,6 +185,8 @@ export interface IPlatformSettings extends Document {
     solo: number;
     couple: number;
     group: number;
+    /** A quick one-time consultation (spec 003). Unset: the individual session's price. */
+    quick?: number | null;
   };
   platformFeePercentage: number;
   currency: string;
@@ -493,6 +495,8 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
         required: true,
         default: 80,
       },
+      // A quick one-time consultation (spec 003). Unset: the individual session's price.
+      quick: { type: Number, min: 0 },
     },
     platformFeePercentage: {
       type: Number,
