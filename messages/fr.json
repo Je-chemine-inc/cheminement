@@ -7710,10 +7710,20 @@
     }
   },
   "ShowcaseAdmin": {
-    "city": {
-      "hint": "La ville où le professionnel reçoit ses clients. Elle donne l'adresse de sa page. Si sa ville n'est pas dans la liste, choisissez la plus proche.",
-      "officeCity": "Ville du bureau dans son profil : {city}",
-      "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous approuvez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
+    "editor": {
+      "city": {
+        "hint": "La ville où le professionnel reçoit ses clients. Elle donne l'adresse de sa page. Si sa ville n'est pas dans la liste, choisissez la plus proche.",
+        "officeCity": "Ville du bureau dans son profil : {city}",
+        "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous approuvez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
+      },
+      "fields": {
+        "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
+        "bioPlaceholder": "Son parcours, sa pratique et les personnes accompagnées. Laissez une ligne vide entre les paragraphes.",
+        "approachPlaceholder": "Comment se déroulent ses rencontres et sur quoi repose son approche."
+      },
+      "expertises": {
+        "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à trouver ce professionnel selon leur ville et leur besoin."
+      }
     },
     "title": "Pages vitrines",
     "subtitle": "Choisissez les professionnels présentés au public, invitez-les à préparer leur page, puis révisez et publiez.",

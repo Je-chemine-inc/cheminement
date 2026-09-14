@@ -10,7 +10,7 @@ import {
   SHOWCASE_THERAPY_TYPES,
 } from "@/lib/showcase-public";
 import { SHOWCASE_REQUIREMENTS } from "@/lib/showcase-workflow";
-import { SHOWCASE_ERROR_CODES } from "@/lib/showcase-editor-types";
+import { SHOWCASE_ADMIN_WORDED_KEYS, SHOWCASE_ERROR_CODES } from "@/lib/showcase-editor-types";
 import { SHOWCASE_BADGES } from "@/lib/showcase-badges";
 
 /**
@@ -42,9 +42,9 @@ const LISTS: ReadonlyArray<readonly [string, readonly string[]]> = [
   // A professional's page always exists, so their screen never says « not invited ».
   ["ShowcasePro.status", SHOWCASE_BADGES.filter((badge) => badge !== "notInvited")],
   ["ShowcaseAdmin.badges", SHOWCASE_BADGES],
-  // The editor's city notes, worded for the professional or for an admin (audience prop).
-  ["ShowcasePro.city", ["hint", "officeCity", "afterApproval"]],
-  ["ShowcaseAdmin.city", ["hint", "officeCity", "afterApproval"]],
+  // Editor texts worded for the professional, and again for an admin (audience prop).
+  ["ShowcasePro", SHOWCASE_ADMIN_WORDED_KEYS],
+  ["ShowcaseAdmin.editor", SHOWCASE_ADMIN_WORDED_KEYS],
   ["ShowcaseAdmin.detail.history", SHOWCASE_HISTORY_ACTIONS],
 ];
 

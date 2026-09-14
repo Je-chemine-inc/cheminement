@@ -85,6 +85,22 @@ export interface ShowcaseAdminJson extends ShowcaseEditorJson {
   };
 }
 
+/**
+ * Editor texts that speak to the professional (« vous », « votre page »). On
+ * the admin review screen each one reads from ShowcaseAdmin.editor.<key>
+ * instead, worded about the professional; every other text is shared.
+ */
+export const SHOWCASE_ADMIN_WORDED_KEYS = [
+  "city.hint",
+  "city.officeCity",
+  "city.afterApproval",
+  "fields.introPlaceholder",
+  "fields.bioPlaceholder",
+  "fields.approachPlaceholder",
+  "expertises.hint",
+] as const;
+export type ShowcaseAdminWordedKey = (typeof SHOWCASE_ADMIN_WORDED_KEYS)[number];
+
 /** Error codes the showcase routes answer with, each with its message (ShowcasePro.errors). */
 export const SHOWCASE_ERROR_CODES = [
   "TOO_LONG",

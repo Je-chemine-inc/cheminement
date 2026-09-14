@@ -16,7 +16,9 @@ import {
 import { SHOWCASE_REGIONS, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
 import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
 import {
+  SHOWCASE_ADMIN_WORDED_KEYS,
   showcaseErrorKey,
+  type ShowcaseAdminWordedKey,
   type ShowcaseContentJson,
   type ShowcaseEditorJson,
 } from "@/lib/showcase-editor-types";
@@ -98,8 +100,17 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
 }) {
   const t = useTranslations("ShowcasePro");
   const tAdmin = useTranslations("ShowcaseAdmin");
+  const worded = (key: ShowcaseAdminWordedKey, values?: Record<string, string>) =>
+    audience === "admin" ? tAdmin(`editor.${key}`, values) : t(key, values);
   const tCity = (key: "hint" | "officeCity" | "afterApproval", values?: Record<string, string>) =>
-    audience === "admin" ? tAdmin(`city.${key}`, values) : t(`city.${key}`, values);
+    worded(`city.${key}`, values);
+  // Headline and insurance examples are sample page text, the same for both; the others address the reader.
+  const placeholderOf = (field: LocalizedField) => {
+    const key = `fields.${field}Placeholder`;
+    return (SHOWCASE_ADMIN_WORDED_KEYS as readonly string[]).includes(key)
+      ? worded(key as ShowcaseAdminWordedKey)
+      : t(key);
+  };
   const tLabels = useTranslations("Showcase");
   const [draft, setDraft] = useState<DraftState>(() =>
     toDraftState(view.page.draft, view.expertiseOptions, view.page.cityKey),
@@ -259,7 +270,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             id={id}
             value={value}
             maxLength={max}
-            placeholder={lang === "fr" ? t(`fields.${field}Placeholder`) : ""}
+            placeholder={lang === "fr" ? placeholderOf(field) : ""}
             onChange={(event) => setLocalized(field, event.target.value)}
           />
         ) : (
@@ -268,7 +279,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             value={value}
             rows={rows}
             maxLength={max}
-            placeholder={lang === "fr" ? t(`fields.${field}Placeholder`) : ""}
+            placeholder={lang === "fr" ? placeholderOf(field) : ""}
             onChange={(event) => setLocalized(field, event.target.value)}
           />
         )}
@@ -429,7 +440,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             {t("expertises.count", { count: expertiseCount })}
           </span>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{t("expertises.hint")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{worded("expertises.hint")}</p>
         {view.expertiseOptions.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">{t("expertises.none")}</p>
         ) : (
