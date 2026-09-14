@@ -7710,6 +7710,11 @@
     }
   },
   "ShowcaseAdmin": {
+    "city": {
+      "hint": "La ville où le professionnel reçoit ses clients. Elle donne l'adresse de sa page. Si sa ville n'est pas dans la liste, choisissez la plus proche.",
+      "officeCity": "Ville du bureau dans son profil : {city}",
+      "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous approuvez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
+    },
     "title": "Pages vitrines",
     "subtitle": "Choisissez les professionnels présentés au public, invitez-les à préparer leur page, puis révisez et publiez.",
     "cancel": "Annuler",

@@ -85,6 +85,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   onView,
   reload,
   profileHint,
+  audience = "professional",
 }: {
   apiBase: string;
   view: V;
@@ -92,8 +93,13 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   reload: () => Promise<void>;
   /** Where the facts that come from the profile are changed (shown under services). */
   profileHint?: string;
+  /** Who is editing: the city notes speak to the professional, or about them to an admin. */
+  audience?: "professional" | "admin";
 }) {
   const t = useTranslations("ShowcasePro");
+  const tAdmin = useTranslations("ShowcaseAdmin");
+  const tCity = (key: "hint" | "officeCity" | "afterApproval", values?: Record<string, string>) =>
+    audience === "admin" ? tAdmin(`city.${key}`, values) : t(`city.${key}`, values);
   const tLabels = useTranslations("Showcase");
   const [draft, setDraft] = useState<DraftState>(() =>
     toDraftState(view.page.draft, view.expertiseOptions, view.page.cityKey),
@@ -488,7 +494,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         <h2 id="showcase-city-title" className="font-serif text-xl font-light text-foreground">
           {t("city.title")}
         </h2>
-        <p className="text-sm text-muted-foreground">{t("city.hint")}</p>
+        <p className="text-sm text-muted-foreground">{tCity("hint")}</p>
         <select
           aria-label={t("city.title")}
           value={draft.cityKey}
@@ -508,7 +514,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         </select>
         {officeCity ? (
           <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {t("city.officeCity", { city: view.profileFacts.officeCity ?? officeCity.name })}
+            {tCity("officeCity", { city: view.profileFacts.officeCity ?? officeCity.name })}
             {officeCity.key !== draft.cityKey ? (
               <Button type="button" variant="outline" size="sm" onClick={() => update({ cityKey: officeCity.key })}>
                 {t("city.useOfficeCity", { city: officeCity.name })}
@@ -522,7 +528,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           </p>
         ) : null}
         {view.page.published && draft.cityKey !== view.page.cityKey ? (
-          <p className="text-xs text-amber-700">{t("city.afterApproval")}</p>
+          <p className="text-xs text-amber-700">{tCity("afterApproval")}</p>
         ) : null}
       </section>
 

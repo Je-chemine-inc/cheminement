@@ -7711,6 +7711,11 @@
     }
   },
   "ShowcaseAdmin": {
+    "city": {
+      "hint": "The city where the professional sees their clients. It gives their page its address. If their city is not in the list, choose the nearest one.",
+      "officeCity": "Office city in their profile: {city}",
+      "afterApproval": "The page is live: the new city applies when you approve this revision. The old address will then redirect to the new one."
+    },
     "title": "Showcase pages",
     "subtitle": "Choose the professionals presented to the public, invite them to prepare their page, then review and publish.",
     "cancel": "Cancel",

@@ -42,6 +42,9 @@ const LISTS: ReadonlyArray<readonly [string, readonly string[]]> = [
   // A professional's page always exists, so their screen never says « not invited ».
   ["ShowcasePro.status", SHOWCASE_BADGES.filter((badge) => badge !== "notInvited")],
   ["ShowcaseAdmin.badges", SHOWCASE_BADGES],
+  // The editor's city notes, worded for the professional or for an admin (audience prop).
+  ["ShowcasePro.city", ["hint", "officeCity", "afterApproval"]],
+  ["ShowcaseAdmin.city", ["hint", "officeCity", "afterApproval"]],
   ["ShowcaseAdmin.detail.history", SHOWCASE_HISTORY_ACTIONS],
 ];
 

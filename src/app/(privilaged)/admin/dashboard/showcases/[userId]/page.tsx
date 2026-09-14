@@ -315,6 +315,7 @@ export default function AdminShowcaseDetailPage() {
         view={view}
         onView={setView}
         reload={load}
+        audience="admin"
       />
 
       <section className="rounded-xl border border-border/60 bg-card p-6" aria-labelledby="history-title">
