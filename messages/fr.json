@@ -7469,6 +7469,130 @@
       "productFree": "Gratuit",
       "productOpen": "Voir"
     },
+    "vitrine": {
+      "verified": "Page vérifiée par Je chemine",
+      "others": "Autres professionnels à {city}",
+      "orderPermit": "{order} · permis n° {number}",
+      "placeBoth": "{city} et téléconsultation",
+      "placeVideo": "Téléconsultation",
+      "heroSecondary": "Voir les tarifs",
+      "nav": {
+        "label": "Sur cette page",
+        "about": "À propos",
+        "approach": "Approche",
+        "services": "Tarifs",
+        "slots": "Disponibilités",
+        "products": "Formations",
+        "faq": "Questions"
+      },
+      "chips": {
+        "inPerson": "En personne à {city}",
+        "video": "Téléconsultation vidéo",
+        "phone": "Consultation par téléphone",
+        "chat": "Consultation par clavardage"
+      },
+      "modesShort": {
+        "inPerson": "en personne",
+        "video": "en vidéo",
+        "phone": "par téléphone",
+        "chat": "par clavardage"
+      },
+      "trust": {
+        "receipt": "Un reçu pour chaque séance payée",
+        "cancellation": "Annulation sans frais jusqu'à {hours} h avant",
+        "answer": "Une réponse à votre demande en 24 heures au plus"
+      },
+      "about": {
+        "eyebrow": "À propos",
+        "heading": "{title} à {city}",
+        "headingYears": "{title} depuis {years, plural, one {# an} other {# ans}}, à {city}",
+        "headingNoTitle": "{name}, à {city}",
+        "factsTitle": "En bref",
+        "office": "Bureau à {city}"
+      },
+      "approach": {
+        "eyebrow": "Approche",
+        "title": "Mon approche",
+        "stepsTitle": "Comment se déroule une demande",
+        "step": "Étape {number}",
+        "requestTitle": "Votre demande",
+        "requestBody": "Vous choisissez un moment dans les disponibilités et remplissez votre demande. Le créneau vous est réservé pendant que {name} l'étudie.",
+        "answerTitle": "La réponse",
+        "answerBody": "{name} confirme ou décline en 24 heures au plus. Vous recevez la réponse et les détails par courriel.",
+        "firstTitle": "La première rencontre",
+        "firstBody": "Vous faites le tour de votre situation et nommez ensemble des objectifs, selon la formule choisie.",
+        "nextTitle": "La suite",
+        "nextBody": "Les rencontres suivantes se planifient avec {name}. Un reçu est émis pour chaque séance payée."
+      },
+      "values": {
+        "eyebrow": "Valeurs",
+        "title": "Ce qui guide ma pratique"
+      },
+      "services": {
+        "eyebrow": "Services et tarifs",
+        "title": "Des tarifs affichés, sans surprise",
+        "intro": "Tarifs en dollars canadiens. Un reçu est émis pour chaque séance payée, pour vos assurances.",
+        "standardMeta": "{minutes} minutes · {modes}",
+        "quickMeta": "{minutes} minutes",
+        "quickPoint": "Pour un besoin précis et ponctuel",
+        "therapyPrice": "{type} : {price}",
+        "priceLater": "Tarif confirmé avec votre demande",
+        "seeTimes": "Voir les disponibilités",
+        "seeQuick": "Voir les créneaux"
+      },
+      "dispos": {
+        "eyebrow": "Disponibilités",
+        "title": "Choisissez un moment qui vous convient",
+        "intro": "Sélectionnez une journée et une heure : {name} répond à votre demande en 24 heures au plus.",
+        "closedTitle": "Aucune consultation ouverte en ce moment",
+        "closedIntro": "Inscrivez-vous sur la liste d'attente de {name}, ou laissez Je chemine vous jumeler avec un autre professionnel."
+      },
+      "products": {
+        "eyebrow": "Formations et produits",
+        "title": "Apprendre à votre rythme, entre les séances"
+      },
+      "expertises": {
+        "eyebrow": "Champs d'expertise"
+      },
+      "faq": {
+        "eyebrow": "Questions fréquentes",
+        "title": "Avant de faire une demande",
+        "intro": "Une autre question ? L'équipe de Je chemine vous répond.",
+        "contact": "Écrire à Je chemine",
+        "bookingQ": "Comment se passe une demande de rendez-vous ?",
+        "bookingA": "Choisissez une journée et une heure dans les disponibilités, puis remplissez votre demande. Le créneau vous est réservé pendant que {name} l'étudie, et vous recevez la réponse par courriel en 24 heures au plus.",
+        "modesQ": "En personne ou à distance ?",
+        "modesA": "{name} offre les consultations {modes}. Vous indiquez votre préférence dans votre demande.",
+        "insuranceQ": "Les séances sont-elles remboursées ?",
+        "insuranceA": "Plusieurs assurances collectives remboursent en tout ou en partie les services des professionnels membres d'un ordre. Un reçu est émis pour chaque séance payée ; vérifiez votre couverture auprès de votre assureur.",
+        "privacyQ": "Ce que je raconte reste-t-il confidentiel ?",
+        "privacyA": "Oui. Le secret professionnel s'applique à ce que vous confiez, sauf dans les exceptions prévues par la loi.",
+        "cancelQ": "Que se passe-t-il si je dois annuler ?",
+        "cancelA": "Vous pouvez annuler sans frais jusqu'à {hours} heures avant le rendez-vous.",
+        "waitQ": "Et si aucun moment ne me convient ?",
+        "waitA": "Inscrivez-vous sur la liste d'attente de {name} : un créneau qui vous convient vous est proposé dès qu'il se libère. Vous pouvez aussi demander à Je chemine de vous jumeler avec un autre professionnel."
+      },
+      "cta": {
+        "title": "Le premier pas est souvent le plus difficile",
+        "body": "Choisissez un moment qui vous convient : votre demande est envoyée directement à {name}.",
+        "waitlist": "Liste d'attente"
+      },
+      "emergencyTitle": "Besoin d'aide rapidement ?",
+      "footer": {
+        "pageTitle": "Sur cette page",
+        "platformTitle": "Je chemine",
+        "cityPros": "Professionnels à {city}",
+        "allPros": "Trouver un professionnel au Québec",
+        "match": "Être jumelé avec un professionnel",
+        "poweredTitle": "Propulsé par",
+        "poweredBody": "Page hébergée sur Je chemine, la plateforme québécoise de santé mentale."
+      },
+      "sticky": {
+        "price": "{price} · {minutes} min",
+        "note": "Consultation standard",
+        "cta": "Prendre rendez-vous"
+      }
+    },
     "titles": {
       "psychologist": "Psychologue",
       "psychotherapist": "Psychothérapeute",
@@ -7914,7 +8038,19 @@
     "howItWorks": "Choisissez un créneau, puis faites votre demande : le créneau vous est réservé jusqu'à la réponse du professionnel.",
     "matchInstead": "Être jumelé avec un autre professionnel",
     "joinWaitlist": "M'inscrire sur la liste d'attente",
-    "noTimeSuits": "Aucun créneau ne vous convient ? Inscrivez-vous sur la liste d'attente."
+    "noTimeSuits": "Aucun créneau ne vous convient ? Inscrivez-vous sur la liste d'attente.",
+    "modeNote": "{minutes} minutes · {modes} · {price}",
+    "modeNoteNoPrice": "{minutes} minutes · {modes}",
+    "prevDays": "Jours précédents",
+    "nextDays": "Jours suivants",
+    "timezone": "Les heures sont affichées à l'heure de Montréal.",
+    "slotChoose": "Choisir {time}, {day}",
+    "requestTitle": "Votre demande",
+    "noSlotTitle": "Aucun créneau sélectionné",
+    "noSlotBody": "Choisissez une journée puis une heure. Le créneau vous est réservé pendant que {name} étudie votre demande.",
+    "chosenMeta": "{service} · {minutes} min · {price}",
+    "chosenMetaNoPrice": "{service} · {minutes} min",
+    "requestCta": "Demander ce rendez-vous"
   },
   "DirectRequests": {
     "services": {

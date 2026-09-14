@@ -19,7 +19,7 @@ import {
  * The two waitlists on a professional's page (spec 003 phase 4): this
  * professional's own list — the form below, offers by email and, with consent,
  * text message — or Je chemine's general matching, which is the ordinary
- * booking funnel on www.
+ * booking funnel on www. Styled for the « vitrine » design.
  */
 export function ShowcaseWaitlistForm({
   slug,
@@ -115,41 +115,46 @@ export function ShowcaseWaitlistForm({
   };
 
   const input =
-    "mt-1 block w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none";
+    "mt-[7px] block w-full rounded-[11px] border border-[#E7DFD1] bg-[#FCFAF6] px-3.5 py-3 text-[15px] text-[#2F413D] placeholder:text-[#9DA29B] focus:border-[#17505F] focus:outline-none";
+  const label = "block text-[13.5px] font-medium text-[#3D4B47]";
   const chip = (selected: boolean) =>
-    `rounded-full border px-3 py-1 text-xs transition-colors ${
-      selected ? "border-primary bg-primary/10 text-foreground" : "border-border/60 text-muted-foreground hover:text-foreground"
+    `rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+      selected ? "border-[#17505F] bg-[#17505F] text-[#F6F2EA]" : "border-[#E7DFD1] bg-white text-[#3D4B47] hover:border-[#17505F]"
     }`;
 
   return (
     <section
       id={SHOWCASE_WAITLIST_ANCHOR}
       aria-labelledby="showcase-waitlist"
-      className="scroll-mt-24 rounded-2xl border border-border/60 bg-card p-6"
+      className="scroll-mt-24 rounded-[22px] border border-[#E2EADC] bg-white p-[clamp(18px,2.6vw,26px)]"
     >
-      <h2 id="showcase-waitlist" className="flex items-center gap-2 font-serif text-xl font-light text-foreground">
-        <Hourglass className="h-5 w-5 text-primary" aria-hidden="true" />
-        {t("title")}
-      </h2>
+      <div className="mb-3 flex items-center gap-[11px]">
+        <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[11px] bg-[#E7EEE2] text-[#17505F]">
+          <Hourglass className="h-[18px] w-[18px]" aria-hidden="true" />
+        </span>
+        <h2 id="showcase-waitlist" className="font-[family-name:var(--font-vitrine-serif)] text-[21px] font-medium text-[#0F3540]">
+          {t("title")}
+        </h2>
+      </div>
 
       {state === "done" ? (
-        <div className="mt-4 space-y-2" role="status">
-          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
-            {t("doneTitle")}
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">{t("doneBody", { name: professionalName })}</p>
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#DCE6D3] bg-[#F3F6F0] px-[15px] py-[13px]" role="status">
+          <CheckCircle2 className="mt-px h-[18px] w-[18px] shrink-0 text-[#4E7A52]" aria-hidden="true" />
+          <span className="text-sm leading-normal text-[#33453B]">
+            <strong className="block font-semibold">{t("doneTitle")}</strong>
+            {t("doneBody", { name: professionalName })}
+          </span>
         </div>
       ) : (
-        <div className="mt-4 space-y-5">
+        <div className="space-y-5">
           <div>
-            <h3 className="text-sm font-medium text-foreground">{t("exclusiveTitle", { name: professionalName })}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t("exclusiveBody")}</p>
+            <h3 className="text-sm font-semibold text-[#15404B]">{t("exclusiveTitle", { name: professionalName })}</h3>
+            <p className="mt-1 text-[14.5px] leading-[1.65] text-[#4C5853]">{t("exclusiveBody")}</p>
             {open ? null : (
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="mt-3 inline-flex rounded-lg border border-primary px-4 py-2 text-sm text-primary transition-colors hover:bg-primary/5"
+                className="mt-4 w-full rounded-xl border border-[#17505F] bg-white px-[18px] py-[13px] text-[15px] font-semibold text-[#17505F] transition-colors hover:bg-[#17505F] hover:text-[#F8F5EE]"
               >
                 {t("join")}
               </button>
@@ -158,21 +163,21 @@ export function ShowcaseWaitlistForm({
 
           {open ? (
             <form onSubmit={(event) => void submit(event)} className="space-y-4" noValidate>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block text-sm text-foreground">
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <label className={label}>
                   {t("fields.firstName")}
                   <input className={input} value={firstName} onChange={(e) => setFirstName(e.target.value)} required maxLength={60} autoComplete="given-name" />
                 </label>
-                <label className="block text-sm text-foreground">
+                <label className={label}>
                   {t("fields.lastName")}
                   <input className={input} value={lastName} onChange={(e) => setLastName(e.target.value)} required maxLength={60} autoComplete="family-name" />
                 </label>
               </div>
-              <label className="block text-sm text-foreground">
+              <label className={label}>
                 {t("fields.email")}
                 <input className={input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={254} autoComplete="email" />
               </label>
-              <label className="block text-sm text-foreground">
+              <label className={label}>
                 {t("fields.phone")}
                 <input
                   className={input}
@@ -185,12 +190,12 @@ export function ShowcaseWaitlistForm({
                   maxLength={25}
                   autoComplete="tel"
                 />
-                <span className="mt-1 block text-xs text-muted-foreground">{t("fields.phoneHelp")}</span>
+                <span className="mt-1 block text-xs font-normal text-[#6A736C]">{t("fields.phoneHelp")}</span>
               </label>
 
               {services.length > 1 ? (
                 <fieldset>
-                  <legend className="text-sm text-foreground">{t("fields.service")}</legend>
+                  <legend className={label}>{t("fields.service")}</legend>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {services.map((option) => (
                       <button key={option} type="button" aria-pressed={service === option} onClick={() => setService(option)} className={chip(service === option)}>
@@ -203,7 +208,7 @@ export function ShowcaseWaitlistForm({
 
               {modalities.length > 1 ? (
                 <fieldset>
-                  <legend className="text-sm text-foreground">{t("fields.modality")}</legend>
+                  <legend className={label}>{t("fields.modality")}</legend>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {modalities.map((option) => (
                       <button key={option} type="button" aria-pressed={modality === option} onClick={() => setModality(option)} className={chip(modality === option)}>
@@ -216,7 +221,7 @@ export function ShowcaseWaitlistForm({
 
               {motifOptions.length > 0 ? (
                 <fieldset>
-                  <legend className="text-sm text-foreground">{t("fields.motifs", { max: WAITLIST_MAX_MOTIFS })}</legend>
+                  <legend className={label}>{t("fields.motifs", { max: WAITLIST_MAX_MOTIFS })}</legend>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {motifOptions.map((option) => {
                       const selected = motifs.includes(option);
@@ -238,7 +243,7 @@ export function ShowcaseWaitlistForm({
               ) : null}
 
               <fieldset>
-                <legend className="text-sm text-foreground">{t("fields.periods")}</legend>
+                <legend className={label}>{t("fields.periods")}</legend>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {WAITLIST_PERIODS.map((option) => (
                     <button key={option} type="button" aria-pressed={periods.includes(option)} onClick={() => setPeriods((current) => toggle(current, option))} className={chip(periods.includes(option))}>
@@ -248,7 +253,7 @@ export function ShowcaseWaitlistForm({
                 </div>
               </fieldset>
               <fieldset>
-                <legend className="text-sm text-foreground">{t("fields.days")}</legend>
+                <legend className={label}>{t("fields.days")}</legend>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {WAITLIST_WEEKDAYS.map((option) => (
                     <button key={option} type="button" aria-pressed={days.includes(option)} onClick={() => setDays((current) => toggle(current, option))} className={chip(days.includes(option))}>
@@ -256,17 +261,17 @@ export function ShowcaseWaitlistForm({
                     </button>
                   ))}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{t("fields.anyTimeHelp")}</p>
+                <p className="mt-1.5 text-xs text-[#6A736C]">{t("fields.anyTimeHelp")}</p>
               </fieldset>
 
-              <label className="flex items-start gap-2 text-xs leading-relaxed text-foreground">
-                <input type="checkbox" className="mt-0.5" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              <label className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[#3D4B47]">
+                <input type="checkbox" className="mt-0.5 accent-[#17505F]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                 <span>{t("consent", { name: professionalName })}</span>
               </label>
-              <label className={`flex items-start gap-2 text-xs leading-relaxed ${phone.trim() ? "text-foreground" : "text-muted-foreground"}`}>
+              <label className={`flex items-start gap-2.5 text-[13px] leading-relaxed ${phone.trim() ? "text-[#3D4B47]" : "text-[#9DA29B]"}`}>
                 <input
                   type="checkbox"
-                  className="mt-0.5"
+                  className="mt-0.5 accent-[#17505F]"
                   checked={smsConsent}
                   disabled={phone.trim() === ""}
                   onChange={(e) => setSmsConsent(e.target.checked)}
@@ -275,7 +280,7 @@ export function ShowcaseWaitlistForm({
               </label>
 
               {error ? (
-                <p role="alert" className="text-sm text-destructive">
+                <p role="alert" className="text-sm text-[#B42318]">
                   {error}
                 </p>
               ) : null}
@@ -283,7 +288,7 @@ export function ShowcaseWaitlistForm({
               <button
                 type="submit"
                 disabled={state === "sending"}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-[13px] bg-[#17505F] px-5 py-[15px] text-[15.5px] font-semibold text-[#F8F5EE] transition hover:bg-[#0E3A46] disabled:opacity-60"
               >
                 {state === "sending" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 {state === "sending" ? t("sending") : t("submit")}
@@ -291,10 +296,10 @@ export function ShowcaseWaitlistForm({
             </form>
           ) : null}
 
-          <div className="border-t border-border/60 pt-4">
-            <h3 className="text-sm font-medium text-foreground">{t("generalTitle")}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t("generalBody")}</p>
-            <a href={matchUrl} data-showcase-cta="" className="mt-2 inline-flex text-sm text-primary hover:underline">
+          <div className="border-t border-[#EDE6DA] pt-4">
+            <h3 className="text-sm font-semibold text-[#15404B]">{t("generalTitle")}</h3>
+            <p className="mt-1 text-[14.5px] leading-[1.65] text-[#4C5853]">{t("generalBody")}</p>
+            <a href={matchUrl} data-showcase-cta="" className="mt-2 inline-flex text-sm font-medium text-[#17505F] hover:text-[#0E3A46]">
               {t("generalCta")}
             </a>
           </div>

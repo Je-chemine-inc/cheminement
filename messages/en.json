@@ -7470,6 +7470,130 @@
       "productFree": "Free",
       "productOpen": "View"
     },
+    "vitrine": {
+      "verified": "Page verified by Je chemine",
+      "others": "Other professionals in {city}",
+      "orderPermit": "{order} · permit no. {number}",
+      "placeBoth": "{city} and online",
+      "placeVideo": "Online consultations",
+      "heroSecondary": "See fees",
+      "nav": {
+        "label": "On this page",
+        "about": "About",
+        "approach": "Approach",
+        "services": "Fees",
+        "slots": "Availability",
+        "products": "Trainings",
+        "faq": "Questions"
+      },
+      "chips": {
+        "inPerson": "In person in {city}",
+        "video": "Video consultation",
+        "phone": "Phone consultation",
+        "chat": "Chat consultation"
+      },
+      "modesShort": {
+        "inPerson": "in person",
+        "video": "by video",
+        "phone": "by phone",
+        "chat": "by chat"
+      },
+      "trust": {
+        "receipt": "A receipt for every paid session",
+        "cancellation": "Free cancellation up to {hours} h before",
+        "answer": "An answer to your request within 24 hours at most"
+      },
+      "about": {
+        "eyebrow": "About",
+        "heading": "{title} in {city}",
+        "headingYears": "{title} for {years, plural, one {# year} other {# years}}, in {city}",
+        "headingNoTitle": "{name}, in {city}",
+        "factsTitle": "At a glance",
+        "office": "Office in {city}"
+      },
+      "approach": {
+        "eyebrow": "Approach",
+        "title": "My approach",
+        "stepsTitle": "How a request works",
+        "step": "Step {number}",
+        "requestTitle": "Your request",
+        "requestBody": "You pick a time in the availability and fill in your request. The time is held for you while {name} reviews it.",
+        "answerTitle": "The answer",
+        "answerBody": "{name} confirms or declines within 24 hours at most. You receive the answer and the details by email.",
+        "firstTitle": "The first meeting",
+        "firstBody": "You go over your situation and set goals together, in the format you chose.",
+        "nextTitle": "What follows",
+        "nextBody": "The next meetings are scheduled with {name}. A receipt is issued for every paid session."
+      },
+      "values": {
+        "eyebrow": "Values",
+        "title": "What guides my practice"
+      },
+      "services": {
+        "eyebrow": "Services and fees",
+        "title": "Fees shown up front, no surprises",
+        "intro": "Fees in Canadian dollars. A receipt is issued for every paid session, for your insurance.",
+        "standardMeta": "{minutes} minutes · {modes}",
+        "quickMeta": "{minutes} minutes",
+        "quickPoint": "For a specific, one-time need",
+        "therapyPrice": "{type}: {price}",
+        "priceLater": "Fee confirmed with your request",
+        "seeTimes": "See availability",
+        "seeQuick": "See times"
+      },
+      "dispos": {
+        "eyebrow": "Availability",
+        "title": "Choose a time that works for you",
+        "intro": "Pick a day and a time: {name} answers your request within 24 hours at most.",
+        "closedTitle": "No consultation open right now",
+        "closedIntro": "Join the waitlist for {name}, or let Je chemine match you with another professional."
+      },
+      "products": {
+        "eyebrow": "Trainings and products",
+        "title": "Learn at your own pace, between sessions"
+      },
+      "expertises": {
+        "eyebrow": "Areas of expertise"
+      },
+      "faq": {
+        "eyebrow": "Frequent questions",
+        "title": "Before you send a request",
+        "intro": "Another question? The Je chemine team will answer.",
+        "contact": "Write to Je chemine",
+        "bookingQ": "How does an appointment request work?",
+        "bookingA": "Pick a day and a time in the availability, then fill in your request. The time is held for you while {name} reviews it, and you receive the answer by email within 24 hours at most.",
+        "modesQ": "In person or remotely?",
+        "modesA": "{name} offers consultations {modes}. You state your preference in your request.",
+        "insuranceQ": "Are sessions reimbursed?",
+        "insuranceA": "Many group insurance plans reimburse, in full or in part, the services of professionals who belong to a professional order. A receipt is issued for every paid session; check your coverage with your insurer.",
+        "privacyQ": "Does what I share stay confidential?",
+        "privacyA": "Yes. Professional secrecy covers what you share, except in the cases the law provides for.",
+        "cancelQ": "What if I need to cancel?",
+        "cancelA": "You can cancel free of charge up to {hours} hours before the appointment.",
+        "waitQ": "What if no time works for me?",
+        "waitA": "Join the waitlist for {name}: a time that works for you is offered to you as soon as one opens. You can also ask Je chemine to match you with another professional."
+      },
+      "cta": {
+        "title": "The first step is often the hardest",
+        "body": "Choose a time that works for you: your request goes straight to {name}.",
+        "waitlist": "Waitlist"
+      },
+      "emergencyTitle": "Need help quickly?",
+      "footer": {
+        "pageTitle": "On this page",
+        "platformTitle": "Je chemine",
+        "cityPros": "Professionals in {city}",
+        "allPros": "Find a professional in Quebec",
+        "match": "Get matched with a professional",
+        "poweredTitle": "Powered by",
+        "poweredBody": "Page hosted on Je chemine, Quebec's mental-health platform."
+      },
+      "sticky": {
+        "price": "{price} · {minutes} min",
+        "note": "Standard consultation",
+        "cta": "Book an appointment"
+      }
+    },
     "titles": {
       "psychologist": "Psychologist",
       "psychotherapist": "Psychotherapist",
@@ -7915,7 +8039,19 @@
     "howItWorks": "Choose a time, then send your request: the time is held for you until the professional answers.",
     "matchInstead": "Get matched with another professional",
     "joinWaitlist": "Join the waitlist",
-    "noTimeSuits": "No time suits you? Join the waitlist."
+    "noTimeSuits": "No time suits you? Join the waitlist.",
+    "modeNote": "{minutes} minutes · {modes} · {price}",
+    "modeNoteNoPrice": "{minutes} minutes · {modes}",
+    "prevDays": "Earlier days",
+    "nextDays": "Later days",
+    "timezone": "Times are shown in Montreal time.",
+    "slotChoose": "Choose {time}, {day}",
+    "requestTitle": "Your request",
+    "noSlotTitle": "No time selected",
+    "noSlotBody": "Pick a day, then a time. The time is held for you while {name} reviews your request.",
+    "chosenMeta": "{service} · {minutes} min · {price}",
+    "chosenMetaNoPrice": "{service} · {minutes} min",
+    "requestCta": "Request this appointment"
   },
   "DirectRequests": {
     "services": {
