@@ -3,7 +3,9 @@ import {
   VITRINE_ANCHORS,
   canShowNextDays,
   daysInView,
+  groupSlotsByPeriod,
   headlinePrice,
+  slotPeriod,
   initialsOf,
   vitrineSections,
 } from "@/lib/showcase-vitrine";
@@ -54,6 +56,23 @@ describe("the booking panel's days", () => {
     expect(daysInView(days, 0)).toEqual(["d1", "d2", "d3", "d4", "d5"]);
     expect(daysInView(days, 5)).toEqual(["d6", "d7"]);
     expect(daysInView(days, -3)).toEqual(["d1", "d2", "d3", "d4", "d5"]);
+  });
+
+  it("places a time in the morning before noon, the afternoon before 17 h, the evening after", () => {
+    expect(slotPeriod("09:00")).toBe("morning");
+    expect(slotPeriod("11:59")).toBe("morning");
+    expect(slotPeriod("12:00")).toBe("afternoon");
+    expect(slotPeriod("16:30")).toBe("afternoon");
+    expect(slotPeriod("17:00")).toBe("evening");
+  });
+
+  it("groups a day's times by period, in order, without empty periods", () => {
+    expect(groupSlotsByPeriod(["09:00", "13:00", "10:00", "14:00"])).toEqual([
+      { period: "morning", times: ["09:00", "10:00"] },
+      { period: "afternoon", times: ["13:00", "14:00"] },
+    ]);
+    expect(groupSlotsByPeriod(["18:00"])).toEqual([{ period: "evening", times: ["18:00"] }]);
+    expect(groupSlotsByPeriod([])).toEqual([]);
   });
 
   it("moves forward while days are loaded or more can be fetched", () => {

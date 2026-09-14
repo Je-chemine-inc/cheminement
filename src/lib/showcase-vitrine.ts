@@ -68,6 +68,22 @@ export function daysInView<T>(days: readonly T[], start: number, size = VITRINE_
   return days.slice(Math.max(0, start), Math.max(0, start) + size);
 }
 
+export type SlotPeriod = "morning" | "afternoon" | "evening";
+
+/** When a free time falls in the day (Montréal wall-clock "HH:MM"): before noon, before 17 h, or later. */
+export function slotPeriod(time: string): SlotPeriod {
+  const hour = Number.parseInt(time.slice(0, 2), 10);
+  return hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+}
+
+/** A day's free times grouped by period, in the day's order, leaving out empty periods. */
+export function groupSlotsByPeriod(times: readonly string[]): { period: SlotPeriod; times: string[] }[] {
+  const order: SlotPeriod[] = ["morning", "afternoon", "evening"];
+  return order
+    .map((period) => ({ period, times: times.filter((time) => slotPeriod(time) === period) }))
+    .filter((group) => group.times.length > 0);
+}
+
 /** Whether "next days" can move: more days already loaded, or more to fetch. */
 export function canShowNextDays(start: number, loaded: number, hasMore: boolean, size = VITRINE_DAYS_PER_VIEW): boolean {
   return start + size < loaded || hasMore;

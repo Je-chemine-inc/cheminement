@@ -7579,6 +7579,11 @@
         "waitlist": "Waitlist"
       },
       "emergencyTitle": "Need help quickly?",
+      "choose": "Choose",
+      "expertisesTitle": "What I help with",
+      "expertisesIntro": "The situations {name} helps clients with. Each topic also leads to other professionals in {city} who work with it.",
+      "expertiseExplore": "Explore this topic",
+      "ctaEyebrow": "First step",
       "footer": {
         "pageTitle": "On this page",
         "platformTitle": "Je chemine",
@@ -8051,7 +8056,21 @@
     "noSlotBody": "Pick a day, then a time. The time is held for you while {name} reviews your request.",
     "chosenMeta": "{service} · {minutes} min · {price}",
     "chosenMetaNoPrice": "{service} · {minutes} min",
-    "requestCta": "Request this appointment"
+    "requestCta": "Request this appointment",
+    "stepService": "The consultation",
+    "stepTime": "The time",
+    "stepRequest": "Your request",
+    "optionMinutes": "{minutes} minutes",
+    "summaryService": "Consultation",
+    "summaryDuration": "Length",
+    "summaryWhen": "Time",
+    "summaryPrice": "Fee",
+    "summaryPending": "To choose",
+    "pickFirst": "Pick a time to continue",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "slotCount": "{count, plural, one {# time} other {# times}}"
   },
   "DirectRequests": {
     "services": {

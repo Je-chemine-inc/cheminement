@@ -2,22 +2,29 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowRight, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
 import type { DirectRequestService } from "@/lib/direct-request-rules";
 import type { ShowcaseSlotsResponse } from "@/lib/showcase-booking-types";
-import { VITRINE_DAYS_PER_VIEW, canShowNextDays, daysInView } from "@/lib/showcase-vitrine";
+import { VITRINE_DAYS_PER_VIEW, canShowNextDays, daysInView, groupSlotsByPeriod } from "@/lib/showcase-vitrine";
+
+export type VitrineBookingOption = {
+  service: DirectRequestService;
+  minutes: number;
+  price: number | null;
+};
 
 /**
- * The booking panel of a professional's page (spec 003, « vitrine » design):
- * the consultation, five days at a time, their free times, and « Votre demande »
- * with the chosen time. The request itself is made in the booking funnel on
- * www, which holds the time until the professional answers; nothing is booked
- * on the city host. `aside` goes under the request card (the waitlist).
+ * The booking panel of a professional's page (spec 003, « vitrine » design), in
+ * three steps side by side: the consultation, the time (five days at a time,
+ * free times grouped by period), and « Votre demande », a summary with the
+ * request button. The request itself is made in the booking funnel on www,
+ * which holds the time until the professional answers; nothing is booked on
+ * the city host. `aside` goes under the panel (the waitlist).
  */
 export function VitrineBooking({
   slug,
   name,
-  services,
+  options,
   modes,
   bookingBaseUrl,
   waitlistAnchor,
@@ -25,8 +32,8 @@ export function VitrineBooking({
 }: {
   slug: string;
   name: string;
-  /** The consultations this page offers, the default first. */
-  services: DirectRequestService[];
+  /** The consultations this page offers, the default first, with their length and fee. */
+  options: VitrineBookingOption[];
   /** How the professional consults, as a phrase: « en personne ou en vidéo ». */
   modes: string;
   /** The funnel's URL on www, without the service and time parameters. */
@@ -37,7 +44,7 @@ export function VitrineBooking({
   const t = useTranslations("ShowcaseBooking");
   const locale = useLocale();
   const localeTag = locale === "en" ? "en-CA" : "fr-CA";
-  const [service, setService] = useState<DirectRequestService>(services[0] ?? "standard");
+  const [service, setService] = useState<DirectRequestService>(options[0]?.service ?? "standard");
   const [pages, setPages] = useState<ShowcaseSlotsResponse[]>([]);
   const [start, setStart] = useState(0);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -130,12 +137,15 @@ export function VitrineBooking({
 
   // Day keys and times are Montréal wall-clock values: format them in UTC so the
   // visitor's own time zone never shifts a day or an hour.
-  const weekday = (day: string) => {
-    const label = new Intl.DateTimeFormat(localeTag, { weekday: "short", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
-    return label.charAt(0).toLocaleUpperCase(localeTag) + label.slice(1);
-  };
+  const capitalize = (text: string) => text.charAt(0).toLocaleUpperCase(localeTag) + text.slice(1);
+  const weekday = (day: string) =>
+    capitalize(new Intl.DateTimeFormat(localeTag, { weekday: "short", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`)));
   const date = (day: string) =>
     new Intl.DateTimeFormat(localeTag, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+  const dayNumber = (day: string) =>
+    new Intl.DateTimeFormat(localeTag, { day: "numeric", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
+  const monthShort = (day: string) =>
+    new Intl.DateTimeFormat(localeTag, { month: "short", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
   const timeLabel = (day: string, time: string) =>
     new Intl.DateTimeFormat(localeTag, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`${day}T${time}:00Z`));
   const money = new Intl.NumberFormat(localeTag, { style: "currency", currency: "CAD", minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -147,191 +157,243 @@ export function VitrineBooking({
     return url.toString();
   };
 
-  const price = first?.price ?? null;
-  const minutes = first?.durationMinutes ?? 0;
-  const links = (
-    <span className="mt-3 flex flex-col items-start gap-2 text-sm">
+  const current = options.find((option) => option.service === service) ?? options[0];
+  const chosen = Boolean(selectedDay && selectedTime && first?.available);
+  const when = selectedDay && selectedTime ? `${weekday(selectedDay)} ${date(selectedDay)}, ${timeLabel(selectedDay, selectedTime)}` : null;
+
+  const stepLabel = (number: number, label: string, dark = false) => (
+    <p className={`flex items-center gap-3 vt-sm font-semibold ${dark ? "text-white" : "text-[#1F2A2E]"}`}>
+      <span
+        className={`flex h-8 w-8 flex-none items-center justify-center rounded-full font-[family-name:var(--font-vitrine-serif)] text-[15px] ${
+          dark ? "bg-white/15 text-white" : "bg-[#E6EFEA] text-[#17505F]"
+        }`}
+      >
+        {number}
+      </span>
+      {label}
+    </p>
+  );
+
+  const fallbackLinks = (
+    <span className="mt-5 flex flex-wrap gap-2.5">
       {waitlistAnchor ? (
-        <a href={`#${waitlistAnchor}`} className="font-medium text-[#17505F] hover:text-[#0E3A46]">
+        <a href={`#${waitlistAnchor}`} className="rounded-full bg-[#17505F] px-5 py-3 vt-sm font-semibold text-white transition-colors hover:bg-[#0E3A46] hover:text-white">
           {t("joinWaitlist")}
         </a>
       ) : null}
-      <a href={bookingBaseUrl} data-showcase-cta="" className="font-medium text-[#17505F] hover:text-[#0E3A46]">
+      <a href={bookingBaseUrl} data-showcase-cta="" className="rounded-full border border-[#D9D4CA] bg-white px-5 py-3 vt-sm font-semibold text-[#17505F] transition-colors hover:border-[#17505F]">
         {t("matchInstead")}
       </a>
     </span>
   );
 
-  const dayButton = (on: boolean) =>
-    `rounded-xl border px-[3px] py-2.5 text-center leading-tight transition-colors ${
-      on
-        ? "border-[#17505F] bg-[#17505F] text-[#F6F2EA] shadow-[0_10px_20px_-14px_rgba(23,80,95,0.9)]"
-        : "border-[#E7DFD1] bg-white text-[#2B403C] hover:border-[#17505F]"
-    }`;
-  const timeButton = (on: boolean) =>
-    `rounded-xl border px-1 py-3 text-center text-[14.5px] transition-colors ${
-      on
-        ? "border-[#17505F] bg-[#17505F] font-semibold text-[#F6F2EA] shadow-[0_10px_20px_-14px_rgba(23,80,95,0.9)]"
-        : "border-[#E7DFD1] bg-white text-[#2B403C] hover:border-[#17505F]"
-    }`;
   const navButton =
-    "flex rounded-[9px] p-[7px] text-[#17505F] transition-colors hover:bg-[#F1F4EE] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
+    "flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[#E4E1DA] bg-white text-[#1F2A2E] transition-colors hover:border-[#17505F] hover:text-[#17505F] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#E4E1DA] disabled:hover:text-[#1F2A2E]";
+  const ready = state === "ready" && first?.available && days.length > 0;
 
   return (
-    <div className="flex flex-wrap items-start gap-4">
-      <div className="min-w-0 flex-[1_1_460px] rounded-[22px] border border-[#E2EADC] bg-white p-[clamp(18px,2.6vw,28px)]">
-        {services.length > 1 ? (
-          <div role="tablist" aria-label={t("servicesLabel")} className="mb-3 flex gap-1 rounded-xl border border-[#EAE2D5] bg-[#F3EFE7] p-1">
-            {services.map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={service === option}
-                onClick={() => chooseService(option)}
-                className={`min-w-0 flex-1 truncate rounded-[9px] px-2 py-2.5 text-sm transition ${
-                  service === option
-                    ? "bg-white font-semibold text-[#12414F] shadow-[0_3px_8px_-4px_rgba(16,51,61,0.4)]"
-                    : "font-medium text-[#5C6762] hover:text-[#12414F]"
-                }`}
-              >
-                {t(`services.${option}`)}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {state === "ready" && first?.available ? (
-          <p className="mb-5 flex items-center gap-2 text-[13.5px] text-[#5E6863]">
-            <Clock className="h-[15px] w-[15px] shrink-0 text-[#17505F]" aria-hidden="true" />
-            {price === null
-              ? t("modeNoteNoPrice", { minutes, modes })
-              : t("modeNote", { minutes, modes, price: money.format(price) })}
-          </p>
-        ) : null}
-
-        <div aria-live="polite">
-          {state === "loading" ? (
-            <p className="flex items-center gap-2 text-sm text-[#5E6863]">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              {t("loading")}
-            </p>
-          ) : state === "error" ? (
-            <p className="text-sm text-[#B42318]">{t("error")}</p>
-          ) : !first?.available ? (
-            <div>
-              <p className="text-sm leading-relaxed text-[#4C5853]">{t("unavailable")}</p>
-              {links}
-            </div>
-          ) : days.length === 0 ? (
-            <div>
-              <p className="text-sm leading-relaxed text-[#4C5853]">{t("none")}</p>
-              {links}
-            </div>
-          ) : (
-            <>
-              <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-[#EDE6DA] px-2 py-1.5">
-                <button type="button" onClick={() => showDays(Math.max(0, start - VITRINE_DAYS_PER_VIEW))} disabled={start === 0} aria-label={t("prevDays")} className={navButton}>
-                  <ChevronLeft className="h-[19px] w-[19px]" aria-hidden="true" />
-                </button>
-                <span className="text-center text-[14.5px] font-medium text-[#2E403C]">
-                  {visible.length > 0
-                    ? `${weekday(visible[0].day)} ${date(visible[0].day)} – ${weekday(visible.at(-1)!.day)} ${date(visible.at(-1)!.day)}`
-                    : null}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void goForward()}
-                  disabled={loadingMore || !canShowNextDays(start, days.length, Boolean(nextFrom))}
-                  aria-label={t("nextDays")}
-                  className={navButton}
-                >
-                  {loadingMore ? <Loader2 className="h-[19px] w-[19px] animate-spin" aria-hidden="true" /> : <ChevronRight className="h-[19px] w-[19px]" aria-hidden="true" />}
-                </button>
-              </div>
-
-              <ul aria-label={t("daysLabel")} className="mb-3.5 grid grid-cols-5 gap-[7px]">
-                {visible.map(({ day }) => (
-                  <li key={day} className="min-w-0">
-                    <button
-                      type="button"
-                      aria-pressed={day === selectedDay}
-                      onClick={() => {
-                        setSelectedDay(day);
-                        setSelectedTime(null);
-                      }}
-                      className={`w-full ${dayButton(day === selectedDay)}`}
+    <div className="space-y-6">
+      <div className="rounded-[40px] border border-[#ECE8E1] bg-white p-2 shadow-[0_40px_90px_-64px_rgba(31,42,46,0.55)]">
+        <div className="grid gap-2 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.7fr)_minmax(0,0.95fr)]">
+          {/* 1 · The consultation */}
+          <div className="rounded-[32px] bg-[#F6F3EE] p-[clamp(20px,2.2vw,36px)]">
+            {stepLabel(1, t("stepService"))}
+            <div role="radiogroup" aria-label={t("servicesLabel")} className="mt-6 flex flex-col gap-3">
+              {options.map((option) => {
+                const on = option.service === service;
+                return (
+                  <button
+                    key={option.service}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => chooseService(option.service)}
+                    className={`flex w-full items-center gap-4 rounded-[26px] border-2 p-[clamp(14px,1.2vw,20px)] text-left transition-all duration-300 ${
+                      on
+                        ? "border-[#17505F] bg-white shadow-[0_20px_44px_-30px_rgba(23,80,95,0.8)]"
+                        : "border-transparent bg-white/70 hover:bg-white"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 transition-colors ${
+                        on ? "border-[#17505F] bg-[#17505F] text-white" : "border-[#CFC9BE] bg-white"
+                      }`}
                     >
-                      <span className="block text-[13px] font-semibold">{weekday(day)}</span>
-                      <span className="mt-[3px] block whitespace-nowrap text-xs opacity-80">{date(day)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      {on ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block vt-md font-semibold leading-snug text-[#1F2A2E]">{t(`services.${option.service}`)}</span>
+                      <span className="mt-1 block vt-sm text-[#5B6566]">{t("optionMinutes", { minutes: option.minutes })}</span>
+                    </span>
+                    {option.price !== null ? (
+                      <span className="flex-none font-[family-name:var(--font-vitrine-serif)] text-[clamp(22px,1.7vw,30px)] leading-none text-[#1F2A2E]">
+                        {money.format(option.price)}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {modes ? (
+              <p className="mt-6 flex items-center gap-2.5 vt-sm text-[#3E494B]">
+                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white text-[#17505F]">
+                  <Clock className="h-4 w-4" aria-hidden="true" />
+                </span>
+                {capitalize(modes)}
+              </p>
+            ) : null}
+          </div>
 
-              {selectedDay ? (
-                <ul
-                  aria-label={t("slotsLabel", { day: `${weekday(selectedDay)} ${date(selectedDay)}` })}
-                  className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(96px,1fr))]"
+          {/* 2 · The time */}
+          <div className="min-w-0 p-[clamp(20px,2.2vw,36px)]">
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+              {stepLabel(2, t("stepTime"))}
+              {ready ? (
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => showDays(Math.max(0, start - VITRINE_DAYS_PER_VIEW))} disabled={start === 0} aria-label={t("prevDays")} className={navButton}>
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                  <span className="min-w-[10ch] text-center font-[family-name:var(--font-vitrine-serif)] vt-md text-[#1F2A2E]">
+                    {visible.length > 0 ? `${date(visible[0].day)} – ${date(visible.at(-1)!.day)}` : null}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void goForward()}
+                    disabled={loadingMore || !canShowNextDays(start, days.length, Boolean(nextFrom))}
+                    aria-label={t("nextDays")}
+                    className={navButton}
+                  >
+                    {loadingMore ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <ChevronRight className="h-5 w-5" aria-hidden="true" />}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-6" aria-live="polite">
+              {state === "loading" ? (
+                <p className="flex items-center gap-2 vt-sm text-[#5B6566]">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {t("loading")}
+                </p>
+              ) : state === "error" ? (
+                <p className="vt-sm text-[#B42318]">{t("error")}</p>
+              ) : !first?.available ? (
+                <div className="rounded-[26px] bg-[#F6F3EE] p-6">
+                  <p className="vt-md leading-relaxed text-[#3E494B]">{t("unavailable")}</p>
+                  {fallbackLinks}
+                </div>
+              ) : days.length === 0 ? (
+                <div className="rounded-[26px] bg-[#F6F3EE] p-6">
+                  <p className="vt-md leading-relaxed text-[#3E494B]">{t("none")}</p>
+                  {fallbackLinks}
+                </div>
+              ) : (
+                <>
+                  <ul aria-label={t("daysLabel")} className="grid grid-cols-5 gap-2">
+                    {visible.map(({ day, slots: daySlots }) => {
+                      const on = day === selectedDay;
+                      return (
+                        <li key={day} className="min-w-0">
+                          <button
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => {
+                              setSelectedDay(day);
+                              setSelectedTime(null);
+                            }}
+                            className={`flex w-full flex-col items-center rounded-[24px] border px-1 py-[clamp(10px,0.9vw,16px)] text-center transition-all duration-300 ${
+                              on
+                                ? "border-[#17505F] bg-[#17505F] text-white shadow-[0_16px_30px_-18px_rgba(23,80,95,0.9)]"
+                                : "border-[#ECE8E1] bg-[#FBFAF7] text-[#1F2A2E] hover:border-[#17505F]"
+                            }`}
+                          >
+                            <span className={`vt-xs font-semibold ${on ? "text-white/80" : "text-[#5B6566]"}`}>{weekday(day)}</span>
+                            <span className="mt-0.5 font-[family-name:var(--font-vitrine-serif)] text-[clamp(22px,1.8vw,32px)] leading-none">{dayNumber(day)}</span>
+                            <span className={`mt-1 vt-xs ${on ? "text-white/80" : "text-[#5B6566]"}`}>{monthShort(day)}</span>
+                            <span className={`mt-1.5 hidden whitespace-nowrap vt-xs sm:block ${on ? "text-white/75" : "text-[#17505F]"}`}>
+                              {t("slotCount", { count: daySlots.length })}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {selectedDay ? (
+                    <div className="mt-7 space-y-5" aria-label={t("slotsLabel", { day: `${weekday(selectedDay)} ${date(selectedDay)}` })} role="group">
+                      {groupSlotsByPeriod(slots).map((group) => (
+                        <div key={group.period} className="grid gap-3 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-start">
+                          <p className="pt-2.5 vt-sm font-semibold text-[#5B6566]">{t(group.period)}</p>
+                          <ul className="flex flex-wrap gap-2.5">
+                            {group.times.map((time) => {
+                              const on = selectedTime === time;
+                              return (
+                                <li key={time}>
+                                  <button
+                                    type="button"
+                                    aria-pressed={on}
+                                    aria-label={t("slotChoose", { time: timeLabel(selectedDay, time), day: `${weekday(selectedDay)} ${date(selectedDay)}` })}
+                                    onClick={() => setSelectedTime((currentTime) => (currentTime === time ? null : time))}
+                                    className={`min-w-[80px] rounded-full border px-4 py-2.5 vt-sm font-semibold transition-all duration-300 sm:min-w-[96px] sm:px-5 ${
+                                      on
+                                        ? "border-[#17505F] bg-[#17505F] text-white shadow-[0_12px_24px_-14px_rgba(23,80,95,0.9)]"
+                                        : "border-[#ECE8E1] bg-white text-[#1F2A2E] hover:border-[#17505F] hover:text-[#17505F]"
+                                    }`}
+                                  >
+                                    {timeLabel(selectedDay, time)}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <p className="mt-7 vt-xs text-[#5B6566]">{t("timezone")}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 3 · The request */}
+          <div className="flex flex-col rounded-[32px] bg-[#17505F] p-[clamp(20px,2.2vw,36px)] text-white lg:col-span-2 xl:col-span-1">
+            {stepLabel(3, t("stepRequest"), true)}
+            <dl className="mt-6 divide-y divide-white/15 border-y border-white/15">
+              {[
+                { label: t("summaryService"), value: t(`services.${service}`) },
+                { label: t("summaryDuration"), value: current ? t("optionMinutes", { minutes: current.minutes }) : "" },
+                { label: t("summaryWhen"), value: chosen && when ? when : t("summaryPending"), pending: !chosen },
+                ...(current && current.price !== null ? [{ label: t("summaryPrice"), value: money.format(current.price) }] : []),
+              ].map((row) => (
+                <div key={row.label} className="flex items-baseline justify-between gap-4 py-3.5">
+                  <dt className="vt-sm text-white/65">{row.label}</dt>
+                  <dd className={`text-right vt-sm font-semibold ${"pending" in row && row.pending ? "text-white/55" : "text-white"}`}>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+            {chosen ? null : <p className="mt-5 vt-sm leading-relaxed text-white/75">{t("noSlotBody", { name })}</p>}
+            <div className="mt-auto pt-7">
+              {chosen && selectedDay && selectedTime ? (
+                <a
+                  href={requestUrl(selectedDay, selectedTime)}
+                  data-showcase-cta=""
+                  className="flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-6 py-4 vt-md font-semibold text-[#17505F] shadow-[0_18px_36px_-18px_rgba(0,0,0,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#E6EFEA] hover:text-[#0E3A46] motion-reduce:hover:translate-y-0"
                 >
-                  {slots.map((time) => (
-                    <li key={time}>
-                      <button
-                        type="button"
-                        aria-pressed={selectedTime === time}
-                        aria-label={t("slotChoose", { time: timeLabel(selectedDay, time), day: `${weekday(selectedDay)} ${date(selectedDay)}` })}
-                        onClick={() => setSelectedTime((current) => (current === time ? null : time))}
-                        className={`w-full ${timeButton(selectedTime === time)}`}
-                      >
-                        {timeLabel(selectedDay, time)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <p className="mt-4 text-[13px] leading-normal text-[#6A736C]">{t("timezone")}</p>
-              {waitlistAnchor ? (
-                <a href={`#${waitlistAnchor}`} className="mt-1 inline-flex text-[13px] font-medium text-[#17505F] hover:text-[#0E3A46]">
-                  {t("noTimeSuits")}
+                  {t("requestCta")}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
-              ) : null}
-            </>
-          )}
+              ) : (
+                <span aria-disabled="true" className="flex w-full items-center justify-center rounded-full border border-white/30 px-6 py-4 text-center vt-sm font-semibold text-white/65">
+                  {t("pickFirst")}
+                </span>
+              )}
+              <p className="mt-4 vt-xs leading-normal text-white/65">{t("howItWorks")}</p>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="flex min-w-0 max-w-[420px] flex-[1_1_300px] flex-col gap-4">
-        <div className="rounded-[22px] border border-[#E2EADC] bg-white p-[clamp(18px,2.6vw,26px)]">
-          <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.16em] text-[#666E62]">{t("requestTitle")}</p>
-          {selectedDay && selectedTime && first?.available ? (
-            <div>
-              <p className="mb-1.5 font-[family-name:var(--font-vitrine-serif)] text-[23px] font-medium leading-tight text-[#0F3540]">
-                {`${weekday(selectedDay)} ${date(selectedDay)}, ${timeLabel(selectedDay, selectedTime)}`}
-              </p>
-              <p className="mb-[18px] text-sm text-[#4C5853]">
-                {price === null
-                  ? t("chosenMetaNoPrice", { service: t(`services.${service}`), minutes })
-                  : t("chosenMeta", { service: t(`services.${service}`), minutes, price: money.format(price) })}
-              </p>
-              <a
-                href={requestUrl(selectedDay, selectedTime)}
-                data-showcase-cta=""
-                className="flex items-center justify-center gap-2 rounded-[13px] bg-[#17505F] px-[18px] py-[15px] text-[15.5px] font-semibold text-[#F8F5EE] transition hover:-translate-y-0.5 hover:bg-[#0E3A46] hover:text-[#F8F5EE]"
-              >
-                {t("requestCta")}
-                <ArrowRight className="h-[17px] w-[17px]" aria-hidden="true" />
-              </a>
-              <p className="mt-3 text-[13px] leading-normal text-[#6A736C]">{t("howItWorks")}</p>
-            </div>
-          ) : (
-            <div>
-              <p className="mb-2 font-[family-name:var(--font-vitrine-serif)] text-[21px] font-medium leading-snug text-[#0F3540]">{t("noSlotTitle")}</p>
-              <p className="text-sm leading-relaxed text-[#4C5853]">{t("noSlotBody", { name })}</p>
-            </div>
-          )}
-        </div>
-        {aside}
-      </div>
+      {aside}
     </div>
   );
 }

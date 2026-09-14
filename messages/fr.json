@@ -7578,6 +7578,11 @@
         "waitlist": "Liste d'attente"
       },
       "emergencyTitle": "Besoin d'aide rapidement ?",
+      "choose": "Choisir",
+      "expertisesTitle": "Ce que j'accompagne",
+      "expertisesIntro": "Les situations pour lesquelles {name} accompagne ses clients. Chaque thème mène aussi aux autres professionnels de {city} qui le travaillent.",
+      "expertiseExplore": "Explorer ce thème",
+      "ctaEyebrow": "Premier pas",
       "footer": {
         "pageTitle": "Sur cette page",
         "platformTitle": "Je chemine",
@@ -8050,7 +8055,21 @@
     "noSlotBody": "Choisissez une journée puis une heure. Le créneau vous est réservé pendant que {name} étudie votre demande.",
     "chosenMeta": "{service} · {minutes} min · {price}",
     "chosenMetaNoPrice": "{service} · {minutes} min",
-    "requestCta": "Demander ce rendez-vous"
+    "requestCta": "Demander ce rendez-vous",
+    "stepService": "La consultation",
+    "stepTime": "Le moment",
+    "stepRequest": "Votre demande",
+    "optionMinutes": "{minutes} minutes",
+    "summaryService": "Consultation",
+    "summaryDuration": "Durée",
+    "summaryWhen": "Moment",
+    "summaryPrice": "Tarif",
+    "summaryPending": "À choisir",
+    "pickFirst": "Choisissez une heure pour continuer",
+    "morning": "Matin",
+    "afternoon": "Après-midi",
+    "evening": "Soir",
+    "slotCount": "{count, plural, one {# heure} other {# heures}}"
   },
   "DirectRequests": {
     "services": {
