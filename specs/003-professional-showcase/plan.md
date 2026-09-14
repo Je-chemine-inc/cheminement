@@ -579,9 +579,12 @@ chrome with absolute www links.
 
 1. DNS API for the wildcard certificate: Namecheap API (top-up if not eligible) or move the zone
    to Cloudflare DNS-only. Pilot fallback: per-city cPanel subdomains.
-2. Taxes on products (TPS/TVQ, platform as merchant of record): tax-inclusive prices with the
-   commission on the gross for now (stamped `inclusive_untracked`), or on the tax-exclusive base
-   once remittance starts; Stripe Tax later.
+2. ~~Taxes on products~~ — decided 2026-09-14: Je chemine collects TPS and TVQ, **added at
+   checkout** on top of the displayed price, on professionals' products and the team's premium
+   resources alike; rates and registration numbers set by an admin (« Taxes sur les ventes en
+   ligne », off until both numbers are entered); the commission is on the price before taxes;
+   each purchase keeps its amounts and rates (`taxTreatment: "added"`). Still for the accountant:
+   TPS/TVQ on the commission charged to professionals, and buyers outside Quebec.
 3. Wording to validate with the orders: fee grid, title/permit display, the professional consent
    text; the rights attestation and product terms for professionals.
 4. ~~Which cities get a host at launch~~ — every official « Ville » (2026-09-13). Still open:

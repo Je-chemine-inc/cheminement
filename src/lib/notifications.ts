@@ -2287,19 +2287,65 @@ export async function sendGuestPaymentComplete(
  * `lang` comes from the entitlement row (the language they bought in), never
  * inferred at send time.
  */
+/**
+ * The TPS and TVQ lines of a resource receipt, with the registration numbers;
+ * empty when no tax was added at checkout.
+ */
+function resourceReceiptTaxRows(
+  taxes: {
+    subtotalCents: number;
+    tpsCents: number;
+    tvqCents: number;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  } | null | undefined,
+  lang: "fr" | "en",
+): { label: string; value: string }[] {
+  if (!taxes) return [];
+  const rate = (value: number) =>
+    value.toLocaleString(lang === "fr" ? "fr-CA" : "en-CA", { maximumFractionDigits: 3 });
+  // The total is already the email's "amount paid"; these lines say what it is made of.
+  return lang === "fr"
+    ? [
+        { label: "Prix", value: formatCents(taxes.subtotalCents, lang) },
+        { label: `TPS (${rate(taxes.tpsRatePercent)} %) — n° ${taxes.tpsNumber}`, value: formatCents(taxes.tpsCents, lang) },
+        { label: `TVQ (${rate(taxes.tvqRatePercent)} %) — n° ${taxes.tvqNumber}`, value: formatCents(taxes.tvqCents, lang) },
+      ]
+    : [
+        { label: "Price", value: formatCents(taxes.subtotalCents, lang) },
+        { label: `GST (${rate(taxes.tpsRatePercent)}%) — No. ${taxes.tpsNumber}`, value: formatCents(taxes.tpsCents, lang) },
+        { label: `QST (${rate(taxes.tvqRatePercent)}%) — No. ${taxes.tvqNumber}`, value: formatCents(taxes.tvqCents, lang) },
+      ];
+}
+
 export async function sendResourcePurchaseComplete(data: {
   buyerEmail: string;
   buyerName?: string;
   resourceTitle: string;
+  /** What was charged: the price plus TPS and TVQ when they were added. */
   amountCents: number;
   accessUrl: string;
   locale: "fr" | "en";
+  /** TPS and TVQ added at checkout, with the registration numbers a receipt must show. */
+  taxes?: {
+    subtotalCents: number;
+    tpsCents: number;
+    tvqCents: number;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  } | null;
 }): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const buyerName = data.buyerName?.trim() || (lang === "fr" ? "bonjour" : "there");
   const price = (data.amountCents / 100).toFixed(2);
+  // The receipt lines for TPS and TVQ, shown whatever the editable template says.
+  const taxRows = resourceReceiptTaxRows(data.taxes, lang);
 
   const editable = await loadEditableTemplate("resourcePurchaseComplete", lang, {
     buyerName,
@@ -2315,6 +2361,7 @@ export async function sendResourcePurchaseComplete(data: {
       theme: "success",
       greeting: "",
       intro: editable.bodyHtml,
+      ...(taxRows.length ? { details: taxRows, detailsBorderColor: "#22c55e" } : {}),
       button: { text: editable.ctaText || (lang === "fr" ? "Lire la ressource" : "Read the resource"), url: data.accessUrl },
       branding,
       lang,
@@ -2323,6 +2370,7 @@ export async function sendResourcePurchaseComplete(data: {
       [
         editable.title,
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/s+/g, " ").trim(),
+        ...taxRows.map((row) => (lang === "fr" ? `${row.label} : ${row.value}` : `${row.label}: ${row.value}`)),
         `${data.resourceTitle} : ${data.accessUrl}`,
       ],
       lang,
@@ -2347,6 +2395,7 @@ export async function sendResourcePurchaseComplete(data: {
         label: lang === "fr" ? "Ressource" : "Resource",
         value: data.resourceTitle,
       },
+      ...taxRows,
     ],
     detailsBorderColor: "#22c55e",
     price: {
@@ -2376,6 +2425,7 @@ export async function sendResourcePurchaseComplete(data: {
           "Votre ressource est débloquée",
           `Bonjour ${buyerName},`,
           `Ressource : ${data.resourceTitle}`,
+          ...taxRows.map((row) => `${row.label} : ${row.value}`),
           `Montant payé : ${price} $ ${currency}`,
           `Lien d'accès : ${data.accessUrl}`,
           "Conservez ce courriel : ce lien est personnel.",
@@ -2384,6 +2434,7 @@ export async function sendResourcePurchaseComplete(data: {
           "Your resource is unlocked",
           `Hello ${buyerName},`,
           `Resource: ${data.resourceTitle}`,
+          ...taxRows.map((row) => `${row.label}: ${row.value}`),
           `Amount paid: ${currency} ${price}`,
           `Access link: ${data.accessUrl}`,
           "Keep this email: the link is personal.",

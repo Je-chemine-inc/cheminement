@@ -30,6 +30,8 @@ type EntitlementRow = {
   status: string;
   disputed?: boolean;
   amountCents: number;
+  /** Set when TPS and TVQ were added at checkout: the professional's sale is the price before them. */
+  subtotalCents?: number;
   commissionBps?: number;
   ownerProfessionalId?: unknown;
 };
@@ -44,15 +46,18 @@ export async function syncProductLedger(entitlementId: string, now: Date = new D
 
   for (let attempt = 1; ; attempt++) {
     const ent = await ResourceEntitlement.findById(entitlementId)
-      .select("slug status disputed amountCents commissionBps ownerProfessionalId")
+      .select("slug status disputed amountCents subtotalCents commissionBps ownerProfessionalId")
       .lean<EntitlementRow | null>();
     if (!ent?.ownerProfessionalId || typeof ent.commissionBps !== "number") {
       return { changed: false, reason: "not-a-product" };
     }
 
+    // TPS and TVQ added at checkout belong to the tax authorities, not to the
+    // sale: the commission and the professional's share come from the price before them.
+    const saleCents = typeof ent.subtotalCents === "number" ? ent.subtotalCents : ent.amountCents;
     const owed = ent.status === "paid" && ent.disputed !== true;
-    const split = splitProductSaleCents(owed ? ent.amountCents : 0, ent.commissionBps);
-    const target = { gross: owed ? ent.amountCents : 0, fee: split.platformFeeCents, net: split.netToProfessionalCents };
+    const split = splitProductSaleCents(owed ? saleCents : 0, ent.commissionBps);
+    const target = { gross: owed ? saleCents : 0, fee: split.platformFeeCents, net: split.netToProfessionalCents };
 
     const rows = await ProfessionalLedgerEntry.find({ entitlementId: ent._id })
       .select("grossAmountCad platformFeeCad netToProfessionalCad")

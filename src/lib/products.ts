@@ -682,7 +682,9 @@ export async function adminProductAction(input: {
 export async function settleProductPurchase(entitlementId: string): Promise<void> {
   const outcome = await syncProductLedger(entitlementId);
   if (!outcome.changed || outcome.source !== "product_sale") return;
-  const ent = await ResourceEntitlement.findById(entitlementId).select("slug ownerProfessionalId amountCents locale").lean();
+  const ent = await ResourceEntitlement.findById(entitlementId)
+    .select("slug ownerProfessionalId amountCents subtotalCents locale")
+    .lean();
   if (!ent?.ownerProfessionalId) return;
   const [owner, entry] = await Promise.all([
     User.findById(ent.ownerProfessionalId).select("firstName lastName email language").lean(),
@@ -694,7 +696,8 @@ export async function settleProductPurchase(entitlementId: string): Promise<void
       professionalName: `${owner.firstName ?? ""} ${owner.lastName ?? ""}`.trim(),
       professionalEmail: owner.email,
       productTitle: entry?.title ?? ent.slug,
-      amountCents: ent.amountCents,
+      // The sale's price, before any TPS and TVQ the buyer paid on top.
+      amountCents: typeof ent.subtotalCents === "number" ? ent.subtotalCents : ent.amountCents,
       netCents: outcome.netCents,
       locale: owner.language,
     }),

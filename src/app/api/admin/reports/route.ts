@@ -186,7 +186,9 @@ export async function GET(req: NextRequest) {
       // make past periods mutable — do not "fix" it by counting refunded rows.
       ResourceEntitlement.aggregate([
         { $match: { status: "paid", paidAt: { $gte: startDate } } },
-        { $group: { _id: null, cents: { $sum: "$amountCents" } } },
+        // TPS and TVQ added at checkout are collected for the tax authorities,
+        // not revenue: count the price before them when the purchase has one.
+        { $group: { _id: null, cents: { $sum: { $ifNull: ["$subtotalCents", "$amountCents"] } } } },
       ]).catch(() => [{ cents: 0 }]),
     ]);
 

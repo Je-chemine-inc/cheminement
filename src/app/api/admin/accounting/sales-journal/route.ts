@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
 // Also registers the Appointment model so populate() resolves refs — without
 // it the export failed ("Schema hasn't been registered") until some other
 // route had loaded the model since the server started.
@@ -88,7 +89,27 @@ export async function GET(req: NextRequest) {
       "net_pro_cad",
       "canal_paiement",
       "type_ligne",
+      "tps_cad",
+      "tvq_cad",
     ].join(",");
+
+    // TPS and TVQ collected on a product sale (added at checkout), read from the
+    // purchase. A reversal carries them negative; session lines have none.
+    const entitlementIds = cleared.map((r) => r.entitlementId).filter(Boolean);
+    const taxesByEntitlement = new Map(
+      (entitlementIds.length
+        ? await ResourceEntitlement.find({ _id: { $in: entitlementIds } })
+            .select("tpsCents tvqCents")
+            .lean<{ _id: unknown; tpsCents?: number; tvqCents?: number }[]>()
+        : []
+      ).map((e) => [String(e._id), e]),
+    );
+    const taxCells = (r: { entitlementId?: unknown; grossAmountCad?: number }) => {
+      const taxes = r.entitlementId ? taxesByEntitlement.get(String(r.entitlementId)) : undefined;
+      if (typeof taxes?.tpsCents !== "number" || typeof taxes?.tvqCents !== "number") return ["", ""];
+      const sign = (r.grossAmountCad ?? 0) < 0 ? -1 : 1;
+      return [(sign * taxes.tpsCents) / 100, (sign * taxes.tvqCents) / 100];
+    };
 
     const sales: JournalLine[] = cleared.map((r) => {
       const apt = r.appointmentId as unknown as { date?: Date } | null;
@@ -112,6 +133,7 @@ export async function GET(req: NextRequest) {
             : r.source === "product_sale" || r.source === "product_sale_recredit"
               ? "vente_produit"
               : "vente",
+          ...taxCells(r),
         ],
       };
     });
@@ -157,6 +179,8 @@ export async function GET(req: NextRequest) {
           0,
           r.paymentChannel,
           "remboursement",
+          "",
+          "",
         ],
       });
     }

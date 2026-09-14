@@ -86,6 +86,16 @@ describe("syncProductLedger", () => {
     expect(h.created.map((row) => row.ledgerKey)).toEqual([0, 1, 2, 3].map((n) => `product:${ENT}:${n}`));
   });
 
+  it("credits the share of the price before TPS and TVQ, and reverses only that", async () => {
+    // 49,00 $ + TPS 2,45 $ + TVQ 4,89 $ charged: the taxes are not part of the sale.
+    h.entitlement = paid({ amountCents: 5634, subtotalCents: 4900 });
+    expect(await syncProductLedger(ENT)).toEqual({ changed: true, source: "product_sale", netCents: 3920 });
+    expect(h.created[0]).toMatchObject({ grossAmountCad: 49, platformFeeCad: 9.8, netToProfessionalCad: 39.2 });
+    h.entitlement = paid({ amountCents: 5634, subtotalCents: 4900, status: "refunded" });
+    expect(await syncProductLedger(ENT)).toEqual({ changed: true, source: "product_sale_reversal", netCents: -3920 });
+    expect(h.created[1]).toMatchObject({ grossAmountCad: -49, platformFeeCad: -9.8, netToProfessionalCad: -39.2 });
+  });
+
   it("takes the share back during a dispute", async () => {
     await syncProductLedger(ENT);
     h.entitlement = paid({ disputed: true });

@@ -21,6 +21,7 @@ import { isPremiumEntry, stripPremiumPayload } from "@/lib/content-premium";
 import { resolveResourceAccess, type ResourceAccessResult } from "@/lib/resource-access";
 import { productByline } from "@/lib/products";
 import { formatCad } from "@/lib/format-currency";
+import { loadCheckoutTaxRates } from "@/lib/sales-tax-settings";
 import { authOptions } from "@/lib/auth";
 import StripAccessToken from "@/components/resources/StripAccessToken";
 import ResourceBuyButton from "@/components/resources/ResourceBuyButton";
@@ -128,6 +129,8 @@ export default async function BookResourcePage({
   // Only used to pre-fill the checkout, never to decide access — that is
   // resolveResourceAccess's job and its answer is already in `access`.
   const session = premium && !access.granted ? await getServerSession(authOptions) : null;
+  // TPS and TVQ the checkout would add, to show before paying; the charge itself is computed at checkout.
+  const taxRates = premium && !access.granted ? await loadCheckoutTaxRates() : null;
 
   // THE boundary. Everything below renders from `view`, never from `doc`.
   const view = access.granted ? doc : stripPremiumPayload(doc);
@@ -396,7 +399,7 @@ export default async function BookResourcePage({
                   {formatCad(doc.priceCents, locale)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("priceAllInclusive")}
+                  {taxRates ? t("pricePlusTaxes") : t("priceAllInclusive")}
                 </p>
 
                 <ul className="mx-auto mt-6 max-w-xs space-y-2 text-left text-sm text-muted-foreground">
@@ -413,6 +416,7 @@ export default async function BookResourcePage({
                     slug={slug}
                     title={doc.title}
                     priceCents={doc.priceCents}
+                    taxRates={taxRates}
                     isSignedIn={Boolean(session?.user?.id)}
                     signedInEmail={session?.user?.email ?? undefined}
                   />

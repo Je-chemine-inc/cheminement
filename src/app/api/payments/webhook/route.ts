@@ -175,6 +175,22 @@ async function sendResourceAccessEmail(
     accessUrl,
     // The language they bought in, never inferred at send time.
     locale: ent.locale,
+    // TPS and TVQ as charged at checkout, from the purchase — never recomputed from today's settings.
+    taxes:
+      ent.taxTreatment === "added" &&
+      typeof ent.subtotalCents === "number" &&
+      typeof ent.tpsCents === "number" &&
+      typeof ent.tvqCents === "number"
+        ? {
+            subtotalCents: ent.subtotalCents,
+            tpsCents: ent.tpsCents,
+            tvqCents: ent.tvqCents,
+            tpsRatePercent: ent.tpsRatePercent ?? 0,
+            tvqRatePercent: ent.tvqRatePercent ?? 0,
+            tpsNumber: ent.tpsNumber ?? "",
+            tvqNumber: ent.tvqNumber ?? "",
+          }
+        : null,
   });
 }
 

@@ -76,8 +76,22 @@ export interface IResourceEntitlement extends Document {
   ownerProfessionalId?: mongoose.Types.ObjectId;
   commissionBps?: number;
   productType?: string;
-  /** Prices include taxes; the platform does not remit TPS/TVQ on products yet (owner decision). */
-  taxTreatment?: "inclusive_untracked";
+  /**
+   * How taxes were handled at checkout. "added": TPS and TVQ were charged on
+   * top of the price (the fields below say how much, at which rates, under
+   * which numbers). "inclusive_untracked": a product bought while taxes were
+   * off — nothing was added. Absent on the team's resources bought before
+   * taxes existed.
+   */
+  taxTreatment?: "inclusive_untracked" | "added";
+  /** The price before taxes, in cents. `amountCents` is what was charged: this plus TPS and TVQ. */
+  subtotalCents?: number;
+  tpsCents?: number;
+  tvqCents?: number;
+  tpsRatePercent?: number;
+  tvqRatePercent?: number;
+  tpsNumber?: string;
+  tvqNumber?: string;
   /**
    * Webinar reminders sent for this purchase, as `<kind>:<start ISO>`
    * (webinarReminderKey). Each is claimed here before its email goes out, so
@@ -125,7 +139,14 @@ const ResourceEntitlementSchema = new Schema<IResourceEntitlement>(
     ownerProfessionalId: { type: Schema.Types.ObjectId, ref: "User" },
     commissionBps: { type: Number, min: 0, max: 10_000 },
     productType: { type: String },
-    taxTreatment: { type: String, enum: ["inclusive_untracked"] },
+    taxTreatment: { type: String, enum: ["inclusive_untracked", "added"] },
+    subtotalCents: { type: Number, min: 0 },
+    tpsCents: { type: Number, min: 0 },
+    tvqCents: { type: Number, min: 0 },
+    tpsRatePercent: { type: Number, min: 0, max: 20 },
+    tvqRatePercent: { type: Number, min: 0, max: 20 },
+    tpsNumber: { type: String, trim: true },
+    tvqNumber: { type: String, trim: true },
     // No empty array by default: the team's resources never gain the key.
     webinarRemindersSent: { type: [String], default: undefined },
   },

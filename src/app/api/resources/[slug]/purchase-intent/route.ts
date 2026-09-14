@@ -13,6 +13,10 @@ import { isPremiumEntry } from "@/lib/content-premium";
 import { RESOURCE_PURCHASE_TYPE, newAccessToken } from "@/lib/resource-entitlement";
 import PlatformSettings from "@/models/PlatformSettings";
 import { commissionBpsOf } from "@/lib/product-rules";
+import { saleTaxBreakdown, salesTaxSettingsOf } from "@/lib/sales-taxes";
+
+/** The tax fields of a purchase, unset together when taxes do not apply to an attempt. */
+const TAX_FIELDS = ["subtotalCents", "tpsCents", "tvqCents", "tpsRatePercent", "tvqRatePercent", "tpsNumber", "tvqNumber"] as const;
 
 /**
  * Start a purchase of a premium resource.
@@ -87,17 +91,8 @@ export async function POST(
       return NextResponse.json({ error: "PRICE_MISMATCH" }, { status: 500 });
     }
 
-    const amountCents = frDoc.priceCents;
-
     // A professional's product (spec 003 phase 5): on sale only while approved
-    // and while its professional's account is active; the commission is
-    // snapshotted on the purchase so a later settings change cannot alter it.
-    let productSnapshot: {
-      ownerProfessionalId: unknown;
-      commissionBps: number;
-      productType?: string;
-      taxTreatment: "inclusive_untracked";
-    } | null = null;
+    // and while its professional's account is active.
     if (frDoc.ownerProfessionalId) {
       const ownerActive = await User.exists({
         _id: frDoc.ownerProfessionalId,
@@ -107,16 +102,54 @@ export async function POST(
       if (!ownerActive || frDoc.moderation?.status !== "approved") {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
-      const settings = await PlatformSettings.findOne()
-        .select("productCommissionPercentage")
-        .lean<{ productCommissionPercentage?: number } | null>();
-      productSnapshot = {
-        ownerProfessionalId: frDoc.ownerProfessionalId,
-        commissionBps: commissionBpsOf(settings?.productCommissionPercentage),
-        productType: frDoc.productType,
-        taxTreatment: "inclusive_untracked",
-      };
     }
+
+    // The displayed price, then TPS and TVQ on top when an admin has turned
+    // them on — for the team's resources and professionals' products alike.
+    // The buyer is charged the total; the purchase keeps the amounts, rates
+    // and numbers it was charged with, so a later settings change cannot alter it.
+    const settings = await PlatformSettings.findOne()
+      .select("productCommissionPercentage salesTaxes")
+      .lean<{ productCommissionPercentage?: number; salesTaxes?: unknown } | null>();
+    const priceCents = frDoc.priceCents;
+    const taxes = saleTaxBreakdown(priceCents, salesTaxSettingsOf(settings?.salesTaxes));
+    const amountCents = taxes?.totalCents ?? priceCents;
+
+    // The commission is snapshotted the same way.
+    const productSnapshot: {
+      ownerProfessionalId: unknown;
+      commissionBps: number;
+      productType?: string;
+    } | null = frDoc.ownerProfessionalId
+      ? {
+          ownerProfessionalId: frDoc.ownerProfessionalId,
+          commissionBps: commissionBpsOf(settings?.productCommissionPercentage),
+          productType: frDoc.productType,
+        }
+      : null;
+    const taxSnapshot = taxes
+      ? {
+          taxTreatment: "added" as const,
+          subtotalCents: taxes.subtotalCents,
+          tpsCents: taxes.tpsCents,
+          tvqCents: taxes.tvqCents,
+          tpsRatePercent: taxes.tpsRatePercent,
+          tvqRatePercent: taxes.tvqRatePercent,
+          tpsNumber: taxes.tpsNumber,
+          tvqNumber: taxes.tvqNumber,
+        }
+      : productSnapshot
+        ? { taxTreatment: "inclusive_untracked" as const }
+        : null;
+    // A pending row reused from an attempt made under other settings must not
+    // keep tax amounts this attempt does not charge.
+    const staleTaxFields = taxes ? [] : [...TAX_FIELDS, ...(taxSnapshot ? [] : ["taxTreatment"])];
+    const taxBreakdown = {
+      subtotalCents: priceCents,
+      tpsCents: taxes?.tpsCents ?? 0,
+      tvqCents: taxes?.tvqCents ?? 0,
+      taxes: taxes ? { tpsRatePercent: taxes.tpsRatePercent, tvqRatePercent: taxes.tvqRatePercent } : null,
+    };
 
     // --- who is buying -------------------------------------------------------
     const session = await getServerSession(authOptions);
@@ -200,7 +233,11 @@ export async function POST(
           status: "pending",
           stripeCustomerId: customerId,
           ...(productSnapshot ?? {}),
+          ...(taxSnapshot ?? {}),
         },
+        ...(staleTaxFields.length
+          ? { $unset: Object.fromEntries(staleTaxFields.map((field) => [field, ""])) }
+          : {}),
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     );
@@ -217,6 +254,7 @@ export async function POST(
             clientSecret: existing.client_secret,
             paymentIntentId: existing.id,
             amountCents,
+            ...taxBreakdown,
             currency: "CAD",
             entitlementId: String(pending._id),
             reused: true,
@@ -258,9 +296,18 @@ export async function POST(
                 commissionBps: String(productSnapshot.commissionBps),
               }
             : {}),
+          // The split of the amount, for reading a charge in the Stripe dashboard.
+          ...(taxes
+            ? {
+                subtotalCents: String(taxes.subtotalCents),
+                tpsCents: String(taxes.tpsCents),
+                tvqCents: String(taxes.tvqCents),
+              }
+            : {}),
           // appointmentId is deliberately absent.
         },
       },
+      // The key follows the amount charged: a change of price or of tax rates never reuses an old intent.
       { idempotencyKey: `resource_${slug}_${buyerKey}_${amountCents}` },
     );
 
@@ -273,6 +320,7 @@ export async function POST(
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       amountCents,
+      ...taxBreakdown,
       currency: "CAD",
       entitlementId: String(pending._id),
     });

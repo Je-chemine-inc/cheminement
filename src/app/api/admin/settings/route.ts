@@ -7,6 +7,7 @@ import PlatformSettings, {
 } from "@/models/PlatformSettings";
 import { authOptions } from "@/lib/auth";
 import { clearEmailSettingsCache } from "@/lib/notifications";
+import { parseTaxNumber, parseTaxRatePercent, salesTaxSettingsOf } from "@/lib/sales-taxes";
 
 export async function GET() {
   try {
@@ -134,6 +135,47 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // TPS and TVQ on online sales. Normalized here, before either save path,
+    // so nothing unvalidated reaches the document.
+    if (data.salesTaxes !== undefined) {
+      const incoming = (typeof data.salesTaxes === "object" && data.salesTaxes !== null
+        ? data.salesTaxes
+        : {}) as Record<string, unknown>;
+      const current = salesTaxSettingsOf(
+        (await PlatformSettings.findOne().select("salesTaxes").lean<{ salesTaxes?: unknown } | null>())?.salesTaxes,
+      );
+      const rate = (key: "tpsRatePercent" | "tvqRatePercent") =>
+        incoming[key] === undefined ? current[key] : parseTaxRatePercent(incoming[key]);
+      const number = (key: "tpsNumber" | "tvqNumber") =>
+        incoming[key] === undefined ? current[key] : parseTaxNumber(incoming[key]);
+      const next = {
+        enabled: incoming.enabled === undefined ? current.enabled : incoming.enabled === true,
+        tpsRatePercent: rate("tpsRatePercent"),
+        tvqRatePercent: rate("tvqRatePercent"),
+        tpsNumber: number("tpsNumber"),
+        tvqNumber: number("tvqNumber"),
+      };
+      if (next.tpsRatePercent === null || next.tvqRatePercent === null) {
+        return NextResponse.json(
+          { error: "TPS and TVQ rates must be between 0 and 20 %, with at most three decimals" },
+          { status: 400 },
+        );
+      }
+      if (next.tpsNumber === null || next.tvqNumber === null) {
+        return NextResponse.json(
+          { error: "Tax numbers may only contain letters, digits, spaces and hyphens (30 characters at most)" },
+          { status: 400 },
+        );
+      }
+      if (next.enabled && (!next.tpsNumber || !next.tvqNumber)) {
+        return NextResponse.json(
+          { error: "Enter the TPS and TVQ numbers before turning taxes on" },
+          { status: 400 },
+        );
+      }
+      data.salesTaxes = next;
+    }
+
     // Validate email settings if provided
     if (data.emailSettings) {
       // Validate branding colors if provided
@@ -186,6 +228,11 @@ export async function PUT(req: NextRequest) {
 
       if (data.productCommissionPercentage !== undefined) {
         settings.productCommissionPercentage = Math.round(data.productCommissionPercentage * 100) / 100;
+      }
+
+      // Already validated and merged with the saved values above.
+      if (data.salesTaxes !== undefined) {
+        settings.salesTaxes = data.salesTaxes;
       }
 
       if (data.currency) {

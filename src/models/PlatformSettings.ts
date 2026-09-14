@@ -243,6 +243,19 @@ export interface IPlatformSettings extends Document {
    * 003 phase 5). It absorbs Stripe's fees. Snapshotted on each purchase.
    */
   productCommissionPercentage?: number;
+  /**
+   * TPS and TVQ added at checkout on online sales (professionals' products and
+   * the team's premium resources). Off by default; charged only once both
+   * registration numbers are set. Each purchase keeps the amounts and rates it
+   * was charged with (see lib/sales-taxes.ts).
+   */
+  salesTaxes?: {
+    enabled: boolean;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  };
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -604,6 +617,13 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     organizationPadEnabled: { type: Boolean, default: false },
     showcaseEnabled: { type: Boolean, default: false },
     productCommissionPercentage: { type: Number, default: 20, min: 0, max: 100 },
+    salesTaxes: {
+      enabled: { type: Boolean, default: false },
+      tpsRatePercent: { type: Number, default: 5, min: 0, max: 20 },
+      tvqRatePercent: { type: Number, default: 9.975, min: 0, max: 20 },
+      tpsNumber: { type: String, trim: true, default: "" },
+      tvqNumber: { type: String, trim: true, default: "" },
+    },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },

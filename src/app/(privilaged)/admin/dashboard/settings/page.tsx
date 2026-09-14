@@ -114,6 +114,8 @@ function normalizePhysicalAddress(
   };
 }
 
+import { SalesTaxesSettings } from "@/components/admin/SalesTaxesSettings";
+
 interface PlatformSettings {
   _id: string;
   defaultPricing: {
@@ -126,6 +128,14 @@ interface PlatformSettings {
   platformFeePercentage: number;
   /** The platform's share of a professional's product sale (spec 003 phase 5). */
   productCommissionPercentage?: number;
+  /** TPS and TVQ added at checkout on online sales (lib/sales-taxes.ts). */
+  salesTaxes?: {
+    enabled: boolean;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  };
   currency: string;
   cancellationPolicy: {
     clientCancellationHours: number;
@@ -512,6 +522,7 @@ export default function SettingsPage() {
           Number.isFinite(settings.productCommissionPercentage)
             ? { productCommissionPercentage: settings.productCommissionPercentage }
             : {}),
+          ...(settings.salesTaxes ? { salesTaxes: settings.salesTaxes } : {}),
           currency: settings.currency,
           cancellationPolicy: settings.cancellationPolicy,
           emailSettings: settings.emailSettings,
@@ -1448,6 +1459,11 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        <SalesTaxesSettings
+          value={settings.salesTaxes}
+          onChange={(next) => setSettings((current) => (current ? { ...current, salesTaxes: next } : current))}
+        />
 
         {/* Cancellation Policy Section */}
         <div className="rounded-xl bg-card p-6 border border-border/40">
