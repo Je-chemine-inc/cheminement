@@ -18,7 +18,7 @@ const h = vi.hoisted(() => ({
   session: null as { user: { id: string; role: string } } | null,
   doc: null as null | {
     salesTaxes?: SalesTaxes;
-    save: ReturnType<typeof vi.fn>;
+    save: ReturnType<typeof vi.fn<[], Promise<undefined>>>;
     toObject: () => Record<string, unknown>;
   },
 }));

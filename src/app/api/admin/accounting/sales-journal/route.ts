@@ -35,7 +35,9 @@ const nameOf = (ref: unknown) => {
 type JournalLine = { at: number; cells: Array<string | number | null | undefined> };
 
 /**
- * Journal des ventes (crédits séance) — export CSV pour comptable.
+ * Journal des ventes — export CSV pour comptable : les crédits des
+ * professionnels (séances, produits), les remboursements de séances, et les
+ * ventes des ressources premium de l'équipe (lues sur les achats).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -185,7 +187,59 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const lines = [...sales, ...refunds]
+    // The team's own premium resources (no professional): no ledger line
+    // exists for them, so they are read from the purchases. A sale on the day
+    // it was paid, a full refund as a negative line on its day; the whole price
+    // before taxes is the platform's, and TPS/TVQ come from the purchase.
+    const teamPurchases = await ResourceEntitlement.find({
+      ownerProfessionalId: { $exists: false },
+      status: { $in: ["paid", "refunded"] },
+      $or: [{ paidAt: { $gte: start, $lt: end } }, { refundedAt: { $gte: start, $lt: end } }],
+    })
+      .select("slug status paidAt refundedAt amountCents subtotalCents tpsCents tvqCents")
+      .lean<
+        {
+          slug: string;
+          status: string;
+          paidAt?: Date;
+          refundedAt?: Date;
+          amountCents: number;
+          subtotalCents?: number;
+          tpsCents?: number;
+          tvqCents?: number;
+        }[]
+      >();
+    const inYear = (d: Date | undefined): d is Date => Boolean(d) && new Date(d!) >= start && new Date(d!) < end;
+    const teamLines: JournalLine[] = [];
+    for (const purchase of teamPurchases) {
+      const priceCad = (typeof purchase.subtotalCents === "number" ? purchase.subtotalCents : purchase.amountCents) / 100;
+      const taxed = typeof purchase.tpsCents === "number" && typeof purchase.tvqCents === "number";
+      const line = (at: Date, sign: 1 | -1, type: string): JournalLine => ({
+        at: at.getTime(),
+        cells: [
+          day(at),
+          getBiweeklyCycleKey(at),
+          "",
+          "",
+          "",
+          "",
+          purchase.slug,
+          sign * priceCad,
+          sign * priceCad,
+          0,
+          "stripe",
+          type,
+          taxed ? (sign * purchase.tpsCents!) / 100 : "",
+          taxed ? (sign * purchase.tvqCents!) / 100 : "",
+        ],
+      });
+      if (inYear(purchase.paidAt)) teamLines.push(line(new Date(purchase.paidAt), 1, "vente_ressource"));
+      if (purchase.status === "refunded" && inYear(purchase.refundedAt)) {
+        teamLines.push(line(new Date(purchase.refundedAt), -1, "remboursement_ressource"));
+      }
+    }
+
+    const lines = [...sales, ...refunds, ...teamLines]
       .sort((a, b) => a.at - b.at)
       .map((l) => l.cells.map((c) => csvEscape(c)).join(","));
 

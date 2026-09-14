@@ -18,9 +18,12 @@ const h = vi.hoisted(() => ({
   refunded: [] as Array<Record<string, unknown>>,
   refundQuery: { value: null as unknown },
   appointmentModelLoaded: false,
-  // Product purchases, as ResourceEntitlement.find returns them.
+  // Product purchases looked up by id, as ResourceEntitlement.find returns them.
   entitlements: [] as Array<Record<string, unknown>>,
   entitlementQuery: { value: null as unknown },
+  // The team's own resource purchases (the other ResourceEntitlement query).
+  teamPurchases: [] as Array<Record<string, unknown>>,
+  teamQuery: { value: null as unknown },
 }));
 
 // Loading the module is what registers the model populate() needs.
@@ -39,9 +42,12 @@ vi.mock("@/models/Appointment", () => {
 
 vi.mock("@/models/ResourceEntitlement", () => ({
   default: {
-    find: (filter: unknown) => {
-      h.entitlementQuery.value = filter;
-      const q = { select: () => q, lean: async () => h.entitlements };
+    find: (filter: Record<string, unknown>) => {
+      // By id: the taxes of product sales. Otherwise: the team's own purchases.
+      const byId = "_id" in filter;
+      if (byId) h.entitlementQuery.value = filter;
+      else h.teamQuery.value = filter;
+      const q = { select: () => q, lean: async () => (byId ? h.entitlements : h.teamPurchases) };
       return q;
     },
   },
@@ -164,6 +170,8 @@ beforeEach(() => {
   h.refundQuery.value = null;
   h.entitlements = [];
   h.entitlementQuery.value = null;
+  h.teamPurchases = [];
+  h.teamQuery.value = null;
 });
 
 const refundedSession = (key: string, payment: Record<string, unknown> = {}) => ({
@@ -328,9 +336,77 @@ describe("GET /api/admin/accounting/sales-journal — TPS and TVQ on products", 
     expect(lines[1].split(",").slice(TYPE)).toEqual(["vente_produit", "", ""]);
   });
 
-  it("does not look up purchases when no line is a product sale", async () => {
+  it("does not look up purchases by id when no line is a product sale", async () => {
     h.rows = [credit("card-paid", "stripe", "paid")];
     await exportCsv();
     expect(h.entitlementQuery.value).toBeNull();
+  });
+});
+
+/**
+ * The team's own premium resources belong to no professional, so no ledger
+ * line exists for them: without reading the purchases, their revenue and the
+ * TPS/TVQ collected on them never reached the accountant.
+ */
+describe("GET /api/admin/accounting/sales-journal — the team's own resources", () => {
+  const teamPurchase = (over: Record<string, unknown> = {}) => ({
+    slug: "guide-equipe",
+    status: "paid",
+    paidAt: new Date("2026-09-12T15:00:00Z"),
+    amountCents: 5634,
+    subtotalCents: 4900,
+    tpsCents: 245,
+    tvqCents: 489,
+    ...over,
+  });
+
+  it("lists a sale: the whole price before taxes is the platform's, with the TPS and TVQ collected", async () => {
+    h.teamPurchases = [teamPurchase()];
+    const { lines } = await exportCsv();
+    expect(lines).toHaveLength(2);
+    const cells = lines[1].split(",");
+    expect(cells.slice(0, 2)).toEqual(["2026-09-12", expect.any(String)]);
+    expect(cells.slice(2, 6)).toEqual(["", "", "", ""]);
+    expect(cells.slice(6)).toEqual(["guide-equipe", "49", "49", "0", "stripe", "vente_ressource", "2.45", "4.89"]);
+  });
+
+  it("a full refund comes back as a negative line on the refund's date", async () => {
+    h.teamPurchases = [teamPurchase({ status: "refunded", refundedAt: new Date("2026-09-20T15:00:00Z") })];
+    const { lines } = await exportCsv();
+    expect(lines).toHaveLength(3);
+    expect(lines[2].split(",")[0]).toBe("2026-09-20");
+    expect(lines[2].split(",").slice(6)).toEqual(["guide-equipe", "-49", "-49", "0", "stripe", "remboursement_ressource", "-2.45", "-4.89"]);
+  });
+
+  it("sold one year, refunded the next: each line in its own year only", async () => {
+    h.teamPurchases = [
+      teamPurchase({ slug: "vendu-avant", paidAt: new Date("2025-12-20T15:00:00Z"), status: "refunded", refundedAt: new Date("2026-01-05T15:00:00Z") }),
+      teamPurchase({ slug: "rembourse-apres", paidAt: new Date("2026-12-28T15:00:00Z"), status: "refunded", refundedAt: new Date("2027-01-04T15:00:00Z") }),
+    ];
+    const { lines } = await exportCsv();
+    expect(lines.slice(1).map((l) => [l.split(",")[6], l.split(",")[TYPE]])).toEqual([
+      ["vendu-avant", "remboursement_ressource"],
+      ["rembourse-apres", "vente_ressource"],
+    ]);
+  });
+
+  it("a purchase made while taxes were off: the amount paid, empty tax cells", async () => {
+    h.teamPurchases = [{ slug: "guide-ancien", status: "paid", paidAt: new Date("2026-03-02T15:00:00Z"), amountCents: 1900 }];
+    const { lines } = await exportCsv();
+    expect(lines[1].split(",").slice(6)).toEqual(["guide-ancien", "19", "19", "0", "stripe", "vente_ressource", "", ""]);
+  });
+
+  it("asks only for the team's paid or refunded purchases touching the year, and keeps date order with the rest", async () => {
+    h.rows = [credit("card-paid", "stripe", "paid", "2026-09-15T10:00:00Z")];
+    h.teamPurchases = [teamPurchase()];
+    const { lines } = await exportCsv();
+    const q = h.teamQuery.value as Record<string, unknown>;
+    expect(q.ownerProfessionalId).toEqual({ $exists: false });
+    expect(q.status).toEqual({ $in: ["paid", "refunded"] });
+    expect(q.$or).toEqual([
+      { paidAt: { $gte: new Date(2026, 0, 1), $lt: new Date(2027, 0, 1) } },
+      { refundedAt: { $gte: new Date(2026, 0, 1), $lt: new Date(2027, 0, 1) } },
+    ]);
+    expect(lines.slice(1).map((l) => l.split(",")[TYPE])).toEqual(["vente_ressource", "vente"]);
   });
 });
