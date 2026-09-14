@@ -24,10 +24,12 @@ import {
 } from "@/lib/showcase-editor-types";
 
 /**
- * The content of a showcase page, edited by the professional or by an admin
- * (spec 003): photo, presentation (French, optional English), expertises,
- * order, and the consultations the page offers. `apiBase` is the page's
- * route: /api/professional/showcase or /api/admin/showcases/<userId>.
+ * The content of a showcase page (spec 003): photo, presentation (French,
+ * optional English), expertises, order, city, and the consultations the page
+ * offers. An admin prepares the draft and sets every field; the professional
+ * edits their published page live and sees the order and the city read-only,
+ * since those are the admin's. `apiBase` is the page's route:
+ * /api/professional/showcase or /api/admin/showcases/<userId>.
  *
  * Text is plain: the server keeps paragraphs and drops everything else.
  */
@@ -153,9 +155,13 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           insuranceNote: draft.insuranceNote,
           values: draft.values.filter((value) => value.fr.trim() || value.en.trim()),
           expertiseIds: draft.expertiseIds,
-          orderCode: draft.orderCode || null,
-          orderLabel: draft.orderCode === "other" ? draft.orderLabel : "",
-          cityKey: draft.cityKey,
+          ...(audience === "admin"
+            ? {
+                orderCode: draft.orderCode || null,
+                orderLabel: draft.orderCode === "other" ? draft.orderLabel : "",
+                cityKey: draft.cityKey,
+              }
+            : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -167,7 +173,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
       onView(next);
       setDraft(toDraftState(next.page.draft, next.expertiseOptions, next.page.cityKey));
       setDirty(false);
-      setNotice({ kind: "ok", text: t("editor.saved") });
+      setNotice({ kind: "ok", text: audience === "admin" ? t("editor.saved") : t("editor.savedLive") });
     } catch {
       setNotice({ kind: "error", text: t("errors.network") });
     } finally {
@@ -329,7 +335,8 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
               {photoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               {view.page.draft.photoUrl ? t("photo.replace") : t("photo.upload")}
             </Button>
-            {view.page.draft.photoUrl ? (
+            {/* A published page needs its photo: only an admin preparing the draft removes it. */}
+            {view.page.draft.photoUrl && audience === "admin" ? (
               <Button type="button" variant="ghost" onClick={() => void removePhoto()} disabled={photoBusy}>
                 <Trash2 className="h-4 w-4" />
                 {t("photo.remove")}
@@ -471,6 +478,32 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         )}
       </section>
 
+      {audience === "professional" ? (
+        <section className={`${cardClass} space-y-3`} aria-labelledby="showcase-identity-title">
+          <h2 id="showcase-identity-title" className="font-serif text-xl font-light text-foreground">
+            {t("identity.title")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t("identity.hint")}</p>
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("order.title")}</dt>
+              <dd className="text-sm text-foreground">
+                {!draft.orderCode
+                  ? t("facts.none")
+                  : draft.orderCode === "other"
+                    ? draft.orderLabel || t("order.other")
+                    : tLabels(`orders.${draft.orderCode}`)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("city.title")}</dt>
+              <dd className="text-sm text-foreground">{view.page.cityName}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {audience === "admin" ? (
       <section className={`${cardClass} space-y-3`} aria-labelledby="showcase-order-title">
         <h2 id="showcase-order-title" className="font-serif text-xl font-light text-foreground">
           {t("order.title")}
@@ -500,7 +533,9 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           </div>
         ) : null}
       </section>
+      ) : null}
 
+      {audience === "admin" ? (
       <section className={`${cardClass} space-y-3`} aria-labelledby="showcase-city-title">
         <h2 id="showcase-city-title" className="font-serif text-xl font-light text-foreground">
           {t("city.title")}
@@ -542,6 +577,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           <p className="text-xs text-amber-700">{tCity("afterApproval")}</p>
         ) : null}
       </section>
+      ) : null}
 
       <section className={`${cardClass} space-y-4`} aria-labelledby="showcase-services-title">
         <div>

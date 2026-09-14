@@ -13,16 +13,22 @@ export type ShowcaseReviewState = (typeof SHOWCASE_REVIEW_STATES)[number];
 
 export type ShowcaseActor = "professional" | "admin";
 
-/** What a page's history records (ShowcaseAdmin.detail.history). */
+/**
+ * What a page's history records (ShowcaseAdmin.detail.history). `invite`,
+ * `submit`, `request_changes` and `remind` belong to the review flow retired
+ * on 2026-09-14; they stay so older entries keep their wording.
+ */
 export const SHOWCASE_HISTORY_ACTIONS = [
-  "invite",
-  "submit",
+  "activate",
   "approve",
-  "request_changes",
+  "edit",
   "unpublish",
   "republish",
-  "remind",
   "move",
+  "invite",
+  "submit",
+  "request_changes",
+  "remind",
 ] as const;
 export type ShowcaseHistoryAction = (typeof SHOWCASE_HISTORY_ACTIONS)[number];
 
@@ -60,9 +66,10 @@ export const ORDER_CODE_BY_TITLE: Readonly<Record<string, ProfessionalOrderCode>
 };
 
 /**
- * Version of the text a professional accepts before their page can go live.
- * Change it whenever `ShowcasePro.consent.text` changes: pages already
- * published stay up, but the next submission needs the new acceptance.
+ * Version of what the professional agrees to before their page goes live, as
+ * an admin confirms it when publishing (`ShowcaseAdmin.detail.consentAttest`).
+ * Change it whenever that text changes: pages already published stay up, but
+ * the next publication needs the admin to confirm the new agreement.
  */
 export const SHOWCASE_CONSENT_VERSION = "showcase-2026-09";
 
@@ -80,6 +87,7 @@ export const SHOWCASE_LIMITS = {
   expertisesMax: 12,
   insuranceNote: 300,
   orderLabel: 80,
+  /** The reason an admin gives when taking a page down. */
   reviewNotes: 2000,
 } as const;
 

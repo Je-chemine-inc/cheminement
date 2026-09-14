@@ -26,7 +26,10 @@ async function fetchShowcase(): Promise<Exclude<State, { kind: "loading" }>> {
   }
 }
 
-/** « Ma page vitrine » — the professional prepares their showcase page (spec 003). */
+/**
+ * « Ma page vitrine » (spec 003): while the team prepares the page, a notice;
+ * once it is published, its status and the editor, whose saves go live.
+ */
 export default function ProfessionalShowcasePage() {
   const t = useTranslations("ShowcasePro");
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -70,6 +73,12 @@ export default function ProfessionalShowcasePage() {
           <Store className="h-8 w-8 text-primary" aria-hidden="true" />
           <h2 className="mt-4 font-serif text-xl font-light text-foreground">{t("notInvited.title")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{t("notInvited.body")}</p>
+        </div>
+      ) : !state.view.page.published ? (
+        <div className="max-w-2xl rounded-xl bg-card p-8">
+          <Store className="h-8 w-8 text-primary" aria-hidden="true" />
+          <h2 className="mt-4 font-serif text-xl font-light text-foreground">{t("preparing.title")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t("preparing.body")}</p>
         </div>
       ) : (
         <>

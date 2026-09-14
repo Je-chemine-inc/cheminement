@@ -45,15 +45,13 @@ vi.mock("@/lib/showcase-photo", () => ({
 }));
 vi.mock("@/lib/showcase-service", () => ({
   listShowcasesForAdmin: () => h.touched(),
-  inviteToShowcase: () => h.touched(),
+  activateShowcase: () => h.touched(),
   loadShowcaseAdminView: () => h.touched(),
   loadShowcaseEditor: () => h.touched(),
   saveShowcaseDraft: () => h.touched(),
-  approveShowcase: () => h.touched(),
-  requestShowcaseChanges: () => h.touched(),
+  publishShowcase: () => h.touched(),
   unpublishShowcase: () => h.touched(),
   republishShowcase: () => h.touched(),
-  remindShowcase: () => h.touched(),
   moveShowcase: () => h.touched(),
   setShowcasePhoto: () => h.touched(),
   updateShowcaseServices: () => h.touched(),
@@ -76,7 +74,13 @@ const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 const req = {
   url: "http://x/api",
   headers: { get: () => null },
-  json: async () => ({ action: "approve", revision: 1, userId: "0123456789abcdef01234567", enabled: true }),
+  json: async () => ({
+    action: "publish",
+    revision: 1,
+    consentAttested: true,
+    userId: "0123456789abcdef01234567",
+    enabled: true,
+  }),
   formData: async () => new FormData(),
 };
 const ctx = { params: Promise.resolve({ userId: "0123456789abcdef01234567" }) };

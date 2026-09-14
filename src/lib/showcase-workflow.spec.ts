@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  changedShowcaseFields,
   cleanLine,
   cleanParagraphs,
   decideShowcaseAction,
@@ -157,6 +158,21 @@ describe("normalizeShowcaseDraft", () => {
     }
   });
 
+  it("ignores the page's city and order when the professional saves, without reading them", () => {
+    expect(
+      normalizeShowcaseDraft(
+        { headline: { fr: "Psy" }, cityKey: "terrebonne", orderCode: "OPQ", orderLabel: "Ordre" },
+        allowed,
+        "professional",
+      ),
+    ).toEqual({ ok: true, set: { "draft.headline": { fr: "Psy", en: "" } }, unset: [] });
+    expect(normalizeShowcaseDraft({ cityKey: "atlantis", orderCode: "ABC" }, allowed, "professional")).toEqual({
+      ok: true,
+      set: {},
+      unset: [],
+    });
+  });
+
   it("refuses a body that is not an object", () => {
     expect(normalizeShowcaseDraft(null, allowed)).toMatchObject({ ok: false, field: "body" });
     expect(normalizeShowcaseDraft([], allowed)).toMatchObject({ ok: false, field: "body" });
@@ -217,45 +233,82 @@ describe("missingShowcaseRequirements", () => {
   });
 });
 
+describe("changedShowcaseFields", () => {
+  it("names only the fields whose value differs from the public copy", () => {
+    const published = { displayName: "Amel Sassi", headline: { fr: "Psychologue", en: "" } };
+    expect(
+      changedShowcaseFields(published, { displayName: "Amel Sassi", headline: { fr: "Psychologue", en: "Psychologist" } }),
+    ).toEqual(["headline"]);
+  });
+
+  it("compares ids as strings and texts whatever their key order, but not reordered lists", () => {
+    const ids = [{ toJSON: () => "e1" }, { toJSON: () => "e2" }];
+    expect(
+      changedShowcaseFields({ expertiseIds: ids, bio: { en: "", fr: "Bio" } }, { expertiseIds: ["e1", "e2"], bio: { fr: "Bio", en: "" } }),
+    ).toEqual([]);
+    expect(changedShowcaseFields({ expertiseIds: ids }, { expertiseIds: ["e2", "e1"] })).toEqual(["expertiseIds"]);
+  });
+
+  it("treats a missing value and an empty one as the same", () => {
+    expect(changedShowcaseFields({}, { intro: { fr: "", en: "" }, values: [], displayName: "" })).toEqual([]);
+    expect(changedShowcaseFields(null, { intro: { fr: "Bonjour", en: "" } })).toEqual(["intro"]);
+  });
+
+  it("never reports a field the professional does not edit", () => {
+    expect(changedShowcaseFields({}, { cityKey: "terrebonne", orderCode: "OPQ" })).toEqual([]);
+  });
+});
+
 describe("decideShowcaseAction", () => {
   const base: ShowcaseWorkflowState = {
     status: "draft",
-    reviewState: "none",
     draftRevision: 3,
     publishedRevision: null,
     hasPublishedSnapshot: false,
     unpublishedBy: null,
     consentVersion: SHOWCASE_CONSENT_VERSION,
-    remindedAt: null,
   };
-  const decide = (over: Partial<ShowcaseWorkflowState>, action: Parameters<typeof decideShowcaseAction>[1], actor: "professional" | "admin", now?: Date) =>
-    decideShowcaseAction({ ...base, ...over }, action, actor, now);
+  const decide = (
+    over: Partial<ShowcaseWorkflowState>,
+    action: Parameters<typeof decideShowcaseAction>[1],
+    actor: "professional" | "admin",
+    options?: { consentAttested?: boolean },
+  ) => decideShowcaseAction({ ...base, ...over }, action, actor, options);
 
-  it("lets only the professional submit, once at a time", () => {
-    expect(decide({}, "submit", "professional")).toEqual({ ok: true });
-    expect(decide({}, "submit", "admin")).toEqual({ ok: false, code: "FORBIDDEN" });
-    expect(decide({ reviewState: "pending" }, "submit", "professional")).toEqual({ ok: false, code: "ALREADY_SUBMITTED" });
-    expect(decide({ reviewState: "changes_requested" }, "submit", "professional")).toEqual({ ok: true });
-  });
-
-  it("lets only an admin publish, with the professional's current consent and something new", () => {
-    expect(decide({ reviewState: "pending" }, "approve", "admin")).toEqual({ ok: true });
-    expect(decide({ reviewState: "pending" }, "approve", "professional")).toEqual({ ok: false, code: "FORBIDDEN" });
-    expect(decide({ consentVersion: "showcase-2020-01" }, "approve", "admin")).toEqual({ ok: false, code: "CONSENT_REQUIRED" });
-    expect(decide({ consentVersion: null }, "approve", "admin")).toEqual({ ok: false, code: "CONSENT_REQUIRED" });
-    expect(decide({ status: "invited" }, "approve", "admin")).toEqual({ ok: false, code: "NOTHING_TO_PUBLISH" });
-    expect(decide({ status: "published", publishedRevision: 3, hasPublishedSnapshot: true }, "approve", "admin")).toEqual({
+  it("lets only an admin publish, and only something new", () => {
+    expect(decide({}, "publish", "admin")).toEqual({ ok: true });
+    expect(decide({}, "publish", "professional")).toEqual({ ok: false, code: "FORBIDDEN" });
+    // A page activated before the change still reads « invited »: an admin prepares and publishes it all the same.
+    expect(decide({ status: "invited" }, "publish", "admin")).toEqual({ ok: true });
+    expect(decide({ status: "published", publishedRevision: 3, hasPublishedSnapshot: true }, "publish", "admin")).toEqual({
       ok: false,
       code: "NOTHING_TO_PUBLISH",
     });
-    expect(decide({ status: "published", publishedRevision: 2, hasPublishedSnapshot: true }, "approve", "admin")).toEqual({ ok: true });
+    expect(decide({ status: "published", publishedRevision: 2, hasPublishedSnapshot: true }, "publish", "admin")).toEqual({ ok: true });
   });
 
-  it("never lets an admin put back a page the professional took down, unless they resubmitted", () => {
+  it("needs the professional's agreement: on record at the current version, or confirmed by the admin now", () => {
+    expect(decide({ consentVersion: "showcase-2020-01" }, "publish", "admin")).toEqual({ ok: false, code: "CONSENT_REQUIRED" });
+    expect(decide({ consentVersion: null }, "publish", "admin")).toEqual({ ok: false, code: "CONSENT_REQUIRED" });
+    expect(decide({ consentVersion: null }, "publish", "admin", { consentAttested: false })).toEqual({
+      ok: false,
+      code: "CONSENT_REQUIRED",
+    });
+    expect(decide({ consentVersion: null }, "publish", "admin", { consentAttested: true })).toEqual({ ok: true });
+  });
+
+  it("lets the professional edit only a page that has been published", () => {
+    expect(decide({}, "edit", "professional")).toEqual({ ok: false, code: "IN_PREPARATION" });
+    expect(decide({ status: "published", hasPublishedSnapshot: true }, "edit", "professional")).toEqual({ ok: true });
+    expect(decide({ status: "unpublished", hasPublishedSnapshot: true }, "edit", "professional")).toEqual({ ok: true });
+    expect(decide({ status: "published", hasPublishedSnapshot: true }, "edit", "admin")).toEqual({ ok: false, code: "FORBIDDEN" });
+  });
+
+  it("never lets an admin publish or put back a page the professional took down", () => {
     const withdrawn = { status: "unpublished" as const, unpublishedBy: "professional" as const, hasPublishedSnapshot: true, publishedRevision: 3 };
-    expect(decide(withdrawn, "approve", "admin")).toEqual({ ok: false, code: "WITHDRAWN_BY_PROFESSIONAL" });
+    expect(decide(withdrawn, "publish", "admin", { consentAttested: true })).toEqual({ ok: false, code: "WITHDRAWN_BY_PROFESSIONAL" });
+    expect(decide({ ...withdrawn, draftRevision: 5 }, "publish", "admin")).toEqual({ ok: false, code: "WITHDRAWN_BY_PROFESSIONAL" });
     expect(decide(withdrawn, "republish", "admin")).toEqual({ ok: false, code: "WITHDRAWN_BY_PROFESSIONAL" });
-    expect(decide({ ...withdrawn, reviewState: "pending" }, "approve", "admin")).toEqual({ ok: true });
     expect(decide(withdrawn, "republish", "professional")).toEqual({ ok: true });
   });
 
@@ -271,28 +324,9 @@ describe("decideShowcaseAction", () => {
     expect(decide({}, "republish", "admin")).toEqual({ ok: false, code: "NOT_UNPUBLISHED" });
   });
 
-  it("asks for changes only on a submitted page", () => {
-    expect(decide({ reviewState: "pending" }, "request_changes", "admin")).toEqual({ ok: true });
-    expect(decide({}, "request_changes", "admin")).toEqual({ ok: false, code: "NOT_SUBMITTED" });
-    expect(decide({ reviewState: "pending" }, "request_changes", "professional")).toEqual({ ok: false, code: "FORBIDDEN" });
-  });
-
   it("takes down only a published page, by either side", () => {
     expect(decide({ status: "published" }, "unpublish", "professional")).toEqual({ ok: true });
     expect(decide({ status: "published" }, "unpublish", "admin")).toEqual({ ok: true });
     expect(decide({}, "unpublish", "admin")).toEqual({ ok: false, code: "NOT_PUBLISHED" });
-  });
-
-  it("reminds an invited professional at most once a day, before they submit", () => {
-    const now = new Date("2026-09-12T12:00:00Z");
-    expect(decide({ status: "invited" }, "remind", "admin", now)).toEqual({ ok: true });
-    expect(decide({ status: "invited", remindedAt: new Date("2026-09-12T00:00:00Z") }, "remind", "admin", now)).toEqual({
-      ok: false,
-      code: "REMINDED_RECENTLY",
-    });
-    expect(decide({ status: "invited", remindedAt: new Date("2026-09-11T11:59:00Z") }, "remind", "admin", now)).toEqual({ ok: true });
-    expect(decide({ reviewState: "pending" }, "remind", "admin", now)).toEqual({ ok: false, code: "ALREADY_SUBMITTED" });
-    expect(decide({ status: "published" }, "remind", "admin", now)).toEqual({ ok: false, code: "NOT_REMINDABLE" });
-    expect(decide({ status: "invited" }, "remind", "professional", now)).toEqual({ ok: false, code: "FORBIDDEN" });
   });
 });

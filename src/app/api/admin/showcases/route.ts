@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireProfessionalsAdmin } from "@/lib/professional-admin";
 import { respondShowcase } from "@/lib/showcase-http";
-import { inviteToShowcase, listShowcasesForAdmin } from "@/lib/showcase-service";
+import { activateShowcase, listShowcasesForAdmin } from "@/lib/showcase-service";
 
 /**
  * « Pages vitrines » (spec 003): every approved professional with the state of
- * their page, and inviting one. Needs `manageProfessionals`.
+ * their page, and activating one. Needs `manageProfessionals`.
  */
 export async function GET() {
   const gate = await requireProfessionalsAdmin();
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     cityKey?: unknown;
     slug?: unknown;
   } | null;
-  const result = await inviteToShowcase({
+  const result = await activateShowcase({
     userId: typeof body?.userId === "string" ? body.userId : "",
     cityKey: body?.cityKey,
     slug: body?.slug,

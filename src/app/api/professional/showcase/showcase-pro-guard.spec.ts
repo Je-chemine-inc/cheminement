@@ -46,7 +46,6 @@ vi.mock("@/lib/showcase-photo", () => ({
 vi.mock("@/lib/showcase-service", () => ({
   loadShowcaseEditor: () => h.touched(),
   saveShowcaseDraft: () => h.touched(),
-  submitShowcase: () => h.touched(),
   unpublishShowcase: () => h.touched(),
   republishShowcase: () => h.touched(),
   updateShowcaseServices: () => h.touched(),
@@ -79,7 +78,7 @@ beforeEach(() => {
 
 describe("professional showcase routes", () => {
   it("finds the routes (guards against this test silently passing)", () => {
-    expect(routes.length).toBeGreaterThanOrEqual(6);
+    expect(routes.length).toBeGreaterThanOrEqual(5);
   });
 
   for (const file of routes) {

@@ -12,10 +12,10 @@ import {
 /**
  * A professional's showcase page (spec 003): psy<city>.jechemine.ca/<slug>.
  *
- * One per professional, created when an admin invites them. The editorial
- * content exists twice: `draft`, which the professional (or an admin) edits,
- * and `published`, the snapshot an admin approved — the only copy the public
- * ever sees. Identity facts (title, permit number, languages, modalities,
+ * One per professional, created when an admin activates it. The editorial
+ * content exists twice: `draft`, which an admin prepares, and `published`,
+ * the copy the public sees — first set when an admin publishes, then edited
+ * live by the professional (their saves write both copies). Identity facts (title, permit number, languages, modalities,
  * fees) are NOT copied here: the page reads them live from the profile, so it
  * never disagrees with what the platform bills.
  */
@@ -84,11 +84,24 @@ export interface IShowcasePage extends Document {
   unpublishedBy?: ShowcaseActor;
   /** Offered on the page. Live settings: they apply without a new review. */
   services: { standard: boolean; quick: boolean };
-  /** The professional's acceptance of publication (Loi 25), versioned. */
-  consent?: { acceptedAt?: Date; version?: string };
+  /**
+   * The professional's agreement to publication (Loi 25), versioned. Since
+   * 2026-09-14 an admin confirms it when publishing (`source` "admin",
+   * `attestedBy`); older pages carry the professional's own acceptance.
+   */
+  consent?: {
+    acceptedAt?: Date;
+    version?: string;
+    source?: ShowcaseActor;
+    attestedBy?: mongoose.Types.ObjectId;
+  };
+  /** When the page was activated (the field keeps its first name). */
   invitedAt: Date;
   invitedBy?: mongoose.Types.ObjectId;
+  /** Retired review flow: the last reminder sent. */
   remindedAt?: Date;
+  /** The last « page changed by the professional » alert to the team. */
+  changeAlertedAt?: Date;
   history: IShowcaseHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
@@ -171,10 +184,13 @@ const ShowcasePageSchema = new Schema<IShowcasePage>(
     consent: {
       acceptedAt: Date,
       version: String,
+      source: { type: String, enum: ["professional", "admin"] },
+      attestedBy: { type: Schema.Types.ObjectId, ref: "User" },
     },
     invitedAt: { type: Date, required: true },
     invitedBy: { type: Schema.Types.ObjectId, ref: "User" },
     remindedAt: Date,
+    changeAlertedAt: Date,
     history: { type: [HistoryEntrySchema], default: [] },
   },
   { timestamps: true },

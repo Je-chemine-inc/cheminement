@@ -28,12 +28,12 @@ import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
 import { SHOWCASE_HISTORY_ACTIONS, SHOWCASE_LIMITS } from "@/lib/showcase-constants";
 import { showcaseErrorKey, type ShowcaseAdminJson } from "@/lib/showcase-editor-types";
 
-type DialogKind = "approve" | "changes" | "unpublish" | "move" | null;
+type DialogKind = "publish" | "unpublish" | "move" | null;
 
 const HISTORY_ACTIONS = new Set<string>(SHOWCASE_HISTORY_ACTIONS);
 const ACTORS = new Set(["professional", "admin", "system"]);
 
-/** One professional's showcase page, for review and corrections (spec 003). */
+/** One professional's showcase page: the admin prepares it, publishes it and follows it (spec 003). */
 export default function AdminShowcaseDetailPage() {
   const { userId } = useParams<{ userId: string }>();
   const t = useTranslations("ShowcaseAdmin");
@@ -44,7 +44,8 @@ export default function AdminShowcaseDetailPage() {
   const [view, setView] = useState<ShowcaseAdminJson | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "denied" | "missing" | "error">("loading");
   const [dialog, setDialog] = useState<DialogKind>(null);
-  const [notes, setNotes] = useState("");
+  const [reason, setReason] = useState("");
+  const [attested, setAttested] = useState(false);
   const [moveSlug, setMoveSlug] = useState("");
   const [moveCity, setMoveCity] = useState("");
   const [busy, setBusy] = useState(false);
@@ -117,7 +118,8 @@ export default function AdminShowcaseDetailPage() {
 
   const openDialog = (kind: Exclude<DialogKind, null>) => {
     setError(null);
-    setNotes("");
+    setReason("");
+    setAttested(false);
     if (kind === "move" && view) {
       setMoveSlug(view.page.slug);
       setMoveCity(view.page.cityKey);
@@ -155,12 +157,9 @@ export default function AdminShowcaseDetailPage() {
   }
 
   const { page, missing, admin } = view;
-  const review = page.review.state;
-  const canApprove =
-    page.status !== "invited" &&
-    page.consent.current &&
-    (page.status !== "published" || page.hasUnpublishedChanges) &&
-    !(page.status === "unpublished" && page.unpublishedBy === "professional" && review !== "pending");
+  const withdrawn = page.status === "unpublished" && page.unpublishedBy === "professional";
+  const canPublish = (page.status !== "published" || page.hasUnpublishedChanges) && !withdrawn;
+  const needsAttestation = !page.consent.current;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -186,16 +185,14 @@ export default function AdminShowcaseDetailPage() {
         </div>
       </div>
 
-      <section className="space-y-4 rounded-xl border border-border/60 bg-card p-6" aria-labelledby="review-title">
+      <section className="space-y-4 rounded-xl border border-border/60 bg-card p-6" aria-labelledby="publication-title">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="review-title" className="font-serif text-xl font-light text-foreground">
+          <h2 id="publication-title" className="font-serif text-xl font-light text-foreground">
             {t("detail.reviewTitle")}
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{t("detail.revision", { revision: page.draftRevision })}</span>
-            <ShowcaseStatusBadge
-              badge={showcaseBadge({ status: page.status, reviewState: review }, view.showcaseEnabled)}
-            />
+            <ShowcaseStatusBadge badge={showcaseBadge(page, view.showcaseEnabled)} />
           </div>
         </div>
 
@@ -210,23 +207,22 @@ export default function AdminShowcaseDetailPage() {
               })}
             </p>
           ) : null}
-          {review === "pending" && page.review.submittedAt ? (
-            <p className="text-muted-foreground">{t("detail.submittedAt", { date: formatDate(page.review.submittedAt) })}</p>
-          ) : null}
-          {review === "changes_requested" && page.review.notes ? (
-            <p className="whitespace-pre-line rounded-lg bg-amber-50 p-3 text-amber-900">{page.review.notes}</p>
-          ) : null}
           <p className={page.consent.current ? "text-muted-foreground" : "text-amber-700"}>
-            {page.consent.current
-              ? t("detail.consentCurrent", { date: formatDate(page.consent.acceptedAt) })
-              : t("detail.consentMissing")}
+            {!page.consent.current
+              ? t("detail.consentMissing")
+              : page.consent.source === "admin"
+                ? t("detail.consentAttested", { date: formatDate(page.consent.acceptedAt) })
+                : t("detail.consentCurrent", { date: formatDate(page.consent.acceptedAt) })}
           </p>
-          {review !== "pending" && page.draftUpdatedBy === "professional" && (page.hasUnpublishedChanges || !page.published) ? (
-            <p className="text-muted-foreground">{t("detail.notSubmittedWarning")}</p>
+          {page.draftUpdatedBy === "professional" && page.draftUpdatedAt ? (
+            <p className="text-muted-foreground">
+              {t("detail.lastProfessionalEdit", { date: formatDate(page.draftUpdatedAt) })}
+            </p>
           ) : null}
-          {page.status === "unpublished" && page.unpublishedBy === "professional" ? (
-            <p className="text-amber-700">{tErrors("errors.WITHDRAWN_BY_PROFESSIONAL")}</p>
+          {page.published && page.hasUnpublishedChanges ? (
+            <p className="text-amber-700">{t("detail.unpublishedCorrections")}</p>
           ) : null}
+          {withdrawn ? <p className="text-amber-700">{tErrors("errors.WITHDRAWN_BY_PROFESSIONAL")}</p> : null}
         </div>
 
         {missing.length > 0 ? (
@@ -268,14 +264,9 @@ export default function AdminShowcaseDetailPage() {
               </Link>
             </Button>
           ) : null}
-          {canApprove && missing.length === 0 ? (
-            <Button type="button" size="sm" onClick={() => openDialog("approve")} disabled={busy}>
-              {t("detail.approve")}
-            </Button>
-          ) : null}
-          {review === "pending" ? (
-            <Button type="button" variant="outline" size="sm" onClick={() => openDialog("changes")} disabled={busy}>
-              {t("detail.requestChanges")}
+          {canPublish && missing.length === 0 ? (
+            <Button type="button" size="sm" onClick={() => openDialog("publish")} disabled={busy}>
+              {page.published ? t("detail.publishChanges") : t("detail.publish")}
             </Button>
           ) : null}
           {page.status === "published" ? (
@@ -286,11 +277,6 @@ export default function AdminShowcaseDetailPage() {
           {page.status === "unpublished" && page.unpublishedBy === "admin" ? (
             <Button type="button" variant="outline" size="sm" onClick={() => void act("republish")} disabled={busy}>
               {t("detail.republish")}
-            </Button>
-          ) : null}
-          {(page.status === "invited" || page.status === "draft") && review !== "pending" ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => void act("remind")} disabled={busy}>
-              {t("detail.remind")}
             </Button>
           ) : null}
           <Button type="button" variant="ghost" size="sm" onClick={() => openDialog("move")} disabled={busy}>
@@ -343,13 +329,23 @@ export default function AdminShowcaseDetailPage() {
         )}
       </section>
 
-      <Dialog open={dialog === "approve"} onOpenChange={(open) => !open && setDialog(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={dialog === "publish"} onOpenChange={(open) => !open && setDialog(null)}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("detail.approveTitle", { revision: page.draftRevision })}</DialogTitle>
-            <DialogDescription>{t("detail.approveBody")}</DialogDescription>
+            <DialogTitle>{t("detail.publishTitle", { revision: page.draftRevision })}</DialogTitle>
+            <DialogDescription>{t("detail.publishBody")}</DialogDescription>
           </DialogHeader>
-          {review !== "pending" ? <p className="text-sm text-amber-700">{t("detail.notSubmittedWarning")}</p> : null}
+          {needsAttestation ? (
+            <label className="flex items-start gap-3 rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-foreground">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={attested}
+                onChange={(event) => setAttested(event.target.checked)}
+              />
+              <span>{t("detail.consentAttest")}</span>
+            </label>
+          ) : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>
@@ -357,32 +353,33 @@ export default function AdminShowcaseDetailPage() {
             </Button>
             <Button
               type="button"
-              disabled={busy}
+              disabled={busy || (needsAttestation && !attested)}
               onClick={async () => {
-                if (await act("approve", { revision: page.draftRevision })) setDialog(null);
+                const extra = needsAttestation ? { consentAttested: true } : {};
+                if (await act("publish", { revision: page.draftRevision, ...extra })) setDialog(null);
               }}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {t("detail.approve")}
+              {page.published ? t("detail.publishChanges") : t("detail.publish")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={dialog === "changes" || dialog === "unpublish"} onOpenChange={(open) => !open && setDialog(null)}>
+      <Dialog open={dialog === "unpublish"} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{dialog === "changes" ? t("detail.changesTitle") : t("detail.unpublishTitle")}</DialogTitle>
-            <DialogDescription>{dialog === "changes" ? t("detail.changesBody") : t("detail.unpublishBody")}</DialogDescription>
+            <DialogTitle>{t("detail.unpublishTitle")}</DialogTitle>
+            <DialogDescription>{t("detail.unpublishBody")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="review-notes">{dialog === "changes" ? t("detail.notes") : t("detail.reason")}</Label>
+            <Label htmlFor="unpublish-reason">{t("detail.reason")}</Label>
             <Textarea
-              id="review-notes"
+              id="unpublish-reason"
               rows={5}
-              value={notes}
+              value={reason}
               maxLength={SHOWCASE_LIMITS.reviewNotes}
-              onChange={(event) => setNotes(event.target.value)}
+              onChange={(event) => setReason(event.target.value)}
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -392,18 +389,14 @@ export default function AdminShowcaseDetailPage() {
             </Button>
             <Button
               type="button"
-              variant={dialog === "unpublish" ? "destructive" : "default"}
-              disabled={busy || (dialog === "changes" && !notes.trim())}
+              variant="destructive"
+              disabled={busy}
               onClick={async () => {
-                const ok =
-                  dialog === "changes"
-                    ? await act("request_changes", { notes })
-                    : await act("unpublish", { note: notes });
-                if (ok) setDialog(null);
+                if (await act("unpublish", { note: reason })) setDialog(null);
               }}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {dialog === "changes" ? t("detail.send") : t("detail.unpublish")}
+              {t("detail.unpublish")}
             </Button>
           </DialogFooter>
         </DialogContent>

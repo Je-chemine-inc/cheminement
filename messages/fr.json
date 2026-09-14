@@ -7666,33 +7666,31 @@
   },
   "ShowcasePro": {
     "title": "Ma page vitrine",
-    "subtitle": "Votre page publique sur Je chemine présente votre pratique aux personnes qui cherchent un professionnel dans votre ville. Rien n'est publié sans votre consentement et l'approbation de l'équipe.",
+    "subtitle": "Votre page publique sur Je chemine présente votre pratique aux personnes qui cherchent un professionnel dans votre ville. L'équipe la prépare et la publie avec votre accord ; vous la modifiez ensuite quand vous le voulez.",
     "loadError": "Impossible de charger votre page vitrine. Réessayez dans un instant.",
     "cancel": "Annuler",
     "notInvited": {
-      "title": "Les pages vitrines sont offertes sur invitation",
-      "body": "L'équipe Je chemine invite les professionnels à préparer leur page publique. Vous recevrez un courriel quand la vôtre sera prête à remplir."
+      "title": "Pas encore de page vitrine",
+      "body": "L'équipe Je chemine crée les pages vitrines avec les professionnels. Quand la vôtre sera publiée, vous pourrez la modifier ici."
+    },
+    "preparing": {
+      "title": "Votre page est en préparation",
+      "body": "L'équipe Je chemine prépare votre page vitrine. Vous recevrez un courriel dès sa publication, et vous pourrez alors la modifier ici."
     },
     "status": {
       "label": "État de la page",
-      "invited": "À compléter",
-      "draft": "Brouillon",
-      "pending": "En révision",
-      "changes_requested": "Modifications demandées",
+      "invited": "En préparation",
+      "draft": "En préparation",
       "published": "En ligne",
-      "approvedClosed": "Approuvée",
+      "approvedClosed": "Publiée",
       "unpublished": "Retirée"
     },
     "statusText": {
-      "draft": "Complétez votre page, vérifiez l'aperçu, puis envoyez-la à l'équipe pour révision.",
-      "pending": "Votre page a été envoyée à l'équipe, qui la révise.",
-      "changes_requested": "L'équipe vous demande quelques modifications avant la publication :",
       "published": "Votre page est en ligne :",
-      "approvedClosed": "Votre page est approuvée. Elle sera visible par le public dès l'ouverture des pages vitrines.",
-      "pendingChanges": "Vous avez des modifications qui ne sont pas encore publiées. Envoyez-les pour révision : la version actuelle reste en ligne d'ici là.",
+      "approvedClosed": "Votre page est publiée. Le public la verra dès l'ouverture des pages vitrines.",
+      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. La ville, l'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer.",
       "unpublishedByProfessional": "Vous avez retiré votre page. Vous pouvez la remettre en ligne en tout temps.",
-      "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus.",
-      "stillLive": "La version publiée de votre page reste en ligne d'ici là."
+      "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus."
     },
     "stats": {
       "line": "Ces {days} derniers jours : {views, plural, one {# visite} other {# visites}} et {clicks, plural, one {# clic} other {# clics}} sur « Demander un rendez-vous »."
@@ -7712,18 +7710,9 @@
     },
     "actions": {
       "preview": "Aperçu",
-      "submit": "Envoyer pour révision",
       "viewPublic": "Voir la page publique",
       "unpublish": "Retirer ma page",
       "republish": "Remettre en ligne"
-    },
-    "consent": {
-      "title": "Consentement à la publication",
-      "intro": "Lisez et acceptez ce texte pour envoyer votre page à l'équipe.",
-      "text": "J'autorise Je chemine à publier ma page vitrine sur ses sites web, et à la laisser apparaître dans les moteurs de recherche. Elle comprend ma photo, mon nom, mon titre professionnel, mon ordre et mon numéro de permis, ma ville de pratique, ma présentation, mes champs d'expertise et mes tarifs.\n\nJe confirme que ces renseignements sont exacts et respectent les règles de publicité de mon ordre professionnel, et que j'ai le droit d'utiliser la photo transmise.\n\nJe peux retirer ma page en tout temps depuis mon tableau de bord. Chaque modification est révisée par l'équipe avant d'être publiée.",
-      "version": "Version du texte : {version}",
-      "checkbox": "J'ai lu ce texte et je l'accepte",
-      "submit": "Accepter et envoyer"
     },
     "unpublishDialog": {
       "title": "Retirer votre page ?",
@@ -7795,12 +7784,16 @@
       "officeCity": "Ville du bureau dans votre profil : {city}",
       "useOfficeCity": "Utiliser {city}",
       "address": "Adresse de la page : {url}",
-      "afterApproval": "Votre page est en ligne : la nouvelle ville s'applique quand l'équipe approuve la modification. L'ancienne adresse redirigera alors vers la nouvelle.",
-      "pending": "Changement de ville en attente d'approbation : {city} ({url})"
+      "afterApproval": "Votre page est en ligne : la nouvelle ville s'applique quand l'équipe publie la modification. L'ancienne adresse redirigera alors vers la nouvelle.",
+      "pending": "Changement d'adresse en attente de publication par l'équipe : {city} ({url})"
+    },
+    "identity": {
+      "title": "Ordre professionnel et ville de la page",
+      "hint": "Gérés par l'équipe Je chemine. Écrivez-nous pour les changer."
     },
     "services": {
       "title": "Services offerts sur la page",
-      "hint": "Ces choix s'appliquent tout de suite, sans nouvelle révision. Les tarifs viennent de la grille tarifaire.",
+      "hint": "Ces choix s'appliquent tout de suite. Les tarifs viennent de la grille tarifaire.",
       "standard": "Consultation standard",
       "standardHint": "Les séances habituelles, aux tarifs de la grille.",
       "quick": "Consultation ponctuelle rapide",
@@ -7812,6 +7805,7 @@
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "saved": "Modifications enregistrées.",
+      "savedLive": "Modifications enregistrées et en ligne.",
       "unsaved": "Modifications non enregistrées"
     },
     "errors": {
@@ -7832,25 +7826,21 @@
       "PHOTO_INFECTED": "Ce fichier a été refusé par l'analyse antivirus.",
       "SCAN_UNAVAILABLE": "L'analyse antivirus est indisponible. Réessayez dans quelques minutes.",
       "RATE_LIMITED": "Trop de tentatives. Réessayez plus tard.",
-      "CONSENT_REQUIRED": "Le consentement à la publication est requis.",
+      "CONSENT_REQUIRED": "Confirmez que le professionnel a accepté la publication de sa page.",
       "INCOMPLETE": "La page n'est pas complète. Consultez la liste des éléments manquants.",
-      "ALREADY_SUBMITTED": "La page est déjà en révision.",
+      "IN_PREPARATION": "Votre page est en préparation par l'équipe : vous pourrez la modifier dès sa publication.",
       "NOT_PUBLISHED": "La page n'est pas en ligne.",
       "NOT_UNPUBLISHED": "La page n'est pas retirée.",
       "FORBIDDEN": "Cette action n'est pas permise.",
       "PROFESSIONAL_NOT_ACTIVE": "Le compte du professionnel n'est pas actif.",
       "PROFESSIONAL_NOT_FOUND": "Professionnel introuvable.",
-      "WITHDRAWN_BY_PROFESSIONAL": "Le professionnel a retiré sa page : lui seul peut la remettre en ligne ou la soumettre de nouveau.",
+      "WITHDRAWN_BY_PROFESSIONAL": "Le professionnel a retiré sa page : lui seul peut la remettre en ligne.",
       "NOTHING_TO_PUBLISH": "Il n'y a rien de nouveau à publier.",
       "REVISION_CHANGED": "La page a changé depuis votre lecture. Rechargez-la avant de continuer.",
-      "NOTES_REQUIRED": "Précisez les modifications demandées.",
-      "NOT_SUBMITTED": "La page n'est pas en révision.",
-      "REMINDED_RECENTLY": "Un rappel a déjà été envoyé dans les dernières 24 heures.",
-      "NOT_REMINDABLE": "Un rappel n'est possible que pour une page à compléter.",
       "SLUG_TAKEN": "Cette adresse est déjà utilisée.",
       "INVALID_SLUG": "Adresse invalide : lettres minuscules, chiffres et traits d'union seulement.",
       "INVALID_CITY": "Choisissez une ville dans la liste.",
-      "ALREADY_INVITED": "Ce professionnel a déjà été invité.",
+      "ALREADY_INVITED": "Ce professionnel a déjà une page vitrine.",
       "CONFLICT": "La page a été modifiée en même temps. Rechargez-la.",
       "INVALID_ACTION": "Action inconnue.",
       "ACCOUNT_NOT_ACTIVE": "Votre compte doit être actif pour modifier votre page."
@@ -7861,7 +7851,7 @@
       "city": {
         "hint": "La ville où le professionnel reçoit ses clients. Elle donne l'adresse de sa page. Si sa ville n'est pas dans la liste, choisissez la plus proche.",
         "officeCity": "Ville du bureau dans son profil : {city}",
-        "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous approuvez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
+        "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous publiez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
       },
       "fields": {
         "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
@@ -7873,32 +7863,30 @@
       }
     },
     "title": "Pages vitrines",
-    "subtitle": "Choisissez les professionnels présentés au public, invitez-les à préparer leur page, puis révisez et publiez.",
+    "subtitle": "Activez la page d'un professionnel, remplissez-la, puis publiez-la avec son accord. Il peut ensuite la modifier lui-même.",
     "cancel": "Annuler",
     "access": {
       "title": "Accès réservé",
       "body": "Cet écran est réservé aux administrateurs qui gèrent les professionnels. Demandez cette permission à un super administrateur."
     },
     "badges": {
-      "notInvited": "Non invité",
-      "invited": "Invité",
-      "draft": "Brouillon",
-      "pending": "À réviser",
-      "changes_requested": "Modifications demandées",
+      "notInvited": "Sans page",
+      "invited": "À préparer",
+      "draft": "En préparation",
       "published": "En ligne",
-      "approvedClosed": "Approuvée, pages fermées",
+      "approvedClosed": "Publiée, pages fermées",
       "unpublished": "Retirée"
     },
     "switch": {
       "title": "Ouverture au public",
-      "on": "Ouvertes : les pages approuvées sont visibles par le public.",
-      "off": "Fermées : les adresses des villes, comme psymontreal.jechemine.ca, renvoient vers jechemine.ca. Vous pouvez inviter, réviser et approuver en attendant.",
+      "on": "Ouvertes : les pages publiées sont visibles par le public.",
+      "off": "Fermées : les adresses des villes, comme psymontreal.jechemine.ca, renvoient vers jechemine.ca. Vous pouvez activer, préparer et publier des pages en attendant.",
       "turnOn": "Ouvrir au public",
       "turnOff": "Fermer au public",
       "confirmOnTitle": "Ouvrir les pages vitrines au public ?",
-      "confirmOnBody": "Les pages approuvées deviennent visibles aux adresses des villes et peuvent être indexées par les moteurs de recherche. Vérifiez d'abord que le certificat et le DNS des adresses des villes sont en place.",
+      "confirmOnBody": "Les pages publiées deviennent visibles aux adresses des villes et peuvent être indexées par les moteurs de recherche. Vérifiez d'abord que le certificat et le DNS des adresses des villes sont en place.",
       "confirmOffTitle": "Fermer les pages vitrines ?",
-      "confirmOffBody": "Les adresses des villes renverront vers jechemine.ca. Les pages restent approuvées et reviennent à la réouverture.",
+      "confirmOffBody": "Les adresses des villes renverront vers jechemine.ca. Les pages restent publiées et reviennent à la réouverture.",
       "confirm": "Confirmer"
     },
     "cities": {
@@ -7912,11 +7900,10 @@
       "search": "Rechercher par nom ou courriel",
       "filters": {
         "all": "Tous",
-        "toReview": "À réviser",
         "inProgress": "En préparation",
         "published": "En ligne",
         "unpublished": "Retirées",
-        "notInvited": "Non invités"
+        "notInvited": "Sans page"
       },
       "empty": "Aucun professionnel ne correspond.",
       "columns": {
@@ -7928,21 +7915,21 @@
       },
       "stats": "{views, plural, one {# visite} other {# visites}} · {clicks, plural, one {# clic} other {# clics}}",
       "accountInactive": "Compte inactif",
-      "changes": "Modifications non publiées",
+      "changes": "Corrections non publiées",
+      "professionalEdit": "Modifiée par le professionnel le {date}",
       "open": "Ouvrir",
-      "invite": "Inviter"
+      "activate": "Activer la page"
     },
-    "invite": {
-      "title": "Inviter {name}",
-      "body": "Une page vitrine est créée pour ce professionnel, préremplie avec son profil, et un courriel l'invite à la compléter. Rien n'est publié avant votre approbation.",
+    "activate": {
+      "title": "Activer la page de {name}",
+      "body": "Une page vitrine est créée pour ce professionnel, préremplie avec son profil. Aucun courriel ne lui est envoyé : vous remplissez la page, puis vous la publiez avec son accord.",
       "city": "Ville de la page",
       "chooseCity": "Choisir une ville",
       "citySuggested": "Ville suggérée d'après l'adresse du bureau : {city}",
       "slug": "Adresse de la page (facultatif)",
       "slugHint": "Laissez vide pour utiliser le nom de famille. Lettres minuscules, chiffres et traits d'union seulement.",
       "preview": "Adresse : {url}",
-      "submit": "Envoyer l'invitation",
-      "sent": "Invitation envoyée."
+      "submit": "Activer et préparer la page"
     },
     "detail": {
       "back": "Retour aux pages vitrines",
@@ -7951,48 +7938,47 @@
       "done": "C'est fait.",
       "profileLink": "Fiche du professionnel",
       "publicLink": "Voir la page publique",
-      "reviewTitle": "Révision et publication",
+      "reviewTitle": "Publication",
       "revision": "Révision {revision}",
-      "submittedAt": "Envoyée pour révision le {date}",
-      "consentCurrent": "Consentement à la publication accepté le {date}",
-      "consentMissing": "Le professionnel n'a pas encore accepté le texte de consentement en vigueur : la page ne peut pas être publiée.",
-      "notSubmittedWarning": "Le professionnel n'a pas envoyé cette version pour révision.",
+      "consentCurrent": "Le professionnel a accepté la publication le {date}.",
+      "consentAttested": "Accord du professionnel à la publication confirmé par l'équipe le {date}.",
+      "consentMissing": "Aucun accord enregistré : en publiant, vous confirmerez que le professionnel a accepté la publication de sa page.",
+      "lastProfessionalEdit": "Dernière modification par le professionnel le {date} : elle est déjà en ligne.",
+      "unpublishedCorrections": "Vos corrections ne sont pas encore publiées : le public voit la version précédente.",
       "previewDraft": "Aperçu du brouillon",
       "previewPublished": "Aperçu de la version en ligne",
-      "approve": "Approuver et publier",
-      "approveTitle": "Publier la révision {revision} ?",
-      "approveBody": "Cette révision du brouillon devient la page publique. Le professionnel est avisé par courriel.",
-      "requestChanges": "Demander des modifications",
-      "changesTitle": "Demander des modifications",
-      "changesBody": "Le professionnel reçoit vos remarques par courriel. Il corrige sa page puis la renvoie pour révision.",
-      "notes": "Modifications demandées",
+      "publish": "Publier la page",
+      "publishChanges": "Publier les corrections",
+      "publishTitle": "Publier la révision {revision} ?",
+      "publishBody": "Cette révision devient la page publique. Le professionnel reçoit un courriel et peut ensuite modifier sa page lui-même ; ses modifications sont en ligne dès qu'il les enregistre.",
+      "consentAttest": "Je confirme que le professionnel a accepté que Je chemine publie cette page (photo, nom, titre, ordre et permis, ville, présentation, champs d'expertise et tarifs), qu'il en a vérifié l'exactitude et qu'il sait qu'il peut la modifier ou la retirer en tout temps.",
       "unpublish": "Retirer la page",
       "unpublishTitle": "Retirer la page du public ?",
       "unpublishBody": "La page n'est plus visible par le public. Le professionnel est avisé par courriel, avec la raison si vous l'indiquez.",
       "reason": "Raison (facultatif)",
       "republish": "Remettre en ligne",
-      "remind": "Envoyer un rappel",
       "move": "Changer l'adresse",
       "moveTitle": "Changer la ville ou l'adresse",
       "moveBody": "Si la page a déjà été publiée, l'ancienne adresse redirige vers la nouvelle.",
-      "cityChange": "Le brouillon demande de passer de {from} à {to} ({url}). La ville change à l'approbation ; l'ancienne adresse redirigera vers la nouvelle.",
+      "cityChange": "Le brouillon demande de passer de {from} à {to} ({url}). La ville change à la publication ; l'ancienne adresse redirigera vers la nouvelle.",
       "city": "Ville",
       "slug": "Adresse",
-      "send": "Envoyer",
       "save": "Enregistrer",
       "editorTitle": "Contenu de la page",
-      "editorHint": "Vos corrections modifient le brouillon et deviennent publiques quand la page est approuvée. Les services offerts changent tout de suite.",
+      "editorHint": "Vos modifications restent dans le brouillon jusqu'à ce que vous publiiez. Une fois la page publiée, les modifications du professionnel sont en ligne dès qu'il les enregistre. Les services offerts changent tout de suite.",
       "historyTitle": "Historique",
       "historyEmpty": "Aucun événement.",
       "history": {
-        "invite": "Invitation",
-        "submit": "Envoyée pour révision",
-        "approve": "Approuvée et publiée",
-        "request_changes": "Modifications demandées",
+        "activate": "Page activée",
+        "approve": "Publiée",
+        "edit": "Modifiée par le professionnel",
         "unpublish": "Retirée",
         "republish": "Remise en ligne",
-        "remind": "Rappel envoyé",
-        "move": "Adresse changée"
+        "move": "Adresse changée",
+        "invite": "Invitation",
+        "submit": "Envoyée pour révision",
+        "request_changes": "Modifications demandées",
+        "remind": "Rappel envoyé"
       },
       "actors": {
         "professional": "Professionnel",

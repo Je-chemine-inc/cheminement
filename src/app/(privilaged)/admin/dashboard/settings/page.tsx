@@ -224,27 +224,27 @@ const EMAIL_TEMPLATE_INFO: Record<
     category: "Paiements",
   },
   showcase_invitation: {
-    name: "Invitation à préparer sa page vitrine",
+    name: "Invitation à préparer sa page vitrine (plus envoyé)",
     description:
-      "Envoyé au professionnel quand un administrateur l'invite à préparer sa page vitrine (psy<ville>.jechemine.ca). Lien vers son tableau de bord ; rien n'est publié sans qu'il l'envoie et qu'un administrateur l'approuve.",
+      "N'est plus envoyé depuis septembre 2026 : l'équipe active et prépare maintenant la page vitrine elle-même, sans inviter le professionnel.",
     category: "Pages vitrines",
   },
   showcase_reminder: {
-    name: "Rappel — page vitrine à terminer",
+    name: "Rappel — page vitrine à terminer (plus envoyé)",
     description:
-      "Envoyé au professionnel quand un administrateur le relance (au plus une fois par jour) tant que sa page n'est pas envoyée.",
+      "N'est plus envoyé depuis septembre 2026 : le professionnel n'a plus de page à envoyer pour révision.",
     category: "Pages vitrines",
   },
   showcase_published: {
-    name: "Page vitrine approuvée",
+    name: "Page vitrine publiée",
     description:
-      "Envoyé au professionnel quand un administrateur publie sa page ou ses modifications, avec l'adresse publique si les pages vitrines sont ouvertes.",
+      "Envoyé au professionnel quand un administrateur publie sa page ou des corrections, avec l'adresse publique si les pages vitrines sont ouvertes et le lien pour modifier sa page lui-même.",
     category: "Pages vitrines",
   },
   showcase_changes_requested: {
-    name: "Modifications demandées (page vitrine)",
+    name: "Modifications demandées (plus envoyé)",
     description:
-      "Envoyé au professionnel avec les commentaires de l'administrateur qui a relu sa page avant publication.",
+      "N'est plus envoyé depuis septembre 2026 : l'équipe corrige la page elle-même avant de la publier.",
     category: "Pages vitrines",
   },
   showcase_unpublished: {
@@ -254,9 +254,15 @@ const EMAIL_TEMPLATE_INFO: Record<
     category: "Pages vitrines",
   },
   admin_showcase_submitted: {
-    name: "Alerte équipe — page vitrine à vérifier",
+    name: "Alerte équipe — page vitrine à vérifier (plus envoyé)",
     description:
-      "Envoyé à l'équipe quand un professionnel envoie sa page vitrine, ou des modifications, pour vérification.",
+      "N'est plus envoyé depuis septembre 2026 : les professionnels modifient leur page publiée directement (voir « page vitrine modifiée »).",
+    category: "Alertes administratives",
+  },
+  admin_showcase_updated: {
+    name: "Alerte équipe — page vitrine modifiée",
+    description:
+      "Envoyé à l'équipe quand un professionnel modifie sa page vitrine publiée (texte, photo ou champs d'expertise). Les modifications sont déjà en ligne. Au plus un courriel par page par heure ; l'historique de la page détaille chaque modification.",
     category: "Alertes administratives",
   },
   direct_request_received: {

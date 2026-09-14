@@ -38,8 +38,8 @@ matching for someone else — and, later, buy the professional's trainings and d
 | Topic | Decision |
 |---|---|
 | URLs | Real subdomains from day one, one per Quebec city (`psymascouche.jechemine.ca`, `psymontreal.jechemine.ca`); the professional's page at `/<slug>` on its city's host |
-| Who is shown | The admin invites and publishes; no professional is public without an admin's approval and the professional's consent |
-| Content | The professional writes the presentation, values and expertise tags and adds a photo; identity facts (title, permit, languages, modalities, fees) come from the profile |
+| Who is shown | The admin activates the page, fills it in and publishes it; no professional is public without an admin publishing and the professional's agreement, which the admin confirms when publishing (amended 2026-09-14, replacing « the professional submits, the admin reviews ») |
+| Content | The admin prepares the first version (photo, presentation, values, expertises, order, city). Once published, the professional edits the presentation, values, expertises and photo themselves, live, and the team is alerted; the city, the address and the order stay the admin's. Identity facts (title, permit, languages, modalities, fees) come from the profile |
 | Booking from a page | The visitor picks a service — « Consultation standard » or « Consultation ponctuelle rapide » — and a slot; the slot is held and the professional confirms or declines. No instant booking |
 | Waitlists | Exclusive to the professional: a freed slot is offered to the first in line through a link valid 15 minutes (email, and SMS with its own consent). General: Je chemine's matching |
 | First public release | Pages, admin curation and invitations; city, region and expertise pages; slots and booking requests; both waitlists |
@@ -59,8 +59,10 @@ matching for someone else — and, later, buy the professional's trainings and d
 5. No page, API or HTML exposes a professional's email, phone, home location, payout details,
    calendar token, professional rate or the platform's margin — asserted with a poison fixture on the
    public data object.
-6. A professional is public only while the switch is on, an admin approved the page, the professional
-   consented to the current consent text, and their account is active.
+6. A professional is public only while the switch is on, an admin published the page, the
+   professional's agreement to the current consent version is on record (their own, or confirmed by
+   the admin who published), and their account is active. A professional's later edits never remove
+   what a published page needs, nor change its city, address or order.
 7. A slot shown on a page is free when requested: two visitors cannot hold the same slot, and no other
    booking path can take a held slot.
 8. A waitlist offer holds its slot for 15 minutes and can be claimed once; SMS goes out only with the

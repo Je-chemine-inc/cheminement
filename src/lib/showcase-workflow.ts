@@ -5,7 +5,6 @@ import {
   SHOWCASE_CONSENT_VERSION,
   SHOWCASE_LIMITS as L,
   type ShowcaseActor,
-  type ShowcaseReviewState,
   type ShowcaseStatus,
 } from "@/lib/showcase-constants";
 
@@ -176,21 +175,27 @@ const LOCALIZED_FIELDS = [
   ["insuranceNote", L.insuranceNote, "paragraphs"],
 ] as const;
 
+/** Fields only an admin sets: they make the page's address and its legal identity. */
+export const SHOWCASE_ADMIN_ONLY_FIELDS = ["orderCode", "orderLabel", "cityKey"] as const;
+
 /**
  * What a draft save may change, as mongoose `$set` / `$unset` paths under
  * `draft.`. An allowlist: anything else in the body (status, slug, photo,
- * the published copy, consent) is ignored. Each localized field is replaced
- * whole, both languages at once.
+ * the published copy, consent) is ignored, and so are the admin-only fields
+ * when the professional saves. Each localized field is replaced whole, both
+ * languages at once.
  */
 export function normalizeShowcaseDraft(
   body: unknown,
   allowedExpertiseIds: ReadonlySet<string>,
+  actor: ShowcaseActor = "admin",
 ): DraftNormalization {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return { ok: false, code: "INVALID_FIELD", field: "body" };
   }
   const input = body as Record<string, unknown>;
-  const has = (key: string) => Object.prototype.hasOwnProperty.call(input, key);
+  const adminOnly: ReadonlySet<string> = new Set(actor === "admin" ? [] : SHOWCASE_ADMIN_ONLY_FIELDS);
+  const has = (key: string) => !adminOnly.has(key) && Object.prototype.hasOwnProperty.call(input, key);
   const set: Record<string, unknown> = {};
   const unset: string[] = [];
 
@@ -347,40 +352,86 @@ export function missingShowcaseRequirements(input: CompletenessInput): ShowcaseR
   return missing;
 }
 
+// ------------------------------------------------------------- live edits
+
+/** What the professional edits on their live page, as the admin alert names it. */
+export const SHOWCASE_EDITABLE_FIELDS = [
+  "displayName",
+  "headline",
+  "intro",
+  "bio",
+  "approach",
+  "values",
+  "expertiseIds",
+  "insuranceNote",
+  "photo",
+] as const;
+export type ShowcaseEditableField = (typeof SHOWCASE_EDITABLE_FIELDS)[number];
+
+/** At most one « page changed » alert per page in this window; the history keeps every edit. */
+export const SHOWCASE_CHANGE_ALERT_GAP_MS = 60 * 60 * 1000;
+
+function isBlank(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") {
+    const text = value as { fr?: unknown; en?: unknown };
+    return "fr" in text && !text.fr && !text.en;
+  }
+  return false;
+}
+
+/** A value in one shape whatever copy it comes from: ids as strings, texts as `{ fr, en }`. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, node: unknown) => {
+    if (node && typeof node === "object" && !Array.isArray(node) && "fr" in node) {
+      const text = node as { fr?: unknown; en?: unknown };
+      return { fr: text.fr ?? "", en: text.en ?? "" };
+    }
+    return node;
+  });
+}
+
+/**
+ * The fields a save really changes, compared with the copy the public sees.
+ * `fields` are the saved values by field name (`draft.` taken off).
+ */
+export function changedShowcaseFields(
+  before: Record<string, unknown> | null | undefined,
+  fields: Record<string, unknown>,
+): ShowcaseEditableField[] {
+  const editable: ReadonlySet<string> = new Set(SHOWCASE_EDITABLE_FIELDS);
+  return Object.entries(fields)
+    .filter(([field]) => editable.has(field))
+    .filter(([field, value]) => {
+      const previous = before?.[field];
+      if (isBlank(previous) && isBlank(value)) return false;
+      return canonical(previous) !== canonical(value);
+    })
+    .map(([field]) => field as ShowcaseEditableField);
+}
+
 // --------------------------------------------------------------- decisions
 
-export type ShowcaseAction =
-  | "submit"
-  | "approve"
-  | "request_changes"
-  | "unpublish"
-  | "republish"
-  | "remind";
+export type ShowcaseAction = "publish" | "edit" | "unpublish" | "republish";
 
 export type ShowcaseRefusal =
   | "FORBIDDEN"
-  | "ALREADY_SUBMITTED"
-  | "NOT_SUBMITTED"
+  | "IN_PREPARATION"
   | "NOT_PUBLISHED"
   | "NOT_UNPUBLISHED"
   | "WITHDRAWN_BY_PROFESSIONAL"
   | "CONSENT_REQUIRED"
-  | "NOTHING_TO_PUBLISH"
-  | "NOT_REMINDABLE"
-  | "REMINDED_RECENTLY";
+  | "NOTHING_TO_PUBLISH";
 
 export interface ShowcaseWorkflowState {
   status: ShowcaseStatus;
-  reviewState: ShowcaseReviewState;
   draftRevision: number;
   publishedRevision?: number | null;
   hasPublishedSnapshot: boolean;
   unpublishedBy?: ShowcaseActor | null;
   consentVersion?: string | null;
-  remindedAt?: Date | null;
 }
-
-export const SHOWCASE_REMINDER_GAP_MS = 24 * 60 * 60 * 1000;
 
 type Decision = { ok: true } | { ok: false; code: ShowcaseRefusal };
 const allow: Decision = { ok: true };
@@ -390,44 +441,36 @@ const refuse = (code: ShowcaseRefusal): Decision => ({ ok: false, code });
  * Who may do what, from the page's state alone. Completeness and the draft
  * revision an admin looked at are checked by the service, which has the data.
  *
- * - An admin publishes: the review is a signal, not a gate, so corrections an
- *   admin makes can go live — but only with the professional's current consent.
- * - A page the professional took down stays down until they put it back or
- *   submit again; an admin cannot republish it over their decision.
+ * - An admin activates, prepares and publishes the page. Publishing needs the
+ *   professional's agreement: already on record, or confirmed by the admin
+ *   now (`consentAttested`).
+ * - Once the page has been published, the professional edits it live.
+ * - A page the professional took down stays down until they put it back; an
+ *   admin cannot publish or republish it over their decision.
  * - A page an admin took down cannot be put back by the professional alone.
  */
 export function decideShowcaseAction(
   state: ShowcaseWorkflowState,
   action: ShowcaseAction,
   actor: ShowcaseActor,
-  now: Date = new Date(),
+  options: { consentAttested?: boolean } = {},
 ): Decision {
   const consentCurrent = state.consentVersion === SHOWCASE_CONSENT_VERSION;
   switch (action) {
-    case "submit":
-      if (actor !== "professional") return refuse("FORBIDDEN");
-      if (state.reviewState === "pending") return refuse("ALREADY_SUBMITTED");
-      return allow;
-
-    case "approve":
+    case "publish":
       if (actor !== "admin") return refuse("FORBIDDEN");
-      if (state.status === "invited") return refuse("NOTHING_TO_PUBLISH");
       if (state.status === "published" && state.draftRevision === state.publishedRevision) {
         return refuse("NOTHING_TO_PUBLISH");
       }
-      if (
-        state.status === "unpublished" &&
-        state.unpublishedBy === "professional" &&
-        state.reviewState !== "pending"
-      ) {
+      if (state.status === "unpublished" && state.unpublishedBy === "professional") {
         return refuse("WITHDRAWN_BY_PROFESSIONAL");
       }
-      if (!consentCurrent) return refuse("CONSENT_REQUIRED");
+      if (!consentCurrent && options.consentAttested !== true) return refuse("CONSENT_REQUIRED");
       return allow;
 
-    case "request_changes":
-      if (actor !== "admin") return refuse("FORBIDDEN");
-      if (state.reviewState !== "pending") return refuse("NOT_SUBMITTED");
+    case "edit":
+      if (actor !== "professional") return refuse("FORBIDDEN");
+      if (!state.hasPublishedSnapshot) return refuse("IN_PREPARATION");
       return allow;
 
     case "unpublish":
@@ -444,15 +487,6 @@ export function decideShowcaseAction(
         return refuse("FORBIDDEN");
       }
       if (!consentCurrent) return refuse("CONSENT_REQUIRED");
-      return allow;
-
-    case "remind":
-      if (actor !== "admin") return refuse("FORBIDDEN");
-      if (state.status !== "invited" && state.status !== "draft") return refuse("NOT_REMINDABLE");
-      if (state.reviewState === "pending") return refuse("ALREADY_SUBMITTED");
-      if (state.remindedAt && now.getTime() - state.remindedAt.getTime() < SHOWCASE_REMINDER_GAP_MS) {
-        return refuse("REMINDED_RECENTLY");
-      }
       return allow;
   }
 }

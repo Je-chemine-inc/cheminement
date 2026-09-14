@@ -1,9 +1,4 @@
-import type {
-  ProfessionalOrderCode,
-  ShowcaseActor,
-  ShowcaseReviewState,
-  ShowcaseStatus,
-} from "@/lib/showcase-constants";
+import type { ProfessionalOrderCode, ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
 import type { ShowcaseLanguageKey, ShowcaseModalityKey } from "@/lib/showcase-public";
 import type { ShowcaseRequirement } from "@/lib/showcase-workflow";
 
@@ -38,15 +33,9 @@ export interface ShowcaseEditorJson {
     cityKey: string;
     cityName: string;
     publicUrl: string;
-    /** A published page's move the draft asks for, applied when an admin approves. */
+    /** A published page's move the draft asks for, applied when an admin publishes. */
     requestedCity: { key: string; name: string; publicUrl: string } | null;
     status: ShowcaseStatus;
-    review: {
-      state: ShowcaseReviewState;
-      submittedAt: string | null;
-      reviewedAt: string | null;
-      notes: string;
-    };
     draft: ShowcaseContentJson;
     draftRevision: number;
     draftUpdatedAt: string | null;
@@ -55,7 +44,13 @@ export interface ShowcaseEditorJson {
     hasUnpublishedChanges: boolean;
     unpublishedBy: ShowcaseActor | null;
     services: { standard: boolean; quick: boolean };
-    consent: { version: string | null; acceptedAt: string | null; current: boolean };
+    consent: {
+      version: string | null;
+      acceptedAt: string | null;
+      /** Who recorded it: the professional (retired flow) or an admin confirming their agreement. */
+      source: ShowcaseActor | null;
+      current: boolean;
+    };
   };
   missing: ShowcaseRequirement[];
   profileFacts: {
@@ -81,7 +76,6 @@ export interface ShowcaseAdminJson extends ShowcaseEditorJson {
     history: { at: string; actor: string; action: string; note: string }[];
     previousSlugs: string[];
     invitedAt: string | null;
-    remindedAt: string | null;
   };
 }
 
@@ -120,7 +114,7 @@ export const SHOWCASE_ERROR_CODES = [
   "RATE_LIMITED",
   "CONSENT_REQUIRED",
   "INCOMPLETE",
-  "ALREADY_SUBMITTED",
+  "IN_PREPARATION",
   "NOT_PUBLISHED",
   "NOT_UNPUBLISHED",
   "FORBIDDEN",
@@ -128,10 +122,6 @@ export const SHOWCASE_ERROR_CODES = [
   "WITHDRAWN_BY_PROFESSIONAL",
   "NOTHING_TO_PUBLISH",
   "REVISION_CHANGED",
-  "NOTES_REQUIRED",
-  "NOT_SUBMITTED",
-  "REMINDED_RECENTLY",
-  "NOT_REMINDABLE",
   "SLUG_TAKEN",
   "INVALID_SLUG",
   "INVALID_CITY",

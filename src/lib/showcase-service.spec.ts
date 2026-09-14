@@ -1,9 +1,11 @@
 /**
- * Spec 003 — the changes to a showcase page. What must hold: nothing is
- * published without the professional's current consent and an admin
- * approving the exact revision they saw; every change is a conditional write
- * on the state it was decided from; emails go out only after the response;
- * a photo is deleted only when no copy of the page shows it.
+ * Spec 003 — the changes to a showcase page. What must hold: an admin
+ * activates and publishes, and nothing is published without the
+ * professional's agreement on record or confirmed by the admin, on the exact
+ * revision the admin saw; the professional edits only a published page, live,
+ * never its city or order, never leaving it missing what it had; every change
+ * is a conditional write on the state it was decided from; emails go out only
+ * after the response; a photo is deleted only when no copy of the page shows it.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SHOWCASE_CONSENT_VERSION } from "@/lib/showcase-constants";
@@ -26,6 +28,8 @@ const h = vi.hoisted(() => {
     taken: [] as Record<string, unknown>[],
     exists: false,
     updateResult: { _id: "p1" } as Record<string, unknown> | null,
+    /** Results for the next findOneAndUpdate calls, in order; then `updateResult`. */
+    updateQueue: [] as (Record<string, unknown> | null)[],
     createError: null as unknown,
     enabled: true,
     created: [] as Record<string, unknown>[],
@@ -33,10 +37,8 @@ const h = vi.hoisted(() => {
     findOneAndUpdate: [] as [Record<string, unknown>, Record<string, unknown>, Record<string, unknown>][],
     deleteMany: [] as Record<string, unknown>[],
     deleteOne: [] as Record<string, unknown>[],
-    sendInvitation: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
-    sendAdminAlert: vi.fn<[Record<string, unknown>], Promise<undefined>>(async () => undefined),
+    sendUpdated: vi.fn<[Record<string, unknown>], Promise<undefined>>(async () => undefined),
     sendPublished: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
-    sendChanges: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
     sendUnpublished: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
   };
 });
@@ -68,7 +70,8 @@ vi.mock("@/models/ShowcasePage", () => ({
       options: Record<string, unknown>,
     ) => {
       h.findOneAndUpdate.push([filter, update, options]);
-      return h.chain(() => h.updateResult);
+      const result = h.updateQueue.length > 0 ? h.updateQueue.shift() : h.updateResult;
+      return h.chain(() => result);
     },
   },
 }));
@@ -100,23 +103,18 @@ vi.mock("@/models/StoredFile", async (importOriginal) => ({
   },
 }));
 vi.mock("@/lib/notifications", () => ({
-  sendShowcaseInvitationEmail: h.sendInvitation,
-  sendAdminShowcaseSubmittedAlert: h.sendAdminAlert,
+  sendAdminShowcaseUpdatedAlert: h.sendUpdated,
   sendShowcasePublishedEmail: h.sendPublished,
-  sendShowcaseChangesRequestedEmail: h.sendChanges,
   sendShowcaseUnpublishedEmail: h.sendUnpublished,
 }));
 
 import {
-  approveShowcase,
-  inviteToShowcase,
+  activateShowcase,
   moveShowcase,
-  remindShowcase,
+  publishShowcase,
   republishShowcase,
-  requestShowcaseChanges,
   saveShowcaseDraft,
   setShowcasePhoto,
-  submitShowcase,
   unpublishShowcase,
   updateShowcaseServices,
   type ServiceResult,
@@ -145,13 +143,23 @@ function page(over: Record<string, unknown> = {}) {
     previousSlugs: [],
     cityKey: "mascouche",
     status: "draft",
-    review: { state: "none" },
     draft: completeDraft,
     draftRevision: 4,
     services: { standard: true, quick: false },
     consent: { version: SHOWCASE_CONSENT_VERSION },
     ...over,
   };
+}
+
+/** A page an admin published at revision 4, as the professional finds it. */
+function livePage(over: Record<string, unknown> = {}) {
+  return page({
+    status: "published",
+    published: { ...completeDraft },
+    publishedRevision: 4,
+    publishedAt: new Date("2026-09-01"),
+    ...over,
+  });
 }
 
 async function runDeferred(result: ServiceResult<unknown>) {
@@ -171,6 +179,7 @@ beforeEach(() => {
   h.taken = [];
   h.exists = false;
   h.updateResult = { _id: "p1" };
+  h.updateQueue = [];
   h.createError = null;
   h.enabled = true;
   h.created = [];
@@ -178,22 +187,20 @@ beforeEach(() => {
   h.findOneAndUpdate = [];
   h.deleteMany = [];
   h.deleteOne = [];
-  for (const send of [h.sendInvitation, h.sendAdminAlert, h.sendPublished, h.sendChanges, h.sendUnpublished]) {
-    send.mockClear();
-  }
+  for (const send of [h.sendUpdated, h.sendPublished, h.sendUnpublished]) send.mockClear();
 });
 
-describe("inviteToShowcase", () => {
-  it("invites an active professional with a free slug, their city and a prefilled draft; emails after the response", async () => {
+describe("activateShowcase", () => {
+  it("creates a draft page prefilled from the profile, with a free slug and the office city, and emails no one", async () => {
     h.profile = { specialty: "psychologist", problematics: ["anxiete", "Perte"], bio: " Mon parcours. ", officeAddress: { city: "Mascouche, QC" } };
     h.taken = [{ slug: "sassi", previousSlugs: [] }];
-    const result = await inviteToShowcase({ userId: PRO, adminId: ADMIN });
-    expect(result).toMatchObject({ ok: true, value: { slug: "amel-sassi", cityKey: "mascouche" } });
+    const result = await activateShowcase({ userId: PRO, adminId: ADMIN });
+    expect(result).toMatchObject({ ok: true, value: { slug: "amel-sassi", cityKey: "mascouche" }, deferred: [] });
     expect(h.created[0]).toMatchObject({
       userId: PRO,
       slug: "amel-sassi",
       cityKey: "mascouche",
-      status: "invited",
+      status: "draft",
       invitedBy: ADMIN,
       draft: {
         displayName: "Amel Sassi",
@@ -202,42 +209,35 @@ describe("inviteToShowcase", () => {
         orderCode: "OPQ",
         cityKey: "mascouche",
       },
-    });
-    expect(h.sendInvitation).not.toHaveBeenCalled();
-    await runDeferred(result);
-    expect(h.sendInvitation).toHaveBeenCalledWith({
-      professionalName: "Amel Sassi",
-      professionalEmail: "amel@exemple.ca",
-      cityName: "Mascouche",
-      locale: "fr",
+      history: [{ actor: "admin", by: ADMIN, action: "activate", note: "mascouche/amel-sassi" }],
     });
   });
 
   it("refuses a professional whose account is not active and approved", async () => {
     h.user = { ...activePro, status: "pending" };
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({
+    expect(await activateShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({
       ok: false,
       status: 409,
       code: "PROFESSIONAL_NOT_ACTIVE",
     });
     h.user = { ...activePro, adminApproved: false };
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({
+    expect(await activateShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({
       code: "PROFESSIONAL_NOT_ACTIVE",
     });
     expect(h.created).toEqual([]);
   });
 
-  it("refuses an unknown city, a second invitation, a slug in use (even a former one) and a reserved slug", async () => {
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "atlantis", adminId: ADMIN })).toMatchObject({ code: "INVALID_CITY" });
+  it("refuses an unknown city, a second page, a slug in use (even a former one) and a reserved slug", async () => {
+    expect(await activateShowcase({ userId: PRO, cityKey: "atlantis", adminId: ADMIN })).toMatchObject({ code: "INVALID_CITY" });
     h.exists = true;
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({ code: "ALREADY_INVITED" });
+    expect(await activateShowcase({ userId: PRO, cityKey: "mascouche", adminId: ADMIN })).toMatchObject({ code: "ALREADY_INVITED" });
     h.exists = false;
     h.taken = [{ slug: "autre", previousSlugs: ["sassi"] }];
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "mascouche", slug: "sassi", adminId: ADMIN })).toMatchObject({
+    expect(await activateShowcase({ userId: PRO, cityKey: "mascouche", slug: "sassi", adminId: ADMIN })).toMatchObject({
       status: 409,
       code: "SLUG_TAKEN",
     });
-    expect(await inviteToShowcase({ userId: PRO, cityKey: "mascouche", slug: "API", adminId: ADMIN })).toMatchObject({
+    expect(await activateShowcase({ userId: PRO, cityKey: "mascouche", slug: "API", adminId: ADMIN })).toMatchObject({
       status: 400,
       code: "INVALID_SLUG",
     });
@@ -245,19 +245,19 @@ describe("inviteToShowcase", () => {
   });
 });
 
-describe("saveShowcaseDraft", () => {
-  it("writes only allowlisted fields, bumps the revision and moves an invited page to draft", async () => {
+describe("saveShowcaseDraft by an admin", () => {
+  it("writes only allowlisted fields to the draft, bumps the revision and moves an invited page to draft", async () => {
     h.page = page({ status: "invited" });
     const result = await saveShowcaseDraft({
       userId: PRO,
       body: { headline: { fr: "Psychologue" }, status: "published", slug: "pirate", published: { displayName: "X" } },
-      actor: "professional",
+      actor: "admin",
     });
     expect(result.ok).toBe(true);
     const [filter, update] = h.updateOne[0];
     expect(filter).toEqual({ _id: "p1" });
     expect(update).toMatchObject({
-      $set: { "draft.headline": { fr: "Psychologue", en: "" }, draftUpdatedBy: "professional", status: "draft" },
+      $set: { "draft.headline": { fr: "Psychologue", en: "" }, draftUpdatedBy: "admin", status: "draft" },
       $inc: { draftRevision: 1 },
     });
     const set = update.$set as Record<string, unknown>;
@@ -266,7 +266,7 @@ describe("saveShowcaseDraft", () => {
 
   it("refuses an expertise that is not offered on pages, and a page that does not exist", async () => {
     h.page = page();
-    expect(await saveShowcaseDraft({ userId: PRO, body: { expertiseIds: ["zz"] }, actor: "professional" })).toEqual({
+    expect(await saveShowcaseDraft({ userId: PRO, body: { expertiseIds: ["zz"] }, actor: "admin" })).toEqual({
       ok: false,
       status: 400,
       code: "UNKNOWN_EXPERTISE",
@@ -277,31 +277,27 @@ describe("saveShowcaseDraft", () => {
     expect(h.updateOne).toEqual([]);
   });
 
-  it("moves a page never published to the city the professional picks, at once", async () => {
+  it("moves a page never published to the city the admin picks, at once", async () => {
     h.page = page({ status: "draft" });
-    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" })).toMatchObject({ ok: true });
+    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "admin" })).toMatchObject({ ok: true });
     const [, update] = h.updateOne[0];
     expect(update.$set).toMatchObject({ "draft.cityKey": "berthierville", cityKey: "berthierville" });
-    expect(update.$push).toMatchObject({ history: { $each: [{ actor: "professional", by: PRO, action: "move", note: "mascouche > berthierville" }] } });
+    expect(update.$push).toMatchObject({ history: { $each: [{ actor: "admin", action: "move", note: "mascouche > berthierville" }] } });
   });
 
-  it("keeps a page that has been public where it is: the city it asks for waits for approval", async () => {
-    h.page = page({ status: "published", publishedAt: new Date("2026-09-01"), publishedRevision: 3, published: completeDraft });
-    await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" });
+  it("keeps a page that has been public where it is: the city it asks for waits for publication", async () => {
+    h.page = livePage({ publishedRevision: 3 });
+    await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "admin" });
     const [, update] = h.updateOne[0];
     expect(update.$set).toMatchObject({ "draft.cityKey": "berthierville" });
     expect(update.$set).not.toHaveProperty("cityKey");
+    expect(update.$set).not.toHaveProperty("published.cityKey");
     expect(update).not.toHaveProperty("$push");
-
-    h.updateOne = [];
-    h.page = page({ status: "unpublished", publishedAt: new Date("2026-09-01"), published: completeDraft });
-    await saveShowcaseDraft({ userId: PRO, body: { cityKey: "berthierville" }, actor: "professional" });
-    expect(h.updateOne[0][1].$set).not.toHaveProperty("cityKey");
   });
 
   it("refuses a city that has no host", async () => {
     h.page = page();
-    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "verdun" }, actor: "professional" })).toEqual({
+    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "verdun" }, actor: "admin" })).toEqual({
       ok: false,
       status: 400,
       code: "INVALID_CITY",
@@ -311,75 +307,165 @@ describe("saveShowcaseDraft", () => {
   });
 });
 
-describe("submitShowcase", () => {
-  it("needs the current consent, and a complete page", async () => {
+describe("the professional's live edits", () => {
+  it("are refused while the team prepares the page, before any write — an uploaded photo is thrown away", async () => {
     h.page = page();
-    expect(await submitShowcase({ userId: PRO, consent: true, consentVersion: "showcase-2020-01" })).toMatchObject({
+    expect(await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Accroche" } }, actor: "professional" })).toEqual({
+      ok: false,
+      status: 409,
+      code: "IN_PREPARATION",
+    });
+    expect(await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" })).toMatchObject({ code: "IN_PREPARATION" });
+    expect(h.deleteOne).toEqual([{ _id: "f-new", kind: "showcase-photo" }]);
+    expect(h.updateOne).toEqual([]);
+    expect(h.findOneAndUpdate).toEqual([]);
+  });
+
+  it("write the draft and the public copy together, on the revision they read", async () => {
+    h.page = livePage();
+    const result = await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Nouvelle accroche" } }, actor: "professional" });
+    expect(result.ok).toBe(true);
+    expect(h.updateOne).toEqual([]);
+    const [filter, update] = h.findOneAndUpdate[0];
+    expect(filter).toEqual({ _id: "p1", draftRevision: 4 });
+    expect(update.$set).toMatchObject({
+      "draft.headline": { fr: "Nouvelle accroche", en: "" },
+      "published.headline": { fr: "Nouvelle accroche", en: "" },
+      draftRevision: 5,
+      publishedRevision: 5,
+      draftUpdatedBy: "professional",
+    });
+    expect(update.$push).toMatchObject({ history: { $each: [{ actor: "professional", by: PRO, action: "edit", note: "headline" }] } });
+  });
+
+  it("never touch the page's city or order, whatever the body says", async () => {
+    h.page = livePage();
+    await saveShowcaseDraft({
+      userId: PRO,
+      body: { headline: { fr: "Nouvelle accroche" }, cityKey: "terrebonne", orderCode: "OPPQ", orderLabel: "Autre" },
+      actor: "professional",
+    });
+    const set = h.findOneAndUpdate[0][1].$set as Record<string, unknown>;
+    expect(Object.keys(set).filter((key) => /cityKey|order/.test(key))).toEqual([]);
+    expect(set).not.toHaveProperty("cityKey");
+
+    h.findOneAndUpdate = [];
+    expect(await saveShowcaseDraft({ userId: PRO, body: { cityKey: "terrebonne" }, actor: "professional" })).toMatchObject({
       status: 400,
-      code: "CONSENT_REQUIRED",
+      code: "NOTHING_TO_SAVE",
     });
-    expect(await submitShowcase({ userId: PRO, consent: "yes", consentVersion: SHOWCASE_CONSENT_VERSION })).toMatchObject({
-      code: "CONSENT_REQUIRED",
-    });
-    h.page = page({ draft: { ...completeDraft, photoFileId: undefined } });
-    h.profile = { ...completeProfile, license: "" };
-    expect(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION })).toEqual({
+    expect(h.findOneAndUpdate).toEqual([]);
+  });
+
+  it("are refused when they would leave the public page missing what it had, but not for what was already missing", async () => {
+    h.page = livePage();
+    expect(await saveShowcaseDraft({ userId: PRO, body: { bio: { fr: "Trop court" } }, actor: "professional" })).toEqual({
       ok: false,
       status: 422,
       code: "INCOMPLETE",
-      details: { missing: ["photo", "license"] },
+      details: { missing: ["bio"] },
     });
     expect(h.findOneAndUpdate).toEqual([]);
+
+    // The permit number comes from the profile: its absence must not block the text.
+    h.profile = { ...completeProfile, license: "" };
+    expect(await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Accroche" } }, actor: "professional" })).toMatchObject({ ok: true });
   });
 
-  it("submits once, records the consent, and alerts the team after the response", async () => {
-    h.page = page();
-    const result = await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION });
+  it("leave corrections an admin has not published yet pending", async () => {
+    h.page = livePage({ draftRevision: 6 });
+    await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Nouvelle accroche" } }, actor: "professional" });
     const [filter, update] = h.findOneAndUpdate[0];
-    expect(filter).toEqual({ _id: "p1", "review.state": { $ne: "pending" } });
-    expect(update.$set).toMatchObject({
-      "review.state": "pending",
-      consent: { version: SHOWCASE_CONSENT_VERSION },
+    expect(filter).toEqual({ _id: "p1", draftRevision: 6 });
+    expect(update.$set).toMatchObject({ draftRevision: 7 });
+    expect(update.$set).not.toHaveProperty("publishedRevision");
+  });
+
+  it("answer CONFLICT when the page changed meanwhile, and send nothing", async () => {
+    h.page = livePage();
+    h.updateResult = null;
+    expect(await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Accroche" } }, actor: "professional" })).toMatchObject({
+      status: 409,
+      code: "CONFLICT",
     });
-    expect(h.sendAdminAlert).not.toHaveBeenCalled();
+    expect(h.sendUpdated).not.toHaveBeenCalled();
+  });
+
+  it("tell the team what changed, after the response, at most once an hour per page", async () => {
+    h.page = livePage();
+    const result = await saveShowcaseDraft({
+      userId: PRO,
+      body: { headline: { fr: "Nouvelle accroche" }, displayName: "Amel Sassi" },
+      actor: "professional",
+    });
+    const [claimFilter, claimUpdate] = h.findOneAndUpdate[1];
+    expect(claimFilter).toMatchObject({ _id: "p1" });
+    expect(claimFilter).toHaveProperty("$or");
+    expect(claimUpdate).toMatchObject({ $set: { changeAlertedAt: expect.any(Date) } });
+    expect(h.sendUpdated).not.toHaveBeenCalled();
     await runDeferred(result);
-    expect(h.sendAdminAlert).toHaveBeenCalledWith({
+    expect(h.sendUpdated).toHaveBeenCalledWith({
       professionalName: "Amel Sassi",
       professionalId: PRO,
       cityName: "Mascouche",
-      resubmission: false,
+      publicUrl: "https://psymascouche.jechemine.ca/sassi",
+      fields: ["headline"],
     });
+
+    // An alert went out less than an hour ago: the edit is saved and recorded, the team is not emailed again.
+    h.findOneAndUpdate = [];
+    h.updateQueue = [{ _id: "p1" }, null];
+    const again = await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Autre accroche" } }, actor: "professional" });
+    expect(again).toMatchObject({ ok: true, deferred: [] });
+    expect(h.findOneAndUpdate[0][1]).toHaveProperty("$push");
   });
 
-  it("tells the team the city the draft asks for", async () => {
-    h.page = page({ status: "published", publishedAt: new Date("2026-09-01"), published: completeDraft, draft: { ...completeDraft, cityKey: "terrebonne" } });
-    await runDeferred(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION }));
-    expect(h.sendAdminAlert).toHaveBeenCalledWith(expect.objectContaining({ cityName: "Terrebonne", resubmission: true }));
+  it("that change nothing are saved without a history entry or an alert", async () => {
+    h.page = livePage();
+    const result = await saveShowcaseDraft({ userId: PRO, body: { headline: { fr: "Psychologue pour adultes" } }, actor: "professional" });
+    expect(result).toMatchObject({ ok: true, deferred: [] });
+    expect(h.findOneAndUpdate).toHaveLength(1);
+    expect(h.findOneAndUpdate[0][1]).not.toHaveProperty("$push");
   });
 
-  it("refuses a page already waiting for review, before writing, and a lost race", async () => {
-    h.page = page({ review: { state: "pending" } });
-    expect(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION })).toMatchObject({
-      status: 409,
-      code: "ALREADY_SUBMITTED",
+  it("replace the photo of the live page at once, delete the old one, and never remove it", async () => {
+    h.page = livePage();
+    const result = await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" });
+    expect(result).toMatchObject({ ok: true, value: { photoUrl: "/api/files/f-new" } });
+    const [filter, update] = h.findOneAndUpdate[0];
+    expect(filter).toEqual({ _id: "p1", draftRevision: 4 });
+    expect(update.$set).toMatchObject({ "draft.photoFileId": "f-new", "published.photoFileId": "f-new", publishedRevision: 5 });
+    expect(h.deleteMany).toEqual([{ _id: { $in: ["f-draft"] }, kind: "showcase-photo" }]);
+    await runDeferred(result);
+    expect(h.sendUpdated).toHaveBeenCalledWith(expect.objectContaining({ fields: ["photo"] }));
+
+    h.findOneAndUpdate = [];
+    expect(await setShowcasePhoto({ userId: PRO, fileId: null, actor: "professional" })).toEqual({
+      ok: false,
+      status: 422,
+      code: "INCOMPLETE",
+      details: { missing: ["photo"] },
     });
     expect(h.findOneAndUpdate).toEqual([]);
-    h.page = page();
+  });
+
+  it("delete the uploaded photo when the page changed meanwhile", async () => {
+    h.page = livePage();
     h.updateResult = null;
-    expect(await submitShowcase({ userId: PRO, consent: true, consentVersion: SHOWCASE_CONSENT_VERSION })).toMatchObject({
-      code: "ALREADY_SUBMITTED",
-    });
+    expect(await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" })).toMatchObject({ code: "CONFLICT" });
+    expect(h.deleteOne).toEqual([{ _id: "f-new", kind: "showcase-photo" }]);
+    expect(h.deleteMany).toEqual([]);
   });
 });
 
-describe("approveShowcase", () => {
+describe("publishShowcase", () => {
   beforeEach(() => {
-    h.page = page({ review: { state: "pending" } });
+    h.page = page();
     h.updateResult = { draft: { photoFileId: "f-draft" }, published: { photoFileId: "f-draft" } };
   });
 
   it("publishes exactly the revision the admin looked at", async () => {
-    const result = await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN });
+    const result = await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
     expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://psymascouche.jechemine.ca/sassi" } });
     const [filter, update] = h.findOneAndUpdate[0];
     expect(filter).toEqual({ _id: "p1", draftRevision: 4 });
@@ -390,20 +476,44 @@ describe("approveShowcase", () => {
       status: "published",
       "review.state": "none",
     });
+    expect(update.$set).not.toHaveProperty("consent");
     expect(update.$unset).toEqual({ unpublishedAt: "", unpublishedBy: "" });
     expect(update.$set).not.toHaveProperty("cityKey");
   });
 
-  it("moves a live page to the city its draft asks for, on approval, from the city it was decided on", async () => {
+  it("needs the professional's agreement, and records the one an admin confirms in the admin's name", async () => {
+    h.page = page({ consent: undefined });
+    expect(await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN })).toMatchObject({
+      status: 409,
+      code: "CONSENT_REQUIRED",
+    });
+    expect(await publishShowcase({ userId: PRO, revision: 4, consentAttested: "true", adminId: ADMIN })).toMatchObject({
+      code: "CONSENT_REQUIRED",
+    });
+    expect(h.findOneAndUpdate).toEqual([]);
+
+    expect(await publishShowcase({ userId: PRO, revision: 4, consentAttested: true, adminId: ADMIN })).toMatchObject({ ok: true });
+    const [, update] = h.findOneAndUpdate[0];
+    expect(update.$set).toMatchObject({
+      consent: { version: SHOWCASE_CONSENT_VERSION, source: "admin", attestedBy: ADMIN, acceptedAt: expect.any(Date) },
+    });
+    expect(update.$push).toMatchObject({ history: { $each: [{ action: "approve", note: "revision 4 · consent attested" }] } });
+  });
+
+  it("publishes a page still marked invited from before the change", async () => {
+    h.page = page({ status: "invited" });
+    expect(await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN })).toMatchObject({ ok: true });
+  });
+
+  it("moves a live page to the city its draft asks for, from the city it was decided on", async () => {
     h.page = page({
-      review: { state: "pending" },
       status: "published",
       publishedAt: new Date("2026-09-01"),
       publishedRevision: 2,
       published: { ...completeDraft, cityKey: "mascouche" },
       draft: { ...completeDraft, cityKey: "terrebonne" },
     });
-    const result = await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN });
+    const result = await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
     expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://psyterrebonne.jechemine.ca/sassi" } });
     const [filter, update] = h.findOneAndUpdate[0];
     expect(filter).toEqual({ _id: "p1", draftRevision: 4, cityKey: "mascouche" });
@@ -411,78 +521,49 @@ describe("approveShowcase", () => {
     expect(update.$push).toMatchObject({ history: { $each: [{ action: "approve", note: "revision 4 · mascouche > terrebonne" }] } });
     await runDeferred(result);
     expect(h.sendPublished).toHaveBeenCalledWith(
-      expect.objectContaining({ publicUrl: "https://psyterrebonne.jechemine.ca/sassi" }),
+      expect.objectContaining({ publicUrl: "https://psyterrebonne.jechemine.ca/sassi", firstPublication: false }),
     );
   });
 
-  it("refuses another revision, a missing consent, an inactive professional or an incomplete page — without writing", async () => {
-    expect(await approveShowcase({ userId: PRO, revision: 3, adminId: ADMIN })).toEqual({
-      ok: false,
-      status: 409,
-      code: "REVISION_CHANGED",
-      details: { draftRevision: 4 },
-    });
-    expect(await approveShowcase({ userId: PRO, revision: "4", adminId: ADMIN })).toMatchObject({ code: "REVISION_CHANGED" });
-    h.page = page({ review: { state: "pending" }, consent: { version: "showcase-2020-01" } });
-    expect(await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN })).toMatchObject({ code: "CONSENT_REQUIRED" });
-    h.page = page({ review: { state: "pending" } });
+  it("refuses another revision, an inactive professional, an incomplete page and a page the professional took down — without writing", async () => {
+    const publish = (revision: unknown) => publishShowcase({ userId: PRO, revision, consentAttested: true, adminId: ADMIN });
+    expect(await publish(3)).toEqual({ ok: false, status: 409, code: "REVISION_CHANGED", details: { draftRevision: 4 } });
+    expect(await publish("4")).toMatchObject({ code: "REVISION_CHANGED" });
     h.user = { ...activePro, status: "inactive" };
-    expect(await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN })).toMatchObject({ code: "PROFESSIONAL_NOT_ACTIVE" });
+    expect(await publish(4)).toMatchObject({ code: "PROFESSIONAL_NOT_ACTIVE" });
     h.user = { ...activePro };
     h.profile = { ...completeProfile, modalities: [] };
-    expect(await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN })).toMatchObject({
-      status: 422,
-      details: { missing: ["modalities"] },
-    });
+    expect(await publish(4)).toMatchObject({ status: 422, details: { missing: ["modalities"] } });
+    h.profile = { ...completeProfile };
+    h.page = page({ status: "unpublished", unpublishedBy: "professional", published: completeDraft, publishedRevision: 2 });
+    expect(await publish(4)).toMatchObject({ code: "WITHDRAWN_BY_PROFESSIONAL" });
     expect(h.findOneAndUpdate).toEqual([]);
   });
 
   it("deletes the photo the page stops showing, and only that one", async () => {
-    h.page = page({ review: { state: "pending" }, status: "published", publishedRevision: 2, published: { ...completeDraft, photoFileId: "f-old" } });
-    await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN });
+    h.page = page({ status: "published", publishedRevision: 2, published: { ...completeDraft, photoFileId: "f-old" } });
+    await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
     expect(h.deleteMany).toEqual([{ _id: { $in: ["f-old"] }, kind: "showcase-photo" }]);
 
     h.deleteMany = [];
     h.findOneAndUpdate = [];
-    h.page = page({ review: { state: "pending" }, status: "published", publishedRevision: 2, published: { ...completeDraft } });
-    await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN });
+    h.page = page({ status: "published", publishedRevision: 2, published: { ...completeDraft } });
+    await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
     expect(h.deleteMany).toEqual([]);
   });
 
-  it("says the page is approved, without a public address, while the pages are not open", async () => {
+  it("tells the professional without a public address while the pages are not open", async () => {
     h.enabled = false;
-    await runDeferred(await approveShowcase({ userId: PRO, revision: 4, adminId: ADMIN }));
+    await runDeferred(await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN }));
     expect(h.sendPublished).toHaveBeenCalledWith(
       expect.objectContaining({ live: false, firstPublication: true, professionalEmail: "amel@exemple.ca" }),
     );
   });
 });
 
-describe("requestShowcaseChanges", () => {
-  it("needs comments, and a page waiting for review", async () => {
-    h.page = page({ review: { state: "pending" } });
-    expect(await requestShowcaseChanges({ userId: PRO, notes: "  ", adminId: ADMIN })).toMatchObject({ code: "NOTES_REQUIRED" });
-    h.page = page();
-    expect(await requestShowcaseChanges({ userId: PRO, notes: "La photo est floue.", adminId: ADMIN })).toMatchObject({
-      code: "NOT_SUBMITTED",
-    });
-    expect(h.findOneAndUpdate).toEqual([]);
-  });
-
-  it("records the comments and sends them to the professional", async () => {
-    h.page = page({ review: { state: "pending" } });
-    const result = await requestShowcaseChanges({ userId: PRO, notes: "La photo est floue.", adminId: ADMIN });
-    const [filter, update] = h.findOneAndUpdate[0];
-    expect(filter).toEqual({ _id: "p1", "review.state": "pending" });
-    expect(update.$set).toMatchObject({ "review.state": "changes_requested", "review.notes": "La photo est floue." });
-    await runDeferred(result);
-    expect(h.sendChanges).toHaveBeenCalledWith(expect.objectContaining({ notes: "La photo est floue." }));
-  });
-});
-
 describe("taking a page down and putting it back", () => {
   it("the professional takes it down without an email; an admin tells them why", async () => {
-    h.page = page({ status: "published", published: completeDraft, publishedRevision: 4 });
+    h.page = livePage();
     const own = await unpublishShowcase({ userId: PRO, actor: "professional", byUserId: PRO });
     expect(h.findOneAndUpdate[0][0]).toEqual({ _id: "p1", status: "published" });
     expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ status: "unpublished", unpublishedBy: "professional" });
@@ -494,7 +575,7 @@ describe("taking a page down and putting it back", () => {
   });
 
   it("an admin cannot put back a page the professional took down; the professional can", async () => {
-    h.page = page({ status: "unpublished", unpublishedBy: "professional", published: completeDraft, publishedRevision: 4 });
+    h.page = livePage({ status: "unpublished", unpublishedBy: "professional" });
     expect(await republishShowcase({ userId: PRO, actor: "admin", byUserId: ADMIN })).toMatchObject({
       code: "WITHDRAWN_BY_PROFESSIONAL",
     });
@@ -504,37 +585,23 @@ describe("taking a page down and putting it back", () => {
   });
 });
 
-describe("remindShowcase", () => {
-  it("reminds at most once a day, with a conditional write", async () => {
-    h.page = page({ status: "invited", remindedAt: new Date(Date.now() - 2 * 3600 * 1000) });
-    expect(await remindShowcase({ userId: PRO, adminId: ADMIN })).toMatchObject({ code: "REMINDED_RECENTLY" });
-    expect(h.findOneAndUpdate).toEqual([]);
-
-    h.page = page({ status: "invited", remindedAt: new Date(Date.now() - 48 * 3600 * 1000) });
-    const result = await remindShowcase({ userId: PRO, adminId: ADMIN });
-    expect(h.findOneAndUpdate[0][0]).toMatchObject({ _id: "p1", status: { $in: ["invited", "draft"] } });
-    expect(h.findOneAndUpdate[0][0]).toHaveProperty("$or");
-    await runDeferred(result);
-    expect(h.sendInvitation).toHaveBeenCalledWith(expect.objectContaining({ reminder: true }));
-  });
-});
-
-describe("setShowcasePhoto", () => {
+describe("setShowcasePhoto by an admin", () => {
   it("replacing the draft photo deletes the old one, unless the published page shows it", async () => {
     h.updateResult = { _id: "p1", status: "draft", draft: { photoFileId: "f-old" }, published: { photoFileId: "f-pub" } };
-    await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" });
+    await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "admin" });
     expect(h.findOneAndUpdate[0][2]).toEqual({ new: false });
+    expect(h.findOneAndUpdate[0][1].$set).not.toHaveProperty("published.photoFileId");
     expect(h.deleteMany).toEqual([{ _id: { $in: ["f-old"] }, kind: "showcase-photo" }]);
 
     h.deleteMany = [];
     h.updateResult = { _id: "p1", status: "published", draft: { photoFileId: "f-pub" }, published: { photoFileId: "f-pub" } };
-    await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" });
+    await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "admin" });
     expect(h.deleteMany).toEqual([]);
   });
 
   it("deletes the uploaded file when there is no page to put it on", async () => {
     h.updateResult = null;
-    expect(await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "professional" })).toMatchObject({ status: 404 });
+    expect(await setShowcasePhoto({ userId: PRO, fileId: "f-new", actor: "admin" })).toMatchObject({ status: 404 });
     expect(h.deleteOne).toEqual([{ _id: "f-new", kind: "showcase-photo" }]);
   });
 });
@@ -557,7 +624,7 @@ describe("moveShowcase", () => {
     expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ slug: "dre-sassi", cityKey: "terrebonne", previousSlugs: [] });
   });
 
-  it("lines the draft (and a published copy) up with the new city, so an approval cannot move the page back", async () => {
+  it("lines the draft (and a published copy) up with the new city, so a publication cannot move the page back", async () => {
     h.page = page({
       status: "published",
       publishedAt: new Date("2026-09-01"),

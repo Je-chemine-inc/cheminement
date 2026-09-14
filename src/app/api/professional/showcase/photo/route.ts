@@ -7,9 +7,9 @@ import { storeShowcasePhoto } from "@/lib/showcase-photo";
 import { setShowcasePhoto } from "@/lib/showcase-service";
 
 /**
- * The photo of the professional's draft page (multipart `file`). It is public
- * only once an admin publishes the page; a replaced photo is deleted unless
- * the published page still shows it.
+ * The photo of the professional's published page (multipart `file`), live at
+ * once. Refused while the page is in preparation; the photo cannot be removed
+ * (a published page needs one). A replaced photo is deleted.
  */
 export async function POST(req: NextRequest) {
   const gate = await requireShowcaseProfessional();

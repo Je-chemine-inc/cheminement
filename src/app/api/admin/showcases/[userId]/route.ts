@@ -2,26 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireProfessionalsAdmin } from "@/lib/professional-admin";
 import { respondShowcase } from "@/lib/showcase-http";
 import {
-  approveShowcase,
   loadShowcaseAdminView,
   moveShowcase,
-  remindShowcase,
+  publishShowcase,
   republishShowcase,
-  requestShowcaseChanges,
   saveShowcaseDraft,
   unpublishShowcase,
 } from "@/lib/showcase-service";
 
 /**
  * One professional's showcase page, for an admin who manages professionals:
- * read it (draft, published copy, history), correct the draft, and act on it.
+ * read it (draft, published copy, history), prepare the draft, and act on it.
  *
  * POST `{ action }`:
- *  - `approve` + `revision`: publish the draft revision the admin looked at
- *    (409 REVISION_CHANGED if it changed since);
- *  - `request_changes` + `notes`;
+ *  - `publish` + `revision` (+ `consentAttested: true` when the professional's
+ *    agreement is not on record yet): publish the draft revision the admin
+ *    looked at (409 REVISION_CHANGED if it changed since);
  *  - `unpublish` + optional `note`, `republish`;
- *  - `remind` (at most once a day, before submission);
  *  - `move` + `slug` and/or `cityKey`.
  */
 type Params = { params: Promise<{ userId: string }> };
@@ -54,10 +51,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const view = () => loadShowcaseAdminView(userId);
 
   switch (body?.action) {
-    case "approve":
-      return respondShowcase(await approveShowcase({ userId, revision: body.revision, adminId }), view);
-    case "request_changes":
-      return respondShowcase(await requestShowcaseChanges({ userId, notes: body.notes, adminId }), view);
+    case "publish":
+      return respondShowcase(
+        await publishShowcase({ userId, revision: body.revision, consentAttested: body.consentAttested, adminId }),
+        view,
+      );
     case "unpublish":
       return respondShowcase(
         await unpublishShowcase({ userId, actor: "admin", byUserId: adminId, note: body.note }),
@@ -68,8 +66,6 @@ export async function POST(req: NextRequest, { params }: Params) {
         await republishShowcase({ userId, actor: "admin", byUserId: adminId }),
         view,
       );
-    case "remind":
-      return respondShowcase(await remindShowcase({ userId, adminId }), view);
     case "move":
       return respondShowcase(
         await moveShowcase({ userId, slug: body.slug, cityKey: body.cityKey, adminId }),

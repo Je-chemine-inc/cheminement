@@ -4,8 +4,9 @@ import { loadShowcaseEditor, saveShowcaseDraft } from "@/lib/showcase-service";
 
 /**
  * The signed-in professional's showcase page (spec 003): what the editor
- * shows, and saving the draft. The page exists only once an admin invites the
- * professional; before that the answer is `{ invited: false }`.
+ * shows, and saving it. The page exists once an admin activates it (before
+ * that the answer is `{ invited: false }`); the professional can save only
+ * after an admin has published it, and each save goes live.
  */
 export async function GET() {
   const gate = await requireShowcaseProfessional();

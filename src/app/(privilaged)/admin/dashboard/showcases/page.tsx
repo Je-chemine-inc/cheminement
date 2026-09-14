@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { AlertCircle, Check, ExternalLink, Loader2, RefreshCw, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { AlertCircle, ExternalLink, Loader2, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider
 import { AdminAccessRequired } from "@/components/admin/AdminAccessRequired";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
-import type { ShowcaseActor, ShowcaseReviewState, ShowcaseStatus } from "@/lib/showcase-constants";
+import type { ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
 import { showcaseErrorKey } from "@/lib/showcase-editor-types";
 import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
 import { isValidShowcaseSlug } from "@/lib/showcase-workflow";
@@ -30,13 +31,12 @@ interface PageSummary {
   cityName: string;
   publicUrl: string;
   status: ShowcaseStatus;
-  reviewState: ShowcaseReviewState;
-  submittedAt: string | null;
   hasUnpublishedChanges: boolean;
   unpublishedBy: ShowcaseActor | null;
   invitedAt: string | null;
-  remindedAt: string | null;
   publishedAt: string | null;
+  /** When the professional last saved their live page, if they were the last to edit it. */
+  professionalEditedAt: string | null;
   stats: { views: number; ctaClicks: number };
 }
 
@@ -59,8 +59,8 @@ interface ListJson {
   statsDays: number;
 }
 
-type Filter = "all" | "toReview" | "inProgress" | "published" | "unpublished" | "notInvited";
-const FILTERS: Filter[] = ["all", "toReview", "inProgress", "published", "unpublished", "notInvited"];
+type Filter = "all" | "inProgress" | "published" | "unpublished" | "notInvited";
+const FILTERS: Filter[] = ["all", "inProgress", "published", "unpublished", "notInvited"];
 
 function matchesFilter(row: Row, filter: Filter): boolean {
   const page = row.page;
@@ -69,10 +69,8 @@ function matchesFilter(row: Row, filter: Filter): boolean {
       return true;
     case "notInvited":
       return !page;
-    case "toReview":
-      return page?.reviewState === "pending";
     case "inProgress":
-      return Boolean(page && (page.status === "invited" || page.status === "draft") && page.reviewState !== "pending");
+      return Boolean(page && (page.status === "invited" || page.status === "draft"));
     case "published":
       return page?.status === "published";
     case "unpublished":
@@ -80,10 +78,12 @@ function matchesFilter(row: Row, filter: Filter): boolean {
   }
 }
 
-/** « Pages vitrines » — who the public sees, invitations, and the switch (spec 003). */
+/** « Pages vitrines » — who the public sees, activating a page, and the switch (spec 003). */
 export default function AdminShowcasesPage() {
   const t = useTranslations("ShowcaseAdmin");
   const tErrors = useTranslations("ShowcasePro");
+  const locale = useLocale();
+  const router = useRouter();
   const { manageProfessionals } = useAdminPermissions();
 
   const [data, setData] = useState<ListJson | null>(null);
@@ -92,13 +92,12 @@ export default function AdminShowcasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const [inviting, setInviting] = useState<Row | null>(null);
-  const [inviteCity, setInviteCity] = useState("");
-  const [inviteSlug, setInviteSlug] = useState("");
+  const [activating, setActivating] = useState<Row | null>(null);
+  const [activateCity, setActivateCity] = useState("");
+  const [activateSlug, setActivateSlug] = useState("");
   const [switchOpen, setSwitchOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -148,15 +147,19 @@ export default function AdminShowcasesPage() {
     return <AdminAccessRequired title={t("access.title")} body={t("access.body")} />;
   }
 
-  const openInvite = (row: Row) => {
-    setInviting(row);
-    setInviteCity(row.suggestedCityKey ?? "");
-    setInviteSlug("");
+  const formatDate = (iso: string) =>
+    new Intl.DateTimeFormat(locale === "en" ? "en-CA" : "fr-CA", { dateStyle: "medium" }).format(new Date(iso));
+
+  const openActivate = (row: Row) => {
+    setActivating(row);
+    setActivateCity(row.suggestedCityKey ?? "");
+    setActivateSlug("");
     setDialogError(null);
   };
 
-  const sendInvite = async () => {
-    if (!inviting) return;
+  // The page is created empty of review: the admin goes straight to preparing it.
+  const activate = async () => {
+    if (!activating) return;
     setBusy(true);
     setDialogError(null);
     try {
@@ -164,9 +167,9 @@ export default function AdminShowcasesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: inviting.userId,
-          cityKey: inviteCity,
-          slug: inviteSlug.trim() || undefined,
+          userId: activating.userId,
+          cityKey: activateCity,
+          slug: activateSlug.trim() || undefined,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -174,9 +177,7 @@ export default function AdminShowcasesPage() {
         setDialogError(tErrors(`errors.${showcaseErrorKey(body?.error)}`));
         return;
       }
-      setInviting(null);
-      setDone(t("invite.sent"));
-      await load();
+      router.push(`/admin/dashboard/showcases/${activating.userId}`);
     } catch {
       setDialogError(tErrors("errors.network"));
     } finally {
@@ -208,7 +209,7 @@ export default function AdminShowcasesPage() {
     }
   };
 
-  const inviteCityName = data?.cityOptions.find((city) => city.key === inviting?.suggestedCityKey)?.name;
+  const suggestedCityName = data?.cityOptions.find((city) => city.key === activating?.suggestedCityKey)?.name;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -226,12 +227,6 @@ export default function AdminShowcasesPage() {
         <p role="alert" className="flex items-center gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           {error}
-        </p>
-      ) : null}
-      {done ? (
-        <p role="status" className="flex items-center gap-2 text-sm text-emerald-700">
-          <Check className="h-4 w-4" />
-          {done}
         </p>
       ) : null}
 
@@ -337,8 +332,13 @@ export default function AdminShowcasesPage() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col items-start gap-1">
                             <ShowcaseStatusBadge badge={showcaseBadge(row.page, data.showcaseEnabled)} />
-                            {row.page?.hasUnpublishedChanges && row.page.reviewState !== "pending" ? (
+                            {row.page?.hasUnpublishedChanges ? (
                               <span className="text-xs text-muted-foreground">{t("list.changes")}</span>
+                            ) : null}
+                            {row.page?.professionalEditedAt ? (
+                              <span className="text-xs text-muted-foreground">
+                                {t("list.professionalEdit", { date: formatDate(row.page.professionalEditedAt) })}
+                              </span>
                             ) : null}
                           </div>
                         </td>
@@ -365,9 +365,9 @@ export default function AdminShowcasesPage() {
                                 type="button"
                                 size="sm"
                                 disabled={row.accountStatus !== "active"}
-                                onClick={() => openInvite(row)}
+                                onClick={() => openActivate(row)}
                               >
-                                {t("list.invite")}
+                                {t("list.activate")}
                               </Button>
                             )}
                           </div>
@@ -382,22 +382,22 @@ export default function AdminShowcasesPage() {
         </>
       )}
 
-      <Dialog open={Boolean(inviting)} onOpenChange={(open) => !open && setInviting(null)}>
+      <Dialog open={Boolean(activating)} onOpenChange={(open) => !open && setActivating(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("invite.title", { name: inviting?.name ?? "" })}</DialogTitle>
-            <DialogDescription>{t("invite.body")}</DialogDescription>
+            <DialogTitle>{t("activate.title", { name: activating?.name ?? "" })}</DialogTitle>
+            <DialogDescription>{t("activate.body")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-city">{t("invite.city")}</Label>
+              <Label htmlFor="activate-city">{t("activate.city")}</Label>
               <select
-                id="invite-city"
-                value={inviteCity}
-                onChange={(event) => setInviteCity(event.target.value)}
+                id="activate-city"
+                value={activateCity}
+                onChange={(event) => setActivateCity(event.target.value)}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
-                <option value="">{t("invite.chooseCity")}</option>
+                <option value="">{t("activate.chooseCity")}</option>
                 {regions.map(([region, cities]) => (
                   <optgroup key={region} label={region}>
                     {cities.map((city) => (
@@ -408,34 +408,34 @@ export default function AdminShowcasesPage() {
                   </optgroup>
                 ))}
               </select>
-              {inviteCityName ? (
-                <p className="text-xs text-muted-foreground">{t("invite.citySuggested", { city: inviteCityName })}</p>
+              {suggestedCityName ? (
+                <p className="text-xs text-muted-foreground">{t("activate.citySuggested", { city: suggestedCityName })}</p>
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="invite-slug">{t("invite.slug")}</Label>
+              <Label htmlFor="activate-slug">{t("activate.slug")}</Label>
               <Input
-                id="invite-slug"
-                value={inviteSlug}
-                onChange={(event) => setInviteSlug(event.target.value.toLowerCase())}
+                id="activate-slug"
+                value={activateSlug}
+                onChange={(event) => setActivateSlug(event.target.value.toLowerCase())}
                 placeholder="sassi"
               />
-              <p className="text-xs text-muted-foreground">{t("invite.slugHint")}</p>
-              {inviteCity && isValidShowcaseSlug(inviteSlug.trim()) ? (
+              <p className="text-xs text-muted-foreground">{t("activate.slugHint")}</p>
+              {activateCity && isValidShowcaseSlug(activateSlug.trim()) ? (
                 <p className="break-all text-xs text-muted-foreground">
-                  {t("invite.preview", { url: absoluteShowcaseUrl(inviteCity, `/${inviteSlug.trim()}`) })}
+                  {t("activate.preview", { url: absoluteShowcaseUrl(activateCity, `/${activateSlug.trim()}`) })}
                 </p>
               ) : null}
             </div>
             {dialogError ? <p className="text-sm text-destructive">{dialogError}</p> : null}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setInviting(null)} disabled={busy}>
+            <Button type="button" variant="outline" onClick={() => setActivating(null)} disabled={busy}>
               {t("cancel")}
             </Button>
-            <Button type="button" onClick={() => void sendInvite()} disabled={busy || !inviteCity}>
+            <Button type="button" onClick={() => void activate()} disabled={busy || !activateCity}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {t("invite.submit")}
+              {t("activate.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -59,13 +59,16 @@ export type EmailNotificationType =
   // Professional rate-change requests (spec 001 AC-22).
   | "rate_proposal_submitted"
   | "rate_proposal_decision"
-  // Spec 003: showcase pages.
+  // Spec 003: showcase pages. Invitation, reminder, changes requested and
+  // « to review » belong to the review flow retired on 2026-09-14 and are no
+  // longer sent; they stay so saved settings keep their shape.
   | "showcase_invitation"
   | "showcase_reminder"
   | "showcase_published"
   | "showcase_changes_requested"
   | "showcase_unpublished"
   | "admin_showcase_submitted"
+  | "admin_showcase_updated"
   // Spec 003 phase 3: direct requests from a showcase page.
   | "direct_request_received"
   | "direct_request_confirmation"
@@ -456,7 +459,7 @@ const defaultEmailTemplates: Record<
   },
   showcase_published: {
     enabled: true,
-    subject: "Votre page vitrine est approuvée",
+    subject: "Votre page vitrine est publiée",
   },
   showcase_changes_requested: {
     enabled: true,
@@ -469,6 +472,10 @@ const defaultEmailTemplates: Record<
   admin_showcase_submitted: {
     enabled: true,
     subject: "Page vitrine à vérifier — Je chemine",
+  },
+  admin_showcase_updated: {
+    enabled: true,
+    subject: "Page vitrine modifiée par un professionnel — Je chemine",
   },
   direct_request_received: {
     enabled: true,

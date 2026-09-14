@@ -7667,33 +7667,31 @@
   },
   "ShowcasePro": {
     "title": "My showcase page",
-    "subtitle": "Your public page on Je chemine presents your practice to people looking for a professional in your city. Nothing is published without your consent and the team's approval.",
+    "subtitle": "Your public page on Je chemine presents your practice to people looking for a professional in your city. The team prepares it and publishes it with your agreement; you then edit it whenever you want.",
     "loadError": "Your showcase page could not be loaded. Try again in a moment.",
     "cancel": "Cancel",
     "notInvited": {
-      "title": "Showcase pages are by invitation",
-      "body": "The Je chemine team invites professionals to prepare their public page. You will get an email when yours is ready to fill in."
+      "title": "No showcase page yet",
+      "body": "The Je chemine team creates showcase pages with professionals. Once yours is published, you can edit it here."
+    },
+    "preparing": {
+      "title": "Your page is being prepared",
+      "body": "The Je chemine team is preparing your showcase page. You will get an email as soon as it is published, and you can then edit it here."
     },
     "status": {
       "label": "Page status",
-      "invited": "To complete",
-      "draft": "Draft",
-      "pending": "In review",
-      "changes_requested": "Changes requested",
+      "invited": "Being prepared",
+      "draft": "Being prepared",
       "published": "Live",
-      "approvedClosed": "Approved",
+      "approvedClosed": "Published",
       "unpublished": "Taken down"
     },
     "statusText": {
-      "draft": "Complete your page, check the preview, then send it to the team for review.",
-      "pending": "Your page was sent to the team, who is reviewing it.",
-      "changes_requested": "The team asks for a few changes before publication:",
       "published": "Your page is live:",
-      "approvedClosed": "Your page is approved. The public will see it as soon as showcase pages open.",
-      "pendingChanges": "You have changes that are not published yet. Send them for review: the current version stays live meanwhile.",
+      "approvedClosed": "Your page is published. The public will see it as soon as showcase pages open.",
+      "liveEdits": "Your changes are published as soon as you save them. The city, the page address and the professional order are managed by the team: write to us to change them.",
       "unpublishedByProfessional": "You took your page down. You can put it back online at any time.",
-      "unpublishedByAdmin": "The team took your page down. Write to us to learn more.",
-      "stillLive": "The published version of your page stays live meanwhile."
+      "unpublishedByAdmin": "The team took your page down. Write to us to learn more."
     },
     "stats": {
       "line": "Last {days} days: {views, plural, =0 {no visits} one {# visit} other {# visits}} and {clicks, plural, =0 {no clicks} one {# click} other {# clicks}} on \"Request an appointment\"."
@@ -7713,18 +7711,9 @@
     },
     "actions": {
       "preview": "Preview",
-      "submit": "Send for review",
       "viewPublic": "View the public page",
       "unpublish": "Take my page down",
       "republish": "Put back online"
-    },
-    "consent": {
-      "title": "Consent to publication",
-      "intro": "Read and accept this text to send your page to the team.",
-      "text": "I authorize Je chemine to publish my showcase page on its websites and to let it appear in search engines. It includes my photo, my name, my professional title, my order and permit number, the city where I practise, my presentation, my areas of expertise and my fees.\n\nI confirm that this information is accurate and follows the advertising rules of my professional order, and that I have the right to use the photo I provided.\n\nI can take my page down at any time from my dashboard. The team reviews every change before it is published.",
-      "version": "Text version: {version}",
-      "checkbox": "I have read this text and I accept it",
-      "submit": "Accept and send"
     },
     "unpublishDialog": {
       "title": "Take your page down?",
@@ -7796,12 +7785,16 @@
       "officeCity": "Office city in your profile: {city}",
       "useOfficeCity": "Use {city}",
       "address": "Page address: {url}",
-      "afterApproval": "Your page is live: the new city applies when the team approves the change. The old address will then redirect to the new one.",
-      "pending": "City change waiting for approval: {city} ({url})"
+      "afterApproval": "Your page is live: the new city applies when the team publishes the change. The old address will then redirect to the new one.",
+      "pending": "Address change waiting to be published by the team: {city} ({url})"
+    },
+    "identity": {
+      "title": "Professional order and page city",
+      "hint": "Managed by the Je chemine team. Write to us to change them."
     },
     "services": {
       "title": "Services offered on the page",
-      "hint": "These choices apply right away, without a new review. Fees come from the pricing grid.",
+      "hint": "These choices apply right away. Fees come from the pricing grid.",
       "standard": "Standard consultation",
       "standardHint": "The usual sessions, at the grid's fees.",
       "quick": "Quick one-time consultation",
@@ -7813,6 +7806,7 @@
       "save": "Save",
       "saving": "Saving…",
       "saved": "Changes saved.",
+      "savedLive": "Changes saved and live.",
       "unsaved": "Unsaved changes"
     },
     "errors": {
@@ -7833,25 +7827,21 @@
       "PHOTO_INFECTED": "The antivirus scan refused this file.",
       "SCAN_UNAVAILABLE": "The antivirus scan is unavailable. Try again in a few minutes.",
       "RATE_LIMITED": "Too many attempts. Try again later.",
-      "CONSENT_REQUIRED": "Consent to publication is required.",
+      "CONSENT_REQUIRED": "Confirm that the professional agreed to the publication of their page.",
       "INCOMPLETE": "The page is not complete. See the list of missing items.",
-      "ALREADY_SUBMITTED": "The page is already in review.",
+      "IN_PREPARATION": "Your page is being prepared by the team: you can edit it once it is published.",
       "NOT_PUBLISHED": "The page is not live.",
       "NOT_UNPUBLISHED": "The page is not taken down.",
       "FORBIDDEN": "This action is not allowed.",
       "PROFESSIONAL_NOT_ACTIVE": "The professional's account is not active.",
       "PROFESSIONAL_NOT_FOUND": "Professional not found.",
-      "WITHDRAWN_BY_PROFESSIONAL": "The professional took their page down: only they can put it back online or submit it again.",
+      "WITHDRAWN_BY_PROFESSIONAL": "The professional took their page down: only they can put it back online.",
       "NOTHING_TO_PUBLISH": "There is nothing new to publish.",
       "REVISION_CHANGED": "The page changed since you loaded it. Reload it before going on.",
-      "NOTES_REQUIRED": "Describe the changes you are asking for.",
-      "NOT_SUBMITTED": "The page is not in review.",
-      "REMINDED_RECENTLY": "A reminder was already sent in the last 24 hours.",
-      "NOT_REMINDABLE": "A reminder can only be sent for a page still to complete.",
       "SLUG_TAKEN": "This address is already in use.",
       "INVALID_SLUG": "Invalid address: lowercase letters, digits and hyphens only.",
       "INVALID_CITY": "Choose a city from the list.",
-      "ALREADY_INVITED": "This professional was already invited.",
+      "ALREADY_INVITED": "This professional already has a showcase page.",
       "CONFLICT": "The page was changed at the same time. Reload it.",
       "INVALID_ACTION": "Unknown action.",
       "ACCOUNT_NOT_ACTIVE": "Your account must be active to edit your page."
@@ -7862,7 +7852,7 @@
       "city": {
         "hint": "The city where the professional sees their clients. It gives their page its address. If their city is not in the list, choose the nearest one.",
         "officeCity": "Office city in their profile: {city}",
-        "afterApproval": "The page is live: the new city applies when you approve this revision. The old address will then redirect to the new one."
+        "afterApproval": "The page is live: the new city applies when you publish this revision. The old address will then redirect to the new one."
       },
       "fields": {
         "introPlaceholder": "A few sentences to introduce the professional.",
@@ -7874,32 +7864,30 @@
       }
     },
     "title": "Showcase pages",
-    "subtitle": "Choose the professionals presented to the public, invite them to prepare their page, then review and publish.",
+    "subtitle": "Activate a professional's page, fill it in, then publish it with their agreement. They can then edit it themselves.",
     "cancel": "Cancel",
     "access": {
       "title": "Restricted access",
       "body": "This screen is for admins who manage professionals. Ask a super admin for this permission."
     },
     "badges": {
-      "notInvited": "Not invited",
-      "invited": "Invited",
-      "draft": "Draft",
-      "pending": "To review",
-      "changes_requested": "Changes requested",
+      "notInvited": "No page",
+      "invited": "To prepare",
+      "draft": "Being prepared",
       "published": "Live",
-      "approvedClosed": "Approved, pages closed",
+      "approvedClosed": "Published, pages closed",
       "unpublished": "Taken down"
     },
     "switch": {
       "title": "Public access",
-      "on": "Open: approved pages are visible to the public.",
-      "off": "Closed: the city addresses, such as psymontreal.jechemine.ca, send visitors to jechemine.ca. You can invite, review and approve meanwhile.",
+      "on": "Open: published pages are visible to the public.",
+      "off": "Closed: the city addresses, such as psymontreal.jechemine.ca, send visitors to jechemine.ca. You can activate, prepare and publish pages meanwhile.",
       "turnOn": "Open to the public",
       "turnOff": "Close to the public",
       "confirmOnTitle": "Open showcase pages to the public?",
-      "confirmOnBody": "Approved pages become visible at the city addresses and can be indexed by search engines. First check that the certificate and DNS for the city addresses are in place.",
+      "confirmOnBody": "Published pages become visible at the city addresses and can be indexed by search engines. First check that the certificate and DNS for the city addresses are in place.",
       "confirmOffTitle": "Close showcase pages?",
-      "confirmOffBody": "The city addresses will send visitors to jechemine.ca. Pages stay approved and come back when you reopen.",
+      "confirmOffBody": "The city addresses will send visitors to jechemine.ca. Pages stay published and come back when you reopen.",
       "confirm": "Confirm"
     },
     "cities": {
@@ -7913,11 +7901,10 @@
       "search": "Search by name or email",
       "filters": {
         "all": "All",
-        "toReview": "To review",
-        "inProgress": "In preparation",
+        "inProgress": "Being prepared",
         "published": "Live",
         "unpublished": "Taken down",
-        "notInvited": "Not invited"
+        "notInvited": "No page"
       },
       "empty": "No professional matches.",
       "columns": {
@@ -7929,21 +7916,21 @@
       },
       "stats": "{views, plural, one {# visit} other {# visits}} · {clicks, plural, one {# click} other {# clicks}}",
       "accountInactive": "Inactive account",
-      "changes": "Unpublished changes",
+      "changes": "Unpublished corrections",
+      "professionalEdit": "Edited by the professional on {date}",
       "open": "Open",
-      "invite": "Invite"
+      "activate": "Activate the page"
     },
-    "invite": {
-      "title": "Invite {name}",
-      "body": "A showcase page is created for this professional, prefilled from their profile, and an email invites them to complete it. Nothing is published before your approval.",
+    "activate": {
+      "title": "Activate the page of {name}",
+      "body": "A showcase page is created for this professional, prefilled from their profile. No email is sent to them: you fill in the page, then publish it with their agreement.",
       "city": "Page city",
       "chooseCity": "Choose a city",
       "citySuggested": "City suggested from the office address: {city}",
       "slug": "Page address (optional)",
       "slugHint": "Leave empty to use the last name. Lowercase letters, digits and hyphens only.",
       "preview": "Address: {url}",
-      "submit": "Send the invitation",
-      "sent": "Invitation sent."
+      "submit": "Activate and prepare the page"
     },
     "detail": {
       "back": "Back to showcase pages",
@@ -7952,48 +7939,47 @@
       "done": "Done.",
       "profileLink": "Professional's file",
       "publicLink": "View the public page",
-      "reviewTitle": "Review and publication",
+      "reviewTitle": "Publication",
       "revision": "Revision {revision}",
-      "submittedAt": "Sent for review on {date}",
-      "consentCurrent": "Consent to publication accepted on {date}",
-      "consentMissing": "The professional has not accepted the current consent text yet: the page cannot be published.",
-      "notSubmittedWarning": "The professional has not sent this version for review.",
+      "consentCurrent": "The professional accepted publication on {date}.",
+      "consentAttested": "The professional's agreement to publication was confirmed by the team on {date}.",
+      "consentMissing": "No agreement on record: when publishing, you will confirm that the professional agreed to the publication of their page.",
+      "lastProfessionalEdit": "Last edited by the professional on {date}: it is already live.",
+      "unpublishedCorrections": "Your corrections are not published yet: the public sees the previous version.",
       "previewDraft": "Preview the draft",
       "previewPublished": "Preview the live version",
-      "approve": "Approve and publish",
-      "approveTitle": "Publish revision {revision}?",
-      "approveBody": "This draft revision becomes the public page. The professional is notified by email.",
-      "requestChanges": "Request changes",
-      "changesTitle": "Request changes",
-      "changesBody": "The professional gets your notes by email. They fix their page, then send it back for review.",
-      "notes": "Changes requested",
+      "publish": "Publish the page",
+      "publishChanges": "Publish the corrections",
+      "publishTitle": "Publish revision {revision}?",
+      "publishBody": "This revision becomes the public page. The professional gets an email and can then edit their page themselves; their changes are live as soon as they save them.",
+      "consentAttest": "I confirm that the professional agreed to Je chemine publishing this page (photo, name, title, order and permit, city, presentation, areas of expertise and fees), checked that it is accurate, and knows they can edit it or take it down at any time.",
       "unpublish": "Take the page down",
       "unpublishTitle": "Take the page down?",
       "unpublishBody": "The public no longer sees the page. The professional is notified by email, with the reason if you give one.",
       "reason": "Reason (optional)",
       "republish": "Put back online",
-      "remind": "Send a reminder",
       "move": "Change the address",
       "moveTitle": "Change the city or the address",
       "moveBody": "If the page was ever published, the old address redirects to the new one.",
-      "cityChange": "The draft asks to move from {from} to {to} ({url}). The city changes on approval; the old address will redirect to the new one.",
+      "cityChange": "The draft asks to move from {from} to {to} ({url}). The city changes on publication; the old address will redirect to the new one.",
       "city": "City",
       "slug": "Address",
-      "send": "Send",
       "save": "Save",
       "editorTitle": "Page content",
-      "editorHint": "Your corrections change the draft and go public when the page is approved. The services offered change right away.",
+      "editorHint": "Your changes stay in the draft until you publish. Once the page is published, the professional's changes are live as soon as they save them. The services offered change right away.",
       "historyTitle": "History",
       "historyEmpty": "No events.",
       "history": {
-        "invite": "Invitation",
-        "submit": "Sent for review",
-        "approve": "Approved and published",
-        "request_changes": "Changes requested",
+        "activate": "Page activated",
+        "approve": "Published",
+        "edit": "Edited by the professional",
         "unpublish": "Taken down",
         "republish": "Put back online",
-        "remind": "Reminder sent",
-        "move": "Address changed"
+        "move": "Address changed",
+        "invite": "Invitation",
+        "submit": "Sent for review",
+        "request_changes": "Changes requested",
+        "remind": "Reminder sent"
       },
       "actors": {
         "professional": "Professional",

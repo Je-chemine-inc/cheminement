@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { AlertCircle, ExternalLink, Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +17,9 @@ import { SHOWCASE_BADGE_CLASSES, showcaseBadge } from "@/lib/showcase-badges";
 import { showcaseErrorKey, type ShowcaseEditorJson } from "@/lib/showcase-editor-types";
 
 /**
- * Where the professional's page stands, what is still missing, and their
- * actions: preview, send for review (with the publication consent), take the
- * page down, put it back.
+ * Where the professional's published page stands, and their actions:
+ * preview, view it, take it down, put it back. The editor below it saves
+ * straight to the live page.
  */
 export function ShowcaseProStatus({
   view,
@@ -29,31 +29,19 @@ export function ShowcaseProStatus({
   onView: (next: ShowcaseEditorJson) => void;
 }) {
   const t = useTranslations("ShowcasePro");
-  const locale = useLocale();
-  const [dialog, setDialog] = useState<"consent" | "unpublish" | null>(null);
-  const [accepted, setAccepted] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { page, missing } = view;
-  const review = page.review.state;
-  const badge = showcaseBadge({ status: page.status, reviewState: review }, view.showcaseEnabled);
-  // While a new version is reviewed, the one the public sees stays up.
-  const stillLive = page.status === "published" && view.showcaseEnabled;
-  const canSubmit =
-    review !== "pending" && missing.length === 0 && (page.status !== "published" || page.hasUnpublishedChanges);
-  const formatDate = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat(locale === "en" ? "en-CA" : "fr-CA", { dateStyle: "long" }).format(new Date(iso)) : "";
+  const badge = showcaseBadge(page, view.showcaseEnabled);
+  const live = page.status === "published" && view.showcaseEnabled;
 
-  const post = async (path: string, body?: unknown): Promise<boolean> => {
+  const post = async (path: string): Promise<boolean> => {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/professional/showcase/${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      const res = await fetch(`/api/professional/showcase/${path}`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(t(`errors.${showcaseErrorKey(data?.error)}`));
@@ -78,22 +66,9 @@ export function ShowcaseProStatus({
         <span className={`rounded-full px-3 py-1 text-sm ${SHOWCASE_BADGE_CLASSES[badge]}`}>{t(`status.${badge}`)}</span>
       </div>
 
-      {review === "pending" ? (
-        <div className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            {t("statusText.pending")} {page.review.submittedAt ? `(${formatDate(page.review.submittedAt)})` : ""}
-          </p>
-          {stillLive ? <p>{t("statusText.stillLive")}</p> : null}
-        </div>
-      ) : review === "changes_requested" ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-medium">{t("statusText.changes_requested")}</p>
-          <p className="mt-2 whitespace-pre-line">{page.review.notes}</p>
-          {stillLive ? <p className="mt-2">{t("statusText.stillLive")}</p> : null}
-        </div>
-      ) : page.status === "published" ? (
+      {page.status === "published" ? (
         <div className="space-y-2 text-sm text-muted-foreground">
-          {view.showcaseEnabled ? (
+          {live ? (
             <p>
               {t("statusText.published")}{" "}
               <a href={page.publicUrl} target="_blank" rel="noreferrer" className="break-all text-primary hover:underline">
@@ -103,19 +78,17 @@ export function ShowcaseProStatus({
           ) : (
             <p>{t("statusText.approvedClosed")}</p>
           )}
-          {page.hasUnpublishedChanges ? <p className="text-amber-700">{t("statusText.pendingChanges")}</p> : null}
+          <p>{t("statusText.liveEdits")}</p>
         </div>
-      ) : page.status === "unpublished" ? (
+      ) : (
         <p className="text-sm text-muted-foreground">
           {page.unpublishedBy === "professional"
             ? t("statusText.unpublishedByProfessional")
             : t("statusText.unpublishedByAdmin")}
         </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">{t("statusText.draft")}</p>
       )}
 
-      {page.status === "published" && view.showcaseEnabled ? (
+      {live ? (
         <p className="text-sm text-muted-foreground">
           {t("stats.line", { days: view.stats.days, views: view.stats.views, clicks: view.stats.ctaClicks })}
         </p>
@@ -146,19 +119,7 @@ export function ShowcaseProStatus({
             {t("actions.preview")}
           </Link>
         </Button>
-        {canSubmit ? (
-          <Button
-            type="button"
-            onClick={() => {
-              setAccepted(false);
-              setDialog("consent");
-            }}
-            disabled={busy}
-          >
-            {t("actions.submit")}
-          </Button>
-        ) : null}
-        {page.status === "published" && view.showcaseEnabled ? (
+        {live ? (
           <Button asChild variant="ghost">
             <a href={page.publicUrl} target="_blank" rel="noreferrer">
               <ExternalLink className="h-4 w-4" />
@@ -167,7 +128,7 @@ export function ShowcaseProStatus({
           </Button>
         ) : null}
         {page.status === "published" ? (
-          <Button type="button" variant="ghost" onClick={() => setDialog("unpublish")} disabled={busy}>
+          <Button type="button" variant="ghost" onClick={() => setConfirming(true)} disabled={busy}>
             {t("actions.unpublish")}
           </Button>
         ) : null}
@@ -179,46 +140,14 @@ export function ShowcaseProStatus({
         ) : null}
       </div>
 
-      <Dialog open={dialog === "consent"} onOpenChange={(open) => !open && setDialog(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("consent.title")}</DialogTitle>
-            <DialogDescription>{t("consent.intro")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 text-sm text-foreground">
-            <p className="whitespace-pre-line rounded-lg bg-muted/60 p-4 leading-relaxed">{t("consent.text")}</p>
-            <p className="text-xs text-muted-foreground">{t("consent.version", { version: view.consentVersion })}</p>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
-              {t("consent.checkbox")}
-            </label>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>
-              {t("cancel")}
-            </Button>
-            <Button
-              type="button"
-              disabled={!accepted || busy}
-              onClick={async () => {
-                if (await post("submit", { consent: true, consentVersion: view.consentVersion })) setDialog(null);
-              }}
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {t("consent.submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={dialog === "unpublish"} onOpenChange={(open) => !open && setDialog(null)}>
+      <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("unpublishDialog.title")}</DialogTitle>
             <DialogDescription>{t("unpublishDialog.body")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={busy}>
+            <Button type="button" variant="outline" onClick={() => setConfirming(false)} disabled={busy}>
               {t("cancel")}
             </Button>
             <Button
@@ -226,7 +155,7 @@ export function ShowcaseProStatus({
               variant="destructive"
               disabled={busy}
               onClick={async () => {
-                if (await post("unpublish")) setDialog(null);
+                if (await post("unpublish")) setConfirming(false);
               }}
             >
               {t("unpublishDialog.confirm")}
