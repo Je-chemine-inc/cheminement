@@ -7461,7 +7461,8 @@
         "firstTitle": "La première rencontre",
         "firstBody": "Vous faites le tour de votre situation et nommez ensemble des objectifs, selon la formule choisie.",
         "nextTitle": "La suite",
-        "nextBody": "Les rencontres suivantes se planifient avec {name}. Un reçu est émis pour chaque séance payée."
+        "nextBody": "Les rencontres suivantes se planifient avec {name}. Un reçu est émis pour chaque séance payée.",
+        "stepLabel": "Étape {number}"
       },
       "values": {
         "eyebrow": "Valeurs",

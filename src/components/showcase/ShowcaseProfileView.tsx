@@ -4,6 +4,7 @@ import {
   Anchor,
   ArrowRight,
   Award,
+  Brain,
   CalendarDays,
   Check,
   Clock,
@@ -11,15 +12,18 @@ import {
   Feather,
   Flower2,
   Globe,
+  Handshake,
   Heart,
   HeartHandshake,
   Leaf,
   Lightbulb,
+  Mail,
   MapPin,
   MessageSquare,
   Phone,
   Quote,
   Receipt,
+  Repeat,
   ShieldCheck,
   Sparkles,
   Sprout,
@@ -233,11 +237,11 @@ export async function ShowcaseProfileView({
       text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
     })),
   ];
-  const steps = [
-    { title: t("vitrine.approach.requestTitle"), body: t("vitrine.approach.requestBody", { name }) },
-    { title: t("vitrine.approach.answerTitle"), body: t("vitrine.approach.answerBody", { name }) },
-    { title: t("vitrine.approach.firstTitle"), body: t("vitrine.approach.firstBody") },
-    { title: t("vitrine.approach.nextTitle"), body: t("vitrine.approach.nextBody", { name }) },
+  const steps: { icon: LucideIcon; title: string; body: string }[] = [
+    { icon: CalendarDays, title: t("vitrine.approach.requestTitle"), body: t("vitrine.approach.requestBody", { name }) },
+    { icon: Mail, title: t("vitrine.approach.answerTitle"), body: t("vitrine.approach.answerBody", { name }) },
+    { icon: Handshake, title: t("vitrine.approach.firstTitle"), body: t("vitrine.approach.firstBody") },
+    { icon: Repeat, title: t("vitrine.approach.nextTitle"), body: t("vitrine.approach.nextBody", { name }) },
   ];
 
   const waitlist = preview ? null : (
@@ -485,41 +489,77 @@ export async function ShowcaseProfileView({
             ) : null}
           </div>
 
+          {/* Methods: horizontal cards; a single method spans the whole row */}
           {profile.methods.length > 0 ? (
             <>
-              <h3 className={`${SERIF} mt-[clamp(56px,6vw,96px)] text-[clamp(26px,2.4vw,34px)] text-[#1F2A2E]`}>{t("vitrine.approach.methodsTitle")}</h3>
-              <ul className={`mt-8 grid gap-4 md:grid-cols-2 ${profile.methods.length >= 3 ? "xl:grid-cols-3" : ""}`}>
+              <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(28px,2.6vw,46px)] leading-tight text-[#1F2A2E]`}>
+                {t("vitrine.approach.methodsTitle")}
+              </h3>
+              <ul
+                className={`mt-[clamp(24px,2.4vw,40px)] grid gap-[clamp(14px,1.4vw,24px)] ${
+                  profile.methods.length === 1 ? "" : profile.methods.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-2 2xl:grid-cols-3"
+                }`}
+                data-methods=""
+              >
                 {profile.methods.map((method, index) => (
-                  <li key={index} data-reveal={index} className="min-w-0 rounded-[32px] bg-white p-[clamp(22px,2.2vw,34px)]">
-                    <span className="inline-flex rounded-full bg-[#E6EFEA] px-4 py-1.5 vt-xs font-semibold uppercase tracking-[0.08em] text-[#17505F]">
-                      {method.name}
+                  <li
+                    key={index}
+                    data-reveal={index}
+                    className="flex min-w-0 flex-col gap-6 rounded-[36px] bg-white p-[clamp(24px,2.6vw,48px)] shadow-[0_24px_60px_-50px_rgba(31,42,46,0.45)] sm:flex-row sm:items-start sm:gap-[clamp(24px,2.4vw,44px)]"
+                  >
+                    <span className="flex h-[clamp(56px,4vw,76px)] w-[clamp(56px,4vw,76px)] shrink-0 items-center justify-center rounded-2xl bg-[#E6EFEA] text-[#17505F]">
+                      <Brain className="h-[45%] w-[45%]" aria-hidden="true" />
                     </span>
-                    {method.title ? (
-                      <p className={`mt-5 ${SERIF} text-[clamp(22px,1.8vw,28px)] leading-tight text-[#1F2A2E] text-balance`}>{method.title}</p>
-                    ) : null}
-                    {method.body.map((paragraph, paragraphIndex) => (
-                      <p key={paragraphIndex} className="mt-3 vt-md leading-[1.7] text-[#5B6566] text-pretty">
-                        {paragraph}
-                      </p>
-                    ))}
+                    <div className="min-w-0">
+                      <span className="inline-flex rounded-full bg-[#F6F3EE] px-4 py-1.5 vt-xs font-semibold uppercase tracking-[0.08em] text-[#17505F]">
+                        {method.name}
+                      </span>
+                      {method.title ? (
+                        <p className={`mt-4 ${SERIF} text-[clamp(24px,2.1vw,38px)] leading-[1.15] text-[#1F2A2E] text-balance`}>{method.title}</p>
+                      ) : null}
+                      {method.body.map((paragraph, paragraphIndex) => (
+                        <p key={paragraphIndex} className="mt-3 max-w-[72ch] vt-md leading-[1.75] text-[#5B6566] text-pretty">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
                   </li>
                 ))}
               </ul>
             </>
           ) : null}
+
+          {/* How a request unfolds: four connected steps, an arrow between cards on wide screens */}
           {hasApproachText ? (
-            <h3 className={`${SERIF} mt-[clamp(56px,6vw,96px)] text-[clamp(26px,2.4vw,34px)] text-[#1F2A2E]`}>{t("vitrine.approach.stepsTitle")}</h3>
+            <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(28px,2.6vw,46px)] leading-tight text-[#1F2A2E]`}>
+              {t("vitrine.approach.stepsTitle")}
+            </h3>
           ) : null}
-          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-[clamp(24px,2.4vw,40px)] grid gap-[clamp(14px,1.4vw,24px)] sm:grid-cols-2 lg:grid-cols-4 lg:gap-[clamp(28px,2.4vw,44px)]" data-steps="">
             {steps.map((step, index) => (
               <li
                 key={index}
                 data-reveal={index}
-                className="rounded-[32px] bg-white p-[clamp(22px,2.2vw,32px)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_-44px_rgba(31,42,46,0.5)] motion-reduce:hover:translate-y-0"
+                className="relative flex min-w-0 flex-col rounded-[36px] bg-white p-[clamp(24px,2.4vw,40px)] shadow-[0_24px_60px_-50px_rgba(31,42,46,0.45)]"
               >
-                <span className={`flex h-14 w-14 items-center justify-center rounded-full bg-[#E6EFEA] ${SERIF} text-[24px] text-[#17505F]`}>{index + 1}</span>
-                <p className="mt-6 vt-lg font-semibold text-[#1F2A2E]">{step.title}</p>
-                <p className="mt-2.5 vt-md leading-[1.7] text-[#5B6566]">{step.body}</p>
+                {index < steps.length - 1 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-[calc(clamp(28px,2.4vw,44px)/2+18px)] top-[calc(clamp(24px,2.4vw,40px)+28px)] z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#E3DED4] bg-[#F6F3EE] text-[#17505F] lg:flex"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                ) : null}
+                <div className="flex items-center justify-between gap-4">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E6EFEA] text-[#17505F]">
+                    <step.icon className="h-6 w-6" aria-hidden="true" />
+                  </span>
+                  <span className="vt-xs font-semibold uppercase tracking-[0.12em] text-[#17505F]/70">
+                    {t("vitrine.approach.stepLabel", { number: index + 1 })}
+                  </span>
+                </div>
+                <p className={`mt-7 ${SERIF} text-[clamp(22px,1.8vw,32px)] leading-tight text-[#1F2A2E] text-balance`}>{step.title}</p>
+                <p className="mt-3 vt-md leading-[1.7] text-[#5B6566] text-pretty">{step.body}</p>
               </li>
             ))}
           </ol>

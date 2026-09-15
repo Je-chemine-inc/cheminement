@@ -7462,7 +7462,8 @@
         "firstTitle": "The first meeting",
         "firstBody": "You go over your situation and set goals together, in the format you chose.",
         "nextTitle": "What follows",
-        "nextBody": "The next meetings are scheduled with {name}. A receipt is issued for every paid session."
+        "nextBody": "The next meetings are scheduled with {name}. A receipt is issued for every paid session.",
+        "stepLabel": "Step {number}"
       },
       "values": {
         "eyebrow": "Values",
