@@ -523,6 +523,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   appointment.payment.status = isFullRefund ? "refunded" : "partially_refunded";
   appointment.payment.refundedAt = new Date();
   appointment.payment.refundedAmount = charge.amount_refunded / 100;
+  // A refund this platform asked for (lib/appointment-refund.ts) is confirmed.
+  if (appointment.payment.refundRequest?.status === "requested") {
+    appointment.payment.refundRequest.status = "succeeded";
+  }
   await appointment.save();
 
   // Void the client's fiscal receipt only on a FULL refund — a partial refund
@@ -716,6 +720,17 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
   });
   if (!appointment) return;
 
+  // A refund this platform asked for (lib/appointment-refund.ts) failed: its attempt is marked
+  // failed, so a new attempt can be made.
+  const request = appointment.payment.refundRequest;
+  const requestFailed = Boolean(
+    request && request.status !== "failed" && (request.status === "requested" || request.stripeRefundId === refund.id),
+  );
+  if (request && requestFailed) {
+    request.status = "failed";
+    request.failureReason = refund.failure_reason ?? refund.status ?? "failed";
+  }
+
   if (
     appointment.payment.status === "refunded" ||
     appointment.payment.status === "partially_refunded"
@@ -728,6 +743,8 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
     console.warn(
       `Appointment ${appointment._id} reverted to paid after failed refund`,
     );
+  } else if (requestFailed) {
+    await appointment.save();
   }
 }
 

@@ -85,7 +85,9 @@ export type EmailNotificationType =
   | "product_webinar_reminder"
   // Articles professionals write for their page (2026-09-15).
   | "article_moderation_decision"
-  | "admin_article_submitted";
+  | "admin_article_submitted"
+  // A cancellation refund Stripe refused or did not confirm (2026-09-15).
+  | "admin_appointment_refund_problem";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -531,6 +533,10 @@ const defaultEmailTemplates: Record<
   admin_article_submitted: {
     enabled: true,
     subject: "Article à vérifier — Je chemine",
+  },
+  admin_appointment_refund_problem: {
+    enabled: true,
+    subject: "Remboursement à vérifier — Je chemine",
   },
 };
 

@@ -9433,6 +9433,57 @@ export async function sendArticleModerationDecisionEmail(data: {
   return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "article_moderation_decision");
 }
 
+/**
+ * The refund of a cancelled, card-paid session did not go through: Stripe refused it, or did not
+ * confirm it (lib/appointment-refund.ts). The cancellation stands; the client may still be owed the
+ * money. French-only team alert.
+ */
+export async function sendAdminAppointmentRefundProblemAlert(data: {
+  appointmentId: string;
+  clientName: string;
+  professionalName: string;
+  amountCents: number;
+  outcome: "refused" | "unconfirmed";
+  message: string | null;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminAppointmentRefundProblemAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const amount = new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(data.amountCents / 100);
+  const title = data.outcome === "refused" ? "Remboursement refusé par Stripe" : "Remboursement non confirmé par Stripe";
+  const intro =
+    data.outcome === "refused"
+      ? `Le remboursement de ${amount} pour la séance annulée de ${data.clientName} n'a pas été fait : Stripe l'a refusé. La séance reste annulée, mais le client n'a pas été remboursé.`
+      : `Stripe n'a pas confirmé le remboursement de ${amount} pour la séance annulée de ${data.clientName}. Vérifiez le paiement dans Stripe avant de faire quoi que ce soit : une nouvelle tentative vérifie d'abord Stripe et ne rembourse jamais deux fois.`;
+  const details = [
+    { label: "Client", value: data.clientName },
+    ...(data.professionalName ? [{ label: "Professionnel", value: data.professionalName }] : []),
+    { label: "Montant", value: amount },
+    { label: "Rendez-vous", value: data.appointmentId },
+    ...(data.message ? [{ label: "Réponse de Stripe", value: data.message }] : []),
+  ];
+  const url = "https://dashboard.stripe.com/payments";
+  const html = buildEmailHtml({
+    title,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro,
+    details,
+    button: { text: "Ouvrir Stripe", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, ...details.map((d) => `${d.label} : ${d.value}`), `Ouvrir Stripe : ${url}`], "fr");
+  const subject = await getSubject("admin_appointment_refund_problem", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_appointment_refund_problem");
+  }
+}
+
 /** A professional sent an article for review. French-only team alert. */
 export async function sendAdminArticleSubmittedAlert(data: {
   professionalName: string;

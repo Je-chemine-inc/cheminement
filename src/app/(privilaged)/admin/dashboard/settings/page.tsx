@@ -330,6 +330,12 @@ const EMAIL_TEMPLATE_INFO: Record<
     description: "Envoyé à l'équipe quand un professionnel envoie un article pour vérification.",
     category: "Alertes administratives",
   },
+  admin_appointment_refund_problem: {
+    name: "Alerte équipe — remboursement à vérifier",
+    description:
+      "Envoyé à l'équipe quand le remboursement d'une séance annulée n'a pas pu être fait : Stripe l'a refusé ou ne l'a pas confirmé. Le client n'a peut-être pas été remboursé.",
+    category: "Alertes administratives",
+  },
   admin_product_submitted: {
     name: "Alerte équipe — produit à vérifier",
     description:

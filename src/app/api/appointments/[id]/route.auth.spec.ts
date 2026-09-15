@@ -21,6 +21,7 @@ const h = vi.hoisted(() => {
   const findOneAndUpdate = vi.fn();
   const findOneAndDelete = vi.fn();
   const exists = vi.fn();
+  const refund = vi.fn();
   const store: { appointment: Record<string, unknown> } = { appointment: {} };
   const makeQuery = (result: unknown) => ({
     populate() {
@@ -37,6 +38,7 @@ const h = vi.hoisted(() => {
     findOneAndUpdate,
     findOneAndDelete,
     exists,
+    refund,
     store,
     makeQuery,
   };
@@ -75,8 +77,10 @@ vi.mock("@/lib/notifications", () => ({
   sendPaymentInvitation: vi.fn(),
   sendMeetingLinkNotification: vi.fn(),
   sendCancellationNotification: vi.fn().mockResolvedValue(true),
-  sendRefundConfirmation: vi.fn(),
+  sendRefundConfirmation: vi.fn().mockResolvedValue(true),
+  sendAdminAppointmentRefundProblemAlert: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/lib/appointment-refund", () => ({ refundAppointmentPayment: h.refund }));
 vi.mock("@/lib/appointment-routing", () => ({
   routeAppointmentToProfessionals: vi
     .fn()
@@ -101,7 +105,11 @@ import {
   PATCH as apptPATCH,
   DELETE as apptDELETE,
 } from "@/app/api/appointments/[id]/route";
-import { sendCancellationNotification } from "@/lib/notifications";
+import {
+  sendAdminAppointmentRefundProblemAlert,
+  sendCancellationNotification,
+  sendRefundConfirmation,
+} from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 
 type Res = Promise<{ status: number; body: Record<string, unknown> }>;
@@ -268,6 +276,69 @@ describe("PATCH /api/appointments/[id] — professional refusing a demande", () 
     expect(h.findOneAndUpdate).not.toHaveBeenCalled();
     expect(h.findByIdAndUpdate).not.toHaveBeenCalled();
     expect(routeAppointmentToProfessionals).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/appointments/[id] — refund on cancellation (money)", () => {
+  beforeEach(() => {
+    h.store.appointment = {
+      _id: APPT_ID,
+      clientId: CLIENT_ID,
+      professionalId: PRO_ID,
+      status: "scheduled",
+      date: new Date("2099-01-15T00:00:00Z"),
+      time: "14:00",
+      type: "video",
+      payment: { status: "paid", stripePaymentIntentId: "pi_1", price: 120 },
+      toObject: () => ({ _id: APPT_ID, status: "cancelled" }),
+    };
+    // The saved document comes back cancelled; it shares `payment` with the stored one.
+    h.findByIdAndUpdate.mockImplementation(() => h.makeQuery({ ...h.store.appointment, status: "cancelled" }));
+    h.refund.mockResolvedValue({ outcome: "refunded", stripeRefundId: "re_1", amountCents: 12000, full: true, pending: false });
+  });
+
+  it("refunds in full through the idempotent refund when the professional cancels, and tells the client", async () => {
+    const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(res.status).toBe(200);
+    expect(h.refund).toHaveBeenCalledTimes(1);
+    expect(h.refund).toHaveBeenCalledWith(
+      expect.objectContaining({ appointmentId: APPT_ID, amountCents: 12000, by: "cancellation", byUserId: PRO_ID }),
+    );
+    expect(sendRefundConfirmation).toHaveBeenCalledWith(expect.objectContaining({ amount: 120, email: "client@example.com" }));
+    expect(sendAdminAppointmentRefundProblemAlert).not.toHaveBeenCalled();
+    expect((h.store.appointment.payment as Record<string, unknown>)).toMatchObject({ status: "refunded", refundedAmount: 120 });
+  });
+
+  it("keeps the cancellation and alerts the team when Stripe refuses the refund; the client is not told they were refunded", async () => {
+    h.refund.mockResolvedValue({ outcome: "refused", message: "Charge already refunded" });
+    const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(res.status).toBe(200);
+    expect(sendRefundConfirmation).not.toHaveBeenCalled();
+    expect(sendAdminAppointmentRefundProblemAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ appointmentId: APPT_ID, amountCents: 12000, outcome: "refused", message: "Charge already refunded" }),
+    );
+    expect((h.store.appointment.payment as Record<string, unknown>).status).toBe("paid");
+  });
+
+  it("alerts the team too when Stripe did not confirm", async () => {
+    h.refund.mockResolvedValue({ outcome: "unconfirmed" });
+    await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(sendAdminAppointmentRefundProblemAlert).toHaveBeenCalledWith(expect.objectContaining({ outcome: "unconfirmed", message: null }));
+    expect(sendRefundConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("stays silent when another request is already refunding it", async () => {
+    h.refund.mockResolvedValue({ outcome: "in_progress" });
+    const res = await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(res.status).toBe(200);
+    expect(sendRefundConfirmation).not.toHaveBeenCalled();
+    expect(sendAdminAppointmentRefundProblemAlert).not.toHaveBeenCalled();
+  });
+
+  it("does not refund an appointment that was not paid by card", async () => {
+    h.store.appointment.payment = { status: "pending" };
+    await callPatch({ status: "cancelled" }, "professional", PRO_ID);
+    expect(h.refund).not.toHaveBeenCalled();
   });
 });
 

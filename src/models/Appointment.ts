@@ -35,6 +35,20 @@ export interface IPayment {
   refundedAt?: Date;
   /** Amount actually refunded (CAD). Set for partial refunds; full refund == price. */
   refundedAmount?: number;
+  /**
+   * The refund this platform asked Stripe for (a cancellation or an admin), claimed before the call
+   * so a retry or a double request never refunds twice (lib/appointment-refund.ts).
+   */
+  refundRequest?: {
+    status: "requested" | "succeeded" | "failed";
+    attempt: number;
+    amountCents: number;
+    by: "admin" | "cancellation";
+    byUserId?: mongoose.Types.ObjectId;
+    requestedAt: Date;
+    stripeRefundId?: string;
+    failureReason?: string;
+  };
   /** A Stripe dispute/chargeback is open on this payment (blocks the receipt). */
   disputed?: boolean;
   payoutTransferId?: string;
@@ -517,6 +531,22 @@ const PaymentSchema = new Schema<IPayment>(
     paidAt: Date,
     refundedAt: Date,
     refundedAmount: Number,
+    refundRequest: {
+      type: new Schema(
+        {
+          status: { type: String, enum: ["requested", "succeeded", "failed"], required: true },
+          attempt: { type: Number, required: true },
+          amountCents: { type: Number, required: true },
+          by: { type: String, enum: ["admin", "cancellation"], required: true },
+          byUserId: { type: Schema.Types.ObjectId, ref: "User" },
+          requestedAt: { type: Date, required: true },
+          stripeRefundId: String,
+          failureReason: String,
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
     disputed: { type: Boolean, default: false },
     payoutTransferId: String,
     payoutDate: Date,
