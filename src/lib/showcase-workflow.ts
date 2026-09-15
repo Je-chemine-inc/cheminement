@@ -160,6 +160,7 @@ export type DraftRefusal =
   | "UNKNOWN_EXPERTISE"
   | "TOO_MANY_EXPERTISES"
   | "TOO_MANY_VALUES"
+  | "TOO_MANY_ITEMS"
   | "INVALID_ORDER"
   | "INVALID_CITY";
 
@@ -173,7 +174,71 @@ const LOCALIZED_FIELDS = [
   ["bio", L.bio, "paragraphs"],
   ["approach", L.approach, "paragraphs"],
   ["insuranceNote", L.insuranceNote, "paragraphs"],
+  ["quote", L.quote, "line"],
 ] as const;
+
+type Refusal = { ok: false; code: DraftRefusal; field: string };
+
+/** A list of short localized lines. An item without its French wording is dropped. */
+function cleanLineList(
+  value: unknown,
+  field: string,
+  maxItems: number,
+  maxLength: number,
+): { ok: true; value: Localized[] } | Refusal {
+  if (!Array.isArray(value)) return { ok: false, code: "INVALID_FIELD", field };
+  const items: Localized[] = [];
+  for (const [index, raw] of value.entries()) {
+    const result = cleanLocalized(raw, maxLength, "line");
+    if (!result.ok) {
+      return { ok: false, code: result.where === "shape" ? "INVALID_FIELD" : "TOO_LONG", field: `${field}.${index}` };
+    }
+    if (result.value.fr) items.push(result.value);
+  }
+  if (items.length > maxItems) return { ok: false, code: "TOO_MANY_ITEMS", field };
+  return { ok: true, value: items };
+}
+
+type CardPart = readonly [key: string, max: number, kind: "line" | "paragraphs"];
+
+/** A list of cards made of localized parts. A card whose first part has no French wording is dropped. */
+function cleanCardList(
+  value: unknown,
+  field: string,
+  maxItems: number,
+  parts: readonly CardPart[],
+): { ok: true; value: Record<string, Localized>[] } | Refusal {
+  if (!Array.isArray(value)) return { ok: false, code: "INVALID_FIELD", field };
+  const cards: Record<string, Localized>[] = [];
+  for (const [index, raw] of value.entries()) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      return { ok: false, code: "INVALID_FIELD", field: `${field}.${index}` };
+    }
+    const card: Record<string, Localized> = {};
+    for (const [key, max, kind] of parts) {
+      const result = cleanLocalized((raw as Record<string, unknown>)[key], max, kind);
+      if (!result.ok) {
+        return result.where === "shape"
+          ? { ok: false, code: "INVALID_FIELD", field: `${field}.${index}.${key}` }
+          : { ok: false, code: "TOO_LONG", field: `${field}.${index}.${key}.${result.where}` };
+      }
+      card[key] = result.value;
+    }
+    if (card[parts[0][0]].fr) cards.push(card);
+  }
+  if (cards.length > maxItems) return { ok: false, code: "TOO_MANY_ITEMS", field };
+  return { ok: true, value: cards };
+}
+
+const LINE_LISTS = [
+  ["highlights", L.highlights, L.highlightLength],
+  ["credentials", L.credentials, L.credentialLength],
+] as const;
+
+const CARD_LISTS: readonly (readonly [field: string, maxItems: number, parts: readonly CardPart[]])[] = [
+  ["focusAreas", L.focusAreas, [["title", L.focusTitle, "line"], ["body", L.focusBody, "paragraphs"]]],
+  ["methods", L.methods, [["name", L.methodName, "line"], ["title", L.methodTitle, "line"], ["body", L.methodBody, "paragraphs"]]],
+];
 
 /** Fields only an admin sets: they make the page's address and its legal identity. */
 export const SHOWCASE_ADMIN_ONLY_FIELDS = ["orderCode", "orderLabel", "cityKey"] as const;
@@ -218,7 +283,7 @@ export function normalizeShowcaseDraft(
 
   if (has("values")) {
     if (!Array.isArray(input.values)) return { ok: false, code: "INVALID_FIELD", field: "values" };
-    const values: Localized[] = [];
+    const values: (Localized & { details?: Localized })[] = [];
     for (const [index, raw] of input.values.entries()) {
       const result = cleanLocalized(raw, L.valueLength, "line");
       if (!result.ok) {
@@ -228,11 +293,35 @@ export function normalizeShowcaseDraft(
           field: `values.${index}`,
         };
       }
-      // A value without its French wording is dropped.
-      if (result.value.fr) values.push(result.value);
+      const details = cleanLocalized((raw as { details?: unknown }).details, L.valueDescription, "line");
+      if (!details.ok) {
+        return {
+          ok: false,
+          code: details.where === "shape" ? "INVALID_FIELD" : "TOO_LONG",
+          field: `values.${index}.details`,
+        };
+      }
+      // A value without its French wording is dropped; an empty description is not stored.
+      if (result.value.fr) {
+        values.push({ ...result.value, ...(details.value.fr || details.value.en ? { details: details.value } : {}) });
+      }
     }
     if (values.length > L.values) return { ok: false, code: "TOO_MANY_VALUES", field: "values" };
     set["draft.values"] = values;
+  }
+
+  for (const [field, maxItems, maxLength] of LINE_LISTS) {
+    if (!has(field)) continue;
+    const result = cleanLineList(input[field], field, maxItems, maxLength);
+    if (!result.ok) return result;
+    set[`draft.${field}`] = result.value;
+  }
+
+  for (const [field, maxItems, parts] of CARD_LISTS) {
+    if (!has(field)) continue;
+    const result = cleanCardList(input[field], field, maxItems, parts);
+    if (!result.ok) return result;
+    set[`draft.${field}`] = result.value;
   }
 
   if (has("expertiseIds")) {
@@ -364,6 +453,11 @@ export const SHOWCASE_EDITABLE_FIELDS = [
   "values",
   "expertiseIds",
   "insuranceNote",
+  "quote",
+  "highlights",
+  "credentials",
+  "focusAreas",
+  "methods",
   "photo",
 ] as const;
 export type ShowcaseEditableField = (typeof SHOWCASE_EDITABLE_FIELDS)[number];
@@ -381,14 +475,20 @@ function isBlank(value: unknown): boolean {
   return false;
 }
 
-/** A value in one shape whatever copy it comes from: ids as strings, texts as `{ fr, en }`. */
+/**
+ * A value in one shape whatever copy it comes from: ids as strings (their
+ * toJSON runs first), texts as `{ fr, en }`, and every other object with its
+ * keys sorted, so a card saved with its parts in another order is the same card.
+ */
 function canonical(value: unknown): string {
   return JSON.stringify(value, (_key, node: unknown) => {
-    if (node && typeof node === "object" && !Array.isArray(node) && "fr" in node) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return node;
+    if ("fr" in node) {
       const text = node as { fr?: unknown; en?: unknown };
       return { fr: text.fr ?? "", en: text.en ?? "" };
     }
-    return node;
+    const record = node as Record<string, unknown>;
+    return Object.fromEntries(Object.keys(record).sort().map((key) => [key, record[key]]));
   });
 }
 

@@ -18,7 +18,13 @@ export interface ShowcaseContentJson {
   bio: LocalizedTextJson;
   approach: LocalizedTextJson;
   insuranceNote: LocalizedTextJson;
-  values: LocalizedTextJson[];
+  /** Each value with its description (empty when none). */
+  values: (LocalizedTextJson & { details: LocalizedTextJson })[];
+  quote: LocalizedTextJson;
+  highlights: LocalizedTextJson[];
+  credentials: LocalizedTextJson[];
+  focusAreas: { title: LocalizedTextJson; body: LocalizedTextJson }[];
+  methods: { name: LocalizedTextJson; title: LocalizedTextJson; body: LocalizedTextJson }[];
   expertiseIds: string[];
   orderCode: ProfessionalOrderCode | null;
   orderLabel: string;
@@ -102,6 +108,7 @@ export const SHOWCASE_ERROR_CODES = [
   "UNKNOWN_EXPERTISE",
   "TOO_MANY_EXPERTISES",
   "TOO_MANY_VALUES",
+  "TOO_MANY_ITEMS",
   "INVALID_ORDER",
   "NOTHING_TO_SAVE",
   "NOT_FOUND",

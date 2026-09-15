@@ -7508,11 +7508,14 @@
         "headingYears": "{title} depuis {years, plural, one {# an} other {# ans}}, à {city}",
         "headingNoTitle": "{name}, à {city}",
         "factsTitle": "En bref",
-        "office": "Bureau à {city}"
+        "office": "Bureau à {city}",
+        "credentialsTitle": "Parcours",
+        "quoteBy": "— {name}"
       },
       "approach": {
         "eyebrow": "Approche",
         "title": "Mon approche",
+        "methodsTitle": "Les méthodes que j'utilise",
         "stepsTitle": "Comment se déroule une demande",
         "step": "Étape {number}",
         "requestTitle": "Votre demande",
@@ -7763,6 +7766,31 @@
       "removeValue": "Retirer cette valeur",
       "insuranceNote": "Note sur les assurances",
       "insuranceNotePlaceholder": "Ex. : Mes services sont admissibles au remboursement de la plupart des assurances collectives.",
+      "valueDescription": "Description (facultatif)",
+      "quote": "Citation",
+      "quotePlaceholder": "Une phrase qui résume la façon d'accompagner, signée du nom affiché.",
+      "highlights": "Points forts",
+      "highlightsHint": "Jusqu'à 4 courtes mentions affichées sous la présentation, par exemple « Reçus pour assurances collectives ».",
+      "highlightsAdd": "Ajouter un point fort",
+      "credentials": "Parcours",
+      "credentialsHint": "Jusqu'à 6 lignes : diplômes, formations et expériences marquantes.",
+      "credentialsAdd": "Ajouter une ligne",
+      "focusAreas": "Ce que j'accompagne",
+      "focusAreasHint": "Jusqu'à 4 cartes décrivant les situations accompagnées le plus souvent. Le titre en français est requis.",
+      "focusAreasAdd": "Ajouter une carte",
+      "focusAreasParts": {
+        "title": "Titre",
+        "body": "Description"
+      },
+      "methods": "Méthodes",
+      "methodsHint": "Jusqu'à 4 approches présentées en cartes, par exemple « TCC — Thérapie cognitive et comportementale ». Le nom court en français est requis.",
+      "methodsAdd": "Ajouter une méthode",
+      "methodsParts": {
+        "name": "Nom court",
+        "title": "Titre",
+        "body": "Description"
+      },
+      "removeItem": "Retirer",
       "characters": "{count} / {max} caractères"
     },
     "expertises": {
@@ -7816,6 +7844,7 @@
       "UNKNOWN_EXPERTISE": "Un champ d'expertise choisi n'est plus offert. Rechargez la page.",
       "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
       "TOO_MANY_VALUES": "Indiquez au plus 5 valeurs.",
+      "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
       "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
       "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",
       "NOT_FOUND": "Page vitrine introuvable.",

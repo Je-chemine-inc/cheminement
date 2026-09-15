@@ -7509,11 +7509,14 @@
         "headingYears": "{title} for {years, plural, one {# year} other {# years}}, in {city}",
         "headingNoTitle": "{name}, in {city}",
         "factsTitle": "At a glance",
-        "office": "Office in {city}"
+        "office": "Office in {city}",
+        "credentialsTitle": "Background",
+        "quoteBy": "— {name}"
       },
       "approach": {
         "eyebrow": "Approach",
         "title": "My approach",
+        "methodsTitle": "The methods I use",
         "stepsTitle": "How a request works",
         "step": "Step {number}",
         "requestTitle": "Your request",
@@ -7764,6 +7767,31 @@
       "removeValue": "Remove this value",
       "insuranceNote": "Insurance note",
       "insuranceNotePlaceholder": "E.g. My services can be reimbursed by most group insurance plans.",
+      "valueDescription": "Description (optional)",
+      "quote": "Quote",
+      "quotePlaceholder": "One sentence that sums up the way of working, signed with the display name.",
+      "highlights": "Highlights",
+      "highlightsHint": "Up to 4 short mentions shown under the presentation, for example \"Receipts for group insurance\".",
+      "highlightsAdd": "Add a highlight",
+      "credentials": "Background",
+      "credentialsHint": "Up to 6 lines: degrees, trainings and notable experience.",
+      "credentialsAdd": "Add a line",
+      "focusAreas": "What I help with",
+      "focusAreasHint": "Up to 4 cards describing the situations most often worked on. The French title is required.",
+      "focusAreasAdd": "Add a card",
+      "focusAreasParts": {
+        "title": "Title",
+        "body": "Description"
+      },
+      "methods": "Methods",
+      "methodsHint": "Up to 4 approaches shown as cards, for example \"CBT — Cognitive behavioural therapy\". The French short name is required.",
+      "methodsAdd": "Add a method",
+      "methodsParts": {
+        "name": "Short name",
+        "title": "Title",
+        "body": "Description"
+      },
+      "removeItem": "Remove",
       "characters": "{count} / {max} characters"
     },
     "expertises": {
@@ -7817,6 +7845,7 @@
       "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
       "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
       "TOO_MANY_VALUES": "Enter at most 5 values.",
+      "TOO_MANY_ITEMS": "A list has more items than allowed.",
       "INVALID_ORDER": "Choose a professional order from the list.",
       "NOTHING_TO_SAVE": "There are no changes to save.",
       "NOT_FOUND": "Showcase page not found.",

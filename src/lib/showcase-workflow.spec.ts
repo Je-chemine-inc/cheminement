@@ -126,6 +126,79 @@ describe("normalizeShowcaseDraft", () => {
     expect(normalizeShowcaseDraft({ values: six }, allowed)).toMatchObject({ code: "TOO_MANY_VALUES" });
   });
 
+  it("keeps a value's description, and stores none when it is empty", () => {
+    expect(
+      normalizeShowcaseDraft(
+        { values: [{ fr: "Clarté", en: "", details: { fr: " Vous savez où on va. ", en: "" } }, { fr: "Respect", details: { fr: "", en: "" } }] },
+        allowed,
+      ),
+    ).toEqual({
+      ok: true,
+      set: { "draft.values": [{ fr: "Clarté", en: "", details: { fr: "Vous savez où on va.", en: "" } }, { fr: "Respect", en: "" }] },
+      unset: [],
+    });
+    expect(normalizeShowcaseDraft({ values: [{ fr: "Clarté", details: { fr: "x".repeat(121) } }] }, allowed)).toEqual({
+      ok: false,
+      code: "TOO_LONG",
+      field: "values.0.details",
+    });
+  });
+
+  it("cleans the quote, the highlights and the credentials, dropping lines without French", () => {
+    expect(
+      normalizeShowcaseDraft(
+        {
+          quote: { fr: " Chacun trouve\nses ressources. " },
+          highlights: [{ fr: "Reçus pour assurances" }, { fr: "", en: "Orphan" }],
+          credentials: [{ fr: "D. Psy., 2013", en: "PsyD, 2013" }],
+        },
+        allowed,
+      ),
+    ).toEqual({
+      ok: true,
+      set: {
+        "draft.quote": { fr: "Chacun trouve ses ressources.", en: "" },
+        "draft.highlights": [{ fr: "Reçus pour assurances", en: "" }],
+        "draft.credentials": [{ fr: "D. Psy., 2013", en: "PsyD, 2013" }],
+      },
+      unset: [],
+    });
+    const five = Array.from({ length: 5 }, (_, i) => ({ fr: `h${i}` }));
+    expect(normalizeShowcaseDraft({ highlights: five }, allowed)).toEqual({ ok: false, code: "TOO_MANY_ITEMS", field: "highlights" });
+    expect(normalizeShowcaseDraft({ credentials: "D. Psy." }, allowed)).toEqual({ ok: false, code: "INVALID_FIELD", field: "credentials" });
+    expect(normalizeShowcaseDraft({ credentials: [{ fr: "x".repeat(121) }] }, allowed)).toMatchObject({ code: "TOO_LONG", field: "credentials.0" });
+  });
+
+  it("cleans focus areas and method cards, dropping a card without its French first part", () => {
+    expect(
+      normalizeShowcaseDraft(
+        {
+          focusAreas: [
+            { title: { fr: "Anxiété et stress" }, body: { fr: "On apprend.\n\n\n\nEnsemble." }, extra: "ignored" },
+            { title: { fr: "", en: "English only" }, body: { fr: "Dropped" } },
+          ],
+          methods: [{ name: { fr: "TCC", en: "CBT" }, title: { fr: "Thérapie cognitive" } }],
+        },
+        allowed,
+      ),
+    ).toEqual({
+      ok: true,
+      set: {
+        "draft.focusAreas": [{ title: { fr: "Anxiété et stress", en: "" }, body: { fr: "On apprend.\n\nEnsemble.", en: "" } }],
+        "draft.methods": [{ name: { fr: "TCC", en: "CBT" }, title: { fr: "Thérapie cognitive", en: "" }, body: { fr: "", en: "" } }],
+      },
+      unset: [],
+    });
+    const cards = Array.from({ length: 5 }, (_, i) => ({ name: { fr: `m${i}` } }));
+    expect(normalizeShowcaseDraft({ methods: cards }, allowed)).toEqual({ ok: false, code: "TOO_MANY_ITEMS", field: "methods" });
+    expect(normalizeShowcaseDraft({ focusAreas: ["not a card"] }, allowed)).toEqual({ ok: false, code: "INVALID_FIELD", field: "focusAreas.0" });
+    expect(normalizeShowcaseDraft({ methods: [{ name: { fr: "TCC" }, body: { en: "x".repeat(321) } }] }, allowed)).toEqual({
+      ok: false,
+      code: "TOO_LONG",
+      field: "methods.0.body.en",
+    });
+  });
+
   it("names the field and language that is too long", () => {
     expect(normalizeShowcaseDraft({ bio: { fr: "ok", en: "x".repeat(3001) } }, allowed)).toEqual({
       ok: false,
@@ -252,6 +325,12 @@ describe("changedShowcaseFields", () => {
   it("treats a missing value and an empty one as the same", () => {
     expect(changedShowcaseFields({}, { intro: { fr: "", en: "" }, values: [], displayName: "" })).toEqual([]);
     expect(changedShowcaseFields(null, { intro: { fr: "Bonjour", en: "" } })).toEqual(["intro"]);
+  });
+
+  it("sees a change inside a card, and none when only the key order differs", () => {
+    const before = { methods: [{ name: { fr: "TCC", en: "" }, title: { fr: "Thérapie", en: "" }, body: { fr: "", en: "" } }] };
+    expect(changedShowcaseFields(before, { methods: [{ body: { en: "", fr: "" }, title: { en: "", fr: "Thérapie" }, name: { en: "", fr: "TCC" } }] })).toEqual([]);
+    expect(changedShowcaseFields(before, { methods: [{ name: { fr: "ACT", en: "" }, title: { fr: "Thérapie", en: "" }, body: { fr: "", en: "" } }] })).toEqual(["methods"]);
   });
 
   it("never reports a field the professional does not edit", () => {

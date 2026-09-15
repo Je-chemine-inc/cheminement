@@ -25,6 +25,24 @@ export interface ILocalizedText {
   en: string;
 }
 
+/** A value (« Bienveillance »), with an optional short description. */
+export interface IShowcaseValue extends ILocalizedText {
+  details?: ILocalizedText;
+}
+
+/** A « Ce que j'accompagne » card. */
+export interface IShowcaseFocusArea {
+  title: ILocalizedText;
+  body: ILocalizedText;
+}
+
+/** A method card in « Approche ». */
+export interface IShowcaseMethod {
+  name: ILocalizedText;
+  title: ILocalizedText;
+  body: ILocalizedText;
+}
+
 export interface IShowcaseContent {
   displayName: string;
   headline: ILocalizedText;
@@ -32,7 +50,15 @@ export interface IShowcaseContent {
   /** Plain text; paragraphs separated by a blank line. Never HTML. */
   bio: ILocalizedText;
   approach: ILocalizedText;
-  values: ILocalizedText[];
+  values: IShowcaseValue[];
+  /** One sentence the page quotes, signed with the display name. */
+  quote: ILocalizedText;
+  /** Short mentions under the introduction. */
+  highlights: ILocalizedText[];
+  /** « Parcours »: one line per degree, training or experience. */
+  credentials: ILocalizedText[];
+  focusAreas: IShowcaseFocusArea[];
+  methods: IShowcaseMethod[];
   /** ProCatalogItem ids (category "expertise", offered on showcase pages). */
   expertiseIds: mongoose.Types.ObjectId[];
   orderCode?: ProfessionalOrderCode;
@@ -117,6 +143,19 @@ const LocalizedTextSchema = new Schema<ILocalizedText>(
 
 const localized = () => ({ type: LocalizedTextSchema, default: () => ({ fr: "", en: "" }) });
 
+const ValueSchema = new Schema<IShowcaseValue>(
+  {
+    fr: { type: String, trim: true, default: "" },
+    en: { type: String, trim: true, default: "" },
+    details: { type: LocalizedTextSchema, default: undefined },
+  },
+  { _id: false },
+);
+
+const FocusAreaSchema = new Schema<IShowcaseFocusArea>({ title: localized(), body: localized() }, { _id: false });
+
+const MethodSchema = new Schema<IShowcaseMethod>({ name: localized(), title: localized(), body: localized() }, { _id: false });
+
 const ShowcaseContentSchema = new Schema<IShowcaseContent>(
   {
     displayName: { type: String, trim: true, default: "" },
@@ -124,7 +163,12 @@ const ShowcaseContentSchema = new Schema<IShowcaseContent>(
     intro: localized(),
     bio: localized(),
     approach: localized(),
-    values: { type: [LocalizedTextSchema], default: [] },
+    values: { type: [ValueSchema], default: [] },
+    quote: localized(),
+    highlights: { type: [LocalizedTextSchema], default: [] },
+    credentials: { type: [LocalizedTextSchema], default: [] },
+    focusAreas: { type: [FocusAreaSchema], default: [] },
+    methods: { type: [MethodSchema], default: [] },
     expertiseIds: { type: [{ type: Schema.Types.ObjectId, ref: "ProCatalogItem" }], default: [] },
     orderCode: { type: String, enum: PROFESSIONAL_ORDER_CODES },
     orderLabel: { type: String, trim: true, default: "" },

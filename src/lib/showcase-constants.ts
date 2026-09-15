@@ -87,6 +87,25 @@ export const SHOWCASE_LIMITS = {
   expertisesMax: 12,
   insuranceNote: 300,
   orderLabel: 80,
+  /** A short description under each value. */
+  valueDescription: 120,
+  /** One sentence the page quotes, signed with the professional's name. */
+  quote: 240,
+  /** Short mentions under the introduction (« Reçus pour assurances »). */
+  highlights: 4,
+  highlightLength: 60,
+  /** « Parcours »: degrees, trainings, experience, one line each. */
+  credentials: 6,
+  credentialLength: 120,
+  /** « Ce que j'accompagne » cards. */
+  focusAreas: 4,
+  focusTitle: 60,
+  focusBody: 320,
+  /** Method cards in « Approche » (« TCC — Thérapie cognitive et comportementale »). */
+  methods: 4,
+  methodName: 30,
+  methodTitle: 60,
+  methodBody: 320,
   /** The reason an admin gives when taking a page down. */
   reviewNotes: 2000,
 } as const;

@@ -8503,6 +8503,11 @@ const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> 
   values: "valeurs",
   expertiseIds: "champs d'expertise",
   insuranceNote: "note sur les assurances",
+  quote: "citation",
+  highlights: "points forts",
+  credentials: "parcours",
+  focusAreas: "ce que j'accompagne",
+  methods: "méthodes",
   photo: "photo",
 };
 

@@ -76,13 +76,23 @@ const success = <T>(value: T, deferred: Deferred[] = []): ServiceResult<T> => ({
 });
 
 type Localized = { fr?: string; en?: string };
-type ContentLean = Partial<Omit<IShowcaseContent, "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "values">> & {
+type ContentLean = Partial<
+  Omit<
+    IShowcaseContent,
+    "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "values" | "quote" | "highlights" | "credentials" | "focusAreas" | "methods"
+  >
+> & {
   headline?: Localized;
   intro?: Localized;
   bio?: Localized;
   approach?: Localized;
   insuranceNote?: Localized;
-  values?: Localized[];
+  values?: (Localized & { details?: Localized })[];
+  quote?: Localized;
+  highlights?: Localized[];
+  credentials?: Localized[];
+  focusAreas?: { title?: Localized; body?: Localized }[];
+  methods?: { name?: Localized; title?: Localized; body?: Localized }[];
 };
 
 type PageLean = {
@@ -201,7 +211,16 @@ function contentView(content: ContentLean | undefined) {
     bio: text(content?.bio),
     approach: text(content?.approach),
     insuranceNote: text(content?.insuranceNote),
-    values: (content?.values ?? []).map(text),
+    values: (content?.values ?? []).map((value) => ({ ...text(value), details: text(value.details) })),
+    quote: text(content?.quote),
+    highlights: (content?.highlights ?? []).map(text),
+    credentials: (content?.credentials ?? []).map(text),
+    focusAreas: (content?.focusAreas ?? []).map((card) => ({ title: text(card.title), body: text(card.body) })),
+    methods: (content?.methods ?? []).map((card) => ({
+      name: text(card.name),
+      title: text(card.title),
+      body: text(card.body),
+    })),
     expertiseIds: (content?.expertiseIds ?? []).map(String),
     orderCode: content?.orderCode ?? null,
     orderLabel: content?.orderLabel ?? "",

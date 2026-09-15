@@ -45,7 +45,12 @@ export interface ShowcaseContentSource {
   bio?: LocalizedSource;
   approach?: LocalizedSource;
   insuranceNote?: LocalizedSource;
-  values?: readonly LocalizedSource[] | null;
+  values?: readonly ({ fr?: string | null; en?: string | null; details?: LocalizedSource } | null | undefined)[] | null;
+  quote?: LocalizedSource;
+  highlights?: readonly LocalizedSource[] | null;
+  credentials?: readonly LocalizedSource[] | null;
+  focusAreas?: readonly ({ title?: LocalizedSource; body?: LocalizedSource } | null | undefined)[] | null;
+  methods?: readonly ({ name?: LocalizedSource; title?: LocalizedSource; body?: LocalizedSource } | null | undefined)[] | null;
   expertiseIds?: readonly unknown[] | null;
   orderCode?: string | null;
   orderLabel?: string | null;
@@ -112,6 +117,13 @@ export interface ShowcasePublicProfile {
   bio: string[];
   approach: string[];
   values: string[];
+  /** The values again, each with its description ("" when none). */
+  valueCards: { label: string; description: string }[];
+  quote: string;
+  highlights: string[];
+  credentials: string[];
+  focusAreas: { title: string; body: string[] }[];
+  methods: { name: string; title: string; body: string[] }[];
   expertises: { slug: string | null; label: string }[];
   languages: ShowcaseLanguageKey[];
   modalities: ShowcaseModalityKey[];
@@ -130,22 +142,28 @@ export const SHOWCASE_PUBLIC_KEYS = [
   "approach",
   "bio",
   "city",
+  "credentials",
   "displayName",
   "expertises",
+  "focusAreas",
   "freeCancellationHours",
   "headline",
+  "highlights",
   "insuranceNote",
   "intro",
   "languages",
   "licenseNumber",
+  "methods",
   "modalities",
   "officeCity",
   "order",
   "photoUrl",
+  "quote",
   "services",
   "slug",
   "title",
   "url",
+  "valueCards",
   "values",
   "yearsOfExperience",
 ] as const;
@@ -164,6 +182,10 @@ export function showcaseServiceOffered(
   return service === "standard"
     ? switches?.standard !== false && profile?.acceptingNewClients !== false
     : switches?.quick === true && profile?.acceptingEmergencyConsultations !== false;
+}
+
+function hasFrench(text: LocalizedSource): boolean {
+  return Boolean(text?.fr?.trim());
 }
 
 function pick(text: LocalizedSource, locale: ShowcaseLocale): string {
@@ -295,6 +317,23 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
     bio: paragraphsOf(pick(content.bio, locale)),
     approach: paragraphsOf(pick(content.approach, locale)),
     values: (content.values ?? []).map((value) => pick(value, locale)).filter(Boolean),
+    // Like the draft rules, an item or a card exists only with its French wording.
+    valueCards: (content.values ?? [])
+      .filter(hasFrench)
+      .map((value) => ({ label: pick(value, locale), description: pick(value?.details, locale) })),
+    quote: pick(content.quote, locale),
+    highlights: (content.highlights ?? []).filter(hasFrench).map((line) => pick(line, locale)),
+    credentials: (content.credentials ?? []).filter(hasFrench).map((line) => pick(line, locale)),
+    focusAreas: (content.focusAreas ?? [])
+      .filter((card) => hasFrench(card?.title))
+      .map((card) => ({ title: pick(card?.title, locale), body: paragraphsOf(pick(card?.body, locale)) })),
+    methods: (content.methods ?? [])
+      .filter((card) => hasFrench(card?.name))
+      .map((card) => ({
+        name: pick(card?.name, locale),
+        title: pick(card?.title, locale),
+        body: paragraphsOf(pick(card?.body, locale)),
+      })),
     expertises,
     languages: uniqueKeys(profile?.languages, showcaseLanguageKey, SHOWCASE_LANGUAGE_KEYS),
     modalities: uniqueKeys(profile?.modalities, showcaseModalityKey, SHOWCASE_MODALITY_KEYS),

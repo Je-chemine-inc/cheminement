@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Award,
   CalendarDays,
+  Check,
   Feather,
   Flower2,
   Globe,
@@ -14,6 +15,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Quote,
   ShieldCheck,
   Sparkles,
   Sprout,
@@ -168,7 +170,9 @@ export async function ShowcaseProfileView({
 
   // The introduction opens the page beside the portrait; the longer biography is « À propos ».
   const about = profile.bio;
-  const sections = vitrineSections({ hasAbout: about.length > 0, showSlots, hasProducts: products.length > 0 });
+  const hasAbout = about.length > 0 || Boolean(profile.quote) || profile.credentials.length > 0;
+  const hasApproachText = profile.approach.length > 0 || profile.methods.length > 0;
+  const sections = vitrineSections({ hasAbout, showSlots, hasProducts: products.length > 0 });
   const navLinks = sections.map((section: VitrineSection) => ({
     href: `#${VITRINE_ANCHORS[section]}`,
     label: t(`vitrine.nav.${section}`),
@@ -198,6 +202,7 @@ export async function ShowcaseProfileView({
     : t("vitrine.about.headingNoTitle", { name, city: officeCity });
 
   const heroFacts: { icon: LucideIcon; text: string }[] = [
+    ...profile.highlights.map((text) => ({ icon: Check, text })),
     ...profile.modalities.map((modality) => ({
       icon: MODALITY_ICONS[modality],
       text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
@@ -385,7 +390,7 @@ export async function ShowcaseProfileView({
       </figure>
 
       {/* À propos */}
-      {about.length > 0 ? (
+      {hasAbout ? (
         <section id={VITRINE_ANCHORS.about} className={SECTION}>
           <div className={`${WRAP} grid items-start gap-x-[clamp(40px,6vw,120px)] gap-y-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]`}>
             <div className="min-w-0" data-reveal="0">
@@ -398,6 +403,28 @@ export async function ShowcaseProfileView({
                   </p>
                 ))}
               </div>
+              {profile.quote ? (
+                <figure className="relative mt-10 max-w-[62ch] rounded-[32px] bg-[#E6EFEA] px-[clamp(24px,3vw,44px)] py-[clamp(24px,2.6vw,36px)]">
+                  <Quote className="absolute left-[clamp(20px,2.4vw,34px)] top-[clamp(22px,2.4vw,34px)] h-7 w-7 text-[#17505F]/30" aria-hidden="true" />
+                  <blockquote className={`pl-11 ${SERIF} text-[clamp(22px,1.9vw,32px)] italic leading-[1.35] text-[#1F2A2E] text-pretty`}>
+                    {profile.quote}
+                  </blockquote>
+                  <figcaption className="mt-3 pl-11 vt-sm font-semibold text-[#17505F]">{t("vitrine.about.quoteBy", { name })}</figcaption>
+                </figure>
+              ) : null}
+              {profile.credentials.length > 0 ? (
+                <div className="mt-10">
+                  <p className={`${SERIF} text-[22px] text-[#1F2A2E]`}>{t("vitrine.about.credentialsTitle")}</p>
+                  <ul className="mt-4 space-y-3">
+                    {profile.credentials.map((line, index) => (
+                      <li key={index} className="flex items-start gap-3 vt-md leading-[1.6] text-[#3E494B]">
+                        <span className="mt-[0.6em] h-2 w-2 shrink-0 rounded-full bg-[#17505F]" aria-hidden="true" />
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {facts.length > 0 ? (
                 <div className="mt-10 rounded-[32px] bg-[#F6F3EE] p-[clamp(20px,2.4vw,32px)]">
                   <p className={`${SERIF} text-[22px] text-[#1F2A2E]`}>{t("vitrine.about.factsTitle")}</p>
@@ -422,12 +449,12 @@ export async function ShowcaseProfileView({
       ) : null}
 
       {/* Approche */}
-      <section id={VITRINE_ANCHORS.approach} className={`${SECTION} ${about.length > 0 ? "" : "mt-[clamp(64px,8vw,120px)]"} bg-[#F6F3EE]`}>
+      <section id={VITRINE_ANCHORS.approach} className={`${SECTION} ${hasAbout ? "" : "mt-[clamp(64px,8vw,120px)]"} bg-[#F6F3EE]`}>
         <div className={WRAP}>
           <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
             <div className="min-w-0">
               <p className={`${LABEL} bg-white`}>{t("vitrine.approach.eyebrow")}</p>
-              <h2 className={`${H2} mt-5`}>{profile.approach.length > 0 ? t("vitrine.approach.title") : t("vitrine.approach.stepsTitle")}</h2>
+              <h2 className={`${H2} mt-5`}>{hasApproachText ? t("vitrine.approach.title") : t("vitrine.approach.stepsTitle")}</h2>
             </div>
             {profile.approach.length > 0 ? (
               <div className="min-w-0 max-w-[68ch] space-y-5 lg:pt-12">
@@ -440,7 +467,29 @@ export async function ShowcaseProfileView({
             ) : null}
           </div>
 
-          {profile.approach.length > 0 ? (
+          {profile.methods.length > 0 ? (
+            <>
+              <h3 className={`${SERIF} mt-[clamp(56px,6vw,96px)] text-[clamp(26px,2.4vw,34px)] text-[#1F2A2E]`}>{t("vitrine.approach.methodsTitle")}</h3>
+              <ul className={`mt-8 grid gap-4 md:grid-cols-2 ${profile.methods.length >= 3 ? "xl:grid-cols-3" : ""}`}>
+                {profile.methods.map((method, index) => (
+                  <li key={index} data-reveal={index} className="min-w-0 rounded-[32px] bg-white p-[clamp(22px,2.2vw,34px)]">
+                    <span className="inline-flex rounded-full bg-[#E6EFEA] px-4 py-1.5 vt-xs font-semibold uppercase tracking-[0.08em] text-[#17505F]">
+                      {method.name}
+                    </span>
+                    {method.title ? (
+                      <p className={`mt-5 ${SERIF} text-[clamp(22px,1.8vw,28px)] leading-tight text-[#1F2A2E] text-balance`}>{method.title}</p>
+                    ) : null}
+                    {method.body.map((paragraph, paragraphIndex) => (
+                      <p key={paragraphIndex} className="mt-3 vt-md leading-[1.7] text-[#5B6566] text-pretty">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {hasApproachText ? (
             <h3 className={`${SERIF} mt-[clamp(56px,6vw,96px)] text-[clamp(26px,2.4vw,34px)] text-[#1F2A2E]`}>{t("vitrine.approach.stepsTitle")}</h3>
           ) : null}
           <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -458,6 +507,25 @@ export async function ShowcaseProfileView({
           </ol>
         </div>
       </section>
+
+      {/* Valeurs, when at least one is described */}
+      {profile.valueCards.some((card) => card.description) ? (
+        <section className={SECTION}>
+          <div className={WRAP}>
+            <p className={LABEL}>{t("vitrine.values.eyebrow")}</p>
+            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{t("vitrine.values.title")}</h2>
+            <ul className="mt-[clamp(32px,4vw,56px)] grid gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+              {profile.valueCards.map((card, index) => (
+                <li key={card.label} data-reveal={index % 4} className="min-w-0 rounded-[32px] border border-[#ECE8E1] bg-white p-[clamp(22px,2vw,30px)]">
+                  <span className={`${SERIF} vt-md text-[#17505F]/50`}>{String(index + 1).padStart(2, "0")}</span>
+                  <p className={`mt-4 ${SERIF} text-[clamp(24px,1.9vw,30px)] leading-tight text-[#1F2A2E]`}>{card.label}</p>
+                  {card.description ? <p className="mt-3 vt-md leading-[1.65] text-[#5B6566] text-pretty">{card.description}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
 
       {/* Tarifs */}
       <section id={VITRINE_ANCHORS.services} className={SECTION}>
@@ -557,8 +625,8 @@ export async function ShowcaseProfileView({
         </section>
       )}
 
-      {/* Champs d'expertise */}
-      {profile.expertises.length > 0 ? (
+      {/* Ce que j'accompagne: the professional's own cards, then the catalog expertises */}
+      {profile.expertises.length > 0 || profile.focusAreas.length > 0 ? (
         <section className={SECTION}>
           <div className={WRAP}>
             <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -568,6 +636,27 @@ export async function ShowcaseProfileView({
               </div>
               <p className={`${BODY} max-w-[60ch] lg:pt-12`}>{t("vitrine.expertisesIntro", { name, city: profile.city.name })}</p>
             </div>
+            {profile.focusAreas.length > 0 ? (
+              <ul className="mt-[clamp(32px,4.5vw,64px)] grid gap-4 md:grid-cols-2">
+                {profile.focusAreas.map((area, index) => {
+                  const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
+                  return (
+                    <li key={index} data-reveal={index % 2} data-focus-area="" className={`min-w-0 rounded-[34px] p-[clamp(22px,2.4vw,40px)] ${theme.tint}`}>
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/85 text-[#17505F]">
+                        <theme.icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <h3 className={`mt-6 ${SERIF} text-[clamp(24px,2vw,34px)] leading-tight text-[#1F2A2E] text-balance`}>{area.title}</h3>
+                      {area.body.map((paragraph, paragraphIndex) => (
+                        <p key={paragraphIndex} className="mt-3 max-w-[58ch] vt-md leading-[1.7] text-[#3E494B] text-pretty">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            {profile.expertises.length > 0 ? (
             <ul className="mt-[clamp(32px,4.5vw,64px)] grid grid-cols-2 gap-3 sm:gap-[clamp(14px,1.2vw,22px)] sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
               {profile.expertises.map((expertise, index) => {
                 const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
@@ -612,6 +701,7 @@ export async function ShowcaseProfileView({
                 );
               })}
             </ul>
+            ) : null}
           </div>
         </section>
       ) : null}

@@ -22,7 +22,15 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       bio: { fr: "Parcours.\n\nApproche humaine.", en: "Background." },
       approach: { fr: "TCC", en: "CBT" },
       insuranceNote: { fr: "Reçus pour assurances.", en: "" },
-      values: [{ fr: "Écoute", en: "Listening" }, { fr: "Respect", en: "" }],
+      values: [{ fr: "Écoute", en: "Listening", details: { fr: "Sans jugement.", en: "Without judgement." } }, { fr: "Respect", en: "" }],
+      quote: { fr: "Chacun trouve ses ressources.", en: "" },
+      highlights: [{ fr: "Reçus pour assurances", en: "Insurance receipts" }, { fr: "", en: "Orphan" }],
+      credentials: [{ fr: "D. Psy., Université de Montréal", en: "" }],
+      focusAreas: [
+        { title: { fr: "Anxiété et stress", en: "Anxiety and stress" }, body: { fr: "On apprend.\n\nEnsemble.", en: "" } },
+        { title: { fr: "", en: "No French title" }, body: { fr: "Dropped", en: "" } },
+      ],
+      methods: [{ name: { fr: "TCC", en: "CBT" }, title: { fr: "Thérapie cognitive", en: "" }, body: { fr: "Des outils concrets.", en: "" } }],
       expertiseIds: ["e2", "gone", "e1"],
       orderCode: "OPQ",
       orderLabel: "",
@@ -68,6 +76,15 @@ describe("buildShowcasePublicProfile", () => {
       bio: ["Parcours.", "Approche humaine."],
       approach: ["TCC"],
       values: ["Écoute", "Respect"],
+      valueCards: [
+        { label: "Écoute", description: "Sans jugement." },
+        { label: "Respect", description: "" },
+      ],
+      quote: "Chacun trouve ses ressources.",
+      highlights: ["Reçus pour assurances"],
+      credentials: ["D. Psy., Université de Montréal"],
+      focusAreas: [{ title: "Anxiété et stress", body: ["On apprend.", "Ensemble."] }],
+      methods: [{ name: "TCC", title: "Thérapie cognitive", body: ["Des outils concrets."] }],
       expertises: [
         { slug: "burn-out", label: "Épuisement professionnel" },
         { slug: "anxiete", label: "Anxiété" },
@@ -97,6 +114,11 @@ describe("buildShowcasePublicProfile", () => {
     expect(profile.headline).toBe("Psychologist for adults");
     expect(profile.intro).toEqual(["Bonjour.", "Bienvenue."]);
     expect(profile.values).toEqual(["Listening", "Respect"]);
+    expect(profile.valueCards[0]).toEqual({ label: "Listening", description: "Without judgement." });
+    expect(profile.highlights).toEqual(["Insurance receipts"]);
+    expect(profile.focusAreas).toEqual([{ title: "Anxiety and stress", body: ["On apprend.", "Ensemble."] }]);
+    expect(profile.methods[0]).toMatchObject({ name: "CBT", title: "Thérapie cognitive" });
+    expect(profile.quote).toBe("Chacun trouve ses ressources.");
     expect(profile.expertises.map((e) => e.label)).toEqual(["Épuisement professionnel", "Anxiety"]);
   });
 
@@ -120,6 +142,8 @@ describe("buildShowcasePublicProfile", () => {
     });
     Object.assign(poisoned.page, { userId: secret, consent: { ip: secret }, draft: { bio: { fr: secret } }, history: [{ note: secret }] });
     Object.assign(poisoned.content, { reviewNotes: secret });
+    Object.assign(poisoned.content.methods![0]!, { internalNote: secret });
+    Object.assign(poisoned.content.focusAreas![0]!, { draftOnly: secret });
     const json = JSON.stringify(buildShowcasePublicProfile(poisoned));
     expect(json).not.toContain(secret);
     expect(json).not.toContain("99999");

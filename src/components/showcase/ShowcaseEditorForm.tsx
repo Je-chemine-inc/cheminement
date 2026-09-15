@@ -36,7 +36,10 @@ import {
 
 type Lang = "fr" | "en";
 type Localized = { fr: string; en: string };
-type LocalizedField = "headline" | "intro" | "bio" | "approach" | "insuranceNote";
+type LocalizedField = "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "quote";
+type LineListField = "highlights" | "credentials";
+type CardListField = "focusAreas" | "methods";
+type Card = Record<string, Localized>;
 
 interface DraftState {
   displayName: string;
@@ -45,7 +48,12 @@ interface DraftState {
   bio: Localized;
   approach: Localized;
   insuranceNote: Localized;
-  values: Localized[];
+  quote: Localized;
+  values: (Localized & { details: Localized })[];
+  highlights: Localized[];
+  credentials: Localized[];
+  focusAreas: Card[];
+  methods: Card[];
   expertiseIds: string[];
   orderCode: ProfessionalOrderCode | "";
   orderLabel: string;
@@ -58,7 +66,34 @@ const FIELD_LIMITS: Record<LocalizedField, number> = {
   bio: SHOWCASE_LIMITS.bio,
   approach: SHOWCASE_LIMITS.approach,
   insuranceNote: SHOWCASE_LIMITS.insuranceNote,
+  quote: SHOWCASE_LIMITS.quote,
 };
+
+const LINE_LISTS: Record<LineListField, { items: number; length: number }> = {
+  highlights: { items: SHOWCASE_LIMITS.highlights, length: SHOWCASE_LIMITS.highlightLength },
+  credentials: { items: SHOWCASE_LIMITS.credentials, length: SHOWCASE_LIMITS.credentialLength },
+};
+
+/** Each card's parts: key, length limit, and 1 for a single line or the textarea's rows. */
+const CARD_LISTS: Record<CardListField, { items: number; parts: readonly (readonly [part: string, max: number, rows: number])[] }> = {
+  focusAreas: {
+    items: SHOWCASE_LIMITS.focusAreas,
+    parts: [
+      ["title", SHOWCASE_LIMITS.focusTitle, 1],
+      ["body", SHOWCASE_LIMITS.focusBody, 3],
+    ],
+  },
+  methods: {
+    items: SHOWCASE_LIMITS.methods,
+    parts: [
+      ["name", SHOWCASE_LIMITS.methodName, 1],
+      ["title", SHOWCASE_LIMITS.methodTitle, 1],
+      ["body", SHOWCASE_LIMITS.methodBody, 3],
+    ],
+  },
+};
+
+const filled = (value: Localized | undefined) => Boolean(value && (value.fr.trim() || value.en.trim()));
 
 function toDraftState(
   content: ShowcaseContentJson,
@@ -74,7 +109,12 @@ function toDraftState(
     bio: copy(content.bio),
     approach: copy(content.approach),
     insuranceNote: copy(content.insuranceNote),
-    values: content.values.map(copy),
+    quote: copy(content.quote),
+    values: content.values.map((value) => ({ ...copy(value), details: copy(value.details) })),
+    highlights: content.highlights.map(copy),
+    credentials: content.credentials.map(copy),
+    focusAreas: content.focusAreas.map((card) => ({ title: copy(card.title), body: copy(card.body) })),
+    methods: content.methods.map((card) => ({ name: copy(card.name), title: copy(card.title), body: copy(card.body) })),
     // An expertise no longer offered on pages would be refused on save.
     expertiseIds: content.expertiseIds.filter((id) => offeredIds.has(id)),
     orderCode: content.orderCode ?? "",
@@ -153,7 +193,12 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           bio: draft.bio,
           approach: draft.approach,
           insuranceNote: draft.insuranceNote,
-          values: draft.values.filter((value) => value.fr.trim() || value.en.trim()),
+          values: draft.values.filter((value) => filled(value) || filled(value.details)),
+          quote: draft.quote,
+          highlights: draft.highlights.filter(filled),
+          credentials: draft.credentials.filter(filled),
+          focusAreas: draft.focusAreas.filter((card) => Object.values(card).some(filled)),
+          methods: draft.methods.filter((card) => Object.values(card).some(filled)),
           expertiseIds: draft.expertiseIds,
           ...(audience === "admin"
             ? {
@@ -294,6 +339,111 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
     );
   };
 
+  const setLineList = (field: LineListField, items: Localized[]) =>
+    update(field === "highlights" ? { highlights: items } : { credentials: items });
+  const setCardList = (field: CardListField, cards: Card[]) =>
+    update(field === "focusAreas" ? { focusAreas: cards } : { methods: cards });
+
+  /** Short lines, written in the language tab shown. */
+  const renderLineList = (field: LineListField) => {
+    const { items: maxItems, length } = LINE_LISTS[field];
+    const items = draft[field];
+    return (
+      <div className="space-y-2">
+        <Label>{t(`fields.${field}`)}</Label>
+        <p className="text-xs text-muted-foreground">{t(`fields.${field}Hint`)}</p>
+        <ul className="space-y-2">
+          {items.map((item, index) => (
+            <li key={index} className="flex items-center gap-2">
+              <Input
+                aria-label={`${t(`fields.${field}`)} ${index + 1}`}
+                value={item[lang]}
+                maxLength={length}
+                onChange={(event) =>
+                  setLineList(
+                    field,
+                    items.map((current, i) => (i === index ? { ...current, [lang]: event.target.value } : current)),
+                  )
+                }
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("fields.removeItem")}
+                onClick={() => setLineList(field, items.filter((_, i) => i !== index))}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {items.length < maxItems ? (
+          <Button type="button" variant="outline" size="sm" onClick={() => setLineList(field, [...items, { fr: "", en: "" }])}>
+            <Plus className="h-4 w-4" />
+            {t(`fields.${field}Add`)}
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
+
+  /** Cards of several parts (focus areas, methods), written in the language tab shown. */
+  const renderCardList = (field: CardListField) => {
+    const { items: maxItems, parts } = CARD_LISTS[field];
+    const cards = draft[field];
+    return (
+      <div className="space-y-3">
+        <Label>{t(`fields.${field}`)}</Label>
+        <p className="text-xs text-muted-foreground">{t(`fields.${field}Hint`)}</p>
+        <ul className="space-y-3">
+          {cards.map((card, index) => (
+            <li key={index} data-card-list={field} className="space-y-3 rounded-lg border border-border/60 p-4">
+              {parts.map(([part, max, rows]) => {
+                const id = `showcase-${field}-${index}-${part}-${lang}`;
+                const value = card[part]?.[lang] ?? "";
+                const change = (text: string) =>
+                  setCardList(
+                    field,
+                    cards.map((current, i) =>
+                      i === index ? { ...current, [part]: { ...(current[part] ?? { fr: "", en: "" }), [lang]: text } } : current,
+                    ),
+                  );
+                return (
+                  <div key={part} className="space-y-1">
+                    <Label htmlFor={id} className="text-xs">
+                      {t(`fields.${field}Parts.${part}`)}
+                    </Label>
+                    {rows === 1 ? (
+                      <Input id={id} value={value} maxLength={max} onChange={(event) => change(event.target.value)} />
+                    ) : (
+                      <Textarea id={id} rows={rows} value={value} maxLength={max} onChange={(event) => change(event.target.value)} />
+                    )}
+                  </div>
+                );
+              })}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setCardList(field, cards.filter((_, i) => i !== index))}>
+                <Trash2 className="h-4 w-4" />
+                {t("fields.removeItem")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        {cards.length < maxItems ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setCardList(field, [...cards, Object.fromEntries(parts.map(([part]) => [part, { fr: "", en: "" }]))])}
+          >
+            <Plus className="h-4 w-4" />
+            {t(`fields.${field}Add`)}
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
+
   const expertiseCount = draft.expertiseIds.length;
   // The listed city the profile's office address names, offered as a one-click choice.
   const officeCity = matchShowcaseCity(view.profileFacts.officeCity);
@@ -384,28 +534,48 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         ) : null}
 
         {renderLocalized("headline", 1)}
+        {renderLineList("highlights")}
         {renderLocalized("intro", 3)}
         {renderLocalized("bio", 10)}
+        {renderLocalized("quote", 2)}
+        {renderLineList("credentials")}
         {renderLocalized("approach", 4)}
+        {renderCardList("methods")}
+        {renderCardList("focusAreas")}
 
         <div className="space-y-2">
           <Label>{t("fields.values")}</Label>
           <p className="text-xs text-muted-foreground">{t("fields.valuesHint")}</p>
           <ul className="space-y-2">
             {draft.values.map((value, index) => (
-              <li key={index} className="flex items-center gap-2">
-                <Input
-                  aria-label={`${t("fields.values")} ${index + 1}`}
-                  value={value[lang]}
-                  maxLength={SHOWCASE_LIMITS.valueLength}
-                  onChange={(event) =>
-                    update({
-                      values: draft.values.map((current, i) =>
-                        i === index ? { ...current, [lang]: event.target.value } : current,
-                      ),
-                    })
-                  }
-                />
+              <li key={index} className="flex items-start gap-2">
+                <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                  <Input
+                    aria-label={`${t("fields.values")} ${index + 1}`}
+                    value={value[lang]}
+                    maxLength={SHOWCASE_LIMITS.valueLength}
+                    onChange={(event) =>
+                      update({
+                        values: draft.values.map((current, i) =>
+                          i === index ? { ...current, [lang]: event.target.value } : current,
+                        ),
+                      })
+                    }
+                  />
+                  <Input
+                    aria-label={`${t("fields.valueDescription")} ${index + 1}`}
+                    placeholder={t("fields.valueDescription")}
+                    value={value.details[lang]}
+                    maxLength={SHOWCASE_LIMITS.valueDescription}
+                    onChange={(event) =>
+                      update({
+                        values: draft.values.map((current, i) =>
+                          i === index ? { ...current, details: { ...current.details, [lang]: event.target.value } } : current,
+                        ),
+                      })
+                    }
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -423,7 +593,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => update({ values: [...draft.values, { fr: "", en: "" }] })}
+              onClick={() => update({ values: [...draft.values, { fr: "", en: "", details: { fr: "", en: "" } }] })}
             >
               <Plus className="h-4 w-4" />
               {t("fields.addValue")}
