@@ -736,12 +736,11 @@ export async function ShowcaseProfileView({
       {profile.expertises.length > 0 || profile.focusAreas.length > 0 ? (
         <section className={SECTION}>
           <div className={WRAP}>
-            <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-              <div className="min-w-0">
-                <p className={LABEL}>{t("vitrine.expertises.eyebrow")}</p>
-                <h2 className={`${H2} mt-5`}>{t("vitrine.expertisesTitle")}</h2>
-              </div>
-              <p className={`${BODY} max-w-[60ch] lg:pt-12`}>{t("vitrine.expertisesIntro", { name, city: profile.city.name })}</p>
+            {/* The intro reads as the title's subtitle, right under it */}
+            <div className="max-w-[72ch]" data-expertises-head="">
+              <p className={LABEL}>{t("vitrine.expertises.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{t("vitrine.expertisesTitle")}</h2>
+              <p className={`${BODY} mt-5 max-w-[58ch]`}>{t("vitrine.expertisesIntro", { name })}</p>
             </div>
             {profile.focusAreas.length > 0 ? (
               <ul className="mt-[clamp(32px,4.5vw,64px)] grid gap-4 md:grid-cols-2">
