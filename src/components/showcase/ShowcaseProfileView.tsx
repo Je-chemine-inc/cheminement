@@ -706,12 +706,11 @@ export async function ShowcaseProfileView({
       {preview ? null : (
         <section id={VITRINE_ANCHORS.slots} className={`${SECTION} bg-[#F6F3EE]`}>
           <div className={WRAP}>
-            <div className="mb-[clamp(32px,3.5vw,56px)] grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-              <div className="min-w-0">
-                <p className={`${LABEL} bg-white`}>{t("vitrine.dispos.eyebrow")}</p>
-                <h2 className={`${H2} mt-5`}>{showSlots ? t("vitrine.dispos.title") : t("vitrine.dispos.closedTitle")}</h2>
-              </div>
-              <p className={`${BODY} max-w-[60ch] lg:pt-12`}>
+            {/* The intro reads as the title's subtitle, right under it */}
+            <div className="mb-[clamp(32px,3.5vw,56px)] max-w-[72ch]" data-dispos-head="">
+              <p className={`${LABEL} bg-white`}>{t("vitrine.dispos.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{showSlots ? t("vitrine.dispos.title") : t("vitrine.dispos.closedTitle")}</h2>
+              <p className={`${BODY} mt-5 max-w-[58ch]`}>
                 {showSlots ? t("vitrine.dispos.intro", { name }) : t("vitrine.dispos.closedIntro", { name })}
               </p>
             </div>
