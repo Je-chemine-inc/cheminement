@@ -36,7 +36,6 @@ export interface DirectoryGroup {
 
 const SERIF = { fontFamily: "var(--font-vitrine-serif), Georgia, 'Times New Roman', serif" };
 
-
 const MODALITY_ICONS: Record<ShowcaseModalityKey, LucideIcon> = {
   inPerson: MapPin,
   video: Video,
@@ -44,6 +43,10 @@ const MODALITY_ICONS: Record<ShowcaseModalityKey, LucideIcon> = {
   chat: MessageCircle,
 };
 
+/**
+ * The professionals, one under the other: a large circled portrait on one side and the presentation
+ * on the other, alternating. The filter is the only thing that moves, so this is the one client part.
+ */
 export function ProfessionalsDirectoryGrid({
   cards,
   groups,
@@ -57,7 +60,7 @@ export function ProfessionalsDirectoryGrid({
   const shown = group ? cards.filter((card) => card.group === group) : cards;
 
   const chip = (active: boolean) =>
-    `inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+    `inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[15px] font-medium transition ${
       active ? "bg-[#1F2A2E] text-white shadow-sm" : "border border-[#E4E1DA] bg-white text-[#1F2A2E] hover:border-[#1F2A2E]/30"
     }`;
 
@@ -87,79 +90,83 @@ export function ProfessionalsDirectoryGrid({
       {shown.length === 0 ? (
         <p className="mt-8 text-[#5B6566]">{labels.noResults}</p>
       ) : (
-        <ul className="mt-8 grid gap-6 md:grid-cols-2 md:gap-8">
-          {shown.map((card) => {
+        <ul className="mt-6 md:mt-12">
+          {shown.map((card, index) => {
             const tint = directoryTint(card.tint);
+            const mirrored = index % 2 === 1;
             return (
-              <li key={card.id}>
-                <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#E4E1DA] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_56px_-28px_rgba(23,80,95,0.35)]">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    {card.photoUrl ? (
-                      <Image
-                        src={card.photoUrl}
-                        alt={card.photoAlt}
-                        fill
-                        sizes="(min-width: 768px) 560px, 100vw"
-                        className="object-cover transition duration-700 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div
-                        className="relative flex size-full items-center justify-center"
-                        style={{ background: `linear-gradient(135deg, ${tint.from}, ${tint.to})` }}
-                      >
-                        <div
-                          aria-hidden
-                          className="absolute inset-0 opacity-50"
-                          style={{
-                            backgroundImage:
-                              "repeating-radial-gradient(circle at 85% 115%, transparent 0 26px, rgba(255,255,255,0.45) 26px 27px)",
-                          }}
+              <li key={card.id} className="border-b border-[#DFDAD1] py-14 last:border-b-0 md:py-20 xl:py-24">
+                <article
+                  className={`group flex flex-col items-center gap-10 md:items-start md:gap-16 lg:gap-24 xl:gap-32 ${
+                    mirrored ? "md:flex-row-reverse" : "md:flex-row"
+                  }`}
+                >
+                  {/* Portrait */}
+                  <div className="relative shrink-0">
+                    <span
+                      aria-hidden
+                      className={`absolute -inset-4 rounded-full border border-[#17505F]/15 transition duration-500 group-hover:-inset-6 ${
+                        card.photoUrl ? "" : "opacity-70"
+                      }`}
+                    />
+                    <div className="relative size-60 overflow-hidden rounded-full border-2 border-[#17505F]/70 bg-[#F3F7F7] shadow-[0_28px_56px_-28px_rgba(31,42,46,0.45)] md:size-72 lg:size-80 xl:size-[22rem]">
+                      {card.photoUrl ? (
+                        <Image
+                          src={card.photoUrl}
+                          alt={card.photoAlt}
+                          fill
+                          sizes="(min-width: 1280px) 352px, (min-width: 1024px) 320px, (min-width: 768px) 288px, 240px"
+                          className="object-cover transition duration-700 group-hover:scale-[1.04]"
                         />
+                      ) : (
                         <span
                           aria-hidden
-                          style={{ ...SERIF, color: tint.ink }}
-                          className="relative flex size-28 items-center justify-center rounded-full bg-white/75 text-4xl shadow-[0_12px_32px_-16px_rgba(31,42,46,0.45)] transition duration-500 group-hover:scale-105 md:size-32 md:text-5xl"
+                          style={{ ...SERIF, color: tint.ink, background: `linear-gradient(135deg, ${tint.from}, ${tint.to})` }}
+                          className="flex size-full items-center justify-center text-6xl md:text-7xl xl:text-8xl"
                         >
                           {card.initials}
                         </span>
-                      </div>
-                    )}
-                    {card.experience && (
-                      <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[#1F2A2E] shadow-sm backdrop-blur">
-                        {card.experience}
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col p-6 sm:p-8">
+                  {/* Presentation */}
+                  <div className="min-w-0 flex-1 text-center md:text-left">
                     {card.eyebrow && (
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#17505F]">{card.eyebrow}</p>
                     )}
-                    <h2 style={SERIF} className="mt-2 text-[28px] leading-tight text-[#1F2A2E]">
+                    <h2 style={SERIF} className="mt-3 text-[34px] leading-tight text-[#1F2A2E] md:text-[42px] xl:text-5xl">
                       {card.name}
                     </h2>
-                    {card.summary && <p className="mt-4 line-clamp-4 text-[15px] leading-7 text-[#5B6566]">{card.summary}</p>}
+                    {card.experience && <p className="mt-3 text-[15px] text-[#5B6566]">{card.experience}</p>}
+                    {card.summary && (
+                      <p className="mt-6 max-w-3xl text-base leading-8 text-[#5B6566] md:text-lg md:leading-9">
+                        {card.summary}
+                      </p>
+                    )}
 
                     {(card.languages.length > 0 || card.modalities.length > 0) && (
-                      <dl className="mt-6 space-y-4 border-t border-[#EEEBE4] pt-5 text-sm">
+                      <dl
+                        className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 md:justify-start"
+                      >
                         {card.languages.length > 0 && (
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-center gap-2 text-[15px] text-[#1F2A2E]">
                             <dt className="sr-only">{labels.languages}</dt>
-                            <Languages aria-hidden className="mt-0.5 size-4 shrink-0 text-[#17505F]" />
-                            <dd className="text-[#1F2A2E]">{card.languages.join(" · ")}</dd>
+                            <Languages aria-hidden className="size-4 shrink-0 text-[#17505F]" />
+                            <dd>{card.languages.join(" · ")}</dd>
                           </div>
                         )}
                         {card.modalities.length > 0 && (
                           <div>
                             <dt className="sr-only">{labels.modalities}</dt>
                             <dd>
-                              <ul className="flex flex-wrap gap-2">
+                              <ul className="flex flex-wrap justify-center gap-2 md:justify-start">
                                 {card.modalities.map((modality) => {
                                   const Icon = MODALITY_ICONS[modality.key];
                                   return (
                                     <li
                                       key={modality.key}
-                                      className="inline-flex items-center gap-1.5 rounded-full bg-[#F3F1EC] px-3 py-1 text-xs text-[#1F2A2E]"
+                                      className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[13px] text-[#1F2A2E] ring-1 ring-[#E4E1DA]"
                                     >
                                       <Icon aria-hidden className="size-3.5 text-[#17505F]" />
                                       {modality.label}
@@ -174,16 +181,15 @@ export function ProfessionalsDirectoryGrid({
                     )}
 
                     {card.profileHref && (
-                      <div className="mt-auto pt-7">
-                        <Link
-                          href={card.profileHref}
-                          aria-label={card.profileLabel}
-                          className="inline-flex items-center gap-2 text-sm font-semibold text-[#17505F] underline-offset-4 hover:underline"
-                        >
-                          {labels.viewProfile}
-                          <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
-                        </Link>
-                      </div>
+                      <Link
+                        href={card.profileHref}
+                        aria-label={card.profileLabel}
+                        style={SERIF}
+                        className="mt-9 inline-flex items-center gap-2 text-xl font-bold text-[#17505F] underline underline-offset-[6px] transition hover:text-[#0F3F4C]"
+                      >
+                        {labels.viewProfile}
+                        <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
                     )}
                   </div>
                 </article>

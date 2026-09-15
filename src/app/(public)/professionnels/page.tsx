@@ -14,22 +14,24 @@ import { loadProfessionalsDirectory } from "@/lib/professionals-directory-querie
 import type { DirectoryProfessional } from "@/lib/professionals-directory";
 
 /**
- * www /professionnels — « Nos professionnels »: every listed professional as a card, filterable by
- * profession (lib/professionals-directory.ts decides who and what). Read per request, so a page
- * published or a profile hidden shows at once. Same typefaces and palette as the professionals' pages.
+ * www /professionnels — « Nos professionnels »: every listed professional, a circled portrait beside
+ * their presentation (lib/professionals-directory.ts decides who and what). Read per request, so a
+ * page published or a profile hidden shows at once. Same typefaces and palette as the professionals'
+ * pages, and the same wide measure: content up to 1600 px with generous gutters.
  */
 export const dynamic = "force-dynamic";
 
 const SERIF = { fontFamily: "var(--font-vitrine-serif), Georgia, 'Times New Roman', serif" };
 const SANS = { fontFamily: "var(--font-vitrine-sans), ui-sans-serif, system-ui, sans-serif" };
+const SHELL = "mx-auto w-full max-w-[1600px] px-5 sm:px-8 lg:px-14 xl:px-20 2xl:px-24";
 
 /** Where the hero's portraits sit (desktop), largest first: a loose, overlapping cluster. */
 const CLUSTER = [
-  { size: 224, top: 88, left: 124 },
-  { size: 156, top: 0, left: 316 },
-  { size: 136, top: 276, left: 8 },
-  { size: 128, top: 300, left: 330 },
-  { size: 100, top: 36, left: 20 },
+  { size: 268, top: 104, left: 150 },
+  { size: 184, top: 0, left: 356 },
+  { size: 156, top: 330, left: 24 },
+  { size: 148, top: 356, left: 372 },
+  { size: 116, top: 40, left: 16 },
 ] as const;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -110,42 +112,44 @@ export default async function ProfessionalsPage() {
       style={SANS}
     >
       {/* Soft light behind the top of the page; tall enough that no glow meets its edge. */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[1200px] overflow-hidden">
-        <div className="absolute -right-48 -top-56 size-[620px] rounded-full bg-[radial-gradient(circle,rgba(23,80,95,0.14),transparent_65%)]" />
-        <div className="absolute -left-56 top-[340px] size-[560px] rounded-full bg-[radial-gradient(circle,rgba(196,150,110,0.16),transparent_65%)]" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[1300px] overflow-hidden">
+        <div className="absolute -right-56 -top-64 size-[720px] rounded-full bg-[radial-gradient(circle,rgba(23,80,95,0.14),transparent_65%)]" />
+        <div className="absolute -left-64 top-[380px] size-[640px] rounded-full bg-[radial-gradient(circle,rgba(196,150,110,0.16),transparent_65%)]" />
       </div>
 
       {/* Hero */}
       <section className="relative">
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 pb-14 pt-16 sm:px-6 md:pb-20 md:pt-24 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:px-8">
+        <div className={`${SHELL} grid gap-14 pb-16 pt-20 md:pb-24 md:pt-28 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-20`}>
           <div>
             <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.24em] text-[#17505F]">
-              <span aria-hidden className="h-px w-8 bg-[#17505F]" />
+              <span aria-hidden className="h-px w-10 bg-[#17505F]" />
               {t("eyebrow")}
             </p>
-            <h1 style={SERIF} className="mt-5 text-5xl leading-[1.04] tracking-tight md:text-7xl">
+            <h1 style={SERIF} className="mt-6 text-[52px] leading-[1.02] tracking-tight md:text-7xl xl:text-[92px]">
               {t("title")}
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-[#5B6566] md:text-xl md:leading-9">{t("intro")}</p>
-            <div className="mt-10 flex flex-wrap items-center gap-3">
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#5B6566] md:text-xl md:leading-9 xl:text-[22px] xl:leading-10">
+              {t("intro")}
+            </p>
+            <div className="mt-11 flex flex-wrap items-center gap-4">
               <Link
                 href="/appointment"
-                className="group inline-flex items-center gap-2 rounded-full bg-[#17505F] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_12px_24px_-12px_rgba(23,80,95,0.6)] transition hover:bg-[#123F4B]"
+                className="group inline-flex items-center gap-2 rounded-full bg-[#17505F] px-8 py-4 text-base font-semibold text-white shadow-[0_14px_28px_-14px_rgba(23,80,95,0.65)] transition hover:bg-[#123F4B]"
               >
                 {t("cta.match")}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex items-center rounded-full border border-[#1F2A2E]/15 bg-white/60 px-7 py-3.5 text-sm font-semibold transition hover:bg-white"
+                className="inline-flex items-center rounded-full border border-[#1F2A2E]/15 bg-white/60 px-8 py-4 text-base font-semibold transition hover:bg-white"
               >
                 {t("cta.contact")}
               </Link>
             </div>
             {stats.length > 0 && (
-              <ul className="mt-14 grid gap-5 border-t border-[#1F2A2E]/10 pt-8 sm:grid-cols-3 sm:gap-6">
+              <ul className="mt-16 grid gap-6 border-t border-[#1F2A2E]/10 pt-9 sm:grid-cols-3 sm:gap-10">
                 {stats.map((stat) => (
-                  <li key={stat} style={SERIF} className="text-lg leading-snug md:text-xl">
+                  <li key={stat} style={SERIF} className="text-xl leading-snug md:text-2xl">
                     {stat}
                   </li>
                 ))}
@@ -154,14 +158,14 @@ export default async function ProfessionalsPage() {
           </div>
 
           {cluster.length > 0 && (
-            <div aria-hidden className="relative mx-auto hidden h-[440px] w-[470px] lg:block">
+            <div aria-hidden className="relative mx-auto hidden h-[520px] w-[540px] lg:block">
               {cluster.map((card, index) => {
                 const spot = CLUSTER[index]!;
                 const tint = directoryTint(card.tint);
                 return (
                   <div
                     key={card.id}
-                    className="absolute overflow-hidden rounded-full border-[5px] border-[#F6F3EE] shadow-[0_24px_48px_-24px_rgba(31,42,46,0.45)]"
+                    className="absolute overflow-hidden rounded-full border-[6px] border-[#F6F3EE] shadow-[0_28px_56px_-28px_rgba(31,42,46,0.45)]"
                     style={{ width: spot.size, height: spot.size, top: spot.top, left: spot.left }}
                   >
                     {card.photoUrl ? (
@@ -183,10 +187,10 @@ export default async function ProfessionalsPage() {
       </section>
 
       {/* The professionals */}
-      <section className="relative pb-20 md:pb-28">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <section className="relative pb-24 md:pb-32">
+        <div className={SHELL}>
           {cards.length === 0 ? (
-            <p className="rounded-[28px] border border-[#E4E1DA] bg-white p-10 text-center text-lg text-[#5B6566]">{t("empty")}</p>
+            <p className="rounded-[28px] border border-[#E4E1DA] bg-white p-12 text-center text-lg text-[#5B6566]">{t("empty")}</p>
           ) : (
             <ProfessionalsDirectoryGrid
               cards={cards}
@@ -205,42 +209,42 @@ export default async function ProfessionalsPage() {
       </section>
 
       {/* Closing */}
-      <section className="relative pb-24 md:pb-32">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[32px] bg-[#17505F] px-8 py-14 text-white md:px-16 md:py-20">
+      <section className="relative pb-28 md:pb-36">
+        <div className={SHELL}>
+          <div className="relative overflow-hidden rounded-[36px] bg-[#17505F] px-8 py-16 text-white md:px-20 md:py-24">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 opacity-30"
               style={{
                 backgroundImage:
-                  "repeating-radial-gradient(circle at 100% 0%, transparent 0 38px, rgba(255,255,255,0.18) 38px 39px)",
+                  "repeating-radial-gradient(circle at 100% 0%, transparent 0 44px, rgba(255,255,255,0.18) 44px 45px)",
               }}
             />
-            <div className="relative grid gap-10 md:grid-cols-[1.5fr_1fr] md:items-center">
+            <div className="relative grid gap-12 md:grid-cols-[1.5fr_1fr] md:items-center">
               <div>
-                <h2 style={SERIF} className="text-3xl leading-tight md:text-5xl">
+                <h2 style={SERIF} className="text-4xl leading-tight md:text-5xl xl:text-6xl">
                   {t("closing.title")}
                 </h2>
-                <p className="mt-5 max-w-xl text-lg leading-8 text-white/80">{t("closing.text")}</p>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/80 md:text-xl md:leading-9">{t("closing.text")}</p>
               </div>
               <div className="flex flex-wrap gap-3 md:justify-end">
                 <Link
                   href="/appointment"
-                  className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#17505F] transition hover:bg-[#F6F3EE]"
+                  className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-[#17505F] transition hover:bg-[#F6F3EE]"
                 >
                   {t("closing.cta")}
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex items-center rounded-full border border-white/30 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="inline-flex items-center rounded-full border border-white/30 px-8 py-4 text-base font-semibold text-white transition hover:bg-white/10"
                 >
                   {t("closing.contact")}
                 </Link>
               </div>
             </div>
           </div>
-          <p className="mt-8 text-center text-sm text-[#5B6566]">
+          <p className="mt-10 text-center text-base text-[#5B6566]">
             {t.rich("contactLine", {
               link: (chunks) => (
                 <Link href="/contact" className="font-medium text-[#17505F] underline-offset-4 hover:underline">
