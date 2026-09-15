@@ -10,6 +10,13 @@ import { slugify } from "@/lib/content-kind";
 import { SHOWCASE_CITIES, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
+  SHOWCASE_AMBIENCE_SLOTS,
+  SHOWCASE_TEXT_KEYS,
+  layoutChoicesOf,
+  type ShowcaseAmbienceSlot,
+  type ShowcaseTextKey,
+} from "@/lib/showcase-customization";
+import {
   ORDER_CODE_BY_TITLE,
   SHOWCASE_CONSENT_VERSION,
   SHOWCASE_LIMITS,
@@ -204,7 +211,19 @@ function photoUrl(id: unknown): string | null {
 
 function contentView(content: ContentLean | undefined) {
   const text = (value?: Localized) => ({ fr: value?.fr ?? "", en: value?.en ?? "" });
+  const layout = layoutChoicesOf(content);
   return {
+    texts: Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, text(content?.texts?.[key])])) as Record<
+      ShowcaseTextKey,
+      { fr: string; en: string }
+    >,
+    sectionOrder: layout.sectionOrder,
+    hiddenSections: layout.hiddenSections,
+    accent: layout.accent,
+    ambience: Object.fromEntries(SHOWCASE_AMBIENCE_SLOTS.map((slot) => [slot, layout.ambience[slot] ?? ""])) as Record<
+      ShowcaseAmbienceSlot,
+      string
+    >,
     displayName: content?.displayName ?? "",
     headline: text(content?.headline),
     intro: text(content?.intro),

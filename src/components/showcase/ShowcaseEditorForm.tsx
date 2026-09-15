@@ -22,6 +22,20 @@ import {
   type ShowcaseContentJson,
   type ShowcaseEditorJson,
 } from "@/lib/showcase-editor-types";
+import {
+  REQUIRED_SHOWCASE_SECTIONS,
+  SHOWCASE_ACCENTS,
+  SHOWCASE_ACCENT_KEYS,
+  SHOWCASE_AMBIENCE_SLOTS,
+  SHOWCASE_TEXT_DEFAULTS,
+  SHOWCASE_TEXT_KEYS,
+  SHOWCASE_TEXT_LIMITS,
+  ambienceChoicesFor,
+  type ShowcaseAccentKey,
+  type ShowcaseAmbienceSlot,
+  type ShowcaseSectionKey,
+  type ShowcaseTextKey,
+} from "@/lib/showcase-customization";
 
 /**
  * The content of a showcase page (spec 003): photo, presentation (French,
@@ -58,6 +72,11 @@ interface DraftState {
   orderCode: ProfessionalOrderCode | "";
   orderLabel: string;
   cityKey: string;
+  texts: Record<ShowcaseTextKey, Localized>;
+  sectionOrder: ShowcaseSectionKey[];
+  hiddenSections: ShowcaseSectionKey[];
+  accent: ShowcaseAccentKey;
+  ambience: Record<ShowcaseAmbienceSlot, string>;
 }
 
 const FIELD_LIMITS: Record<LocalizedField, number> = {
@@ -120,6 +139,11 @@ function toDraftState(
     orderCode: content.orderCode ?? "",
     orderLabel: content.orderLabel,
     cityKey: content.cityKey ?? pageCityKey,
+    texts: Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, copy(content.texts[key])])) as Record<ShowcaseTextKey, Localized>,
+    sectionOrder: [...content.sectionOrder],
+    hiddenSections: [...content.hiddenSections],
+    accent: content.accent,
+    ambience: { ...content.ambience },
   };
 }
 
@@ -202,6 +226,11 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           focusAreas: draft.focusAreas.filter((card) => Object.values(card).some(filled)),
           methods: draft.methods.filter((card) => Object.values(card).some(filled)),
           expertiseIds: draft.expertiseIds,
+          texts: draft.texts,
+          sectionOrder: draft.sectionOrder,
+          hiddenSections: draft.hiddenSections,
+          accent: draft.accent,
+          ambience: draft.ambience,
           ...(audience === "admin"
             ? {
                 orderCode: draft.orderCode || null,
@@ -496,6 +525,46 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
     );
   };
 
+  // ---- « Personnaliser la page »: texts, sections, colour, photos
+  const setText = (key: ShowcaseTextKey, value: string) =>
+    update({ texts: { ...draft.texts, [key]: { ...draft.texts[key], [lang]: value } } });
+  const moveSection = (index: number, step: -1 | 1) => {
+    const target = index + step;
+    if (target < 0 || target >= draft.sectionOrder.length) return;
+    const order = [...draft.sectionOrder];
+    [order[index], order[target]] = [order[target], order[index]];
+    update({ sectionOrder: order });
+  };
+  const toggleSection = (key: ShowcaseSectionKey) =>
+    update({
+      hiddenSections: draft.hiddenSections.includes(key)
+        ? draft.hiddenSections.filter((current) => current !== key)
+        : [...draft.hiddenSections, key],
+    });
+  const setAmbience = (slot: ShowcaseAmbienceSlot, src: string) => update({ ambience: { ...draft.ambience, [slot]: src } });
+  // The wording a blank text keeps, as the page would show it.
+  const defaultText = (key: ShowcaseTextKey) =>
+    tLabels(SHOWCASE_TEXT_DEFAULTS[key], { name: draft.displayName || "…", city: view.page.cityName });
+
+  const languageTabs = (
+    <div role="tablist" aria-label={t("presentation.language")} className="flex rounded-full bg-muted p-1">
+      {(["fr", "en"] as const).map((code) => (
+        <button
+          key={code}
+          type="button"
+          role="tab"
+          aria-selected={lang === code}
+          onClick={() => setLang(code)}
+          className={`rounded-full px-4 py-1.5 text-sm font-light transition-colors ${
+            lang === code ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {code === "fr" ? t("presentation.french") : t("presentation.english")}
+        </button>
+      ))}
+    </div>
+  );
+
   const expertiseCount = draft.expertiseIds.length;
   // The listed city the profile's office address names, offered as a one-click choice.
   const officeCity = matchShowcaseCity(view.profileFacts.officeCity);
@@ -624,22 +693,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           <h2 id="showcase-presentation-title" className="font-serif text-xl font-light text-foreground">
             {t("presentation.title")}
           </h2>
-          <div role="tablist" aria-label={t("presentation.language")} className="flex rounded-full bg-muted p-1">
-            {(["fr", "en"] as const).map((code) => (
-              <button
-                key={code}
-                type="button"
-                role="tab"
-                aria-selected={lang === code}
-                onClick={() => setLang(code)}
-                className={`rounded-full px-4 py-1.5 text-sm font-light transition-colors ${
-                  lang === code ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {code === "fr" ? t("presentation.french") : t("presentation.english")}
-              </button>
-            ))}
-          </div>
+          {languageTabs}
         </div>
         {lang === "en" ? <p className="text-xs text-muted-foreground">{t("presentation.englishHint")}</p> : null}
 
@@ -725,6 +779,156 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         </div>
 
         {renderLocalized("insuranceNote", 3)}
+      </section>
+
+      <section className={`${cardClass} space-y-8`} aria-labelledby="showcase-customize-title" data-customize="">
+        <div>
+          <h2 id="showcase-customize-title" className="font-serif text-xl font-light text-foreground">
+            {t("customize.title")}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("customize.hint")}</p>
+        </div>
+
+        <div className="space-y-3">
+          <Label>{t("customize.accentTitle")}</Label>
+          <div role="radiogroup" aria-label={t("customize.accentTitle")} className="flex flex-wrap gap-2">
+            {SHOWCASE_ACCENT_KEYS.map((key) => {
+              const on = draft.accent === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  data-accent={key}
+                  onClick={() => update({ accent: key })}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    on ? "border-foreground text-foreground" : "border-border/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span aria-hidden="true" className="h-4 w-4 rounded-full" style={{ backgroundColor: SHOWCASE_ACCENTS[key].accent }} />
+                  {t(`customize.accents.${key}`)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Label>{t("customize.sectionsTitle")}</Label>
+          <p className="text-xs text-muted-foreground">{t("customize.sectionsHint")}</p>
+          <ol className="divide-y divide-border/60 rounded-lg border border-border/60">
+            {draft.sectionOrder.map((key, index, all) => {
+              const required = REQUIRED_SHOWCASE_SECTIONS.has(key);
+              const shown = required || !draft.hiddenSections.includes(key);
+              const label = t(`customize.sections.${key}`);
+              return (
+                <li key={key} data-section-row={key} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                  <span className={`min-w-0 flex-1 text-sm ${shown ? "text-foreground" : "text-muted-foreground line-through"}`}>{label}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("customize.moveUp", { section: label })}
+                    disabled={index === 0}
+                    onClick={() => moveSection(index, -1)}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("customize.moveDown", { section: label })}
+                    disabled={index === all.length - 1}
+                    onClick={() => moveSection(index, 1)}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={shown}
+                    aria-label={t("customize.show", { section: label })}
+                    disabled={required}
+                    onClick={() => toggleSection(key)}
+                    className={switchClass(shown)}
+                  >
+                    <span className={knobClass(shown)} />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-xs text-muted-foreground">{t("customize.required")}</p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Label>{t("customize.textsTitle")}</Label>
+            {languageTabs}
+          </div>
+          <p className="text-xs text-muted-foreground">{t("customize.textsHint")}</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {SHOWCASE_TEXT_KEYS.map((key) => {
+              const id = `showcase-text-${key}-${lang}`;
+              return (
+                <div key={key} className="space-y-1">
+                  <Label htmlFor={id} className="text-xs">
+                    {t(`customize.texts.${key}`)}
+                  </Label>
+                  <Input
+                    id={id}
+                    value={draft.texts[key][lang]}
+                    maxLength={SHOWCASE_TEXT_LIMITS[key]}
+                    placeholder={lang === "fr" ? defaultText(key) : ""}
+                    onChange={(event) => setText(key, event.target.value)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Label>{t("customize.photosTitle")}</Label>
+          <p className="text-xs text-muted-foreground">{t("customize.photosHint")}</p>
+          {SHOWCASE_AMBIENCE_SLOTS.map((slot) => (
+            <div key={slot} className="space-y-2" data-ambience-slot={slot}>
+              <p className="text-sm text-foreground">{t(`customize.photoSlots.${slot}`)}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  aria-pressed={!draft.ambience[slot]}
+                  onClick={() => setAmbience(slot, "")}
+                  className={`flex h-16 items-center justify-center rounded-lg border-2 px-3 text-xs ${
+                    !draft.ambience[slot] ? "border-foreground text-foreground" : "border-border/60 text-muted-foreground"
+                  }`}
+                >
+                  {t("customize.photoAuto")}
+                </button>
+                {ambienceChoicesFor(slot).map((src, index) => {
+                  const on = draft.ambience[slot] === src;
+                  return (
+                    <button
+                      key={src}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={t("customize.photoOption", { number: index + 1 })}
+                      onClick={() => setAmbience(slot, src)}
+                      className={`overflow-hidden rounded-lg border-2 ${slot === "about" ? "h-20 w-16" : "h-16 w-24"} ${
+                        on ? "border-foreground" : "border-transparent"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className={cardClass} aria-labelledby="showcase-expertises-title">

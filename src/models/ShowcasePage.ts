@@ -8,6 +8,7 @@ import {
   type ShowcaseReviewState,
   type ShowcaseStatus,
 } from "@/lib/showcase-constants";
+import { SHOWCASE_TEXT_KEYS, type ShowcaseTextKey } from "@/lib/showcase-customization";
 
 /**
  * A professional's showcase page (spec 003): www.jechemine.ca/<slug>.
@@ -75,6 +76,16 @@ export interface IShowcaseContent {
    * only when an admin approves this revision.
    */
   cityKey?: string;
+  /** Section titles and intros the professional wrote; a missing one keeps the page's wording. */
+  texts: Partial<Record<ShowcaseTextKey, ILocalizedText>>;
+  /** The sections' order (SHOWCASE_SECTION_KEYS); empty for the default order. */
+  sectionOrder: string[];
+  /** Optional sections the professional hides. */
+  hiddenSections: string[];
+  /** A SHOWCASE_ACCENTS key; empty for the default colour. */
+  accent: string;
+  /** Library photos chosen per image slot (paths under /showcase/ambiance). */
+  ambience: { band?: string; about?: string; closing?: string };
 }
 
 export interface IShowcaseHistoryEntry {
@@ -158,6 +169,16 @@ const FocusAreaSchema = new Schema<IShowcaseFocusArea>({ title: localized(), bod
 
 const MethodSchema = new Schema<IShowcaseMethod>({ name: localized(), title: localized(), body: localized() }, { _id: false });
 
+const TextsSchema = new Schema(
+  Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, { type: LocalizedTextSchema, default: undefined }])),
+  { _id: false },
+);
+
+const AmbienceSchema = new Schema(
+  { band: { type: String, trim: true }, about: { type: String, trim: true }, closing: { type: String, trim: true } },
+  { _id: false },
+);
+
 const ShowcaseContentSchema = new Schema<IShowcaseContent>(
   {
     displayName: { type: String, trim: true, default: "" },
@@ -178,6 +199,11 @@ const ShowcaseContentSchema = new Schema<IShowcaseContent>(
     insuranceNote: localized(),
     photoFileId: { type: Schema.Types.ObjectId, ref: "StoredFile" },
     cityKey: { type: String, trim: true },
+    texts: { type: TextsSchema, default: () => ({}) },
+    sectionOrder: { type: [String], default: [] },
+    hiddenSections: { type: [String], default: [] },
+    accent: { type: String, trim: true, default: "" },
+    ambience: { type: AmbienceSchema, default: () => ({}) },
   },
   { _id: false },
 );

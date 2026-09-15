@@ -85,6 +85,13 @@ describe("buildShowcasePublicProfile", () => {
       quote: "Chacun trouve ses ressources.",
       highlights: ["Reçus pour assurances"],
       credentials: ["D. Psy., Université de Montréal"],
+      customization: {
+        texts: {},
+        sectionOrder: ["about", "approach", "values", "services", "slots", "expertises", "products", "cta"],
+        hiddenSections: [],
+        accent: "teal",
+        ambience: {},
+      },
       focusAreas: [{ title: "Anxiété et stress", body: ["On apprend.", "Ensemble."] }],
       methods: [{ name: "TCC", title: "Thérapie cognitive", body: ["Des outils concrets."] }],
       expertises: [
@@ -153,6 +160,30 @@ describe("buildShowcasePublicProfile", () => {
 
   it("carries exactly the documented keys", () => {
     expect(Object.keys(buildShowcasePublicProfile(input())!).sort()).toEqual([...SHOWCASE_PUBLIC_KEYS]);
+  });
+
+  it("reads the professional's page choices, keeping only what is valid", () => {
+    const base = input();
+    const content = {
+      ...base.content,
+      texts: {
+        approachTitle: { fr: "Ma façon de travailler", en: "How I work" },
+        ctaTitle: { fr: "", en: "English only" },
+        bogus: { fr: "POISON", en: "" },
+      },
+      sectionOrder: ["cta", "about"],
+      hiddenSections: ["values", "services"],
+      accent: "plum",
+      ambience: { band: "/evil.jpg" },
+    };
+    const custom = buildShowcasePublicProfile(input({ content }))!.customization;
+    expect(custom.texts).toEqual({ approachTitle: "Ma façon de travailler" });
+    expect(custom.sectionOrder.slice(0, 3)).toEqual(["cta", "about", "approach"]);
+    expect(custom.hiddenSections).toEqual(["values"]);
+    expect(custom.accent).toBe("plum");
+    expect(custom.ambience).toEqual({});
+    expect(JSON.stringify(custom)).not.toContain("POISON");
+    expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({ approachTitle: "How I work" });
   });
 
   it("offers a service only when the page and the professional both do", () => {

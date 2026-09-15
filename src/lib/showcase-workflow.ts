@@ -2,6 +2,20 @@ import { slugify } from "@/lib/content-kind";
 import { isShowcaseCityKey } from "@/lib/showcase-cities";
 import { isValidShowcaseSlug } from "@/lib/showcase-slug";
 import {
+  DEFAULT_SHOWCASE_ACCENT,
+  REQUIRED_SHOWCASE_SECTIONS,
+  SHOWCASE_AMBIENCE_SLOTS,
+  SHOWCASE_SECTION_KEYS,
+  SHOWCASE_TEXT_KEYS,
+  SHOWCASE_TEXT_LIMITS,
+  isAmbienceChoice,
+  isShowcaseAccentKey,
+  isShowcaseSectionKey,
+  resolveSectionOrder,
+  type ShowcaseAmbienceSlot,
+  type ShowcaseTextKey,
+} from "@/lib/showcase-customization";
+import {
   PROFESSIONAL_ORDER_CODES,
   SHOWCASE_CONSENT_VERSION,
   SHOWCASE_LIMITS as L,
@@ -280,6 +294,65 @@ export function normalizeShowcaseDraft(
     set[`draft.${field}`] = result.value;
   }
 
+  // The page's customization (showcase-customization): texts, sections, colour, photos.
+  if (has("texts")) {
+    const raw = input.texts;
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      return { ok: false, code: "INVALID_FIELD", field: "texts" };
+    }
+    const texts: Partial<Record<ShowcaseTextKey, Localized>> = {};
+    for (const key of SHOWCASE_TEXT_KEYS) {
+      const result = cleanLocalized((raw as Record<string, unknown>)[key], SHOWCASE_TEXT_LIMITS[key], "line");
+      if (!result.ok) {
+        return result.where === "shape"
+          ? { ok: false, code: "INVALID_FIELD", field: `texts.${key}` }
+          : { ok: false, code: "TOO_LONG", field: `texts.${key}.${result.where}` };
+      }
+      // Without its French wording a text keeps the page's own: nothing is stored.
+      if (result.value.fr) texts[key] = result.value;
+    }
+    set["draft.texts"] = texts;
+  }
+
+  if (has("sectionOrder")) {
+    const order = input.sectionOrder;
+    if (!Array.isArray(order) || !order.every(isShowcaseSectionKey) || new Set(order).size !== order.length) {
+      return { ok: false, code: "INVALID_FIELD", field: "sectionOrder" };
+    }
+    const resolved = resolveSectionOrder(order);
+    // The default order is stored as none, so a page that never moved a section reports no change.
+    set["draft.sectionOrder"] = resolved.every((key, index) => key === SHOWCASE_SECTION_KEYS[index]) ? [] : resolved;
+  }
+
+  if (has("hiddenSections")) {
+    const hidden = input.hiddenSections;
+    if (!Array.isArray(hidden) || !hidden.every((key) => isShowcaseSectionKey(key) && !REQUIRED_SHOWCASE_SECTIONS.has(key))) {
+      return { ok: false, code: "INVALID_FIELD", field: "hiddenSections" };
+    }
+    set["draft.hiddenSections"] = SHOWCASE_SECTION_KEYS.filter((key) => hidden.includes(key));
+  }
+
+  if (has("accent")) {
+    const accent = input.accent;
+    if (accent !== "" && !isShowcaseAccentKey(accent)) return { ok: false, code: "INVALID_FIELD", field: "accent" };
+    set["draft.accent"] = accent === DEFAULT_SHOWCASE_ACCENT ? "" : accent;
+  }
+
+  if (has("ambience")) {
+    const raw = input.ambience;
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      return { ok: false, code: "INVALID_FIELD", field: "ambience" };
+    }
+    const ambience: Partial<Record<ShowcaseAmbienceSlot, string>> = {};
+    for (const slot of SHOWCASE_AMBIENCE_SLOTS) {
+      const value = (raw as Record<string, unknown>)[slot];
+      if (value === undefined || value === null || value === "") continue;
+      if (!isAmbienceChoice(slot, value)) return { ok: false, code: "INVALID_FIELD", field: `ambience.${slot}` };
+      ambience[slot] = value;
+    }
+    set["draft.ambience"] = ambience;
+  }
+
   if (has("expertiseIds")) {
     if (!Array.isArray(input.expertiseIds)) {
       return { ok: false, code: "INVALID_FIELD", field: "expertiseIds" };
@@ -416,6 +489,11 @@ export const SHOWCASE_EDITABLE_FIELDS = [
   "methods",
   "photo",
   "officePhotos",
+  "texts",
+  "sectionOrder",
+  "hiddenSections",
+  "accent",
+  "ambience",
 ] as const;
 export type ShowcaseEditableField = (typeof SHOWCASE_EDITABLE_FIELDS)[number];
 
@@ -427,7 +505,8 @@ function isBlank(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0;
   if (typeof value === "object") {
     const text = value as { fr?: unknown; en?: unknown };
-    return "fr" in text && !text.fr && !text.en;
+    // A text with neither language, or a choice object with nothing chosen (texts, ambience).
+    return "fr" in text ? !text.fr && !text.en : Object.keys(value).length === 0;
   }
   return false;
 }

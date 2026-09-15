@@ -1,6 +1,12 @@
 import type { ProfessionalOrderCode, ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
 import type { ShowcaseLanguageKey, ShowcaseModalityKey } from "@/lib/showcase-public";
 import type { ShowcaseRequirement } from "@/lib/showcase-workflow";
+import type {
+  ShowcaseAccentKey,
+  ShowcaseAmbienceSlot,
+  ShowcaseSectionKey,
+  ShowcaseTextKey,
+} from "@/lib/showcase-customization";
 
 /**
  * The showcase editor's data as the browser receives it (dates are strings).
@@ -33,6 +39,14 @@ export interface ShowcaseContentJson {
   officePhotos: { id: string; url: string }[];
   /** The city this copy asks for; null on pages saved before the choice existed. */
   cityKey: string | null;
+  /** Every section text, empty where the page keeps its own wording. */
+  texts: Record<ShowcaseTextKey, LocalizedTextJson>;
+  /** Every section, in the page's order. */
+  sectionOrder: ShowcaseSectionKey[];
+  hiddenSections: ShowcaseSectionKey[];
+  accent: ShowcaseAccentKey;
+  /** The library photo chosen per slot, empty for the automatic one. */
+  ambience: Record<ShowcaseAmbienceSlot, string>;
 }
 
 export interface ShowcaseEditorJson {

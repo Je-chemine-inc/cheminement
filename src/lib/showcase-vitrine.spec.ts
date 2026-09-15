@@ -25,6 +25,12 @@ describe("vitrineSections", () => {
     expect(vitrineSections({ hasAbout: false, showSlots: false, hasProducts: false })).toEqual(["approach", "services"]);
   });
 
+  it("follows the professional's order and leaves out the sections the page does not draw", () => {
+    expect(
+      vitrineSections({ hasAbout: true, showSlots: true, hasProducts: true, order: ["products", "services", "cta", "approach"] }),
+    ).toEqual(["products", "services", "approach"]);
+  });
+
   it("keeps the anchors the booking links and the waitlist already use", () => {
     expect(VITRINE_ANCHORS.slots).toBe("disponibilites");
     expect(VITRINE_ANCHORS.waitlist).toBe("liste-attente");

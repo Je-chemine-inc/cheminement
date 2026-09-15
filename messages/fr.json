@@ -7774,6 +7774,64 @@
       "CONFLICT": "La page a été modifiée en même temps. Rechargez-la.",
       "INVALID_ACTION": "Action inconnue.",
       "ACCOUNT_NOT_ACTIVE": "Votre compte doit être actif pour modifier votre page."
+    },
+    "customize": {
+      "title": "Personnaliser la page",
+      "hint": "Votre couleur, l’ordre des sections, leurs titres et vos photos d’ambiance. Les changements sont en ligne dès l’enregistrement.",
+      "accentTitle": "Couleur de la page",
+      "accents": {
+        "teal": "Sarcelle",
+        "forest": "Forêt",
+        "ocean": "Océan",
+        "plum": "Prune",
+        "terracotta": "Terracotta"
+      },
+      "sectionsTitle": "Sections et ordre",
+      "sectionsHint": "Déplacez les sections et masquez celles que vous ne voulez pas afficher. Une section sans contenu reste masquée.",
+      "sections": {
+        "about": "À propos",
+        "approach": "Approche et déroulement d’une demande",
+        "values": "Valeurs",
+        "services": "Services et tarifs",
+        "slots": "Disponibilités",
+        "expertises": "Ce que j’accompagne",
+        "products": "Formations et produits",
+        "cta": "Bandeau final"
+      },
+      "show": "Afficher « {section} »",
+      "moveUp": "Monter « {section} »",
+      "moveDown": "Descendre « {section} »",
+      "required": "Services et tarifs et Disponibilités restent toujours affichés.",
+      "textsTitle": "Titres et textes des sections",
+      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Un texte remplace celui de la page seulement s’il est écrit en français.",
+      "texts": {
+        "aboutTitle": "Titre « À propos »",
+        "approachTitle": "Titre « Approche »",
+        "methodsTitle": "Titre des méthodes",
+        "stepsTitle": "Titre du déroulement d’une demande",
+        "valuesTitle": "Titre « Valeurs »",
+        "valuesIntro": "Texte sous « Valeurs »",
+        "servicesTitle": "Titre « Services et tarifs »",
+        "servicesIntro": "Texte sous « Services et tarifs »",
+        "standardPoint": "Description de la consultation standard",
+        "quickPoint": "Description de la consultation rapide",
+        "disposTitle": "Titre « Disponibilités »",
+        "disposIntro": "Texte sous « Disponibilités »",
+        "expertisesTitle": "Titre « Ce que j’accompagne »",
+        "expertisesIntro": "Texte sous « Ce que j’accompagne »",
+        "productsTitle": "Titre « Formations et produits »",
+        "ctaTitle": "Titre du bandeau final",
+        "ctaBody": "Texte du bandeau final"
+      },
+      "photosTitle": "Photos d’ambiance",
+      "photosHint": "Choisissez vos photos dans la bibliothèque de Je chemine. Vos photos du cabinet passent toujours en premier.",
+      "photoSlots": {
+        "band": "Grande photo sous l’introduction",
+        "about": "Photo à côté de « À propos »",
+        "closing": "Photo du bandeau final"
+      },
+      "photoAuto": "Automatique",
+      "photoOption": "Photo {number}"
     }
   },
   "ShowcaseAdmin": {

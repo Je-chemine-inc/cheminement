@@ -57,18 +57,33 @@ export function pickAmbience(seed: string, index = 0): string {
   return pickFrom(AMBIENCE_IMAGES, seed, index);
 }
 
-/** Every large image of a page: office photos in their order first, then ambience photos of the slot's shape, never the same twice. */
-export function pageImages(seed: string, officeUrls: readonly string[] = []): Record<PageImageSlot, PageImage> {
-  const wide = { next: 0 };
-  const ambience: Record<PageImageSlot, () => string> = {
-    band: () => pickFrom(WIDE_AMBIENCE_IMAGES, seed, wide.next++),
-    about: () => pickFrom(TALL_AMBIENCE_IMAGES, seed, 0),
-    closing: () => pickFrom(WIDE_AMBIENCE_IMAGES, seed, wide.next++),
+/**
+ * Every large image of a page: office photos in their order first, then the
+ * library photo the professional chose for the slot, else an ambience photo of
+ * the slot's shape that no other slot already shows.
+ */
+export function pageImages(
+  seed: string,
+  officeUrls: readonly string[] = [],
+  chosen: Partial<Record<PageImageSlot, string>> = {},
+): Record<PageImageSlot, PageImage> {
+  const used = new Set<string>();
+  const next = { wide: 0, tall: 0 };
+  const pick = (list: readonly string[], counter: "wide" | "tall") => {
+    for (let tries = 0; tries < list.length; tries++) {
+      const src = pickFrom(list, seed, next[counter]++);
+      if (!used.has(src)) return src;
+    }
+    return pickFrom(list, seed, 0);
   };
   const entries = PAGE_IMAGE_SLOTS.map((slot, index) => {
     const office = officeUrls[index];
-    const image: PageImage = office ? { src: office, office: true } : { src: ambience[slot](), office: false };
-    return [slot, image] as const;
+    if (office) return [slot, { src: office, office: true }] as const;
+    const list: readonly string[] = slot === "about" ? TALL_AMBIENCE_IMAGES : WIDE_AMBIENCE_IMAGES;
+    const wanted = chosen[slot];
+    const src = wanted && list.includes(wanted) ? wanted : pick(list, slot === "about" ? "tall" : "wide");
+    used.add(src);
+    return [slot, { src, office: false }] as const;
   });
   return Object.fromEntries(entries) as Record<PageImageSlot, PageImage>;
 }

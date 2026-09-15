@@ -165,7 +165,7 @@ export function VitrineBooking({
     <p className={`flex items-center gap-3 vt-sm font-semibold ${dark ? "text-white" : "text-[#1F2A2E]"}`}>
       <span
         className={`flex h-8 w-8 flex-none items-center justify-center rounded-full font-[family-name:var(--font-vitrine-serif)] text-[15px] ${
-          dark ? "bg-white/15 text-white" : "bg-[#E6EFEA] text-[#17505F]"
+          dark ? "bg-white/15 text-white" : "bg-[color:var(--vt-accent-soft,#E6EFEA)] text-[color:var(--vt-accent,#17505F)]"
         }`}
       >
         {number}
@@ -177,18 +177,18 @@ export function VitrineBooking({
   const fallbackLinks = (
     <span className="mt-5 flex flex-wrap gap-2.5">
       {waitlistAnchor ? (
-        <a href={`#${waitlistAnchor}`} className="rounded-full bg-[#17505F] px-5 py-3 vt-sm font-semibold text-white transition-colors hover:bg-[#0E3A46] hover:text-white">
+        <a href={`#${waitlistAnchor}`} className="rounded-full bg-[color:var(--vt-accent,#17505F)] px-5 py-3 vt-sm font-semibold text-white transition-colors hover:bg-[color:var(--vt-accent-dark,#0E3A46)] hover:text-white">
           {t("joinWaitlist")}
         </a>
       ) : null}
-      <a href={bookingBaseUrl} data-showcase-cta="" className="rounded-full border border-[#D9D4CA] bg-white px-5 py-3 vt-sm font-semibold text-[#17505F] transition-colors hover:border-[#17505F]">
+      <a href={bookingBaseUrl} data-showcase-cta="" className="rounded-full border border-[#D9D4CA] bg-white px-5 py-3 vt-sm font-semibold text-[color:var(--vt-accent,#17505F)] transition-colors hover:border-[color:var(--vt-accent,#17505F)]">
         {t("matchInstead")}
       </a>
     </span>
   );
 
   const navButton =
-    "flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[#E4E1DA] bg-white text-[#1F2A2E] transition-colors hover:border-[#17505F] hover:text-[#17505F] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#E4E1DA] disabled:hover:text-[#1F2A2E]";
+    "flex h-10 w-10 flex-none items-center justify-center rounded-full border border-[#E4E1DA] bg-white text-[#1F2A2E] transition-colors hover:border-[color:var(--vt-accent,#17505F)] hover:text-[color:var(--vt-accent,#17505F)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[#E4E1DA] disabled:hover:text-[#1F2A2E]";
   const ready = state === "ready" && first?.available && days.length > 0;
 
   return (
@@ -210,13 +210,13 @@ export function VitrineBooking({
                     onClick={() => chooseService(option.service)}
                     className={`flex w-full items-center gap-4 rounded-[26px] border-2 p-[clamp(14px,1.2vw,20px)] text-left transition-all duration-300 ${
                       on
-                        ? "border-[#17505F] bg-white shadow-[0_20px_44px_-30px_rgba(23,80,95,0.8)]"
+                        ? "border-[color:var(--vt-accent,#17505F)] bg-white shadow-[0_20px_44px_-30px_rgba(23,80,95,0.8)]"
                         : "border-transparent bg-white/70 hover:bg-white"
                     }`}
                   >
                     <span
                       className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border-2 transition-colors ${
-                        on ? "border-[#17505F] bg-[#17505F] text-white" : "border-[#CFC9BE] bg-white"
+                        on ? "border-[color:var(--vt-accent,#17505F)] bg-[color:var(--vt-accent,#17505F)] text-white" : "border-[#CFC9BE] bg-white"
                       }`}
                     >
                       {on ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
@@ -236,7 +236,7 @@ export function VitrineBooking({
             </div>
             {modes ? (
               <p className="mt-6 flex items-center gap-2.5 vt-sm text-[#3E494B]">
-                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white text-[#17505F]">
+                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white text-[color:var(--vt-accent,#17505F)]">
                   <Clock className="h-4 w-4" aria-hidden="true" />
                 </span>
                 {capitalize(modes)}
@@ -303,14 +303,14 @@ export function VitrineBooking({
                             }}
                             className={`flex w-full flex-col items-center rounded-[24px] border px-1 py-[clamp(10px,0.9vw,16px)] text-center transition-all duration-300 ${
                               on
-                                ? "border-[#17505F] bg-[#17505F] text-white shadow-[0_16px_30px_-18px_rgba(23,80,95,0.9)]"
-                                : "border-[#ECE8E1] bg-[#FBFAF7] text-[#1F2A2E] hover:border-[#17505F]"
+                                ? "border-[color:var(--vt-accent,#17505F)] bg-[color:var(--vt-accent,#17505F)] text-white shadow-[0_16px_30px_-18px_rgba(23,80,95,0.9)]"
+                                : "border-[#ECE8E1] bg-[#FBFAF7] text-[#1F2A2E] hover:border-[color:var(--vt-accent,#17505F)]"
                             }`}
                           >
                             <span className={`vt-xs font-semibold ${on ? "text-white/80" : "text-[#5B6566]"}`}>{weekday(day)}</span>
                             <span className="mt-0.5 font-[family-name:var(--font-vitrine-serif)] text-[clamp(22px,1.8vw,32px)] leading-none">{dayNumber(day)}</span>
                             <span className={`mt-1 vt-xs ${on ? "text-white/80" : "text-[#5B6566]"}`}>{monthShort(day)}</span>
-                            <span className={`mt-1.5 hidden whitespace-nowrap vt-xs sm:block ${on ? "text-white/75" : "text-[#17505F]"}`}>
+                            <span className={`mt-1.5 hidden whitespace-nowrap vt-xs sm:block ${on ? "text-white/75" : "text-[color:var(--vt-accent,#17505F)]"}`}>
                               {t("slotCount", { count: daySlots.length })}
                             </span>
                           </button>
@@ -336,8 +336,8 @@ export function VitrineBooking({
                                     onClick={() => setSelectedTime((currentTime) => (currentTime === time ? null : time))}
                                     className={`min-w-[80px] rounded-full border px-4 py-2.5 vt-sm font-semibold transition-all duration-300 sm:min-w-[96px] sm:px-5 ${
                                       on
-                                        ? "border-[#17505F] bg-[#17505F] text-white shadow-[0_12px_24px_-14px_rgba(23,80,95,0.9)]"
-                                        : "border-[#ECE8E1] bg-white text-[#1F2A2E] hover:border-[#17505F] hover:text-[#17505F]"
+                                        ? "border-[color:var(--vt-accent,#17505F)] bg-[color:var(--vt-accent,#17505F)] text-white shadow-[0_12px_24px_-14px_rgba(23,80,95,0.9)]"
+                                        : "border-[#ECE8E1] bg-white text-[#1F2A2E] hover:border-[color:var(--vt-accent,#17505F)] hover:text-[color:var(--vt-accent,#17505F)]"
                                     }`}
                                   >
                                     {timeLabel(selectedDay, time)}
@@ -357,7 +357,7 @@ export function VitrineBooking({
           </div>
 
           {/* 3 · The request */}
-          <div className="flex flex-col rounded-[32px] bg-[#17505F] p-[clamp(20px,2.2vw,36px)] text-white lg:col-span-2 xl:col-span-1">
+          <div className="flex flex-col rounded-[32px] bg-[color:var(--vt-accent,#17505F)] p-[clamp(20px,2.2vw,36px)] text-white lg:col-span-2 xl:col-span-1">
             {stepLabel(3, t("stepRequest"), true)}
             <dl className="mt-6 divide-y divide-white/15 border-y border-white/15">
               {[
@@ -378,7 +378,7 @@ export function VitrineBooking({
                 <a
                   href={requestUrl(selectedDay, selectedTime)}
                   data-showcase-cta=""
-                  className="flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-6 py-4 vt-md font-semibold text-[#17505F] shadow-[0_18px_36px_-18px_rgba(0,0,0,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#E6EFEA] hover:text-[#0E3A46] motion-reduce:hover:translate-y-0"
+                  className="flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-6 py-4 vt-md font-semibold text-[color:var(--vt-accent,#17505F)] shadow-[0_18px_36px_-18px_rgba(0,0,0,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--vt-accent-soft,#E6EFEA)] hover:text-[color:var(--vt-accent-dark,#0E3A46)] motion-reduce:hover:translate-y-0"
                 >
                   {t("requestCta")}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />

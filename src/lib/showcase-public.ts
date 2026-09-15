@@ -8,6 +8,13 @@ import {
   type ProfessionalOrderCode,
 } from "@/lib/showcase-constants";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
+import {
+  SHOWCASE_TEXT_KEYS,
+  layoutChoicesOf,
+  type ShowcaseAmbienceSlot,
+  type ShowcaseLayoutChoices,
+  type ShowcaseTextKey,
+} from "@/lib/showcase-customization";
 import { paragraphsOf } from "@/lib/showcase-workflow";
 
 /**
@@ -56,6 +63,16 @@ export interface ShowcaseContentSource {
   orderLabel?: string | null;
   photoFileId?: unknown;
   officePhotoFileIds?: readonly unknown[] | null;
+  texts?: Readonly<Partial<Record<string, LocalizedSource>>> | null;
+  sectionOrder?: readonly unknown[] | null;
+  hiddenSections?: readonly unknown[] | null;
+  accent?: string | null;
+  ambience?: Partial<Record<ShowcaseAmbienceSlot, unknown>> | null;
+}
+
+/** The professional's page choices: texts in the page's language (only those written in French), and the layout. */
+export interface ShowcaseCustomization extends ShowcaseLayoutChoices {
+  texts: Partial<Record<ShowcaseTextKey, string>>;
 }
 
 export interface ShowcaseProfileSource {
@@ -138,6 +155,7 @@ export interface ShowcasePublicProfile {
   };
   insuranceNote: string[];
   freeCancellationHours: number;
+  customization: ShowcaseCustomization;
 }
 
 /** The keys of a public profile — the spec pins that nothing else appears. */
@@ -146,6 +164,7 @@ export const SHOWCASE_PUBLIC_KEYS = [
   "bio",
   "city",
   "credentials",
+  "customization",
   "displayName",
   "expertises",
   "focusAreas",
@@ -361,5 +380,15 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
     },
     insuranceNote: paragraphsOf(pick(content.insuranceNote, locale)),
     freeCancellationHours: FREE_CANCELLATION_HOURS,
+    customization: {
+      // Like every other text, one without its French wording does not exist; unknown keys never pass.
+      texts: Object.fromEntries(
+        SHOWCASE_TEXT_KEYS.flatMap((key) => {
+          const value = content.texts?.[key];
+          return hasFrench(value) ? [[key, pick(value, locale)]] : [];
+        }),
+      ) as Partial<Record<ShowcaseTextKey, string>>,
+      ...layoutChoicesOf(content),
+    },
   };
 }

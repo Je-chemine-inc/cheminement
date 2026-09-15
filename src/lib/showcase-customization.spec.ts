@@ -1,0 +1,135 @@
+import { describe, expect, it } from "vitest";
+import {
+  SHOWCASE_SECTION_KEYS,
+  SHOWCASE_TEXT_LIMITS,
+  layoutChoicesOf,
+  resolveSectionOrder,
+  visibleSections,
+  type ShowcaseSectionKey,
+} from "@/lib/showcase-customization";
+import { TALL_AMBIENCE_IMAGES, WIDE_AMBIENCE_IMAGES } from "@/lib/showcase-imagery";
+import { changedShowcaseFields, normalizeShowcaseDraft } from "@/lib/showcase-workflow";
+
+const ALL_AVAILABLE = Object.fromEntries(SHOWCASE_SECTION_KEYS.map((key) => [key, true])) as Record<ShowcaseSectionKey, boolean>;
+
+describe("section order and visibility", () => {
+  it("keeps a saved order, drops unknown or repeated keys, and appends the sections it lacks", () => {
+    expect(resolveSectionOrder(["products", "about", "bogus", "about"])).toEqual([
+      "products",
+      "about",
+      "approach",
+      "values",
+      "services",
+      "slots",
+      "expertises",
+      "cta",
+    ]);
+    expect(resolveSectionOrder(undefined)).toEqual([...SHOWCASE_SECTION_KEYS]);
+  });
+
+  it("draws a section only when it has something to show and is not hidden, never hiding prices or booking", () => {
+    expect(visibleSections(["cta", "about"], ["about", "services", "slots"], { ...ALL_AVAILABLE, products: false })).toEqual([
+      "cta",
+      "approach",
+      "values",
+      "services",
+      "slots",
+      "expertises",
+    ]);
+  });
+});
+
+describe("layoutChoicesOf", () => {
+  it("replaces anything unknown with the page's default", () => {
+    expect(
+      layoutChoicesOf({
+        sectionOrder: [],
+        hiddenSections: ["services", "values", "x"],
+        accent: "neon",
+        ambience: { band: "/evil.jpg", about: TALL_AMBIENCE_IMAGES[0], closing: TALL_AMBIENCE_IMAGES[0] },
+      }),
+    ).toEqual({
+      sectionOrder: [...SHOWCASE_SECTION_KEYS],
+      hiddenSections: ["values"],
+      accent: "teal",
+      ambience: { about: TALL_AMBIENCE_IMAGES[0] },
+    });
+    expect(layoutChoicesOf(undefined).accent).toBe("teal");
+    expect(layoutChoicesOf({ accent: "plum" }).accent).toBe("plum");
+  });
+});
+
+describe("normalizeShowcaseDraft: the page's customization", () => {
+  const save = (body: Record<string, unknown>) => normalizeShowcaseDraft(body, new Set(), "professional");
+
+  it("stores only the texts written in French, each on one line, and never an unknown key", () => {
+    expect(
+      save({
+        texts: {
+          approachTitle: { fr: "  Ma  façon\nde travailler ", en: "" },
+          valuesTitle: { fr: "", en: "Only English" },
+          bogus: { fr: "POISON", en: "" },
+        },
+      }),
+    ).toEqual({ ok: true, set: { "draft.texts": { approachTitle: { fr: "Ma façon de travailler", en: "" } } }, unset: [] });
+  });
+
+  it("refuses a text too long or malformed, naming it", () => {
+    expect(save({ texts: { ctaTitle: { fr: "x".repeat(SHOWCASE_TEXT_LIMITS.ctaTitle + 1), en: "" } } })).toMatchObject({
+      ok: false,
+      code: "TOO_LONG",
+      field: "texts.ctaTitle.fr",
+    });
+    expect(save({ texts: { ctaTitle: "plain" } })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "texts.ctaTitle" });
+    expect(save({ texts: [] })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "texts" });
+  });
+
+  it("stores a new order, and none for the default one", () => {
+    const moved = ["products", ...SHOWCASE_SECTION_KEYS.filter((key) => key !== "products")];
+    expect(save({ sectionOrder: moved })).toMatchObject({ ok: true, set: { "draft.sectionOrder": moved } });
+    expect(save({ sectionOrder: [...SHOWCASE_SECTION_KEYS] })).toMatchObject({ ok: true, set: { "draft.sectionOrder": [] } });
+    for (const bad of [["about", "about"], ["nope"], "about"]) {
+      expect(save({ sectionOrder: bad })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "sectionOrder" });
+    }
+  });
+
+  it("hides optional sections only, in the page's order", () => {
+    expect(save({ hiddenSections: ["products", "values"] })).toMatchObject({
+      ok: true,
+      set: { "draft.hiddenSections": ["values", "products"] },
+    });
+    expect(save({ hiddenSections: ["services"] })).toMatchObject({ ok: false, field: "hiddenSections" });
+    expect(save({ hiddenSections: ["slots"] })).toMatchObject({ ok: false, field: "hiddenSections" });
+  });
+
+  it("takes a colour from the palette, storing none for the default", () => {
+    expect(save({ accent: "plum" })).toMatchObject({ ok: true, set: { "draft.accent": "plum" } });
+    expect(save({ accent: "teal" })).toMatchObject({ ok: true, set: { "draft.accent": "" } });
+    expect(save({ accent: "" })).toMatchObject({ ok: true, set: { "draft.accent": "" } });
+    expect(save({ accent: "#ff0000" })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "accent" });
+  });
+
+  it("takes only library photos of the slot's shape", () => {
+    expect(save({ ambience: { band: WIDE_AMBIENCE_IMAGES[1], about: "", closing: null } })).toMatchObject({
+      ok: true,
+      set: { "draft.ambience": { band: WIDE_AMBIENCE_IMAGES[1] } },
+    });
+    expect(save({ ambience: { about: WIDE_AMBIENCE_IMAGES[0] } })).toMatchObject({ ok: false, field: "ambience.about" });
+    expect(save({ ambience: { band: "https://evil.example/x.jpg" } })).toMatchObject({ ok: false, field: "ambience.band" });
+  });
+});
+
+describe("changedShowcaseFields: the page's customization", () => {
+  it("sees no change when the editor sends nothing chosen over a page that never chose anything", () => {
+    expect(
+      changedShowcaseFields({}, { texts: {}, sectionOrder: [], hiddenSections: [], accent: "", ambience: {} }),
+    ).toEqual([]);
+  });
+
+  it("names the choices that change", () => {
+    expect(changedShowcaseFields({ accent: "" }, { accent: "plum", texts: { ctaTitle: { fr: "Venez", en: "" } } })).toEqual([
+      "accent",
+      "texts",
+    ]);
+  });
+});

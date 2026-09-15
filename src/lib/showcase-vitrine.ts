@@ -34,14 +34,19 @@ export function vitrineSections(input: {
   hasAbout: boolean;
   showSlots: boolean;
   hasProducts: boolean;
+  /** The sections the page draws, in the professional's order: the links follow it and skip what is not drawn. */
+  order?: readonly string[];
 }): VitrineSection[] {
-  return [
+  const sections: VitrineSection[] = [
     ...(input.hasAbout ? (["about"] as const) : []),
     "approach",
     "services",
     ...(input.showSlots ? (["slots"] as const) : []),
     ...(input.hasProducts ? (["products"] as const) : []),
   ];
+  const order = input.order;
+  if (!order) return sections;
+  return sections.filter((section) => order.includes(section)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
 
 /** The price a standard consultation is shown at: the individual session's, else the lowest. */

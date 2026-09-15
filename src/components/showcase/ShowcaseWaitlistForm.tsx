@@ -116,12 +116,12 @@ export function ShowcaseWaitlistForm({
   };
 
   const input =
-    "mt-2 block w-full rounded-2xl border border-[#E4E1DA] bg-[#FBFAF7] px-4 py-3 vt-md text-[#1F2A2E] placeholder:text-[#9AA19F] transition-colors focus:border-[#17505F] focus:bg-white focus:outline-none";
+    "mt-2 block w-full rounded-2xl border border-[#E4E1DA] bg-[#FBFAF7] px-4 py-3 vt-md text-[#1F2A2E] placeholder:text-[#9AA19F] transition-colors focus:border-[color:var(--vt-accent,#17505F)] focus:bg-white focus:outline-none";
   const label = "block vt-sm font-medium text-[#3E494B]";
   const legend = "vt-sm font-medium text-[#3E494B]";
   const chip = (selected: boolean) =>
     `rounded-full border px-4 py-2 vt-sm font-medium transition-all duration-300 ${
-      selected ? "border-[#17505F] bg-[#17505F] text-white" : "border-[#E4E1DA] bg-white text-[#3E494B] hover:border-[#17505F]"
+      selected ? "border-[color:var(--vt-accent,#17505F)] bg-[color:var(--vt-accent,#17505F)] text-white" : "border-[#E4E1DA] bg-white text-[#3E494B] hover:border-[color:var(--vt-accent,#17505F)]"
     }`;
 
   return (
@@ -131,8 +131,8 @@ export function ShowcaseWaitlistForm({
       className="scroll-mt-28 rounded-[40px] border border-[#ECE8E1] bg-white p-[clamp(20px,2.6vw,44px)] shadow-[0_30px_70px_-56px_rgba(31,42,46,0.5)]"
     >
       {state === "done" ? (
-        <div className="flex items-start gap-4 rounded-[28px] bg-[#E6EFEA] px-6 py-5" role="status">
-          <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-[#17505F]" aria-hidden="true" />
+        <div className="flex items-start gap-4 rounded-[28px] bg-[color:var(--vt-accent-soft,#E6EFEA)] px-6 py-5" role="status">
+          <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-[color:var(--vt-accent,#17505F)]" aria-hidden="true" />
           <span className="vt-md leading-normal text-[#1F2A2E]">
             <strong id="showcase-waitlist" className="block font-semibold">
               {t("doneTitle")}
@@ -144,7 +144,7 @@ export function ShowcaseWaitlistForm({
         <>
           <div className="grid items-center gap-x-10 gap-y-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 items-start gap-4">
-              <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[#E6EFEA] text-[#17505F]">
+              <span className="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-[color:var(--vt-accent-soft,#E6EFEA)] text-[color:var(--vt-accent,#17505F)]">
                 <Hourglass className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
@@ -159,7 +159,7 @@ export function ShowcaseWaitlistForm({
                 <button
                   type="button"
                   onClick={() => setOpen(true)}
-                  className="rounded-full bg-[#17505F] px-7 py-4 vt-sm font-semibold text-white shadow-[0_16px_30px_-16px_rgba(23,80,95,0.9)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#0E3A46] motion-reduce:hover:translate-y-0"
+                  className="rounded-full bg-[color:var(--vt-accent,#17505F)] px-7 py-4 vt-sm font-semibold text-white shadow-[0_16px_30px_-16px_rgba(23,80,95,0.9)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--vt-accent-dark,#0E3A46)] motion-reduce:hover:translate-y-0"
                 >
                   {t("join")}
                 </button>
@@ -168,7 +168,7 @@ export function ShowcaseWaitlistForm({
                 href={matchUrl}
                 data-showcase-cta=""
                 title={t("generalBody")}
-                className="rounded-full border border-[#D9D4CA] bg-white px-7 py-4 text-center vt-sm font-semibold text-[#17505F] transition-colors duration-300 hover:border-[#17505F] hover:text-[#17505F]"
+                className="rounded-full border border-[#D9D4CA] bg-white px-7 py-4 text-center vt-sm font-semibold text-[color:var(--vt-accent,#17505F)] transition-colors duration-300 hover:border-[color:var(--vt-accent,#17505F)] hover:text-[color:var(--vt-accent,#17505F)]"
               >
                 {t("generalCta")}
               </a>
@@ -283,13 +283,13 @@ export function ShowcaseWaitlistForm({
 
               <div className="space-y-3 lg:col-span-2">
                 <label className="flex items-start gap-3 vt-sm leading-relaxed text-[#3E494B]">
-                  <input type="checkbox" className="mt-1 h-4 w-4 rounded accent-[#17505F]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+                  <input type="checkbox" className="mt-1 h-4 w-4 rounded accent-[color:var(--vt-accent,#17505F)]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                   <span>{t("consent", { name: professionalName })}</span>
                 </label>
                 <label className={`flex items-start gap-3 vt-sm leading-relaxed ${phone.trim() ? "text-[#3E494B]" : "text-[#9AA19F]"}`}>
                   <input
                     type="checkbox"
-                    className="mt-1 h-4 w-4 rounded accent-[#17505F]"
+                    className="mt-1 h-4 w-4 rounded accent-[color:var(--vt-accent,#17505F)]"
                     checked={smsConsent}
                     disabled={phone.trim() === ""}
                     onChange={(e) => setSmsConsent(e.target.checked)}
@@ -309,7 +309,7 @@ export function ShowcaseWaitlistForm({
                 <button
                   type="submit"
                   disabled={state === "sending"}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#17505F] px-8 py-4 vt-md font-semibold text-white shadow-[0_16px_30px_-16px_rgba(23,80,95,0.9)] transition-all duration-300 hover:bg-[#0E3A46] disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[color:var(--vt-accent,#17505F)] px-8 py-4 vt-md font-semibold text-white shadow-[0_16px_30px_-16px_rgba(23,80,95,0.9)] transition-all duration-300 hover:bg-[color:var(--vt-accent-dark,#0E3A46)] disabled:opacity-60"
                 >
                   {state === "sending" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                   {state === "sending" ? t("sending") : t("submit")}

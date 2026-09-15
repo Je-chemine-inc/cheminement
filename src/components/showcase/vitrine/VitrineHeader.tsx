@@ -90,11 +90,11 @@ export function VitrineHeader({
           <span aria-hidden="true" className="h-8 w-px flex-none bg-[#E4E1DA]" />
 
           <a href="#haut" className="flex min-w-0 items-center gap-3 rounded-full py-1 pl-1 pr-2">
-            <span className="relative h-[clamp(40px,2.6vw,52px)] w-[clamp(40px,2.6vw,52px)] flex-none overflow-hidden rounded-full bg-[#E6EFEA] ring-2 ring-white">
+            <span className="relative h-[clamp(40px,2.6vw,52px)] w-[clamp(40px,2.6vw,52px)] flex-none overflow-hidden rounded-full bg-[color:var(--vt-accent-soft,#E6EFEA)] ring-2 ring-white">
               {photoUrl ? (
                 <Image src={photoUrl} alt="" fill sizes="52px" className="object-cover" loading="eager" unoptimized={photoUnoptimized} />
               ) : (
-                <span className="flex h-full items-center justify-center font-[family-name:var(--font-vitrine-serif)] text-[17px] text-[#17505F]">
+                <span className="flex h-full items-center justify-center font-[family-name:var(--font-vitrine-serif)] text-[17px] text-[color:var(--vt-accent,#17505F)]">
                   {initials}
                 </span>
               )}
@@ -103,7 +103,7 @@ export function VitrineHeader({
               <span className="block truncate font-[family-name:var(--font-vitrine-serif)] text-[clamp(17px,calc(0.3vw+11px),23px)] leading-tight text-[#1F2A2E]">
                 {name}
               </span>
-              {title ? <span className="block truncate text-[clamp(12px,calc(0.15vw+9px),14px)] font-semibold text-[#17505F]">{title}</span> : null}
+              {title ? <span className="block truncate text-[clamp(12px,calc(0.15vw+9px),14px)] font-semibold text-[color:var(--vt-accent,#17505F)]">{title}</span> : null}
             </span>
           </a>
 
@@ -115,7 +115,7 @@ export function VitrineHeader({
                 aria-current={active === link.href ? "location" : undefined}
                 className={`whitespace-nowrap rounded-full px-[clamp(12px,1vw,22px)] py-2.5 text-[clamp(14px,calc(0.25vw+10.5px),17px)] font-medium transition-all duration-300 ${
                   active === link.href
-                    ? "bg-white text-[#17505F] shadow-[0_6px_16px_-10px_rgba(31,42,46,0.5)]"
+                    ? "bg-white text-[color:var(--vt-accent,#17505F)] shadow-[0_6px_16px_-10px_rgba(31,42,46,0.5)]"
                     : "text-[#3E494B] hover:bg-white/60 hover:text-[#1F2A2E]"
                 }`}
               >
@@ -127,7 +127,7 @@ export function VitrineHeader({
           <a
             href={bookHref}
             {...(bookIsFunnel ? { "data-showcase-cta": "" } : {})}
-            className="ml-auto hidden flex-none items-center rounded-full bg-[#17505F] px-[clamp(18px,1.4vw,28px)] py-[clamp(12px,0.8vw,16px)] text-[clamp(14px,calc(0.25vw+10.5px),17px)] font-semibold text-white shadow-[0_12px_24px_-14px_rgba(23,80,95,0.9)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#0E3A46] hover:text-white motion-reduce:hover:translate-y-0 sm:inline-flex min-[1360px]:ml-0"
+            className="ml-auto hidden flex-none items-center rounded-full bg-[color:var(--vt-accent,#17505F)] px-[clamp(18px,1.4vw,28px)] py-[clamp(12px,0.8vw,16px)] text-[clamp(14px,calc(0.25vw+10.5px),17px)] font-semibold text-white shadow-[0_12px_24px_-14px_rgba(23,80,95,0.9)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--vt-accent-dark,#0E3A46)] hover:text-white motion-reduce:hover:translate-y-0 sm:inline-flex min-[1360px]:ml-0"
           >
             {bookLabel}
           </a>

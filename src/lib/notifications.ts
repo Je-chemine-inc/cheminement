@@ -8510,6 +8510,11 @@ const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> 
   methods: "méthodes",
   photo: "photo",
   officePhotos: "photos du cabinet",
+  texts: "titres et textes des sections",
+  sectionOrder: "ordre des sections",
+  hiddenSections: "sections affichées",
+  accent: "couleur de la page",
+  ambience: "photos d'ambiance",
 };
 
 /**

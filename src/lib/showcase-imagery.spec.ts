@@ -51,6 +51,26 @@ describe("pageImages", () => {
     expect(WIDE_AMBIENCE_IMAGES).toContain(images.closing.src);
   });
 
+  it("uses the library photos the professional chose, office photos still first", () => {
+    const chosen = { band: WIDE_AMBIENCE_IMAGES[2], about: TALL_AMBIENCE_IMAGES[1], closing: WIDE_AMBIENCE_IMAGES[0] };
+    const images = pageImages("sassi", [], chosen);
+    expect([images.band.src, images.about.src, images.closing.src]).toEqual([chosen.band, chosen.about, chosen.closing]);
+    const withOffice = pageImages("sassi", ["/api/files/a"], chosen);
+    expect(withOffice.band).toEqual({ src: "/api/files/a", office: true });
+    expect(withOffice.about.src).toBe(chosen.about);
+    // A photo that is not a library photo of the slot's shape is ignored.
+    expect(WIDE_AMBIENCE_IMAGES).toContain(pageImages("sassi", [], { band: TALL_AMBIENCE_IMAGES[0] }).band.src);
+  });
+
+  it("never repeats a chosen photo in a slot left automatic", () => {
+    for (const slug of ["sassi", "tremblay", "gagnon", "roy", "cote"]) {
+      const automatic = pageImages(slug);
+      const images = pageImages(slug, [], { band: automatic.closing.src });
+      expect(images.band.src).toBe(automatic.closing.src);
+      expect(images.closing.src).not.toBe(images.band.src);
+    }
+  });
+
   it("uses no more office photos than there are slots", () => {
     const images = pageImages("sassi", ["/1", "/2", "/3", "/4"]);
     expect(Object.values(images).map((image) => image.src)).toEqual(["/1", "/2", "/3"]);

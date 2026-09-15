@@ -7775,6 +7775,64 @@
       "CONFLICT": "The page was changed at the same time. Reload it.",
       "INVALID_ACTION": "Unknown action.",
       "ACCOUNT_NOT_ACTIVE": "Your account must be active to edit your page."
+    },
+    "customize": {
+      "title": "Customize the page",
+      "hint": "Your colour, the order of the sections, their titles and your ambience photos. Changes go live when you save.",
+      "accentTitle": "Page colour",
+      "accents": {
+        "teal": "Teal",
+        "forest": "Forest",
+        "ocean": "Ocean",
+        "plum": "Plum",
+        "terracotta": "Terracotta"
+      },
+      "sectionsTitle": "Sections and order",
+      "sectionsHint": "Move sections and hide the ones you do not want to show. A section with no content stays hidden.",
+      "sections": {
+        "about": "About",
+        "approach": "Approach and how a request works",
+        "values": "Values",
+        "services": "Services and fees",
+        "slots": "Availability",
+        "expertises": "What I help with",
+        "products": "Trainings and products",
+        "cta": "Closing band"
+      },
+      "show": "Show “{section}”",
+      "moveUp": "Move “{section}” up",
+      "moveDown": "Move “{section}” down",
+      "required": "Services and fees and Availability are always shown.",
+      "textsTitle": "Section titles and texts",
+      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A text replaces the page’s own only when it is written in French.",
+      "texts": {
+        "aboutTitle": "“About” title",
+        "approachTitle": "“Approach” title",
+        "methodsTitle": "Methods title",
+        "stepsTitle": "“How a request works” title",
+        "valuesTitle": "“Values” title",
+        "valuesIntro": "Text under “Values”",
+        "servicesTitle": "“Services and fees” title",
+        "servicesIntro": "Text under “Services and fees”",
+        "standardPoint": "Standard consultation description",
+        "quickPoint": "Quick consultation description",
+        "disposTitle": "“Availability” title",
+        "disposIntro": "Text under “Availability”",
+        "expertisesTitle": "“What I help with” title",
+        "expertisesIntro": "Text under “What I help with”",
+        "productsTitle": "“Trainings and products” title",
+        "ctaTitle": "Closing band title",
+        "ctaBody": "Closing band text"
+      },
+      "photosTitle": "Ambience photos",
+      "photosHint": "Choose your photos from Je chemine’s library. Your office photos always come first.",
+      "photoSlots": {
+        "band": "Large photo under the introduction",
+        "about": "Photo beside “About”",
+        "closing": "Closing band photo"
+      },
+      "photoAuto": "Automatic",
+      "photoOption": "Photo {number}"
     }
   },
   "ShowcaseAdmin": {
