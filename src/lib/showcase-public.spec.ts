@@ -10,6 +10,7 @@ import {
 } from "@/lib/showcase-public";
 
 const PHOTO = "0123456789abcdef01234567";
+const OFFICE = "89abcdef0123456789abcdef";
 
 function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
   return {
@@ -35,6 +36,7 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       orderCode: "OPQ",
       orderLabel: "",
       photoFileId: PHOTO,
+      officePhotoFileIds: [OFFICE, "../../etc/passwd", null],
     },
     user: { firstName: "Amel", lastName: "Sassi" },
     profile: {
@@ -71,6 +73,7 @@ describe("buildShowcasePublicProfile", () => {
       order: { code: "OPQ", label: null },
       licenseNumber: "12345-67",
       photoUrl: `/api/files/${PHOTO}`,
+      officePhotoUrls: [`/api/files/${OFFICE}`],
       headline: "Psychologue pour adultes",
       intro: ["Bonjour.", "Bienvenue."],
       bio: ["Parcours.", "Approche humaine."],

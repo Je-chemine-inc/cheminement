@@ -27,7 +27,10 @@ import { isShowcaseEnabled } from "@/lib/showcase-settings";
  * cookies, so it must not need a session then.
  */
 async function isPublicShowcasePhoto(fileId: mongoose.Types.ObjectId): Promise<boolean> {
-  const page = await ShowcasePage.findOne({ status: "published", "published.photoFileId": fileId })
+  const page = await ShowcasePage.findOne({
+    status: "published",
+    $or: [{ "published.photoFileId": fileId }, { "published.officePhotoFileIds": fileId }],
+  })
     .select("userId")
     .lean();
   if (!page || !(await isShowcaseEnabled())) return false;
@@ -85,7 +88,12 @@ export async function GET(
         String(file.uploadedBy ?? "") !== session.user.id &&
         !(await ShowcasePage.exists({
           userId: session.user.id,
-          $or: [{ "draft.photoFileId": file._id }, { "published.photoFileId": file._id }],
+          $or: [
+            { "draft.photoFileId": file._id },
+            { "published.photoFileId": file._id },
+            { "draft.officePhotoFileIds": file._id },
+            { "published.officePhotoFileIds": file._id },
+          ],
         }))
       ) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });

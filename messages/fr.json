@@ -7510,7 +7510,8 @@
         "factsTitle": "En bref",
         "office": "Bureau à {city}",
         "credentialsTitle": "Parcours",
-        "quoteBy": "— {name}"
+        "quoteBy": "— {name}",
+        "officePhotoAlt": "Le bureau de {name}"
       },
       "approach": {
         "eyebrow": "Approche",
@@ -7742,6 +7743,16 @@
       "replace": "Remplacer la photo",
       "remove": "Retirer la photo"
     },
+    "officePhotos": {
+      "title": "Photos du cabinet",
+      "hint": "Jusqu'à 6 photos du bureau ou de la salle de consultation. Elles s'affichent en grand sur la page, à la place des photos d'ambiance, dans l'ordre choisi. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
+      "add": "Ajouter une photo du cabinet",
+      "remove": "Retirer",
+      "moveUp": "Placer plus tôt",
+      "moveDown": "Placer plus tard",
+      "alt": "Photo du cabinet {number}",
+      "full": "Le maximum de 6 photos est atteint. Retirez-en une pour en ajouter une autre."
+    },
     "presentation": {
       "title": "Présentation",
       "language": "Langue du texte",
@@ -7845,6 +7856,8 @@
       "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
       "TOO_MANY_VALUES": "Indiquez au plus 5 valeurs.",
       "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
+      "OFFICE_PHOTO_LIMIT": "Le maximum de 6 photos du cabinet est atteint.",
+      "OFFICE_PHOTO_NOT_FOUND": "Cette photo n'est plus sur la page. Rechargez-la.",
       "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
       "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",
       "NOT_FOUND": "Page vitrine introuvable.",

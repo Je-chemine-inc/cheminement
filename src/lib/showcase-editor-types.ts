@@ -29,6 +29,8 @@ export interface ShowcaseContentJson {
   orderCode: ProfessionalOrderCode | null;
   orderLabel: string;
   photoUrl: string | null;
+  /** Office photos in display order. */
+  officePhotos: { id: string; url: string }[];
   /** The city this copy asks for; null on pages saved before the choice existed. */
   cityKey: string | null;
 }
@@ -109,6 +111,8 @@ export const SHOWCASE_ERROR_CODES = [
   "TOO_MANY_EXPERTISES",
   "TOO_MANY_VALUES",
   "TOO_MANY_ITEMS",
+  "OFFICE_PHOTO_LIMIT",
+  "OFFICE_PHOTO_NOT_FOUND",
   "INVALID_ORDER",
   "NOTHING_TO_SAVE",
   "NOT_FOUND",

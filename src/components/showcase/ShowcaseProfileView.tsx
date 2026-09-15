@@ -166,7 +166,8 @@ export async function ShowcaseProfileView({
   const bookFunnel = showSlots ? {} : { "data-showcase-cta": "" };
   // "./" is the city page both on the city host (/<slug> → /) and at the internal /showcase/<city>/<slug> a local server serves.
   const cityHref = preview ? absoluteShowcaseUrl(profile.city.key, "/") : "./";
-  const images = pageImages(profile.slug);
+  const images = pageImages(profile.slug, profile.officePhotoUrls);
+  const officeAlt = t("vitrine.about.officePhotoAlt", { name });
 
   // The introduction opens the page beside the portrait; the longer biography is « À propos ».
   const about = profile.bio;
@@ -375,7 +376,7 @@ export async function ShowcaseProfileView({
       {/* Image band */}
       <figure className={WRAP}>
         <div className={`relative aspect-[4/3] max-h-[960px] w-full overflow-hidden rounded-[40px] bg-[#F6F3EE] sm:aspect-[16/9] lg:aspect-[21/9] ${SOFT_SHADOW}`}>
-          <Image src={images.band.src} alt={images.band.office ? t("profile.photoAlt", { name }) : ""} fill sizes="100vw" className="object-cover" priority unoptimized={preview && images.band.office} />
+          <Image src={images.band.src} alt={images.band.office ? officeAlt : ""} fill sizes="100vw" className="object-cover" priority unoptimized={preview && images.band.office} />
           {profile.values.length > 0 ? (
             <figcaption className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 p-[clamp(16px,2.4vw,36px)]">
               <span className="rounded-full bg-[#1F2A2E]/70 px-4 py-2 vt-xs font-semibold text-white backdrop-blur-md">{t("vitrine.values.eyebrow")}</span>
@@ -441,7 +442,7 @@ export async function ShowcaseProfileView({
             </div>
             <div className="relative min-w-0 lg:sticky lg:top-28" data-reveal="1">
               <div className={`relative aspect-[4/5] w-full overflow-hidden rounded-[40px] bg-[#F6F3EE] ${SOFT_SHADOW}`}>
-                <Image src={images.about.src} alt="" fill sizes="(min-width: 1024px) 36vw, 100vw" className="object-cover" unoptimized={preview && images.about.office} />
+                <Image src={images.about.src} alt={images.about.office ? officeAlt : ""} fill sizes="(min-width: 1024px) 36vw, 100vw" className="object-cover" unoptimized={preview && images.about.office} />
               </div>
             </div>
           </div>

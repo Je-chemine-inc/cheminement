@@ -8509,6 +8509,7 @@ const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> 
   focusAreas: "ce que j'accompagne",
   methods: "méthodes",
   photo: "photo",
+  officePhotos: "photos du cabinet",
 };
 
 /**

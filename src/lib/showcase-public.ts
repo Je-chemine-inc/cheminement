@@ -55,6 +55,7 @@ export interface ShowcaseContentSource {
   orderCode?: string | null;
   orderLabel?: string | null;
   photoFileId?: unknown;
+  officePhotoFileIds?: readonly unknown[] | null;
 }
 
 export interface ShowcaseProfileSource {
@@ -112,6 +113,8 @@ export interface ShowcasePublicProfile {
   order: { code: ProfessionalOrderCode; label: string | null } | null;
   licenseNumber: string | null;
   photoUrl: string | null;
+  /** Office photos in display order; unusable ids are dropped. */
+  officePhotoUrls: string[];
   headline: string;
   intro: string[];
   bio: string[];
@@ -156,6 +159,7 @@ export const SHOWCASE_PUBLIC_KEYS = [
   "methods",
   "modalities",
   "officeCity",
+  "officePhotoUrls",
   "order",
   "photoUrl",
   "quote",
@@ -312,6 +316,9 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
     order: orderOf(content.orderCode, content.orderLabel),
     licenseNumber: profile?.license?.trim().slice(0, 40) || null,
     photoUrl: photoUrlOf(content.photoFileId),
+    officePhotoUrls: (content.officePhotoFileIds ?? [])
+      .map(photoUrlOf)
+      .filter((url): url is string => url !== null),
     headline: pick(content.headline, locale),
     intro: paragraphsOf(pick(content.intro, locale)),
     bio: paragraphsOf(pick(content.bio, locale)),

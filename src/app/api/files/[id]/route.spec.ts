@@ -145,7 +145,11 @@ describe("GET /api/files/[id]", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Disposition")).toMatch(/^inline;/);
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=3600");
-    expect(h.pageFilters[0]).toEqual({ status: "published", "published.photoFileId": ID });
+    // A portrait or an office photo of that page.
+    expect(h.pageFilters[0]).toEqual({
+      status: "published",
+      $or: [{ "published.photoFileId": ID }, { "published.officePhotoFileIds": ID }],
+    });
     expect(h.userFilters[0]).toEqual({ _id: "pro1", role: "professional", status: "active" });
   });
 
@@ -189,7 +193,12 @@ describe("GET /api/files/[id]", () => {
     expect(res.headers.get("Cache-Control")).toBe("private, max-age=300");
     expect(h.ownerFilters.at(-1)).toEqual({
       userId: "pro1",
-      $or: [{ "draft.photoFileId": ID }, { "published.photoFileId": ID }],
+      $or: [
+        { "draft.photoFileId": ID },
+        { "published.photoFileId": ID },
+        { "draft.officePhotoFileIds": ID },
+        { "published.officePhotoFileIds": ID },
+      ],
     });
   });
 });

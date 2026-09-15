@@ -59,6 +59,8 @@ export interface IShowcaseContent {
   credentials: ILocalizedText[];
   focusAreas: IShowcaseFocusArea[];
   methods: IShowcaseMethod[];
+  /** StoredFiles of kind "showcase-photo": the office, in display order (at most SHOWCASE_LIMITS.officePhotos). */
+  officePhotoFileIds: mongoose.Types.ObjectId[];
   /** ProCatalogItem ids (category "expertise", offered on showcase pages). */
   expertiseIds: mongoose.Types.ObjectId[];
   orderCode?: ProfessionalOrderCode;
@@ -169,6 +171,7 @@ const ShowcaseContentSchema = new Schema<IShowcaseContent>(
     credentials: { type: [LocalizedTextSchema], default: [] },
     focusAreas: { type: [FocusAreaSchema], default: [] },
     methods: { type: [MethodSchema], default: [] },
+    officePhotoFileIds: { type: [{ type: Schema.Types.ObjectId, ref: "StoredFile" }], default: [] },
     expertiseIds: { type: [{ type: Schema.Types.ObjectId, ref: "ProCatalogItem" }], default: [] },
     orderCode: { type: String, enum: PROFESSIONAL_ORDER_CODES },
     orderLabel: { type: String, trim: true, default: "" },
@@ -245,6 +248,8 @@ ShowcasePageSchema.index({ previousSlugs: 1 });
 ShowcasePageSchema.index({ "review.state": 1, "review.submittedAt": 1 });
 ShowcasePageSchema.index({ "published.expertiseIds": 1, status: 1 });
 ShowcasePageSchema.index({ "published.photoFileId": 1 }, { sparse: true });
+// The file route asks whether a published page shows an office photo.
+ShowcasePageSchema.index({ "published.officePhotoFileIds": 1 }, { sparse: true });
 
 const ShowcasePage: Model<IShowcasePage> =
   mongoose.models.ShowcasePage ||

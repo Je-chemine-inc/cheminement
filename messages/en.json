@@ -7511,7 +7511,8 @@
         "factsTitle": "At a glance",
         "office": "Office in {city}",
         "credentialsTitle": "Background",
-        "quoteBy": "— {name}"
+        "quoteBy": "— {name}",
+        "officePhotoAlt": "The office of {name}"
       },
       "approach": {
         "eyebrow": "Approach",
@@ -7743,6 +7744,16 @@
       "replace": "Replace the photo",
       "remove": "Remove the photo"
     },
+    "officePhotos": {
+      "title": "Office photos",
+      "hint": "Up to 6 photos of the office or consulting room. They are shown large on the page, instead of the ambience photos, in the order chosen. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
+      "add": "Add an office photo",
+      "remove": "Remove",
+      "moveUp": "Move earlier",
+      "moveDown": "Move later",
+      "alt": "Office photo {number}",
+      "full": "The maximum of 6 photos is reached. Remove one to add another."
+    },
     "presentation": {
       "title": "Presentation",
       "language": "Text language",
@@ -7846,6 +7857,8 @@
       "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
       "TOO_MANY_VALUES": "Enter at most 5 values.",
       "TOO_MANY_ITEMS": "A list has more items than allowed.",
+      "OFFICE_PHOTO_LIMIT": "The maximum of 6 office photos is reached.",
+      "OFFICE_PHOTO_NOT_FOUND": "This photo is no longer on the page. Reload it.",
       "INVALID_ORDER": "Choose a professional order from the list.",
       "NOTHING_TO_SAVE": "There are no changes to save.",
       "NOT_FOUND": "Showcase page not found.",

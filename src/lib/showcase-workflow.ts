@@ -459,6 +459,7 @@ export const SHOWCASE_EDITABLE_FIELDS = [
   "focusAreas",
   "methods",
   "photo",
+  "officePhotos",
 ] as const;
 export type ShowcaseEditableField = (typeof SHOWCASE_EDITABLE_FIELDS)[number];
 

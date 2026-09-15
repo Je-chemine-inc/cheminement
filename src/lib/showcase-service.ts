@@ -225,6 +225,7 @@ function contentView(content: ContentLean | undefined) {
     orderCode: content?.orderCode ?? null,
     orderLabel: content?.orderLabel ?? "",
     photoUrl: photoUrl(content?.photoFileId),
+    officePhotos: (content?.officePhotoFileIds ?? []).map((id) => ({ id: String(id), url: photoUrl(id) as string })),
     cityKey: content?.cityKey ?? null,
   };
 }
@@ -707,6 +708,112 @@ async function setLivePhoto(userId: string, fileId: string | null): Promise<Serv
   return success({ photoUrl: photoUrl(fileId) }, await changeAlert(page, ["photo"], now));
 }
 
+export type OfficePhotoView = { id: string; url: string };
+
+/**
+ * Writes the page's office photos in their new order. An admin changes the
+ * draft (public when they publish); the professional changes the published
+ * page too, live, and the team is told. Pinned to the revision it was decided
+ * from. A photo leaves storage only when neither copy shows it any more.
+ */
+async function writeOfficePhotos(
+  page: PageLean,
+  actor: ShowcaseActor,
+  ids: string[],
+): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
+  const revision = page.draftRevision ?? 0;
+  const live = actor === "professional";
+  const now = new Date();
+  const set: Record<string, unknown> = {
+    "draft.officePhotoFileIds": ids,
+    draftRevision: revision + 1,
+    draftUpdatedAt: now,
+    draftUpdatedBy: actor,
+    ...(page.status === "invited" ? { status: "draft" } : {}),
+  };
+  if (live) {
+    set["published.officePhotoFileIds"] = ids;
+    if (page.publishedRevision === revision) set.publishedRevision = revision + 1;
+  }
+  const updated = await ShowcasePage.findOneAndUpdate(
+    { _id: page._id, draftRevision: revision },
+    { $set: set, ...(live ? { $push: historyEntry("professional", page.userId, "edit", "officePhotos") } : {}) },
+    { new: true },
+  )
+    .select("_id")
+    .lean();
+  if (!updated) return fail(409, "CONFLICT");
+
+  const shownBefore = [...(page.draft?.officePhotoFileIds ?? []), ...(page.published?.officePhotoFileIds ?? [])];
+  const shownAfter = live ? ids : [...ids, ...(page.published?.officePhotoFileIds ?? [])];
+  await deleteUnreferencedShowcasePhotos(shownBefore, [...shownAfter, page.draft?.photoFileId, page.published?.photoFileId]);
+  const officePhotos = ids.map((id) => ({ id, url: photoUrl(id) as string }));
+  return success({ officePhotos }, live ? await changeAlert(page, ["officePhotos"], now) : []);
+}
+
+/** The page an office photo change applies to, once the actor may change it. */
+async function officePhotoPage(userId: string, actor: ShowcaseActor): Promise<{ ok: true; page: PageLean } | ServiceFailure> {
+  const page = await loadPage(userId);
+  if (!page) return fail(404, "NOT_FOUND");
+  if (actor === "professional") {
+    const decision = decideShowcaseAction(workflowState(page), "edit", "professional");
+    if (!decision.ok) return fail(409, decision.code);
+  }
+  return { ok: true, page };
+}
+
+/** Adds an uploaded office photo at the end. The file is deleted when it cannot be added. */
+export async function addShowcaseOfficePhoto(input: {
+  userId: string;
+  fileId: string;
+  actor: ShowcaseActor;
+}): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
+  const discard = async (failure: ServiceFailure) => {
+    await StoredFile.deleteOne({ _id: input.fileId, kind: "showcase-photo" });
+    return failure;
+  };
+  const found = await officePhotoPage(input.userId, input.actor);
+  if (!found.ok) return discard(found);
+  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
+  if (current.length >= SHOWCASE_LIMITS.officePhotos) return discard(fail(409, "OFFICE_PHOTO_LIMIT"));
+  const result = await writeOfficePhotos(found.page, input.actor, [...current, input.fileId]);
+  return result.ok ? result : discard(result);
+}
+
+export async function removeShowcaseOfficePhoto(input: {
+  userId: string;
+  fileId: string;
+  actor: ShowcaseActor;
+}): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
+  const found = await officePhotoPage(input.userId, input.actor);
+  if (!found.ok) return found;
+  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
+  if (!current.includes(input.fileId)) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
+  return writeOfficePhotos(found.page, input.actor, current.filter((id) => id !== input.fileId));
+}
+
+/** Moves an office photo one place earlier (`up`) or later (`down`). At either end, nothing changes. */
+export async function moveShowcaseOfficePhoto(input: {
+  userId: string;
+  fileId: string;
+  direction: unknown;
+  actor: ShowcaseActor;
+}): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
+  if (input.direction !== "up" && input.direction !== "down") return fail(400, "INVALID_FIELD", { field: "direction" });
+  const found = await officePhotoPage(input.userId, input.actor);
+  if (!found.ok) return found;
+  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
+  const index = current.indexOf(input.fileId);
+  if (index < 0) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
+  const target = input.direction === "up" ? index - 1 : index + 1;
+  if (target < 0 || target >= current.length) {
+    return success({ officePhotos: current.map((id) => ({ id, url: photoUrl(id) as string })) });
+  }
+  const next = [...current];
+  [next[index], next[target]] = [next[target], next[index]];
+  return writeOfficePhotos(found.page, input.actor, next);
+}
+
 export async function updateShowcaseServices(input: {
   userId: string;
   body: unknown;
@@ -803,13 +910,19 @@ export async function publishShowcase(input: {
     },
     { new: true },
   )
-    .select("draft.photoFileId published.photoFileId")
+    .select("draft.photoFileId published.photoFileId draft.officePhotoFileIds published.officePhotoFileIds")
     .lean()) as unknown as PageLean | null;
   if (!updated) return fail(409, "REVISION_CHANGED");
 
+  // The photos the public copy stops showing, portrait or office, unless the draft still has them.
   await deleteUnreferencedShowcasePhotos(
-    [page.published?.photoFileId],
-    [updated.draft?.photoFileId, updated.published?.photoFileId],
+    [page.published?.photoFileId, ...(page.published?.officePhotoFileIds ?? [])],
+    [
+      updated.draft?.photoFileId,
+      updated.published?.photoFileId,
+      ...(updated.draft?.officePhotoFileIds ?? []),
+      ...(updated.published?.officePhotoFileIds ?? []),
+    ],
   );
 
   const publicUrl = absoluteShowcaseUrl(cityKey, `/${page.slug}`);

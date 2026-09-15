@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, Check, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,7 +163,9 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   const [photoBusy, setPhotoBusy] = useState(false);
   const [servicesBusy, setServicesBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [officeBusy, setOfficeBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const officeInput = useRef<HTMLInputElement>(null);
 
   const errorText = (code: unknown) => t(`errors.${showcaseErrorKey(code)}`);
 
@@ -251,6 +253,56 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
       setNotice({ kind: "error", text: t("errors.network") });
     } finally {
       setPhotoBusy(false);
+    }
+  };
+
+  const uploadOfficePhoto = async (file: File) => {
+    setNotice(null);
+    if (!(SHOWCASE_PHOTO.types as readonly string[]).includes(file.type)) {
+      setNotice({ kind: "error", text: t("errors.PHOTO_INVALID") });
+      return;
+    }
+    if (file.size > SHOWCASE_PHOTO.maxBytes) {
+      setNotice({ kind: "error", text: t("errors.PHOTO_TOO_LARGE") });
+      return;
+    }
+    setOfficeBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${apiBase}/office-photos`, { method: "POST", body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotice({ kind: "error", text: errorText(body?.error) });
+        return;
+      }
+      await reload();
+    } catch {
+      setNotice({ kind: "error", text: t("errors.network") });
+    } finally {
+      setOfficeBusy(false);
+    }
+  };
+
+  const changeOfficePhoto = async (fileId: string, change: "remove" | "up" | "down") => {
+    setOfficeBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`${apiBase}/office-photos/${fileId}`, {
+        method: change === "remove" ? "DELETE" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: change === "remove" ? undefined : JSON.stringify({ direction: change }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotice({ kind: "error", text: errorText(body?.error) });
+        return;
+      }
+      await reload();
+    } catch {
+      setNotice({ kind: "error", text: t("errors.network") });
+    } finally {
+      setOfficeBusy(false);
     }
   };
 
@@ -494,6 +546,77 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             ) : null}
           </div>
         </div>
+      </section>
+
+      <section className={cardClass} aria-labelledby="showcase-office-title" data-office-photos="">
+        <h2 id="showcase-office-title" className="font-serif text-xl font-light text-foreground">
+          {t("officePhotos.title")}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("officePhotos.hint")}</p>
+        {view.page.draft.officePhotos.length > 0 ? (
+          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {view.page.draft.officePhotos.map((photo, index, all) => (
+              <li key={photo.id} data-office-photo={photo.id} className="space-y-2">
+                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.url} alt={t("officePhotos.alt", { number: index + 1 })} className="h-full w-full object-cover" />
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("officePhotos.moveUp")}
+                    disabled={officeBusy || index === 0}
+                    onClick={() => void changeOfficePhoto(photo.id, "up")}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("officePhotos.moveDown")}
+                    disabled={officeBusy || index === all.length - 1}
+                    onClick={() => void changeOfficePhoto(photo.id, "down")}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={officeBusy}
+                    onClick={() => void changeOfficePhoto(photo.id, "remove")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {t("officePhotos.remove")}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <input
+          ref={officeInput}
+          type="file"
+          accept={SHOWCASE_PHOTO.types.join(",")}
+          className="hidden"
+          data-office-photo-input=""
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void uploadOfficePhoto(file);
+          }}
+        />
+        {view.page.draft.officePhotos.length < SHOWCASE_LIMITS.officePhotos ? (
+          <Button type="button" variant="outline" className="mt-4" onClick={() => officeInput.current?.click()} disabled={officeBusy}>
+            {officeBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+            {t("officePhotos.add")}
+          </Button>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">{t("officePhotos.full")}</p>
+        )}
       </section>
 
       <section className={`${cardClass} space-y-5`} aria-labelledby="showcase-presentation-title">
