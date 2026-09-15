@@ -9,6 +9,7 @@ const ROOT = join(__dirname, "..", "..");
 /** Client components rendered on the city pages themselves (besides the global providers). */
 const CITY_HOST_CLIENT_COMPONENTS = [
   "src/components/showcase/ShowcaseBeacon.tsx",
+  "src/components/showcase/ShowcaseCityDirectory.tsx",
   "src/components/showcase/ShowcaseWaitlistForm.tsx",
   "src/components/showcase/vitrine/VitrineBooking.tsx",
   "src/components/showcase/vitrine/VitrineHeader.tsx",

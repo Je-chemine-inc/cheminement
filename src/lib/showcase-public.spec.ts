@@ -246,6 +246,8 @@ describe("buildShowcasePublicProfile", () => {
       expertises: ["Épuisement professionnel", "Anxiété"],
       expertiseSlugs: ["burn-out", "anxiete"],
       officeCity: "Mascouche",
+      yearsOfExperience: 12,
+      offersQuick: true,
     });
   });
 });

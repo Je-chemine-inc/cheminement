@@ -379,6 +379,9 @@ export interface ShowcaseCard {
   /** Every expertise's URL segment, for the expertise pages. */
   expertiseSlugs: string[];
   officeCity: string | null;
+  yearsOfExperience: number | null;
+  /** Whether the quick one-time consultation is open (the directory's « rapide » filter). */
+  offersQuick: boolean;
 }
 
 export function toShowcaseCard(profile: ShowcasePublicProfile): ShowcaseCard {
@@ -396,5 +399,7 @@ export function toShowcaseCard(profile: ShowcasePublicProfile): ShowcaseCard {
       .map((expertise) => expertise.slug)
       .filter((slug): slug is string => Boolean(slug)),
     officeCity: profile.officeCity,
+    yearsOfExperience: profile.yearsOfExperience,
+    offersQuick: profile.services.quick.offered,
   };
 }

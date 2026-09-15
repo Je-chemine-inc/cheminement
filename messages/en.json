@@ -7369,14 +7369,17 @@
     "cityBadge": "Psy {city}",
     "nav": {
       "book": "Request an appointment",
-      "bookShort": "Book"
+      "bookShort": "Book",
+      "login": "Sign in"
     },
     "footer": {
       "tagline": "Quebec's mental-health platform",
       "site": "jechemine.ca",
       "privacy": "Privacy",
       "terms": "Terms of use",
-      "emergency": "Je chemine is not an emergency service. If you are in immediate danger, call 911. In distress or having suicidal thoughts: 988, available 24/7.",
+      "linksTitle": "Je chemine",
+      "hub": "Professionals by city",
+      "match": "Request a match",
       "rights": "© {year} Je chemine. All rights reserved."
     },
     "breadcrumb": {
@@ -7393,7 +7396,12 @@
       "professionalsTitle": "Professionals presented in {city}",
       "expertisesTitle": "Areas of expertise in {city}",
       "nearbyTitle": "Nearby, {regionIn}",
-      "regionLink": "All the professionals presented {regionIn}"
+      "regionLink": "All the professionals presented {regionIn}",
+      "themesTitle": "Popular topics in {city}",
+      "themesIntro": "The areas of expertise of the professionals presented in {city}.",
+      "stickyTitle": "{count, plural, one {# professional} other {# professionals}}",
+      "stickyNote": "{city} and nearby",
+      "stickyButton": "Request a match"
     },
     "expertise": {
       "eyebrow": "Area of expertise",
@@ -7407,6 +7415,8 @@
     },
     "faq": {
       "title": "Frequently asked questions",
+      "intro": "What to know before a first meeting in {city}.",
+      "contact": "Write to us",
       "bookQ": "How do I book with a professional in {city}?",
       "bookA": "Choose a professional and click \"Request an appointment\", or send a matching request: Je chemine offers you an available professional and confirms your appointment.",
       "videoQ": "Can I consult by video?",
@@ -7431,7 +7441,14 @@
       "backSite": "Go to jechemine.ca"
     },
     "card": {
-      "viewProfile": "View profile"
+      "viewProfile": "View profile",
+      "experience": "{title} · {years, plural, one {# year of experience} other {# years of experience}}",
+      "experienceNoTitle": "{years, plural, one {# year of experience} other {# years of experience}}",
+      "inPersonAt": "In person in {city}",
+      "online": "Online",
+      "onlineOnly": "Online only",
+      "phone": "By phone",
+      "nextSlots": "Next available"
     },
     "profile": {
       "previewBanner": "Preview: this version is not visible to the public.",
@@ -8051,6 +8068,17 @@
       "professionalsTitle": "Professionals presented",
       "back": "All regions"
     }
+  },
+  "ShowcaseDirectory": {
+    "searchLabel": "Search for a professional",
+    "searchPlaceholder": "Search by name, title or topic…",
+    "filtersLabel": "Filters",
+    "inPerson": "In person",
+    "video": "Online",
+    "quick": "Quick consultation",
+    "count": "{count, plural, =0 {No professionals} one {# professional} other {# professionals}} in {city}",
+    "empty": "No professional matches these filters.",
+    "reset": "Clear filters"
   },
   "ShowcaseBooking": {
     "title": "Availability",

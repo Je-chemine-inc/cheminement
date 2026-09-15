@@ -15,6 +15,7 @@ export const CITY_HOST_CLIENT_NAMESPACES = [
   "CookieConsent",
   "InactivityGuard",
   "ShowcaseBooking",
+  "ShowcaseDirectory",
   "ShowcaseWaitlist",
 ] as const;
 

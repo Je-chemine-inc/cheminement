@@ -7368,14 +7368,17 @@
     "cityBadge": "Psy {city}",
     "nav": {
       "book": "Demander un rendez-vous",
-      "bookShort": "Rendez-vous"
+      "bookShort": "Rendez-vous",
+      "login": "Se connecter"
     },
     "footer": {
       "tagline": "La plateforme québécoise de santé mentale",
       "site": "jechemine.ca",
       "privacy": "Confidentialité",
       "terms": "Conditions d'utilisation",
-      "emergency": "Je chemine n'est pas un service d'urgence. En cas de danger immédiat, composez le 911. En détresse ou avec des pensées suicidaires : 988, 24 h/24, 7 j/7.",
+      "linksTitle": "Je chemine",
+      "hub": "Professionnels par ville",
+      "match": "Faire une demande de jumelage",
       "rights": "© {year} Je chemine. Tous droits réservés."
     },
     "breadcrumb": {
@@ -7392,7 +7395,12 @@
       "professionalsTitle": "Professionnels présentés à {city}",
       "expertisesTitle": "Champs d'expertise à {city}",
       "nearbyTitle": "À proximité, {regionIn}",
-      "regionLink": "Tous les professionnels présentés {regionIn}"
+      "regionLink": "Tous les professionnels présentés {regionIn}",
+      "themesTitle": "Thématiques populaires à {city}",
+      "themesIntro": "Les champs d'expertise des professionnels présentés à {city}.",
+      "stickyTitle": "{count, plural, one {# professionnel} other {# professionnels}}",
+      "stickyNote": "{city} et environs",
+      "stickyButton": "Demande de jumelage"
     },
     "expertise": {
       "eyebrow": "Champ d'expertise",
@@ -7406,6 +7414,8 @@
     },
     "faq": {
       "title": "Questions fréquentes",
+      "intro": "Tout ce qu'il faut savoir avant une première rencontre à {city}.",
+      "contact": "Nous écrire",
       "bookQ": "Comment prendre rendez-vous avec un professionnel à {city} ?",
       "bookA": "Choisissez un professionnel et cliquez sur « Demander un rendez-vous », ou faites une demande de jumelage : Je chemine vous propose un professionnel disponible et vous confirme le rendez-vous.",
       "videoQ": "Peut-on consulter en téléconsultation ?",
@@ -7430,7 +7440,14 @@
       "backSite": "Aller sur jechemine.ca"
     },
     "card": {
-      "viewProfile": "Voir la présentation"
+      "viewProfile": "Voir la présentation",
+      "experience": "{title} · {years, plural, one {# an d'expérience} other {# ans d'expérience}}",
+      "experienceNoTitle": "{years, plural, one {# an d'expérience} other {# ans d'expérience}}",
+      "inPersonAt": "En personne à {city}",
+      "online": "En ligne",
+      "onlineOnly": "En ligne seulement",
+      "phone": "Par téléphone",
+      "nextSlots": "Prochains créneaux"
     },
     "profile": {
       "previewBanner": "Aperçu : cette version n'est pas visible par le public.",
@@ -8050,6 +8067,17 @@
       "professionalsTitle": "Professionnels présentés",
       "back": "Toutes les régions"
     }
+  },
+  "ShowcaseDirectory": {
+    "searchLabel": "Rechercher un professionnel",
+    "searchPlaceholder": "Rechercher par nom, titre ou thématique…",
+    "filtersLabel": "Filtres",
+    "inPerson": "En personne",
+    "video": "En ligne",
+    "quick": "Consultation rapide",
+    "count": "{count, plural, =0 {Aucun professionnel} one {# professionnel} other {# professionnels}} à {city}",
+    "empty": "Aucun professionnel ne correspond à ces filtres.",
+    "reset": "Effacer les filtres"
   },
   "ShowcaseBooking": {
     "title": "Disponibilités",
