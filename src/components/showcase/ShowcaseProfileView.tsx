@@ -470,13 +470,12 @@ export async function ShowcaseProfileView({
       {/* Approche */}
       <section id={VITRINE_ANCHORS.approach} className={`${SECTION} ${hasAbout ? "" : "mt-[clamp(64px,8vw,120px)]"} bg-[#F6F3EE]`}>
         <div className={WRAP}>
-          <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-            <div className="min-w-0">
-              <p className={`${LABEL} bg-white`}>{t("vitrine.approach.eyebrow")}</p>
-              <h2 className={`${H2} mt-5`}>{hasApproachText ? t("vitrine.approach.title") : t("vitrine.approach.stepsTitle")}</h2>
-            </div>
+          {/* The approach text reads right under the title */}
+          <div className="max-w-[72ch]" data-approach-head="">
+            <p className={`${LABEL} bg-white`}>{t("vitrine.approach.eyebrow")}</p>
+            <h2 className={`${H2} mt-5`}>{hasApproachText ? t("vitrine.approach.title") : t("vitrine.approach.stepsTitle")}</h2>
             {profile.approach.length > 0 ? (
-              <div className="min-w-0 max-w-[68ch] space-y-5 lg:pt-12">
+              <div className="mt-5 max-w-[68ch] space-y-5">
                 {profile.approach.map((paragraph, index) => (
                   <p key={index} className={`${BODY} whitespace-pre-line`}>
                     {paragraph}
@@ -583,12 +582,11 @@ export async function ShowcaseProfileView({
       {/* Its own soft green ground, so it never reads as one block with « Valeurs » above */}
       <section id={VITRINE_ANCHORS.services} className={`${SECTION} bg-[#EEF4F1]`}>
         <div className={WRAP}>
-          <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-            <div className="min-w-0">
-              <p className={`${LABEL} bg-white`}>{t("vitrine.services.eyebrow")}</p>
-              <h2 className={`${H2} mt-5`}>{t("vitrine.services.title")}</h2>
-            </div>
-            <p className={`${BODY} max-w-[60ch] lg:pt-12`}>{t("vitrine.services.intro")}</p>
+          {/* The intro reads as the title's subtitle, right under it */}
+          <div className="max-w-[72ch]" data-services-head="">
+            <p className={`${LABEL} bg-white`}>{t("vitrine.services.eyebrow")}</p>
+            <h2 className={`${H2} mt-5`}>{t("vitrine.services.title")}</h2>
+            <p className={`${BODY} mt-5 max-w-[58ch]`}>{t("vitrine.services.intro")}</p>
           </div>
 
           <ul
