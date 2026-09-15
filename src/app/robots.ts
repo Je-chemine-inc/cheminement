@@ -27,10 +27,6 @@ export default function robots(): MetadataRoute.Robots {
           "/reset-password",
           "/login",
           "/signup",
-          // The internal path of the city pages. They are served on their own
-          // hosts (psy<city>.jechemine.ca), each with its own robots.txt; www
-          // only ever redirects there.
-          "/showcase/",
         ],
       },
     ],

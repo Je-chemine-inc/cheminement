@@ -99,7 +99,7 @@ vi.mock("@/models/User", () => ({ default: { exists: h.userExists, findById: h.u
 vi.mock("@/models/ShowcasePage", () => ({ default: { findOne: h.showcaseFindOne } }));
 vi.mock("@/lib/showcase-hosts", () => ({
   canonicalSiteUrl: (path: string) => `https://www.jechemine.ca${path}`,
-  absoluteShowcaseUrl: (city: string, path: string) => `https://psy${city}.jechemine.ca${path}`,
+  showcasePageUrl: (slug: string) => `https://www.jechemine.ca/${slug}`,
 }));
 vi.mock("@/lib/product-ledger", () => ({ syncProductLedger: h.syncProductLedger }));
 vi.mock("@/lib/notifications", () => ({

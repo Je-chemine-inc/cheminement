@@ -22,7 +22,7 @@ import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
 import type { ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
 import { showcaseErrorKey } from "@/lib/showcase-editor-types";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { isValidShowcaseSlug } from "@/lib/showcase-workflow";
 
 interface PageSummary {
@@ -423,7 +423,7 @@ export default function AdminShowcasesPage() {
               <p className="text-xs text-muted-foreground">{t("activate.slugHint")}</p>
               {activateCity && isValidShowcaseSlug(activateSlug.trim()) ? (
                 <p className="break-all text-xs text-muted-foreground">
-                  {t("activate.preview", { url: absoluteShowcaseUrl(activateCity, `/${activateSlug.trim()}`) })}
+                  {t("activate.preview", { url: showcasePageUrl(activateSlug.trim()) })}
                 </p>
               ) : null}
             </div>

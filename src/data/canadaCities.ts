@@ -1,12 +1,13 @@
 /**
  * Quebec municipalities (with their administrative region, for proximity-based
  * jumelage) + major Canadian cities. Drives the city autocomplete, the
- * matcher's location proximity bonus and the showcase city hosts
- * (psy<city>.jechemine.ca, src/lib/showcase-cities.ts).
+ * matcher's location proximity bonus and the city a showcase page names
+ * (src/lib/showcase-cities.ts).
  *
  * Quebec: every municipality designated « Ville » in the Répertoire des
  * municipalités du Québec (ministère des Affaires municipales et de
- * l'Habitation, Données Québec, CC BY 4.0 — credited on www/psy), names and
+ * l'Habitation, Données Québec, CC BY 4.0 — the credit was shown on www/psy
+ * until that page was removed on 2026-09-15; see the debt-map), names and
  * regions as published on 2026-09-11, plus a few smaller municipalities and the
  * boroughs and former cities people still type (`borough`). NOT exhaustive
  * (Quebec has ~1,100 municipalities): the autocomplete allows a free-typed

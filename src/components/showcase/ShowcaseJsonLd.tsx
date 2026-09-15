@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { ShowcaseLanguageKey, ShowcasePublicProfile } from "@/lib/showcase-public";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import { jsonLdString } from "@/lib/json-ld";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -14,8 +14,8 @@ const LANGUAGE_TAGS: Record<ShowcaseLanguageKey, string> = {
 
 /**
  * Structured data of a professional's page: the Person and the way back to
- * the city page. Built from the public data object only; serialized so that
- * text the professional wrote cannot close the script element.
+ * Je chemine. Built from the public data object only; serialized so that text
+ * the professional wrote cannot close the script element.
  */
 export async function ShowcaseProfileJsonLd({ profile }: { profile: ShowcasePublicProfile }) {
   const t = await getTranslations("Showcase");
@@ -40,7 +40,7 @@ export async function ShowcaseProfileJsonLd({ profile }: { profile: ShowcasePubl
     worksFor: { "@type": "Organization", name: "Je chemine", url: SITE_URL },
   };
   if (title) person.jobTitle = title;
-  if (profile.photoUrl) person.image = absoluteShowcaseUrl(profile.city.key, profile.photoUrl);
+  if (profile.photoUrl) person.image = canonicalSiteUrl(profile.photoUrl);
   if (profile.languages.length > 0) {
     person.knowsLanguage = profile.languages.map((language) => LANGUAGE_TAGS[language]);
   }
@@ -56,12 +56,7 @@ export async function ShowcaseProfileJsonLd({ profile }: { profile: ShowcasePubl
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: t("city.title", { city: profile.city.name }),
-            item: absoluteShowcaseUrl(profile.city.key, "/"),
-          },
+          { "@type": "ListItem", position: 1, name: t("brand"), item: canonicalSiteUrl("/") },
           { "@type": "ListItem", position: 2, name: profile.displayName, item: profile.url },
         ],
       },

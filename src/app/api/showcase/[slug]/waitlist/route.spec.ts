@@ -89,7 +89,7 @@ const created = (): JoinResult => ({
   created: true,
   professionalId: PRO,
   professionalName: "Dre Sassi",
-  pageUrl: "https://psymascouche.jechemine.ca/sassi",
+  pageUrl: "https://www.jechemine.ca/sassi",
   leaveUrl: "https://www.jechemine.ca/liste-attente/quitter?t=abc",
 });
 
@@ -168,7 +168,7 @@ describe("POST /api/showcase/[slug]/waitlist", () => {
         professionalName: "Dre Sassi",
         service: "standard",
         sms: true,
-        pageUrl: "https://psymascouche.jechemine.ca/sassi",
+        pageUrl: "https://www.jechemine.ca/sassi",
         leaveUrl: "https://www.jechemine.ca/liste-attente/quitter?t=abc",
         locale: "en",
       },

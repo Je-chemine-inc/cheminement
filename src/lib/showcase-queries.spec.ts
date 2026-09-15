@@ -83,8 +83,6 @@ import {
   SHOWCASE_PROFILE_SELECT,
   buildShowcasePreview,
   findPublishedShowcase,
-  listPublishedShowcaseCards,
-  loadShowcaseCatalog,
   loadShowcaseDirectory,
 } from "@/lib/showcase-queries";
 
@@ -123,8 +121,8 @@ describe("findPublishedShowcase", () => {
 
   it("sends a former slug to the current page", async () => {
     h.page = null;
-    h.moved = { slug: "dre-sassi", cityKey: "terrebonne" };
-    expect(await findPublishedShowcase("sassi", "fr")).toEqual({ kind: "moved", cityKey: "terrebonne", slug: "dre-sassi" });
+    h.moved = { slug: "amel-sassi" };
+    expect(await findPublishedShowcase("sassi", "fr")).toEqual({ kind: "moved", slug: "amel-sassi" });
     expect(h.pageFilters[1]).toEqual({ previousSlugs: "sassi", status: "published" });
   });
 
@@ -142,52 +140,16 @@ describe("findPublishedShowcase", () => {
   });
 });
 
-describe("listPublishedShowcaseCards", () => {
-  beforeEach(() => {
-    h.pages = [
-      { userId: ZOE, slug: "zoe", cityKey: "mascouche", published: { displayName: "Zoé Tremblay", expertiseIds: [ANXIETY] } },
-      { userId: PRO, slug: "sassi", cityKey: "terrebonne", published: { displayName: "Amel Sassi" } },
-      { userId: "0123456789abcdef0123gone", slug: "gone", cityKey: "mascouche", published: { displayName: "Parti" } },
-    ];
-    h.users = [
-      { _id: ZOE, firstName: "Zoé", lastName: "Tremblay" },
-      { _id: PRO, firstName: "Amel", lastName: "Sassi" },
-    ];
-    h.catalog = [{ _id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" }];
-  });
-
-  it("lists a city's published pages, skipping professionals no longer active, by name", async () => {
-    const cards = await listPublishedShowcaseCards("mascouche", "fr");
-    expect(cards.map((card) => card.slug)).toEqual(["sassi", "zoe"]);
-    expect(h.pageFilters[0]).toEqual({ cityKey: "mascouche", status: "published" });
-    expect(h.userFilters[0]).toMatchObject({ role: "professional", status: "active" });
-  });
-
-  it("lists several cities at once, for a region", async () => {
-    await listPublishedShowcaseCards(["mascouche", "terrebonne"], "fr");
-    expect(h.pageFilters[0]).toEqual({ cityKey: { $in: ["mascouche", "terrebonne"] }, status: "published" });
-    expect(await listPublishedShowcaseCards([], "fr")).toEqual([]);
-  });
-
-  it("keeps only the professionals who carry an expertise, when asked", async () => {
-    const cards = await listPublishedShowcaseCards("mascouche", "fr", { expertiseSlug: "anxiete" });
-    expect(cards.map((card) => card.slug)).toEqual(["zoe"]);
-    expect(cards[0].expertiseSlugs).toEqual(["anxiete"]);
-  });
-});
-
 describe("loadShowcaseDirectory", () => {
-  it("lists published pages of active professionals in registry cities, reduced to what search pages need", async () => {
+  it("lists published pages of active professionals in registry cities, reduced to what the sitemap needs", async () => {
     const updatedAt = new Date("2026-09-10");
     h.pages = [
-      { userId: PRO, cityKey: "mascouche", slug: "sassi", published: { expertiseIds: [{ toString: () => ANXIETY }] }, updatedAt },
-      { userId: "0123456789abcdef0123gone", cityKey: "mascouche", slug: "gone", published: {}, updatedAt },
-      { userId: ZOE, cityKey: "atlantis", slug: "zoe", published: {}, updatedAt },
+      { userId: PRO, cityKey: "mascouche", slug: "amel-sassi", updatedAt },
+      { userId: "0123456789abcdef0123gone", cityKey: "mascouche", slug: "gone", updatedAt },
+      { userId: ZOE, cityKey: "atlantis", slug: "zoe", updatedAt },
     ];
     h.users = [{ _id: PRO }, { _id: ZOE }];
-    expect(await loadShowcaseDirectory()).toEqual([
-      { cityKey: "mascouche", slug: "sassi", expertiseIds: [ANXIETY], lastModified: updatedAt },
-    ]);
+    expect(await loadShowcaseDirectory()).toEqual([{ slug: "amel-sassi", lastModified: updatedAt }]);
     expect(h.pageFilters[0]).toEqual({ status: "published" });
     expect(h.userFilters[0]).toMatchObject({ role: "professional", status: "active" });
   });
@@ -195,24 +157,6 @@ describe("loadShowcaseDirectory", () => {
   it("does not look up users when nothing is published", async () => {
     expect(await loadShowcaseDirectory()).toEqual([]);
     expect(h.userFilters).toEqual([]);
-  });
-});
-
-describe("loadShowcaseCatalog", () => {
-  it("returns the active expertises offered on pages that have an address", async () => {
-    h.catalog = [
-      { _id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
-      { _id: "x", slug: "", labelFr: "Sans adresse", labelEn: "" },
-    ];
-    expect(await loadShowcaseCatalog()).toEqual([
-      { id: ANXIETY, slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
-    ]);
-    expect(h.catalogFilters[0]).toEqual({
-      category: "expertise",
-      showcase: true,
-      active: true,
-      slug: { $type: "string" },
-    });
   });
 });
 

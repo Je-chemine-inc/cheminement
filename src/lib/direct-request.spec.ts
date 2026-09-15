@@ -363,7 +363,7 @@ describe("the emails", () => {
         expect.objectContaining({
           outcome: "declined",
           clientEmail: "julie@x.ca",
-          pageUrl: "https://psymascouche.jechemine.ca/sassi",
+          pageUrl: "https://www.jechemine.ca/sassi",
           rerouteUrl: expect.stringMatching(new RegExp(`/demande-directe/rejumeler\\?t=${token}$`)),
         }),
       ],

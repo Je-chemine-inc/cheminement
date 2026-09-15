@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SHOWCASE_CITY_HEADER, routeRequest } from "@/lib/showcase-hosts";
+import { SHOWCASE_PAGE_HEADER, routeRequest } from "@/lib/showcase-hosts";
 
 /**
- * Canonical host, the showcase city hosts, and the x-pathname header the
- * professional pages read.
+ * Canonical host, the retired showcase city hosts, and the headers the pages
+ * read (x-pathname, and the professional's-page marker).
  *
  * The site answered on four addresses at once — jechemine.ca and
  * www.jechemine.ca, each over http and https — with no redirect between them.
@@ -12,9 +12,9 @@ import { SHOWCASE_CITY_HEADER, routeRequest } from "@/lib/showcase-hosts";
  * ranking, and anything indexed under the bare domain does not count toward
  * the Search Console property, which is registered as https://www.jechemine.ca.
  *
- * Since spec 003 the showcase pages also live on one host per Quebec city
- * (psymascouche.jechemine.ca/sassi). Such a request is rewritten to the
- * internal segment /showcase/<city>/…; the rules live in routeRequest
+ * A professional's page lives on www (www.jechemine.ca/amel-sassi, spec 003).
+ * The per-city hosts that served the pages until 2026-09-15 now send their
+ * visitors to the same path on www. The rules live in routeRequest
  * (lib/showcase-hosts.ts), where they are tested.
  *
  * Every rule keys on the HOST ONLY, and only for hosts we recognise. That is
@@ -39,26 +39,15 @@ export function middleware(request: NextRequest) {
   if (decision.action === "redirect") {
     // 308 (a move to the canonical URL) keeps the method and is permanent,
     // which is what tells a crawler to transfer the ranking rather than treat
-    // it as a temporary detour. 307 is for hosts we do not serve (yet).
+    // it as a temporary detour. 307 is for hosts we do not serve.
     return NextResponse.redirect(decision.location, decision.status);
   }
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
-  // Only this middleware may say a request is for a city host.
-  requestHeaders.delete(SHOWCASE_CITY_HEADER);
-
-  if (decision.action === "rewrite") {
-    // Same origin, new path: an internal rewrite, the query string kept.
-    requestHeaders.set(SHOWCASE_CITY_HEADER, decision.cityKey);
-    const url = request.nextUrl.clone();
-    url.pathname = decision.pathname;
-    return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
-  }
-
-  // Next runs this middleware again for a rewrite's destination, on the
-  // internal host: keep telling the render it is a city page.
-  if (decision.cityKey) requestHeaders.set(SHOWCASE_CITY_HEADER, decision.cityKey);
+  // Only this middleware may say a request is for a professional's page.
+  requestHeaders.delete(SHOWCASE_PAGE_HEADER);
+  if (decision.showcasePage) requestHeaders.set(SHOWCASE_PAGE_HEADER, "1");
 
   return NextResponse.next({
     request: { headers: requestHeaders },
@@ -68,7 +57,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   // Runs on pages, not on build assets or images served straight from public/.
   // The Google Search Console verification file must stay reachable untouched.
-  // robots.txt and sitemap.xml do go through: each city host serves its own.
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|avif|svg|ico|html)$).*)",
   ],

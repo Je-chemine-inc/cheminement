@@ -45,7 +45,7 @@ vi.mock("@/lib/showcase-settings", () => ({ isShowcaseEnabled: async () => h.ena
 vi.mock("@/lib/showcase-booking", () => ({ loadBookableShowcase: async () => h.bookable }));
 vi.mock("@/lib/motifs", () => ({ getValidMotifLabels: async () => h.validMotifs }));
 vi.mock("@/lib/showcase-hosts", () => ({
-  absoluteShowcaseUrl: (city: string, path: string) => `https://psy${city}.jechemine.ca${path}`,
+  showcasePageUrl: (slug: string) => `https://www.jechemine.ca/${slug}`,
 }));
 vi.mock("@/lib/showcase-cities", () => ({ findShowcaseCity: () => ({ name: "Mascouche" }) }));
 vi.mock("@/lib/slot-holds", () => ({
@@ -266,7 +266,7 @@ describe("joinWaitlist", () => {
     if (!result.ok || !result.created) throw new Error("expected a new entry");
     const token = result.leaveUrl.split("t=")[1];
     expect(result.leaveUrl).toBe(`https://www.jechemine.ca/liste-attente/quitter?t=${token}`);
-    expect(result.pageUrl).toBe("https://psymascouche.jechemine.ca/sassi");
+    expect(result.pageUrl).toBe("https://www.jechemine.ca/sassi");
     expect(h.creates[0]).toMatchObject({
       professionalId: PRO,
       showcaseSlug: "sassi",
@@ -375,7 +375,7 @@ describe("readWaitlistOffer", () => {
         durationMinutes: 50,
         expiresAt: "2026-09-14T13:10:00.000Z",
         price: 130,
-        pageUrl: "https://psymascouche.jechemine.ca/sassi",
+        pageUrl: "https://www.jechemine.ca/sassi",
       },
     });
     expect(JSON.stringify(result)).not.toContain(sha256(TOKEN));

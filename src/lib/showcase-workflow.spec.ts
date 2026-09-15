@@ -17,11 +17,11 @@ import {
 import { SHOWCASE_CONSENT_VERSION } from "@/lib/showcase-constants";
 
 describe("slugs", () => {
-  it("proposes the last name, then the full name, then numbered full names", () => {
+  it("proposes the full name, then numbered full names (www.jechemine.ca/amel-sassi)", () => {
     const candidates = showcaseSlugCandidates("Amel", "Sassi");
-    expect(candidates.slice(0, 3)).toEqual(["sassi", "amel-sassi", "amel-sassi-2"]);
-    expect(showcaseSlugCandidates("Marie-Ève", "Côté")[0]).toBe("cote");
-    expect(showcaseSlugCandidates("Marie-Ève", "Côté")[1]).toBe("marie-eve-cote");
+    expect(candidates.slice(0, 3)).toEqual(["amel-sassi", "amel-sassi-2", "amel-sassi-3"]);
+    expect(candidates).not.toContain("sassi");
+    expect(showcaseSlugCandidates("Marie-Ève", "Côté")[0]).toBe("marie-eve-cote");
   });
 
   it("never proposes a reserved or unusable slug", () => {
@@ -35,14 +35,14 @@ describe("slugs", () => {
 
   it("takes the first free candidate", () => {
     const candidates = showcaseSlugCandidates("Amel", "Sassi");
-    expect(pickShowcaseSlug(candidates, new Set(["sassi"]))).toBe("amel-sassi");
+    expect(pickShowcaseSlug(candidates, new Set(["amel-sassi"]))).toBe("amel-sassi-2");
     expect(pickShowcaseSlug(["a1"], new Set(["a1"]))).toBeNull();
   });
 
   it("validates slugs", () => {
     expect(isValidShowcaseSlug("sassi")).toBe(true);
     expect(isValidShowcaseSlug("amel-sassi-2")).toBe(true);
-    for (const bad of ["", "a", "Sassi", "-sassi", "sassi-", "sa--ssi", "sa_ssi", "specialite", "api", "robots-txt", "x".repeat(61)]) {
+    for (const bad of ["", "a", "Sassi", "-sassi", "sassi-", "sa--ssi", "sa_ssi", "specialite", "api", "robots-txt", "contact", "book", "x".repeat(61)]) {
       expect(isValidShowcaseSlug(bad), bad).toBe(false);
     }
   });

@@ -5,7 +5,6 @@ import {
   showcaseLanguageKey,
   showcaseModalityKey,
   showcaseServiceOffered,
-  toShowcaseCard,
   type BuildShowcaseInput,
 } from "@/lib/showcase-public";
 
@@ -66,7 +65,7 @@ describe("buildShowcasePublicProfile", () => {
   it("builds the public page from the published content and the live profile", () => {
     expect(buildShowcasePublicProfile(input())).toEqual({
       slug: "sassi",
-      url: "https://psymascouche.jechemine.ca/sassi",
+      url: "https://www.jechemine.ca/sassi",
       city: { key: "mascouche", name: "Mascouche", region: "Lanaudière", regionKey: "lanaudiere" },
       displayName: "Amel Sassi",
       title: { key: "psychologist", label: null },
@@ -232,24 +231,6 @@ describe("buildShowcasePublicProfile", () => {
     expect(buildShowcasePublicProfile(input({ page: { slug: "sassi", cityKey: "atlantis" } }))).toBeNull();
   });
 
-  it("makes a card of the first three expertises", () => {
-    const card = toShowcaseCard(buildShowcasePublicProfile(input())!);
-    expect(card).toEqual({
-      slug: "sassi",
-      url: "https://psymascouche.jechemine.ca/sassi",
-      city: { key: "mascouche", name: "Mascouche" },
-      displayName: "Amel Sassi",
-      title: { key: "psychologist", label: null },
-      photoUrl: `/api/files/${PHOTO}`,
-      headline: "Psychologue pour adultes",
-      modalities: ["inPerson", "video"],
-      expertises: ["Épuisement professionnel", "Anxiété"],
-      expertiseSlugs: ["burn-out", "anxiete"],
-      officeCity: "Mascouche",
-      yearsOfExperience: 12,
-      offersQuick: true,
-    });
-  });
 });
 
 describe("normalization of stored values", () => {

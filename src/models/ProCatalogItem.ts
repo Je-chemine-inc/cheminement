@@ -26,7 +26,7 @@ export interface IProCatalogItem extends Document {
   active: boolean;
   /**
    * Expertises only (spec 003): offered as a tag on showcase pages, with this
-   * URL segment for its city pages (psy<city>.jechemine.ca/specialite/<slug>).
+   * URL segment, used by the retired city expertise pages (spec 003); kept for a later use.
    * Changing a slug moves public URLs.
    */
   showcase?: boolean;

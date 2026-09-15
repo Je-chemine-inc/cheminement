@@ -10,8 +10,6 @@ import { isShowcaseCityKey } from "@/lib/showcase-cities";
 import {
   SHOWCASE_THERAPY_TYPES,
   buildShowcasePublicProfile,
-  toShowcaseCard,
-  type ShowcaseCard,
   type ShowcaseContentSource,
   type ShowcaseExpertiseSource,
   type ShowcaseLocale,
@@ -19,7 +17,6 @@ import {
   type ShowcasePublicProfile,
   type ShowcaseTherapyType,
 } from "@/lib/showcase-public";
-import type { CatalogExpertise, DirectoryEntry } from "@/lib/showcase-seo";
 
 /**
  * Reads behind the public showcase pages (spec 003). Documents are loaded
@@ -124,7 +121,7 @@ async function buildFromPage(
 
 export type ShowcaseLookup =
   | { kind: "found"; profile: ShowcasePublicProfile; updatedAt: Date | null }
-  | { kind: "moved"; cityKey: string; slug: string }
+  | { kind: "moved"; slug: string }
   | { kind: "missing" };
 
 /** A published page by its slug, or where a former slug moved to. */
@@ -139,9 +136,9 @@ export async function findPublishedShowcase(
     .lean()) as unknown as PageDoc | null;
   if (!page) {
     const moved = await ShowcasePage.findOne({ previousSlugs: slug, status: "published" })
-      .select("slug cityKey")
+      .select("slug")
       .lean();
-    return moved ? { kind: "moved", cityKey: moved.cityKey, slug: moved.slug } : { kind: "missing" };
+    return moved ? { kind: "moved", slug: moved.slug } : { kind: "missing" };
   }
   if (!page.published) return { kind: "missing" };
   const profile = await buildFromPage(page, page.published, locale, true);
@@ -150,71 +147,24 @@ export async function findPublishedShowcase(
     : { kind: "missing" };
 }
 
-/**
- * The professionals presented in a city — or in several, for a region — by
- * name; with `expertiseSlug`, only those who carry that expertise.
- */
-export async function listPublishedShowcaseCards(
-  cityKeys: string | readonly string[],
-  locale: ShowcaseLocale,
-  options: { expertiseSlug?: string } = {},
-): Promise<ShowcaseCard[]> {
-  const keys = typeof cityKeys === "string" ? [cityKeys] : [...cityKeys];
-  if (keys.length === 0) return [];
-  await connectToDatabase();
-  const cityFilter = keys.length === 1 ? keys[0] : { $in: keys };
-  const pages = (await ShowcasePage.find({ cityKey: cityFilter, status: "published" })
-    .select(PAGE_SELECT)
-    .lean()) as unknown as PageDoc[];
-  if (pages.length === 0) return [];
-  const userIds = pages.map((page) => page.userId);
-  const [users, profiles, expertises] = await Promise.all([
-    User.find({ _id: { $in: userIds }, role: "professional", status: "active" })
-      .select("firstName lastName")
-      .lean(),
-    Profile.find({ userId: { $in: userIds } }).select(SHOWCASE_PROFILE_SELECT).lean(),
-    loadExpertises(pages.flatMap((page) => page.published?.expertiseIds ?? [])),
-  ]);
-  const userById = new Map(users.map((user) => [String(user._id), user]));
-  const profileByUser = new Map(profiles.map((profile) => [String(profile.userId), profile]));
-
-  const cards: ShowcaseCard[] = [];
-  for (const page of pages) {
-    const user = userById.get(String(page.userId));
-    if (!user || !page.published) continue;
-    const profile = buildShowcasePublicProfile({
-      locale,
-      page: { slug: page.slug, cityKey: page.cityKey, services: page.services },
-      content: page.published,
-      user,
-      profile: (profileByUser.get(String(page.userId)) ?? null) as unknown as ShowcaseProfileSource | null,
-      expertises,
-      prices: {},
-    });
-    if (!profile) continue;
-    const card = toShowcaseCard(profile);
-    if (options.expertiseSlug && !card.expertiseSlugs.includes(options.expertiseSlug)) continue;
-    cards.push(card);
-  }
-  return cards.sort((a, b) => a.displayName.localeCompare(b.displayName, "fr"));
+/** One published page of an active professional, as the www sitemap lists it. */
+export interface ShowcaseDirectoryEntry {
+  slug: string;
+  lastModified: Date | null;
 }
 
 type DirectoryPageDoc = {
   userId: unknown;
   cityKey: string;
   slug: string;
-  published?: { expertiseIds?: unknown[] };
   updatedAt?: Date;
 };
 
-/**
- * Every published page of an active professional, reduced to what the city,
- * expertise and region pages and the sitemaps need.
- */
-export async function loadShowcaseDirectory(): Promise<DirectoryEntry[]> {
+/** Every published page of an active professional in a registry city (a page elsewhere does not render). */
+export async function loadShowcaseDirectory(): Promise<ShowcaseDirectoryEntry[]> {
   await connectToDatabase();
   const pages = (await ShowcasePage.find({ status: "published" })
-    .select("userId cityKey slug published.expertiseIds updatedAt")
+    .select("userId cityKey slug updatedAt")
     .lean()) as unknown as DirectoryPageDoc[];
   if (pages.length === 0) return [];
   const active = await User.find({
@@ -227,33 +177,7 @@ export async function loadShowcaseDirectory(): Promise<DirectoryEntry[]> {
   const activeIds = new Set(active.map((user) => String(user._id)));
   return pages
     .filter((page) => activeIds.has(String(page.userId)) && isShowcaseCityKey(page.cityKey))
-    .map((page) => ({
-      cityKey: page.cityKey,
-      slug: page.slug,
-      expertiseIds: (page.published?.expertiseIds ?? []).map((id) => String(id)),
-      lastModified: page.updatedAt ?? null,
-    }));
-}
-
-/** The expertises offered on pages that have a URL segment. */
-export async function loadShowcaseCatalog(): Promise<CatalogExpertise[]> {
-  await connectToDatabase();
-  const docs = await ProCatalogItem.find({
-    category: "expertise",
-    showcase: true,
-    active: true,
-    slug: { $type: "string" },
-  })
-    .select("slug labelFr labelEn")
-    .lean();
-  return docs
-    .filter((doc) => typeof doc.slug === "string" && doc.slug)
-    .map((doc) => ({
-      id: String(doc._id),
-      slug: doc.slug as string,
-      labelFr: doc.labelFr,
-      labelEn: doc.labelEn || null,
-    }));
+    .map((page) => ({ slug: page.slug, lastModified: page.updatedAt ?? null }));
 }
 
 /**

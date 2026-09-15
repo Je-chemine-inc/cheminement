@@ -24,7 +24,7 @@ import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
 import { SHOWCASE_REGIONS } from "@/lib/showcase-cities";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { SHOWCASE_HISTORY_ACTIONS, SHOWCASE_LIMITS } from "@/lib/showcase-constants";
 import { showcaseErrorKey, type ShowcaseAdminJson } from "@/lib/showcase-editor-types";
 
@@ -432,7 +432,7 @@ export default function AdminShowcaseDetailPage() {
               <Label htmlFor="move-slug">{t("detail.slug")}</Label>
               <Input id="move-slug" value={moveSlug} onChange={(event) => setMoveSlug(event.target.value.toLowerCase())} />
               <p className="break-all text-xs text-muted-foreground">
-                {absoluteShowcaseUrl(moveCity, `/${moveSlug.trim()}`)}
+                {showcasePageUrl(moveSlug.trim())}
               </p>
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}

@@ -236,9 +236,9 @@ export interface IPlatformSettings extends Document {
    */
   organizationPadEnabled?: boolean;
   /**
-   * Spec 003 kill switch: the showcase pages (psy<city>.jechemine.ca), their
-   * booking requests and waitlists. Off by default: every city host sends its
-   * visitors to www and no showcase API answers.
+   * Spec 003 kill switch: the showcase pages (www.jechemine.ca/<slug>), their
+   * booking requests and waitlists. Off by default: every page is a 404 and no
+   * showcase API answers.
    */
   showcaseEnabled?: boolean;
   /**

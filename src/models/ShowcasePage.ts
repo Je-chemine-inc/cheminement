@@ -10,7 +10,7 @@ import {
 } from "@/lib/showcase-constants";
 
 /**
- * A professional's showcase page (spec 003): psy<city>.jechemine.ca/<slug>.
+ * A professional's showcase page (spec 003): www.jechemine.ca/<slug>.
  *
  * One per professional, created when an admin activates it. The editorial
  * content exists twice: `draft`, which an admin prepares, and `published`,

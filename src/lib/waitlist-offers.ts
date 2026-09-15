@@ -11,7 +11,7 @@ import { SHOWCASE_SLOT_LEAD_MINUTES } from "@/lib/showcase-booking-types";
 import { slotStartsAt } from "@/lib/available-slots";
 import { acquireSlotHold, releaseSlotHold } from "@/lib/slot-holds";
 import { hashVerificationSecret } from "@/lib/account-init";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { runDirectRequestTimeouts } from "@/lib/direct-request";
 import { purgeClosedWaitlistEntries } from "@/lib/data-lifecycle";
 import { sendSms } from "@/lib/sms";
@@ -267,7 +267,7 @@ export async function notifyWaitlistRemoved(entry: ContactRow, reason: WaitlistR
       email: entry.email,
       professionalName: entry.professionalName,
       reason,
-      pageUrl: absoluteShowcaseUrl(entry.cityKey, `/${entry.showcaseSlug}`),
+      pageUrl: showcasePageUrl(entry.showcaseSlug),
       locale: entry.locale,
     }),
   ]);

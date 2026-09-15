@@ -7,7 +7,7 @@ import {
   PROFESSIONAL_ORDER_CODES,
   type ProfessionalOrderCode,
 } from "@/lib/showcase-constants";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { paragraphsOf } from "@/lib/showcase-workflow";
 
 /**
@@ -309,7 +309,7 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
 
   return {
     slug: input.page.slug,
-    url: absoluteShowcaseUrl(city.key, `/${input.page.slug}`),
+    url: showcasePageUrl(input.page.slug),
     city: { key: city.key, name: city.name, region: city.region, regionKey: city.regionKey },
     displayName,
     title: titleOf(profile?.specialty),
@@ -361,45 +361,5 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
     },
     insuranceNote: paragraphsOf(pick(content.insuranceNote, locale)),
     freeCancellationHours: FREE_CANCELLATION_HOURS,
-  };
-}
-
-/** The subset a city, expertise or region page lists. */
-export interface ShowcaseCard {
-  slug: string;
-  url: string;
-  city: { key: string; name: string };
-  displayName: string;
-  title: ShowcasePublicProfile["title"];
-  photoUrl: string | null;
-  headline: string;
-  modalities: ShowcaseModalityKey[];
-  /** The first three, for display. */
-  expertises: string[];
-  /** Every expertise's URL segment, for the expertise pages. */
-  expertiseSlugs: string[];
-  officeCity: string | null;
-  yearsOfExperience: number | null;
-  /** Whether the quick one-time consultation is open (the directory's « rapide » filter). */
-  offersQuick: boolean;
-}
-
-export function toShowcaseCard(profile: ShowcasePublicProfile): ShowcaseCard {
-  return {
-    slug: profile.slug,
-    url: profile.url,
-    city: { key: profile.city.key, name: profile.city.name },
-    displayName: profile.displayName,
-    title: profile.title,
-    photoUrl: profile.photoUrl,
-    headline: profile.headline,
-    modalities: profile.modalities,
-    expertises: profile.expertises.slice(0, 3).map((expertise) => expertise.label),
-    expertiseSlugs: profile.expertises
-      .map((expertise) => expertise.slug)
-      .filter((slug): slug is string => Boolean(slug)),
-    officeCity: profile.officeCity,
-    yearsOfExperience: profile.yearsOfExperience,
-    offersQuick: profile.services.quick.offered,
   };
 }

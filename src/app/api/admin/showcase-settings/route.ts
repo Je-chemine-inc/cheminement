@@ -3,9 +3,9 @@ import PlatformSettings from "@/models/PlatformSettings";
 import { requireProfessionalsAdmin } from "@/lib/professional-admin";
 
 /**
- * The showcase switch (spec 003). Off: every psy<city>.jechemine.ca host sends
- * its visitors to www, no showcase API answers, and the booking funnel ignores
- * "book this professional" links. On: published pages go live.
+ * The showcase switch (spec 003). Off: every professional's page
+ * (www.jechemine.ca/<slug>) is a 404, no showcase API answers, and the booking
+ * funnel ignores "book this professional" links. On: published pages go live.
  */
 export async function GET() {
   const gate = await requireProfessionalsAdmin();

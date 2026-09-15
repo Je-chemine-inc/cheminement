@@ -6,7 +6,7 @@ import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd";
 import { clientMessagesFor } from "@/lib/client-messages";
-import { SHOWCASE_CITY_HEADER } from "@/lib/showcase-hosts";
+import { SHOWCASE_PAGE_HEADER } from "@/lib/showcase-hosts";
 import { SITE_URL } from "@/lib/site-url";
 
 const SITE_TITLE = "Je chemine - Soins en santé mentale";
@@ -57,9 +57,9 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
-  // A showcase city host gets only the messages its client components read
+  // A professional's page gets only the messages its client components read
   // (the middleware sets this header; see src/lib/client-messages.ts).
-  const onCityHost = Boolean((await headers()).get(SHOWCASE_CITY_HEADER));
+  const onShowcasePage = Boolean((await headers()).get(SHOWCASE_PAGE_HEADER));
 
   return (
     <html lang={locale}>
@@ -68,7 +68,7 @@ export default async function RootLayout({
             admin-configured contact settings, so it cannot drift from what the
             site actually says. */}
         <OrganizationJsonLd />
-        <NextIntlClientProvider messages={clientMessagesFor(messages, onCityHost)}>
+        <NextIntlClientProvider messages={clientMessagesFor(messages, onShowcasePage)}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>

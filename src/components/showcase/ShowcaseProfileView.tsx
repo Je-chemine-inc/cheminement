@@ -2,7 +2,6 @@ import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
   ArrowRight,
-  ArrowUpRight,
   Award,
   CalendarDays,
   Check,
@@ -27,7 +26,7 @@ import {
 } from "lucide-react";
 import type { DirectRequestService } from "@/lib/direct-request-rules";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
-import { SHOWCASE_HUB_PATH, absoluteShowcaseUrl, canonicalSiteUrl } from "@/lib/showcase-hosts";
+import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import type { WaitlistModality } from "@/lib/waitlist-rules";
 import { VITRINE_ANCHORS, headlinePrice, initialsOf, vitrineSections, type VitrineSection } from "@/lib/showcase-vitrine";
 import { pageImages, pickAmbience } from "@/lib/showcase-imagery";
@@ -164,8 +163,6 @@ export async function ShowcaseProfileView({
   const bookLabel = bookable.length > 0 ? t("profile.bookCta") : t("profile.matchCta");
   const bookHref = showSlots ? `#${VITRINE_ANCHORS.slots}` : bookingUrl;
   const bookFunnel = showSlots ? {} : { "data-showcase-cta": "" };
-  // "./" is the city page both on the city host (/<slug> → /) and at the internal /showcase/<city>/<slug> a local server serves.
-  const cityHref = preview ? absoluteShowcaseUrl(profile.city.key, "/") : "./";
   const images = pageImages(profile.slug, profile.officePhotoUrls);
   const officeAlt = t("vitrine.about.officePhotoAlt", { name });
 
@@ -661,43 +658,21 @@ export async function ShowcaseProfileView({
             <ul className="mt-[clamp(32px,4.5vw,64px)] grid grid-cols-2 gap-3 sm:gap-[clamp(14px,1.2vw,22px)] sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
               {profile.expertises.map((expertise, index) => {
                 const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
-                const linked = Boolean(expertise.slug) && !preview;
-                const card = `group flex h-full min-h-[168px] flex-col rounded-[26px] p-4 sm:min-h-[clamp(220px,15vw,290px)] sm:rounded-[34px] sm:p-[clamp(20px,1.8vw,30px)] ${theme.tint}`;
-                const body = (
-                  <>
-                    <span className="flex items-start justify-between gap-4">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-[#17505F] shadow-[0_12px_28px_-18px_rgba(31,42,46,0.45)] sm:h-[clamp(52px,3.4vw,66px)] sm:w-[clamp(52px,3.4vw,66px)]">
-                        <theme.icon className="h-[45%] w-[45%]" aria-hidden="true" />
-                      </span>
-                      <span className={`${SERIF} vt-md text-[#1F2A2E]/35`}>{String(index + 1).padStart(2, "0")}</span>
-                    </span>
-                    <span className={`mt-auto block pt-6 ${SERIF} text-[clamp(19px,1.9vw,34px)] leading-[1.1] text-[#1F2A2E] text-balance sm:pt-10`}>
-                      {expertise.label}
-                    </span>
-                    {linked ? (
-                      <span className="mt-4 flex items-center justify-between gap-3 vt-sm font-semibold text-[#17505F] sm:mt-5">
-                        <span className="hidden sm:inline">{t("vitrine.expertiseExplore")}</span>
-                        <span className="ml-auto flex h-9 w-9 flex-none sm:ml-0 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white text-[#17505F] transition-all duration-300 group-hover:rotate-45 group-hover:bg-[#17505F] group-hover:text-white motion-reduce:group-hover:rotate-0">
-                          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                      </span>
-                    ) : null}
-                  </>
-                );
                 return (
                   <li key={expertise.label} data-reveal={index % 4}>
-                    {linked ? (
-                      <a
-                        // Relative on purpose: from the city host's /<slug> it resolves to /specialite/…, and from the
-                        // internal /showcase/<city>/<slug> (a local server's address) to /showcase/<city>/specialite/….
-                        href={`specialite/${expertise.slug}`}
-                        className={`${card} transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_34px_70px_-48px_rgba(31,42,46,0.55)] motion-reduce:hover:translate-y-0`}
-                      >
-                        {body}
-                      </a>
-                    ) : (
-                      <div className={card}>{body}</div>
-                    )}
+                    <div
+                      className={`flex h-full min-h-[168px] flex-col rounded-[26px] p-4 sm:min-h-[clamp(220px,15vw,290px)] sm:rounded-[34px] sm:p-[clamp(20px,1.8vw,30px)] ${theme.tint}`}
+                    >
+                      <span className="flex items-start justify-between gap-4">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-[#17505F] shadow-[0_12px_28px_-18px_rgba(31,42,46,0.45)] sm:h-[clamp(52px,3.4vw,66px)] sm:w-[clamp(52px,3.4vw,66px)]">
+                          <theme.icon className="h-[45%] w-[45%]" aria-hidden="true" />
+                        </span>
+                        <span className={`${SERIF} vt-md text-[#1F2A2E]/35`}>{String(index + 1).padStart(2, "0")}</span>
+                      </span>
+                      <span className={`mt-auto block pt-6 ${SERIF} text-[clamp(19px,1.9vw,34px)] leading-[1.1] text-[#1F2A2E] text-balance sm:pt-10`}>
+                        {expertise.label}
+                      </span>
+                    </div>
                   </li>
                 );
               })}
@@ -865,13 +840,8 @@ export async function ShowcaseProfileView({
             <p className="vt-sm font-semibold text-[#1F2A2E]">{t("vitrine.footer.platformTitle")}</p>
             <ul className="mt-4 flex flex-col gap-2.5 vt-sm">
               <li>
-                <a href={cityHref} className="text-[#3E494B] hover:text-[#17505F]">
-                  {t("vitrine.footer.cityPros", { city: profile.city.name })}
-                </a>
-              </li>
-              <li>
-                <a href={canonicalSiteUrl(SHOWCASE_HUB_PATH)} className="text-[#3E494B] hover:text-[#17505F]">
-                  {t("vitrine.footer.allPros")}
+                <a href={canonicalSiteUrl("/")} className="text-[#3E494B] hover:text-[#17505F]">
+                  {t("vitrine.footer.site")}
                 </a>
               </li>
               <li>

@@ -57,9 +57,10 @@ const PINNED_HOST_LABELS = `
   .split(/\s+/);
 
 /**
- * The city registry decides which psy<city>.jechemine.ca hosts exist. Its keys
- * are public URLs, so they are pinned here: renaming a city in the data file
- * must fail this spec rather than silently move a live page.
+ * The city registry: the city a page names, and the psy<city>.jechemine.ca
+ * host kept for a later use. Its keys are stored on every page, so they are
+ * pinned here: renaming a city in the data file must fail this spec rather
+ * than silently orphan a page's city.
  */
 describe("showcase city registry", () => {
   it("has one host per Quebec city that is not a borough, and only Quebec", () => {

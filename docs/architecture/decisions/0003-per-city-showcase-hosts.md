@@ -1,6 +1,6 @@
 # ADR-0003 — Per-city showcase hosts on the same application
 
-**Status:** Accepted — 2026-09-12
+**Status:** Accepted — 2026-09-12 · **Superseded in part — 2026-09-15** (see the amendment at the end)
 **Context:** [spec 003](../../../specs/003-professional-showcase/spec.md)
 
 ## Context
@@ -51,3 +51,26 @@ the middleware only redirected the bare domain to www.
 - Before any city host resolves in production: a DNS provider API for the DNS-01 challenge, the
   wildcard certificate with its renewal hook, and the wildcard vhost. Until then the code is inert.
 - Search Console needs a Domain property to cover every host.
+
+## Amendment — 2026-09-15: one address on www
+
+The owner chose to publish each professional's page on www, at the professional's full name
+(`www.jechemine.ca/amel-sassi`), and to remove the city pages, their expertise pages and the `/psy`
+directory. The city hosts are kept for a later use, but no longer serve anything.
+
+- **Decisions 1, 3, 6 and 7 no longer apply.** No rewrite, no internal segment, no per-host
+  robots.txt or sitemap. The page is the top-level segment `src/app/[proSlug]`: Next serves the
+  site's own routes first, and `src/lib/showcase-slug.ts` reserves every top-level route name — its
+  spec reads `src/app` and `public/`, so a route added later without its name reserved fails the
+  tests. www's sitemap lists the pages.
+- **Decision 4 becomes:** every `*.jechemine.ca` host other than www, a city host included, goes to
+  the same path on www with a 307 (`psymascouche.jechemine.ca/amel-sassi` lands on the page).
+- **Decision 5 stays:** the registry still names a page's city, and the wildcard DNS record,
+  certificate and vhost stay in place ([HANDOFF §11](../../ops/HANDOFF.md)).
+- **Decision 8:** the page itself answers 404 while the switch is off.
+- **Consequences:** one cookie jar, so sign-in, cookie consent and the language choice carry over
+  to the pages. No redirect map is needed: the switch was never on in production, so no city
+  address was ever public. The root layout still sends a professional's page only its own
+  messages, keyed on `x-showcase-page`, which the middleware sets for a single-segment path that no
+  route reserves; a 404 on such a path renders the root not-found page, which translates on the
+  server only. New slugs default to the full name (`amel-sassi`, then `amel-sassi-2`).

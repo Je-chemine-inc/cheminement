@@ -245,7 +245,6 @@ export default function AdminProCatalogPage() {
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
                   {item.labelEn || "—"}
-                  {item.category === "expertise" && item.slug ? ` · /specialite/${item.slug}` : ""}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">

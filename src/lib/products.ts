@@ -760,9 +760,9 @@ export async function productByline(ownerId: string): Promise<{ name: string; pa
     } | null>(),
   ]);
   if (!owner) return null;
-  const { absoluteShowcaseUrl } = await import("@/lib/showcase-hosts");
+  const { showcasePageUrl } = await import("@/lib/showcase-hosts");
   return {
     name: page?.published?.displayName?.trim() || `${owner.firstName ?? ""} ${owner.lastName ?? ""}`.trim(),
-    pageUrl: page ? absoluteShowcaseUrl(page.cityKey, `/${page.slug}`) : null,
+    pageUrl: page ? showcasePageUrl(page.slug) : null,
   };
 }

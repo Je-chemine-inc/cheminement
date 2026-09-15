@@ -2068,7 +2068,6 @@
     }
   },
   "Footer": {
-    "findByCity": "Find a therapist by city",
     "partners": "Partners",
     "partnerWithUs": "Partner with us",
     "company": "Company",
@@ -7366,89 +7365,10 @@
   },
   "Showcase": {
     "brand": "Je chemine",
-    "cityBadge": "Psy {city}",
-    "nav": {
-      "book": "Request an appointment",
-      "bookShort": "Book",
-      "login": "Sign in"
-    },
     "footer": {
-      "tagline": "Quebec's mental-health platform",
-      "site": "jechemine.ca",
       "privacy": "Privacy",
       "terms": "Terms of use",
-      "linksTitle": "Je chemine",
-      "hub": "Professionals by city",
-      "match": "Request a match",
       "rights": "© {year} Je chemine. All rights reserved."
-    },
-    "breadcrumb": {
-      "label": "Breadcrumb",
-      "quebec": "Quebec"
-    },
-    "city": {
-      "title": "Mental-health professionals in {city}",
-      "heading": "{titles} in {city}",
-      "intro": "Meet the mental-health professionals presented in {city}, {regionIn}: their approach, areas of expertise and fees. Then send your appointment request online.",
-      "introEmpty": "No professional is presented in {city} yet. Others are presented elsewhere {regionIn}, and Je chemine can also match you with a professional, in person or by video.",
-      "metaDescription": "Find a mental-health professional in {city} ({region}): profile, fees and online appointment requests with Je chemine.",
-      "count": "{count, plural, one {# professional presented} other {# professionals presented}}",
-      "professionalsTitle": "Professionals presented in {city}",
-      "expertisesTitle": "Areas of expertise in {city}",
-      "nearbyTitle": "Nearby, {regionIn}",
-      "regionLink": "All the professionals presented {regionIn}",
-      "themesTitle": "Popular topics in {city}",
-      "themesIntro": "The areas of expertise of the professionals presented in {city}.",
-      "stickyTitle": "{count, plural, one {# professional} other {# professionals}}",
-      "stickyNote": "{city} and nearby",
-      "stickyButton": "Request a match"
-    },
-    "expertise": {
-      "eyebrow": "Area of expertise",
-      "title": "{expertise} in {city}",
-      "intro": "These professionals presented in {city} list \"{expertise}\" among their areas of expertise. See their page for their approach and fees, then send your appointment request online.",
-      "metaTitle": "{expertise} in {city}: {titles}",
-      "metaDescription": "{titles} in {city} ({region}) who list \"{expertise}\" among their areas of expertise: profile, fees and online appointment requests with Je chemine.",
-      "genericTitles": "mental-health professionals",
-      "othersTitle": "Other areas of expertise in {city}",
-      "backCity": "All the professionals in {city}"
-    },
-    "faq": {
-      "title": "Frequently asked questions",
-      "intro": "What to know before a first meeting in {city}.",
-      "contact": "Write to us",
-      "bookQ": "How do I book with a professional in {city}?",
-      "bookA": "Choose a professional and click \"Request an appointment\", or send a matching request: Je chemine offers you an available professional and confirms your appointment.",
-      "videoQ": "Can I consult by video?",
-      "videoA": "Yes. Professionals presented in {city} offer video sessions, wherever you are in Quebec.",
-      "videoANone": "The professionals presented in {city} see clients in person. Je chemine can also match you with a professional who offers video sessions.",
-      "insuranceQ": "Are sessions covered by insurance?",
-      "insuranceA": "Many group insurance plans reimburse services from members of a professional order. Check your plan's terms: a receipt is issued for every paid session.",
-      "cancelQ": "Can I cancel an appointment?",
-      "cancelA": "Yes, free of charge up to {hours} hours before the appointment.",
-      "emergencyQ": "What should I do in an emergency?",
-      "emergencyA": "Je chemine is not an emergency service. If you are in immediate danger, call 911. In distress or having suicidal thoughts, call or text 988, available 24/7."
-    },
-    "match": {
-      "title": "Not sure who to choose?",
-      "body": "Describe your need: Je chemine matches you with an available professional, in person or by video.",
-      "button": "Request a match"
-    },
-    "notFound": {
-      "title": "This page does not exist",
-      "body": "The professional or page you are looking for is not, or no longer, presented here.",
-      "backCity": "See the city's professionals",
-      "backSite": "Go to jechemine.ca"
-    },
-    "card": {
-      "viewProfile": "View profile",
-      "experience": "{title} · {years, plural, one {# year of experience} other {# years of experience}}",
-      "experienceNoTitle": "{years, plural, one {# year of experience} other {# years of experience}}",
-      "inPersonAt": "In person in {city}",
-      "online": "Online",
-      "onlineOnly": "Online only",
-      "phone": "By phone",
-      "nextSlots": "Next available"
     },
     "profile": {
       "previewBanner": "Preview: this version is not visible to the public.",
@@ -7603,16 +7523,14 @@
       "choose": "Choose",
       "expertisesTitle": "What I help with",
       "expertisesIntro": "The situations {name} helps clients with. Each topic also leads to other professionals in {city} who work with it.",
-      "expertiseExplore": "Explore this topic",
       "ctaEyebrow": "First step",
       "footer": {
         "pageTitle": "On this page",
         "platformTitle": "Je chemine",
-        "cityPros": "Professionals in {city}",
-        "allPros": "Find a professional in Quebec",
         "match": "Get matched with a professional",
         "poweredTitle": "Powered by",
-        "poweredBody": "Page hosted on Je chemine, Quebec's mental-health platform."
+        "poweredBody": "Page hosted on Je chemine, Quebec's mental-health platform.",
+        "site": "Discover Je chemine"
       },
       "sticky": {
         "price": "{price} · {minutes} min",
@@ -7628,34 +7546,6 @@
       "occupationalTherapistMentalHealth": "Occupational therapist (mental health)",
       "psychiatrist": "Psychiatrist",
       "otherProfessionals": "Other professionals"
-    },
-    "titlesPlural": {
-      "psychologist": "psychologists",
-      "psychotherapist": "psychotherapists",
-      "neuropsychologist": "neuropsychologists",
-      "psychoeducator": "psychoeducators",
-      "occupationalTherapistMentalHealth": "occupational therapists in mental health",
-      "psychiatrist": "psychiatrists",
-      "otherProfessionals": "mental-health professionals"
-    },
-    "regionIn": {
-      "bas-saint-laurent": "in Bas-Saint-Laurent",
-      "saguenay-lac-saint-jean": "in Saguenay–Lac-Saint-Jean",
-      "capitale-nationale": "in Capitale-Nationale",
-      "mauricie": "in Mauricie",
-      "estrie": "in Estrie",
-      "montreal": "in Montréal",
-      "outaouais": "in Outaouais",
-      "abitibi-temiscamingue": "in Abitibi-Témiscamingue",
-      "cote-nord": "in Côte-Nord",
-      "nord-du-quebec": "in Nord-du-Québec",
-      "gaspesie-iles-de-la-madeleine": "in Gaspésie–Îles-de-la-Madeleine",
-      "chaudiere-appalaches": "in Chaudière-Appalaches",
-      "laval": "in Laval",
-      "lanaudiere": "in Lanaudière",
-      "laurentides": "in the Laurentides",
-      "monteregie": "in Montérégie",
-      "centre-du-quebec": "in Centre-du-Québec"
     },
     "orders": {
       "OPQ": "Ordre des psychologues du Québec",
@@ -7836,13 +7726,13 @@
     },
     "city": {
       "title": "Page city",
-      "hint": "The city where you see your clients. It gives your page its address. If your city is not in the list, choose the nearest one.",
+      "hint": "The city where you see your clients. It is shown on your page. If your city is not in the list, choose the nearest one.",
       "select": "Choose a city",
       "officeCity": "Office city in your profile: {city}",
       "useOfficeCity": "Use {city}",
       "address": "Page address: {url}",
       "afterApproval": "Your page is live: the new city applies when the team publishes the change. The old address will then redirect to the new one.",
-      "pending": "Address change waiting to be published by the team: {city} ({url})"
+      "pending": "City change waiting to be published by the team: {city}"
     },
     "identity": {
       "title": "Professional order and page city",
@@ -7909,7 +7799,7 @@
   "ShowcaseAdmin": {
     "editor": {
       "city": {
-        "hint": "The city where the professional sees their clients. It gives their page its address. If their city is not in the list, choose the nearest one.",
+        "hint": "The city where the professional sees their clients. It is shown on their page. If their city is not in the list, choose the nearest one.",
         "officeCity": "Office city in their profile: {city}",
         "afterApproval": "The page is live: the new city applies when you publish this revision. The old address will then redirect to the new one."
       },
@@ -7940,13 +7830,13 @@
     "switch": {
       "title": "Public access",
       "on": "Open: published pages are visible to the public.",
-      "off": "Closed: the city addresses, such as psymontreal.jechemine.ca, send visitors to jechemine.ca. You can activate, prepare and publish pages meanwhile.",
+      "off": "Closed: professionals' pages, such as jechemine.ca/amel-sassi, show a not-found page. You can activate, prepare and publish pages meanwhile.",
       "turnOn": "Open to the public",
       "turnOff": "Close to the public",
       "confirmOnTitle": "Open showcase pages to the public?",
       "confirmOnBody": "Published pages become visible at the city addresses and can be indexed by search engines. First check that the certificate and DNS for the city addresses are in place.",
       "confirmOffTitle": "Close showcase pages?",
-      "confirmOffBody": "The city addresses will send visitors to jechemine.ca. Pages stay published and come back when you reopen.",
+      "confirmOffBody": "Professionals' pages will no longer be visible. Pages stay published and come back when you reopen.",
       "confirm": "Confirm"
     },
     "cities": {
@@ -8020,7 +7910,7 @@
       "move": "Change the address",
       "moveTitle": "Change the city or the address",
       "moveBody": "If the page was ever published, the old address redirects to the new one.",
-      "cityChange": "The draft asks to move from {from} to {to} ({url}). The city changes on publication; the old address will redirect to the new one.",
+      "cityChange": "The draft asks to move from {from} to {to}. The city changes on publication.",
       "city": "City",
       "slug": "Address",
       "save": "Save",
@@ -8046,39 +7936,6 @@
         "system": "System"
       }
     }
-  },
-  "ShowcaseHub": {
-    "title": "Find a therapist by city in Quebec",
-    "intro": "Choose your region, then your city, to meet the mental-health professionals presented there and send your appointment request online.",
-    "empty": "No professional is presented yet. Je chemine can match you with a professional right now, in person or by video.",
-    "metaTitle": "Psychologists and psychotherapists by city in Quebec",
-    "metaDescription": "Find a mental-health professional near you: the regions and cities of Quebec where Je chemine presents psychologists and psychotherapists.",
-    "regionCount": "{count, plural, one {# professional presented} other {# professionals presented}}",
-    "soon": "No professional presented yet",
-    "breadcrumbLabel": "Breadcrumb",
-    "breadcrumbQuebec": "Quebec",
-    "source": "City list: Répertoire des municipalités du Québec, Ministère des Affaires municipales et de l'Habitation (Données Québec, CC BY 4.0 licence).",
-    "region": {
-      "title": "Mental-health professionals {regionIn}",
-      "heading": "{titles} {regionIn}",
-      "intro": "The cities where mental-health professionals are presented {regionIn}, and each one's page.",
-      "empty": "No professional is presented {regionIn} yet. Je chemine can match you with a professional right now, in person or by video.",
-      "metaDescription": "Find a mental-health professional {regionIn}: profile, fees and online appointment requests with Je chemine.",
-      "citiesTitle": "Cities",
-      "professionalsTitle": "Professionals presented",
-      "back": "All regions"
-    }
-  },
-  "ShowcaseDirectory": {
-    "searchLabel": "Search for a professional",
-    "searchPlaceholder": "Search by name, title or topic…",
-    "filtersLabel": "Filters",
-    "inPerson": "In person",
-    "video": "Online",
-    "quick": "Quick consultation",
-    "count": "{count, plural, =0 {No professionals} one {# professional} other {# professionals}} in {city}",
-    "empty": "No professional matches these filters.",
-    "reset": "Clear filters"
   },
   "ShowcaseBooking": {
     "title": "Availability",

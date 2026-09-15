@@ -9,7 +9,7 @@ import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { loadBookableShowcase } from "@/lib/showcase-booking";
 import { getValidMotifLabels } from "@/lib/motifs";
 import { generateUrlToken, hashVerificationSecret } from "@/lib/account-init";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { findShowcaseCity } from "@/lib/showcase-cities";
 import { releaseSlotHold } from "@/lib/slot-holds";
 import { abandonDirectRequest, attachDirectRequest, prepareDirectRequest } from "@/lib/direct-request";
@@ -132,7 +132,7 @@ export async function joinWaitlist(input: {
     created: true,
     professionalId,
     professionalName: bookable.displayName,
-    pageUrl: absoluteShowcaseUrl(bookable.cityKey, `/${bookable.slug}`),
+    pageUrl: showcasePageUrl(bookable.slug),
     leaveUrl: appUrl(`/liste-attente/quitter?t=${leaveToken}`),
   };
 }
@@ -366,7 +366,7 @@ export async function listAdminWaitlist(input: {
     id: String(row._id),
     professionalId: String(row.professionalId),
     professionalName: row.professionalName,
-    pageUrl: absoluteShowcaseUrl(row.cityKey, `/${row.showcaseSlug}`),
+    pageUrl: showcasePageUrl(row.showcaseSlug),
     firstName: row.firstName,
     lastName: row.lastName,
     email: input.showContact ? row.email : null,
@@ -464,7 +464,7 @@ export async function readWaitlistOffer(
       durationMinutes: offer.durationMinutes,
       expiresAt: new Date(offer.expiresAt).toISOString(),
       price: samePro ? bookable.services[entry.service].price : null,
-      pageUrl: absoluteShowcaseUrl(entry.cityKey, `/${entry.showcaseSlug}`),
+      pageUrl: showcasePageUrl(entry.showcaseSlug),
     },
   };
 }

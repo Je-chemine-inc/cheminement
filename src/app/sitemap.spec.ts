@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const h = vi.hoisted(() => ({
   enabled: true,
   failDirectory: false,
-  directory: [] as { cityKey: string; slug: string; expertiseIds: string[]; lastModified: Date | null }[],
+  directory: [] as { slug: string; lastModified: Date | null }[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -18,40 +18,36 @@ vi.mock("@/lib/showcase-queries", () => ({
 
 import sitemap from "./sitemap";
 
+const PAGES = ["https://www.jechemine.ca/amel-sassi", "https://www.jechemine.ca/julie-cote"];
 const urls = async () => (await sitemap()).map((entry) => entry.url);
 
 beforeEach(() => {
   h.enabled = true;
   h.failDirectory = false;
   h.directory = [
-    { cityKey: "mascouche", slug: "sassi", expertiseIds: [], lastModified: null },
-    { cityKey: "laval", slug: "roy", expertiseIds: [], lastModified: null },
+    { slug: "amel-sassi", lastModified: new Date("2026-09-10") },
+    { slug: "julie-cote", lastModified: null },
   ];
 });
 
-describe("www sitemap (spec 003 directory)", () => {
-  it("lists /psy and the regions where professionals are presented", async () => {
-    const listed = await urls();
+describe("www sitemap (spec 003 professional pages)", () => {
+  it("lists each professional's page on www", async () => {
+    const entries = await sitemap();
+    const listed = entries.map((entry) => entry.url);
     expect(listed).toContain("https://www.jechemine.ca/");
-    expect(listed.filter((url) => url.includes("/psy"))).toEqual([
-      "https://www.jechemine.ca/psy",
-      "https://www.jechemine.ca/psy/laval",
-      "https://www.jechemine.ca/psy/lanaudiere",
-    ]);
+    expect(listed.filter((url) => PAGES.includes(url))).toEqual(PAGES);
+    expect(entries.find((entry) => entry.url === PAGES[0])?.lastModified).toEqual(new Date("2026-09-10"));
   });
 
-  it("lists no directory page while the pages are off, or while nobody is presented", async () => {
+  it("lists no professional's page while the pages are off", async () => {
     h.enabled = false;
-    expect((await urls()).some((url) => url.includes("/psy"))).toBe(false);
-    h.enabled = true;
-    h.directory = [];
-    expect((await urls()).some((url) => url.includes("/psy"))).toBe(false);
+    expect((await urls()).some((url) => PAGES.includes(url))).toBe(false);
   });
 
-  it("still lists the rest of the site when the directory cannot be read", async () => {
+  it("still lists the rest of the site when the pages cannot be read", async () => {
     h.failDirectory = true;
     const listed = await urls();
     expect(listed).toContain("https://www.jechemine.ca/");
-    expect(listed.some((url) => url.includes("/psy"))).toBe(false);
+    expect(listed.some((url) => PAGES.includes(url))).toBe(false);
   });
 });

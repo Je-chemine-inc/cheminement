@@ -6,7 +6,6 @@ import { XLogoIcon } from "@/components/icons/XLogoIcon";
 import { TikTokIcon } from "@/components/icons/TikTokIcon";
 import { getLegalTitles } from "@/lib/legal-content";
 import { getSocialLinks, getPartners } from "@/lib/platform-contact";
-import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import PartnersMarquee from "@/components/layout/PartnersMarquee";
 import type { LegalDocumentLocale } from "@/models/LegalDocument";
 
@@ -21,8 +20,6 @@ export async function Footer() {
   const social = await getSocialLinks();
   // Admin-configurable partner logos shown in the scrolling partners band.
   const partners = await getPartners();
-  // Spec 003: the directory of cities, linked only once the pages are open.
-  const showcaseOpen = await isShowcaseEnabled();
 
   return (
     <footer className="bg-primary text-primary-foreground pt-16 pb-8">
@@ -52,13 +49,6 @@ export async function Footer() {
                   {t("bookAppointment")}
                 </Link>
               </li>
-              {showcaseOpen ? (
-                <li>
-                  <Link href="/psy" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-                    {t("findByCity")}
-                  </Link>
-                </li>
-              ) : null}
               {/* "Consultation ponctuelle rapide" — placed between the standard
                   "Prendre un rendez-vous" link and "Services" per client spec §2. */}
               <li>

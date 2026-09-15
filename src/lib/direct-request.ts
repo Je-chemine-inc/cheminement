@@ -23,7 +23,7 @@ import {
 } from "@/lib/direct-request-rules";
 import type { DirectIntent } from "@/lib/appointment-writable-fields";
 import { generateUrlToken, hashVerificationSecret } from "@/lib/account-init";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
 import {
   sendAdminDirectRequestReturnedAlert,
@@ -393,7 +393,7 @@ export async function notifyDirectRequestReleased(appointmentId: string, reroute
         service: request.service,
         dayKey: request.dayKey,
         time: request.time,
-        pageUrl: absoluteShowcaseUrl(request.cityKey, `/${request.showcaseSlug}`),
+        pageUrl: showcasePageUrl(request.showcaseSlug),
         rerouteUrl: appUrl(`/demande-directe/rejumeler?t=${rerouteToken}`),
         locale: recipient.language,
       }),

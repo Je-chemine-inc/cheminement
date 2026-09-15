@@ -2,7 +2,6 @@ import type { MetadataRoute } from "next";
 import { listPublishedContent } from "@/lib/content-entry";
 import { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE } from "@/lib/content-kind";
 import { loadShowcaseDirectory } from "@/lib/showcase-queries";
-import { countByCity, hubSitemapPaths, summarizeRegions } from "@/lib/showcase-seo";
 import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -71,22 +70,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Spec 003: the directory of regions and cities, once professionals are
-  // presented. Each city host lists its own pages in its own sitemap.
+  // Spec 003: each professional's page (www.jechemine.ca/<slug>), once the pages are on.
   try {
     if (await isShowcaseEnabled()) {
-      const summaries = summarizeRegions(countByCity(await loadShowcaseDirectory()));
-      for (const path of hubSitemapPaths(summaries)) {
+      for (const page of await loadShowcaseDirectory()) {
         entries.push({
-          url: `${SITE_URL}${path}`,
-          lastModified: now,
-          changeFrequency: "weekly",
-          priority: path.split("/").length === 2 ? 0.8 : 0.7,
+          url: `${SITE_URL}/${page.slug}`,
+          lastModified: page.lastModified ?? now,
+          changeFrequency: "monthly",
+          priority: 0.8,
         });
       }
     }
   } catch (error) {
-    console.error("[sitemap] failed to list the showcase directory:", error);
+    console.error("[sitemap] failed to list the professionals' pages:", error);
   }
 
   return entries;

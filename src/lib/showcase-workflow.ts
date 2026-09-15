@@ -1,5 +1,6 @@
 import { slugify } from "@/lib/content-kind";
 import { isShowcaseCityKey } from "@/lib/showcase-cities";
+import { isValidShowcaseSlug } from "@/lib/showcase-slug";
 import {
   PROFESSIONAL_ORDER_CODES,
   SHOWCASE_CONSENT_VERSION,
@@ -16,50 +17,7 @@ import {
 
 // ------------------------------------------------------------------- slugs
 
-/** Path segments a professional's slug must never take on a city host. */
-export const RESERVED_SHOWCASE_SLUGS: ReadonlySet<string> = new Set([
-  "api",
-  "showcase",
-  "specialite",
-  "specialites",
-  "robots-txt",
-  "sitemap-xml",
-  "robots",
-  "sitemap",
-  "favicon",
-  "opengraph-image",
-  "twitter-image",
-  "icon",
-  "apple-icon",
-  "manifest",
-  "appointment",
-  "rendez-vous",
-  "login",
-  "signup",
-  "admin",
-  "professional",
-  "client",
-  "pay",
-  "psy",
-  "liste-attente",
-  "formations",
-  "produits",
-  "contact",
-  "faq",
-  "www",
-  "jechemine",
-]);
-
-const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
-export function isValidShowcaseSlug(slug: string): boolean {
-  return (
-    slug.length >= 2 &&
-    slug.length <= 60 &&
-    SLUG_RE.test(slug) &&
-    !RESERVED_SHOWCASE_SLUGS.has(slug)
-  );
-}
+export { isValidShowcaseSlug };
 
 function slugPart(value: string | null | undefined): string {
   return slugify(value ?? "")
@@ -69,22 +27,20 @@ function slugPart(value: string | null | undefined): string {
 }
 
 /**
- * Slugs to try, best first: the last name ("sassi"), then the full name
- * ("amel-sassi"), then the full name numbered ("amel-sassi-2"…).
+ * Slugs to try, best first: the full name ("amel-sassi"), then the full name
+ * numbered ("amel-sassi-2"…). The page lives at www.jechemine.ca/<slug>.
  */
 export function showcaseSlugCandidates(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
 ): string[] {
-  const last = slugPart(lastName);
   const full = slugPart(`${firstName ?? ""} ${lastName ?? ""}`);
   const out: string[] = [];
   const add = (candidate: string) => {
     if (isValidShowcaseSlug(candidate) && !out.includes(candidate)) out.push(candidate);
   };
-  add(last);
   add(full);
-  const base = (full || last || "professionnel").slice(0, 55).replace(/-+$/g, "");
+  const base = (full || "professionnel").slice(0, 55).replace(/-+$/g, "");
   for (let i = 2; i <= 99; i++) add(`${base}-${i}`);
   return out;
 }

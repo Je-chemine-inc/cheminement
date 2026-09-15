@@ -411,7 +411,7 @@ describe("the professional's live edits", () => {
       professionalName: "Amel Sassi",
       professionalId: PRO,
       cityName: "Mascouche",
-      publicUrl: "https://psymascouche.jechemine.ca/sassi",
+      publicUrl: "https://www.jechemine.ca/sassi",
       fields: ["headline"],
     });
 
@@ -469,7 +469,7 @@ describe("publishShowcase", () => {
 
   it("publishes exactly the revision the admin looked at", async () => {
     const result = await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
-    expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://psymascouche.jechemine.ca/sassi" } });
+    expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://www.jechemine.ca/sassi" } });
     const [filter, update] = h.findOneAndUpdate[0];
     expect(filter).toEqual({ _id: "p1", draftRevision: 4 });
     expect(update.$set).toMatchObject({
@@ -517,14 +517,14 @@ describe("publishShowcase", () => {
       draft: { ...completeDraft, cityKey: "terrebonne" },
     });
     const result = await publishShowcase({ userId: PRO, revision: 4, consentAttested: undefined, adminId: ADMIN });
-    expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://psyterrebonne.jechemine.ca/sassi" } });
+    expect(result).toMatchObject({ ok: true, value: { publicUrl: "https://www.jechemine.ca/sassi" } });
     const [filter, update] = h.findOneAndUpdate[0];
     expect(filter).toEqual({ _id: "p1", draftRevision: 4, cityKey: "mascouche" });
     expect(update.$set).toMatchObject({ cityKey: "terrebonne", published: { cityKey: "terrebonne" } });
     expect(update.$push).toMatchObject({ history: { $each: [{ action: "approve", note: "revision 4 · mascouche > terrebonne" }] } });
     await runDeferred(result);
     expect(h.sendPublished).toHaveBeenCalledWith(
-      expect.objectContaining({ publicUrl: "https://psyterrebonne.jechemine.ca/sassi", firstPublication: false }),
+      expect.objectContaining({ publicUrl: "https://www.jechemine.ca/sassi", firstPublication: false }),
     );
   });
 

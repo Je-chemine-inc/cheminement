@@ -3,7 +3,6 @@ import fr from "../../messages/fr.json";
 import en from "../../messages/en.json";
 import { PROFESSIONAL_TITLES } from "@/data/professionalTitles";
 import { PROFESSIONAL_ORDER_CODES, SHOWCASE_HISTORY_ACTIONS } from "@/lib/showcase-constants";
-import { SHOWCASE_REGIONS } from "@/lib/showcase-cities";
 import {
   SHOWCASE_LANGUAGE_KEYS,
   SHOWCASE_MODALITY_KEYS,
@@ -31,8 +30,6 @@ function stringAt(messages: unknown, path: string): string | undefined {
 
 const LISTS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["Showcase.titles", PROFESSIONAL_TITLES.map((title) => title.value)],
-  ["Showcase.titlesPlural", PROFESSIONAL_TITLES.map((title) => title.value)],
-  ["Showcase.regionIn", SHOWCASE_REGIONS.map((region) => region.key)],
   ["Showcase.orders", PROFESSIONAL_ORDER_CODES.filter((code) => code !== "other")],
   ["Showcase.modalities", SHOWCASE_MODALITY_KEYS],
   ["Showcase.languages", SHOWCASE_LANGUAGE_KEYS],

@@ -29,7 +29,7 @@ const services = {
 };
 const profile = {
   slug: "sassi",
-  url: "https://psymascouche.jechemine.ca/sassi",
+  url: "https://www.jechemine.ca/sassi",
   city: { key: "mascouche", name: "Mascouche", region: "Lanaudière", regionKey: "lanaudiere" },
   displayName: "Amel Sassi",
   title: { key: "psychologist", label: null },
@@ -78,7 +78,7 @@ describe("GET /api/showcase/[slug]/summary", () => {
   it("is 404 for a page that is missing or moved", async () => {
     h.result = { kind: "missing" };
     expect((await call()).status).toBe(404);
-    h.result = { kind: "moved", cityKey: "terrebonne", slug: "dre-sassi" };
+    h.result = { kind: "moved", slug: "dre-sassi" };
     expect((await call()).status).toBe(404);
   });
 
@@ -87,7 +87,7 @@ describe("GET /api/showcase/[slug]/summary", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       slug: "sassi",
-      url: "https://psymascouche.jechemine.ca/sassi",
+      url: "https://www.jechemine.ca/sassi",
       displayName: "Amel Sassi",
       title: { key: "psychologist", label: null },
       photoUrl: "/api/files/0123456789abcdef01234567",

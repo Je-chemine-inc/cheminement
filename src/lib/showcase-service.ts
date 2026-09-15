@@ -8,7 +8,7 @@ import ProCatalogItem from "@/models/ProCatalogItem";
 import StoredFile from "@/models/StoredFile";
 import { slugify } from "@/lib/content-kind";
 import { SHOWCASE_CITIES, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   ORDER_CODE_BY_TITLE,
   SHOWCASE_CONSENT_VERSION,
@@ -255,9 +255,9 @@ export async function loadShowcaseEditor(userId: string) {
       slug: page.slug,
       cityKey: page.cityKey,
       cityName: city?.name ?? page.cityKey,
-      publicUrl: absoluteShowcaseUrl(page.cityKey, `/${page.slug}`),
+      publicUrl: showcasePageUrl(page.slug),
       requestedCity: requested
-        ? { key: requested.key, name: requested.name, publicUrl: absoluteShowcaseUrl(requested.key, `/${page.slug}`) }
+        ? { key: requested.key, name: requested.name, publicUrl: showcasePageUrl(page.slug) }
         : null,
       status: page.status,
       draft: contentView(page.draft),
@@ -375,7 +375,7 @@ export async function listShowcasesForAdmin() {
             slug: page.slug,
             cityKey: page.cityKey,
             cityName: findShowcaseCity(page.cityKey)?.name ?? page.cityKey,
-            publicUrl: absoluteShowcaseUrl(page.cityKey, `/${page.slug}`),
+            publicUrl: showcasePageUrl(page.slug),
             status: page.status,
             hasUnpublishedChanges:
               Boolean(page.published) && (page.draftRevision ?? 0) !== (page.publishedRevision ?? -1),
@@ -627,7 +627,7 @@ async function changeAlert(
     professionalName: nameOf(user),
     professionalId: String(page.userId),
     cityName: findShowcaseCity(page.cityKey)?.name ?? page.cityKey,
-    publicUrl: absoluteShowcaseUrl(page.cityKey, `/${page.slug}`),
+    publicUrl: showcasePageUrl(page.slug),
     fields: [...changed],
   };
   return [() => sendAdminShowcaseUpdatedAlert(alert)];
@@ -925,7 +925,7 @@ export async function publishShowcase(input: {
     ],
   );
 
-  const publicUrl = absoluteShowcaseUrl(cityKey, `/${page.slug}`);
+  const publicUrl = showcasePageUrl(page.slug);
   const email = {
     professionalName: nameOf(user),
     professionalEmail: user.email,

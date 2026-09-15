@@ -93,7 +93,7 @@ vi.mock("@/lib/slot-holds", () => ({
   },
 }));
 vi.mock("@/lib/showcase-hosts", () => ({
-  absoluteShowcaseUrl: (city: string, path: string) => `https://psy${city}.jechemine.ca${path}`,
+  showcasePageUrl: (slug: string) => `https://www.jechemine.ca/${slug}`,
 }));
 vi.mock("@/lib/direct-request", () => ({
   runDirectRequestTimeouts: async () => {
@@ -330,7 +330,7 @@ describe("expireWaitlistOffers", () => {
           email: "amel@example.com",
           professionalName: "Dre Nadia Sassi",
           reason: "missed",
-          pageUrl: "https://psymascouche.jechemine.ca/sassi",
+          pageUrl: "https://www.jechemine.ca/sassi",
           locale: "fr",
         },
       ],

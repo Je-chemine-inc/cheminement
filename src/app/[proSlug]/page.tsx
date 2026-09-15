@@ -2,26 +2,36 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import { showcasePageMetadata } from "@/lib/showcase-metadata";
-import { findPublishedShowcase } from "@/lib/showcase-queries";
+import { findPublishedShowcase, type ShowcaseLookup } from "@/lib/showcase-queries";
 import type { ShowcaseLocale } from "@/lib/showcase-public";
+import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { ShowcaseProfileView } from "@/components/showcase/ShowcaseProfileView";
 import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
 import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
 import { listShowcaseProducts } from "@/lib/products";
 
 /**
- * psy<city>.jechemine.ca/<slug> — a professional's published page (spec 003).
- * A former slug, or a page that moved to another city, answers with a
- * permanent redirect to where it lives now. The city layout already sent the
- * visitor to www while the pages are off.
+ * www.jechemine.ca/<slug> — a professional's published page (spec 003).
+ *
+ * Next serves the site's own routes (/contact, /book…) before this segment,
+ * and the slug rules reserve their names (showcase-slug.spec.ts checks every
+ * top-level route), so no page can hide one. A former slug answers with a
+ * permanent redirect to the current one; while the pages are off, every
+ * address here is a 404.
+ *
+ * ⚠ No loading.tsx or Suspense boundary above or in this tree: a streamed
+ * shell turns every notFound() into an HTTP 200 (debt-map 2026-09-07).
  */
 export const dynamic = "force-dynamic";
 
-type Params = { params: Promise<{ cityKey: string; proSlug: string }> };
+type Params = { params: Promise<{ proSlug: string }> };
 
-const loadShowcase = cache((slug: string, locale: ShowcaseLocale) => findPublishedShowcase(slug, locale));
+const loadShowcase = cache(
+  async (slug: string, locale: ShowcaseLocale): Promise<ShowcaseLookup> =>
+    (await isShowcaseEnabled()) ? findPublishedShowcase(slug, locale) : { kind: "missing" },
+);
 
 async function currentLocale(): Promise<ShowcaseLocale> {
   return (await getLocale()) === "en" ? "en" : "fr";
@@ -34,10 +44,10 @@ function shorten(text: string, max: number): string {
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { cityKey, proSlug } = await params;
+  const { proSlug } = await params;
   const locale = await currentLocale();
   const result = await loadShowcase(proSlug, locale);
-  if (result.kind !== "found" || result.profile.city.key !== cityKey) return {};
+  if (result.kind !== "found") return {};
   const { profile } = result;
   const t = await getTranslations("Showcase");
   const titleLabel = profile.title.key ? t(`titles.${profile.title.key}`) : profile.title.label;
@@ -59,25 +69,21 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     160,
   );
   return showcasePageMetadata({
-    cityKey,
     path: `/${profile.slug}`,
     title,
     description,
-    image: profile.photoUrl ? absoluteShowcaseUrl(cityKey, profile.photoUrl) : null,
+    image: profile.photoUrl ? canonicalSiteUrl(profile.photoUrl) : null,
     type: "profile",
   });
 }
 
 export default async function ShowcaseProfessionalPage({ params }: Params) {
-  const { cityKey, proSlug } = await params;
+  const { proSlug } = await params;
   const result = await loadShowcase(proSlug, await currentLocale());
-  if (result.kind === "moved") {
-    permanentRedirect(absoluteShowcaseUrl(result.cityKey, `/${result.slug}`));
-  }
+  if (result.kind === "moved") permanentRedirect(`/${result.slug}`);
   if (result.kind === "missing") notFound();
-  if (result.profile.city.key !== cityKey) permanentRedirect(result.profile.url);
 
-  // Trainings and products the professional sells (spec 003 phase 5), sold on www.
+  // Trainings and products the professional sells (spec 003 phase 5).
   const products = await listShowcaseProducts(result.profile.slug, await currentLocale()).catch((error) => {
     console.error("[showcase] products could not be listed:", error);
     return [];

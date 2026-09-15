@@ -14,7 +14,7 @@ import {
   type ProfessionalOrderCode,
 } from "@/lib/showcase-constants";
 import { SHOWCASE_REGIONS, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
-import { absoluteShowcaseUrl } from "@/lib/showcase-hosts";
+import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   SHOWCASE_ADMIN_WORDED_KEYS,
   showcaseErrorKey,
@@ -863,7 +863,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         ) : null}
         {findShowcaseCity(draft.cityKey) ? (
           <p className="break-all text-xs text-muted-foreground">
-            {t("city.address", { url: absoluteShowcaseUrl(draft.cityKey, `/${view.page.slug}`) })}
+            {t("city.address", { url: showcasePageUrl(view.page.slug) })}
           </p>
         ) : null}
         {view.page.published && draft.cityKey !== view.page.cityKey ? (
