@@ -20,6 +20,7 @@ import {
   Compass,
   Newspaper,
   Mail,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
@@ -101,6 +102,7 @@ export function Header() {
     {
       label: t("menuSections.discover"),
       items: [
+        { href: "/professionnels", label: t("nav.professionals"), icon: UsersRound },
         { href: "/approaches", label: t("nav.approaches"), icon: Compass },
         { href: "/nouveautes", label: t("nav.nouveautes"), icon: Newspaper },
       ],
@@ -204,6 +206,18 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Our professionals link */}
+            <Link
+              href="/professionnels"
+              className={`text-sm font-semibold transition-all duration-300 ease-in-out ${
+                pathname === "/professionnels"
+                  ? "text-primary font-semibold underline underline-offset-4"
+                  : "text-foreground hover:text-primary"
+              }`}
+            >
+              {t("nav.professionals")}
+            </Link>
 
             {/* Approaches link */}
             <Link

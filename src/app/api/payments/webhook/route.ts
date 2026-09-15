@@ -15,6 +15,7 @@ import {
   restoreResourceEntitlement,
   revokeResourceEntitlement,
 } from "@/lib/resource-entitlement";
+import { settleProductPurchase } from "@/lib/products";
 import Stripe from "stripe";
 import {
   sendGuestPaymentComplete,
@@ -174,6 +175,22 @@ async function sendResourceAccessEmail(
     accessUrl,
     // The language they bought in, never inferred at send time.
     locale: ent.locale,
+    // TPS and TVQ as charged at checkout, from the purchase — never recomputed from today's settings.
+    taxes:
+      ent.taxTreatment === "added" &&
+      typeof ent.subtotalCents === "number" &&
+      typeof ent.tpsCents === "number" &&
+      typeof ent.tvqCents === "number"
+        ? {
+            subtotalCents: ent.subtotalCents,
+            tpsCents: ent.tpsCents,
+            tvqCents: ent.tvqCents,
+            tpsRatePercent: ent.tpsRatePercent ?? 0,
+            tvqRatePercent: ent.tvqRatePercent ?? 0,
+            tpsNumber: ent.tpsNumber ?? "",
+            tvqNumber: ent.tvqNumber ?? "",
+          }
+        : null,
   });
 }
 
@@ -196,6 +213,12 @@ async function handlePaymentIntentSucceeded(
         // must not release the idempotency claim and re-run the grant.
         console.error("[resource] access email failed:", err),
       );
+    }
+    // A professional's product (spec 003 phase 5): their share in the ledger,
+    // also when the checkout confirmation granted first ("already-paid"). A
+    // database error throws, so Stripe retries this event.
+    if (entitlement?.ownerProfessionalId && (outcome === "granted" || outcome === "already-paid")) {
+      await settleProductPurchase(String(entitlement._id));
     }
     return;
   }
@@ -458,6 +481,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   if (refundedEntitlement) {
     const outcome = await revokeResourceEntitlement(refundedEntitlement, charge);
     console.log("[resource] refund outcome:", outcome, paymentIntentId);
+    // A full refund takes the professional's share back; a partial one leaves it.
+    if (refundedEntitlement.ownerProfessionalId) {
+      await settleProductPurchase(String(refundedEntitlement._id));
+    }
     return;
   }
 
@@ -496,6 +523,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   appointment.payment.status = isFullRefund ? "refunded" : "partially_refunded";
   appointment.payment.refundedAt = new Date();
   appointment.payment.refundedAmount = charge.amount_refunded / 100;
+  // A refund this platform asked for (lib/appointment-refund.ts) is confirmed.
+  if (appointment.payment.refundRequest?.status === "requested") {
+    appointment.payment.refundRequest.status = "succeeded";
+  }
   await appointment.save();
 
   // Void the client's fiscal receipt only on a FULL refund — a partial refund
@@ -573,6 +604,9 @@ async function handleDisputeCreated(dispute: Stripe.Dispute) {
   });
   if (disputedEntitlement) {
     await disputeResourceEntitlement(disputedEntitlement);
+    if (disputedEntitlement.ownerProfessionalId) {
+      await settleProductPurchase(String(disputedEntitlement._id));
+    }
     return;
   }
 
@@ -659,6 +693,10 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
   if (reversedEntitlement) {
     const { restored } = await restoreResourceEntitlement(reversedEntitlement);
     console.log("[resource] refund reversal restored:", restored, paymentIntentId);
+    // The money stayed: the professional's share comes back.
+    if (reversedEntitlement.ownerProfessionalId) {
+      await settleProductPurchase(String(reversedEntitlement._id));
+    }
     return;
   }
 
@@ -682,6 +720,17 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
   });
   if (!appointment) return;
 
+  // A refund this platform asked for (lib/appointment-refund.ts) failed: its attempt is marked
+  // failed, so a new attempt can be made.
+  const request = appointment.payment.refundRequest;
+  const requestFailed = Boolean(
+    request && request.status !== "failed" && (request.status === "requested" || request.stripeRefundId === refund.id),
+  );
+  if (request && requestFailed) {
+    request.status = "failed";
+    request.failureReason = refund.failure_reason ?? refund.status ?? "failed";
+  }
+
   if (
     appointment.payment.status === "refunded" ||
     appointment.payment.status === "partially_refunded"
@@ -694,6 +743,8 @@ async function handleRefundUpdated(refund: Stripe.Refund) {
     console.warn(
       `Appointment ${appointment._id} reverted to paid after failed refund`,
     );
+  } else if (requestFailed) {
+    await appointment.save();
   }
 }
 

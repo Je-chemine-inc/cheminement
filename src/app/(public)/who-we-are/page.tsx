@@ -7,6 +7,7 @@ import {
   PersonalizedJourneySection,
 } from "@/components/sections/about";
 import { EthicsSection } from "@/components/sections/approaches";
+import ProfessionalsTeaser from "@/components/sections/ProfessionalsTeaser";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -30,6 +31,7 @@ export default function WhoWeArePage() {
       <PersonalizedJourneySection />
       <ColorTransition fromColor="background" toColor="muted" />
       <ExpertiseSection />
+      <ProfessionalsTeaser />
       <ColorTransition fromColor="muted" toColor="background" />
       <EthicsSection />
       <ColorTransition fromColor="background" toColor="background" />

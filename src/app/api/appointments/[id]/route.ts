@@ -10,16 +10,17 @@ import {
   sendMeetingLinkNotification,
   sendCancellationNotification,
   sendRefundConfirmation,
+  sendAdminAppointmentRefundProblemAlert,
 } from "@/lib/notifications";
+import { refundAppointmentPayment } from "@/lib/appointment-refund";
+import { cancellationRefund } from "@/lib/cancellation-refund";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
 import {
   resolveAppointmentRecipient,
   canAccessAccount,
 } from "@/lib/guardian-utils";
 import { resolveBillingUrl } from "@/lib/client-portal-urls";
-import { voidReceiptForRefund } from "@/lib/payment-settlement";
 
-import { stripe } from "@/lib/stripe";
 import { provisionGuestAsClient } from "@/lib/provision-guest-as-client";
 import { redactPaymentForProfessional } from "@/lib/redact-payment";
 import { coverageBadgesFor } from "@/lib/coverage-badges";
@@ -29,6 +30,8 @@ import {
   toWriterRole,
   type AppointmentPatchInput,
 } from "@/lib/appointment-writable-fields";
+import { FREE_CANCELLATION_HOURS } from "@/lib/cancellation-policy";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 
 // Get the base URL for payment links
 function getBaseUrl(): string {
@@ -43,9 +46,8 @@ function getBaseUrl(): string {
 // - >= 48h before the appointment: client may self-cancel free of charge.
 // - <  48h: self-cancel is BLOCKED at the API and hidden in the UI.
 //   Late cancellations are only possible via direct admin/pro contact, which
-//   uses the admin/pro endpoints (not gated here). The fee constant is kept
-//   in case admins want to apply it manually but is no longer auto-charged.
-const CANCELLATION_FEE_PERCENTAGE = 0.15;
+//   uses the admin/pro endpoints (not gated here). The refund amount (15 % fee
+//   on a late client cancellation) is lib/cancellation-refund.ts.
 /** Payment states where money moved (or is moving) — such a row is never deleted. */
 const APPOINTMENT_PAYMENT_STATUSES_WITH_MONEY = [
   "paid",
@@ -53,7 +55,8 @@ const APPOINTMENT_PAYMENT_STATUSES_WITH_MONEY = [
   "refunded",
   "partially_refunded",
 ];
-const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = 48;
+// The same constant the showcase pages quote to the public.
+const HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION = FREE_CANCELLATION_HOURS;
 
 export async function GET(
   req: NextRequest,
@@ -204,6 +207,27 @@ export async function PATCH(
       scheduledStartAt?: Date;
     } = { ...picked.data };
 
+    // A client withdrawing their pending request from a showcase page frees the
+    // held slot and closes the request (spec 003). It is not a session yet, so
+    // the 48h rule below does not apply to it.
+    if (
+      data.status === "cancelled" &&
+      (role === "client" || role === "guest" || role === "prospect") &&
+      oldAppointment.directRequest?.state === "pending"
+    ) {
+      const { releaseDirectRequest } = await import("@/lib/direct-request");
+      const released = await releaseDirectRequest({ appointmentId: id, outcome: "withdrawn" });
+      if (!released) {
+        return NextResponse.json(
+          { error: "This request is no longer pending", code: "DIRECT_REQUEST_CLOSED" },
+          { status: 409 },
+        );
+      }
+      const freedFor = oldAppointment.directRequest?.professionalId;
+      after(() => afterSlotFreed(freedFor));
+      return NextResponse.json({ message: "Demande retirée", appointment: released.appointment });
+    }
+
     // Strict 48h cancellation rule: a client cannot self-cancel within 48h
     // of the appointment. Admin/pro keep the ability to mark it cancelled
     // (handled via their dashboards; this endpoint is used by clients too).
@@ -317,6 +341,14 @@ export async function PATCH(
       !oldAppointment.professionalId &&
       session.user.role === "professional"
     ) {
+      // A pending request from a showcase page is declined through
+      // decline-direct, which frees its slot and never cascades (spec 003).
+      if (oldAppointment.directRequest?.state === "pending") {
+        return NextResponse.json(
+          { error: "Answer this request from its direct request card", code: "USE_DIRECT_ROUTES" },
+          { status: 409 },
+        );
+      }
       const wasProposedToThisPro =
         oldAppointment.routingStatus === "proposed" &&
         (oldAppointment.proposedTo ?? []).some(
@@ -377,6 +409,21 @@ export async function PATCH(
         { error: "Appointment not found" },
         { status: 404 },
       );
+    }
+
+    // A scheduled session cancelled or moved frees its time for the
+    // professional's waitlist (spec 003 phase 4).
+    const movedDay =
+      data.date instanceof Date &&
+      (!oldAppointment.date || data.date.getTime() !== oldAppointment.date.getTime());
+    const movedTime = data.time !== undefined && data.time !== oldAppointment.time;
+    if (
+      oldAppointment.status === "scheduled" &&
+      oldAppointment.professionalId &&
+      (appointment.status === "cancelled" || movedDay || movedTime)
+    ) {
+      const freedFor = oldAppointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
     }
 
     // Interac / virement : paiement attendu dans les 24h après la séance (référence = fin de séance)
@@ -616,65 +663,48 @@ export async function PATCH(
         );
       }
 
-      // Process automatic refund with fee calculation if appointment was paid
+      // Automatic refund of a card-paid appointment. The refund is claimed on the
+      // appointment and sent with an idempotency key (lib/appointment-refund.ts),
+      // so a double request never refunds twice; it records refunded or partially
+      // refunded and voids the receipt on a full refund. The cancellation stands
+      // whatever Stripe says: when Stripe refused or did not confirm the refund,
+      // the team is told, so the client is still refunded.
       if (
         appointment.payment.stripePaymentIntentId &&
         appointment.payment.status === "paid"
       ) {
-        try {
-          console.log(
-            `Processing refund for appointment ${id} (Payment Intent: ${appointment.payment.stripePaymentIntentId})`,
-          );
+        const appointmentDateTime = appointment.date ? new Date(appointment.date) : new Date();
+        const hoursUntilAppointment = (appointmentDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
+        const { refundCents, feeCents } = cancellationRefund({
+          priceCad: appointment.payment.price || 0,
+          cancelledBy: String(cancelledBy),
+          hoursUntil: hoursUntilAppointment,
+          freeHours: HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION,
+        });
 
-          // Calculate hours until appointment
-          const appointmentDateTime = appointment.date
-            ? new Date(appointment.date)
-            : new Date();
-          const now = new Date();
-          const hoursUntilAppointment =
-            (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        if (refundCents > 0) {
+          const result = await refundAppointmentPayment({
+            appointmentId: id,
+            amountCents: refundCents,
+            by: "cancellation",
+            byUserId: session.user.id,
+            reason: data.cancelReason || "Appointment cancelled",
+            metadata: {
+              cancelledBy: String(cancelledBy),
+              cancellationFeeCents: String(feeCents),
+              hoursBeforeAppointment: hoursUntilAppointment.toFixed(2),
+            },
+          });
 
-          // Determine if cancellation fee applies (only for client cancellations)
-          const isFreeCancel =
-            hoursUntilAppointment >=
-            HOURS_BEFORE_APPOINTMENT_FOR_FREE_CANCELLATION;
-          const isClientCancellation = cancelledBy === "client";
-
-          let refundAmount = appointment.payment.price || 0;
-          let cancellationFee = 0;
-
-          // Apply cancellation fee only for client cancellations within 24 hours
-          if (isClientCancellation && !isFreeCancel) {
-            cancellationFee = refundAmount * CANCELLATION_FEE_PERCENTAGE;
-            refundAmount = refundAmount - cancellationFee;
-          }
-
-          // Process refund through Stripe (in cents)
-          const refundAmountCents = Math.round(refundAmount * 100);
-
-          if (refundAmountCents > 0) {
-            const refund = await stripe.refunds.create({
-              payment_intent: appointment.payment.stripePaymentIntentId,
-              amount: refundAmountCents,
-              reason: "requested_by_customer",
-              metadata: {
-                appointmentId: id,
-                cancelledBy: cancelledBy,
-                cancellationFee: cancellationFee.toFixed(2),
-                refundReason: data.cancelReason || "Appointment cancelled",
-                hoursBeforeAppointment: hoursUntilAppointment.toFixed(2),
-              },
-            });
-
-            console.log(
-              `Refund processed successfully: ${refund.id} - Amount: $${refund.amount / 100} (Fee: $${cancellationFee.toFixed(2)})`,
-            );
-
+          if (result.outcome === "refunded") {
+            appointment.payment.status = result.full ? "refunded" : "partially_refunded";
+            appointment.payment.refundedAt = new Date();
+            appointment.payment.refundedAmount = result.amountCents / 100;
             // Send refund confirmation email (LSSSS art. 14: to beneficiary).
             const refundArgs = {
               name: cancelRecipient.name,
               email: cancelRecipient.email,
-              amount: refund.amount / 100,
+              amount: result.amountCents / 100,
               appointmentDate: appointment.date?.toISOString(),
               locale: cancelRecipient.language,
             };
@@ -683,29 +713,23 @@ export async function PATCH(
                 console.error("Error sending refund confirmation:", err),
               ),
             );
-          } else {
-            console.log(
-              `No refund issued (100% cancellation fee applied): $${cancellationFee.toFixed(2)}`,
+          } else if (result.outcome === "refused" || result.outcome === "unconfirmed") {
+            console.error(`[appointments/${id}] cancellation refund ${result.outcome}`);
+            const alertArgs = {
+              appointmentId: id,
+              clientName: cancelRecipient.name,
+              professionalName: professional ? `${professional.firstName} ${professional.lastName}` : "",
+              amountCents: refundCents,
+              outcome: result.outcome,
+              message: result.outcome === "refused" ? result.message : null,
+            };
+            after(() =>
+              sendAdminAppointmentRefundProblemAlert(alertArgs).catch((err) =>
+                console.error("Error sending the refund problem alert:", err),
+              ),
             );
           }
-
-          // Update payment status to refunded
-          appointment.payment.status = "refunded";
-          appointment.payment.refundedAt = new Date();
-          await appointment.save();
-
-          // Void the client's fiscal receipt so a refunded payment no longer
-          // shows a valid paid receipt (same invariant as the manual refund
-          // route + webhook). Don't fail the cancellation if voiding errors.
-          await voidReceiptForRefund(id).catch((e) =>
-            console.error("voidReceiptForRefund (cancel path):", e),
-          );
-        } catch (refundError: unknown) {
-          console.error("Error processing automatic refund:", refundError);
-          // Don't fail the cancellation if refund fails - log it for manual processing
-          console.error(
-            `Manual refund required for appointment ${id}. Payment Intent: ${appointment.payment.stripePaymentIntentId}`,
-          );
+          // in_progress / not_refundable: another request is refunding it, or it already was.
         }
       } else if (appointment.payment.status === "pending") {
         // If payment is still pending, mark as cancelled

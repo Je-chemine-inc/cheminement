@@ -229,6 +229,96 @@ describe("calculateAppointmentPricing", () => {
       expect(r.currency).toBe("CAD");
     });
   });
+
+  describe("quick one-time consultation (spec 003)", () => {
+    const withQuickDefault = (quick: number) => {
+      h.settings = {
+        defaultPricing: { solo: 175, couple: 200, group: 170, quick },
+        platformFeePercentage: 11,
+        currency: "CAD",
+      };
+    };
+
+    it("uses the professional's quick rate when an admin set one", async () => {
+      h.profile = {
+        rates: {
+          solo: { clientPrice: 175, professionalRate: 150 },
+          quick: { clientPrice: 80, professionalRate: 60 },
+        },
+      };
+
+      const r = await calculateAppointmentPricing(PRO, "solo", { quick: true });
+
+      expect(r).toMatchObject({
+        sessionPrice: 80,
+        professionalPayout: 60,
+        platformFee: 20,
+        source: "professional",
+      });
+      // The standard session is untouched.
+      expect((await calculateAppointmentPricing(PRO, "solo")).sessionPrice).toBe(175);
+    });
+
+    it("prices a lone quick rate at the platform's quick price, else the solo price", async () => {
+      h.profile = {
+        rates: { solo: { clientPrice: 190 }, quick: { professionalRate: 50 } },
+      };
+      expect(
+        (await calculateAppointmentPricing(PRO, "solo", { quick: true })).sessionPrice,
+      ).toBe(190);
+
+      withQuickDefault(90);
+      expect(
+        await calculateAppointmentPricing(PRO, "solo", { quick: true }),
+      ).toMatchObject({ sessionPrice: 90, professionalPayout: 50, platformFee: 40 });
+    });
+
+    it("splits the platform's quick price by the percentage, never with the solo rate", async () => {
+      h.profile = { rates: { solo: { clientPrice: 175, professionalRate: 150 } } };
+      withQuickDefault(90);
+
+      const r = await calculateAppointmentPricing(PRO, "solo", { quick: true });
+
+      expect(r).toMatchObject({
+        sessionPrice: 90,
+        platformFee: 9.9,
+        professionalPayout: 80.1,
+        source: "platform",
+      });
+    });
+
+    it("costs exactly an individual session when nobody priced it", async () => {
+      h.profile = {
+        rates: {
+          solo: { clientPrice: 175, professionalRate: 150 },
+          couple: { clientPrice: 200, professionalRate: 160 },
+        },
+      };
+
+      // Booked as solo whatever therapy type the caller passed.
+      expect(
+        await calculateAppointmentPricing(PRO, "couple", { quick: true }),
+      ).toEqual(await calculateAppointmentPricing(PRO, "solo"));
+    });
+
+    it("holds sessionPrice === platformFee + professionalPayout", async () => {
+      const cases: Record<string, unknown>[] = [
+        { rates: { quick: { clientPrice: 99.99, professionalRate: 33.33 } } },
+        { rates: { quick: { clientPrice: 60, professionalRate: 75 } } },
+        { rates: { quick: { professionalRate: 66.666 } } },
+        {},
+      ];
+      for (const profile of cases) {
+        for (const quick of [0, 45.55]) {
+          h.profile = profile;
+          withQuickDefault(quick);
+          const r = await calculateAppointmentPricing(PRO, "solo", { quick: true });
+          expect(r.platformFee + r.professionalPayout).toBeCloseTo(r.sessionPrice, 10);
+          expect(r.platformFee).toBeGreaterThanOrEqual(0);
+        }
+      }
+    });
+  });
 });
 
 /**

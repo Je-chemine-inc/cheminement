@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ProfessionalLedgerEntry from "@/models/ProfessionalLedgerEntry";
+import ResourceEntitlement from "@/models/ResourceEntitlement";
 // Also registers the Appointment model so populate() resolves refs — without
 // it the export failed ("Schema hasn't been registered") until some other
 // route had loaded the model since the server started.
@@ -34,7 +35,9 @@ const nameOf = (ref: unknown) => {
 type JournalLine = { at: number; cells: Array<string | number | null | undefined> };
 
 /**
- * Journal des ventes (crédits séance) — export CSV pour comptable.
+ * Journal des ventes — export CSV pour comptable : les crédits des
+ * professionnels (séances, produits), les remboursements de séances, et les
+ * ventes des ressources premium de l'équipe (lues sur les achats).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -88,7 +91,27 @@ export async function GET(req: NextRequest) {
       "net_pro_cad",
       "canal_paiement",
       "type_ligne",
+      "tps_cad",
+      "tvq_cad",
     ].join(",");
+
+    // TPS and TVQ collected on a product sale (added at checkout), read from the
+    // purchase. A reversal carries them negative; session lines have none.
+    const entitlementIds = cleared.map((r) => r.entitlementId).filter(Boolean);
+    const taxesByEntitlement = new Map(
+      (entitlementIds.length
+        ? await ResourceEntitlement.find({ _id: { $in: entitlementIds } })
+            .select("tpsCents tvqCents")
+            .lean<{ _id: unknown; tpsCents?: number; tvqCents?: number }[]>()
+        : []
+      ).map((e) => [String(e._id), e]),
+    );
+    const taxCells = (r: { entitlementId?: unknown; grossAmountCad?: number }) => {
+      const taxes = r.entitlementId ? taxesByEntitlement.get(String(r.entitlementId)) : undefined;
+      if (typeof taxes?.tpsCents !== "number" || typeof taxes?.tvqCents !== "number") return ["", ""];
+      const sign = (r.grossAmountCad ?? 0) < 0 ? -1 : 1;
+      return [(sign * taxes.tpsCents) / 100, (sign * taxes.tvqCents) / 100];
+    };
 
     const sales: JournalLine[] = cleared.map((r) => {
       const apt = r.appointmentId as unknown as { date?: Date } | null;
@@ -101,12 +124,18 @@ export async function GET(req: NextRequest) {
           nameOf(r.professionalId),
           refId(r.appointmentId),
           day(apt?.date),
-          r.sessionActNature,
+          // A product sale (spec 003 phase 5) names its product instead of an act.
+          r.sessionActNature ?? r.productSlug,
           r.grossAmountCad,
           r.platformFeeCad,
           r.netToProfessionalCad,
           r.paymentChannel,
-          "vente",
+          r.source === "product_sale_reversal"
+            ? "remboursement_produit"
+            : r.source === "product_sale" || r.source === "product_sale_recredit"
+              ? "vente_produit"
+              : "vente",
+          ...taxCells(r),
         ],
       };
     });
@@ -152,11 +181,65 @@ export async function GET(req: NextRequest) {
           0,
           r.paymentChannel,
           "remboursement",
+          "",
+          "",
         ],
       });
     }
 
-    const lines = [...sales, ...refunds]
+    // The team's own premium resources (no professional): no ledger line
+    // exists for them, so they are read from the purchases. A sale on the day
+    // it was paid, a full refund as a negative line on its day; the whole price
+    // before taxes is the platform's, and TPS/TVQ come from the purchase.
+    const teamPurchases = await ResourceEntitlement.find({
+      ownerProfessionalId: { $exists: false },
+      status: { $in: ["paid", "refunded"] },
+      $or: [{ paidAt: { $gte: start, $lt: end } }, { refundedAt: { $gte: start, $lt: end } }],
+    })
+      .select("slug status paidAt refundedAt amountCents subtotalCents tpsCents tvqCents")
+      .lean<
+        {
+          slug: string;
+          status: string;
+          paidAt?: Date;
+          refundedAt?: Date;
+          amountCents: number;
+          subtotalCents?: number;
+          tpsCents?: number;
+          tvqCents?: number;
+        }[]
+      >();
+    const inYear = (d: Date | undefined): d is Date => Boolean(d) && new Date(d!) >= start && new Date(d!) < end;
+    const teamLines: JournalLine[] = [];
+    for (const purchase of teamPurchases) {
+      const priceCad = (typeof purchase.subtotalCents === "number" ? purchase.subtotalCents : purchase.amountCents) / 100;
+      const taxed = typeof purchase.tpsCents === "number" && typeof purchase.tvqCents === "number";
+      const line = (at: Date, sign: 1 | -1, type: string): JournalLine => ({
+        at: at.getTime(),
+        cells: [
+          day(at),
+          getBiweeklyCycleKey(at),
+          "",
+          "",
+          "",
+          "",
+          purchase.slug,
+          sign * priceCad,
+          sign * priceCad,
+          0,
+          "stripe",
+          type,
+          taxed ? (sign * purchase.tpsCents!) / 100 : "",
+          taxed ? (sign * purchase.tvqCents!) / 100 : "",
+        ],
+      });
+      if (inYear(purchase.paidAt)) teamLines.push(line(new Date(purchase.paidAt), 1, "vente_ressource"));
+      if (purchase.status === "refunded" && inYear(purchase.refundedAt)) {
+        teamLines.push(line(new Date(purchase.refundedAt), -1, "remboursement_ressource"));
+      }
+    }
+
+    const lines = [...sales, ...refunds, ...teamLines]
       .sort((a, b) => a.at - b.at)
       .map((l) => l.cells.map((c) => csvEscape(c)).join(","));
 

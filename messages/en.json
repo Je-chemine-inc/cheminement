@@ -39,6 +39,71 @@
     "schoolManager": {
       "title": "For schools and institutions",
       "description": "Give your students and staff supervised access to mental health professionals, with centralized follow-up and billing."
+    },
+    "professionals": {
+      "title": "Our professionals",
+      "description": "Meet Je chemine's psychologists, psychotherapists and other mental health professionals across Quebec."
+    }
+  },
+  "ProfessionalsDirectoryAdmin": {
+    "title": "Our professionals (website)",
+    "subtitle": "Choose who appears on the public « Our professionals » page and in what order. The public page changes as soon as you save.",
+    "viewPublic": "View the public page",
+    "refresh": "Refresh",
+    "save": "Save",
+    "resetOrder": "Back to alphabetical order",
+    "unsaved": "Unsaved changes",
+    "orderHint": "Saving fixes the order of the whole list. A new professional appears after the others, by last name, until you move them.",
+    "done": "Saved. The public page is up to date.",
+    "empty": "No active professionals.",
+    "hasPage": "Showcase page",
+    "columns": {
+      "position": "Order",
+      "professional": "Professional",
+      "status": "On the website",
+      "actions": "Actions"
+    },
+    "statuses": {
+      "listed": "Shown",
+      "hiddenByTeam": "Hidden by the team",
+      "hiddenByProfessional": "Hidden by the professional",
+      "incomplete": "Incomplete profile"
+    },
+    "notes": {
+      "hiddenByProfessional": "The professional unticked « Profile visible to clients »: they do not appear, whatever the team chooses.",
+      "incomplete": "Will appear once their profile is completed or their showcase page published."
+    },
+    "actions": {
+      "up": "Move {name} up",
+      "down": "Move {name} down",
+      "hide": "Hide",
+      "show": "Show"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "Could not connect. Check your network and try again.",
+      "CHANGED": "Someone changed the list in the meantime. It was reloaded: make your changes again.",
+      "SETTINGS_MISSING": "Save the platform settings once first.",
+      "INVALID": "The list sent is not valid. Refresh the page."
+    },
+    "access": {
+      "title": "Restricted access",
+      "body": "You need the permission to manage professionals to open this screen."
+    }
+  },
+  "Professionals": {
+    "title": "Our professionals",
+    "intro": "Psychologists, psychotherapists and other mental health professionals who support Quebecers, in French and English.",
+    "contactLine": "For more information about our team, <link>contact us</link>.",
+    "readMore": "Read more",
+    "readMoreLabel": "Read more about {name}",
+    "photoAlt": "Portrait of {name}",
+    "empty": "Our professionals will be introduced here soon.",
+    "teaser": {
+      "badge": "Our team",
+      "title": "Our professionals",
+      "text": "Meet the professionals who support you: their background, their title and their approach.",
+      "button": "Meet our professionals"
     }
   },
   "Common": {
@@ -587,7 +652,23 @@
       "branding": "Branding",
       "companyName": "Company Name",
       "primaryColor": "Primary Color",
-      "secondaryColor": "Secondary Color"
+      "secondaryColor": "Secondary Color",
+      "quickSession": "Quick one-time consultation",
+      "quickSessionHelp": "Default price of a quick one-time consultation. Left empty: the price of an individual session.",
+      "productCommission": "Commission on professionals' products (%)",
+      "productCommissionHelp": "The platform's share of each sale of a professional's training or product; it covers Stripe's fees. Each purchase keeps the rate in force when it was paid.",
+      "salesTaxesTitle": "Taxes on online sales",
+      "salesTaxesHelp": "GST and QST are added to the displayed price at payment, on professionals' trainings and products and on the team's premium resources. Professionals' commission is calculated on the price before taxes. Each purchase keeps the amounts, rates and numbers in force when it was paid.",
+      "salesTaxesEnabled": "Add GST and QST at payment",
+      "salesTaxesOff": "Off: buyers pay the displayed price, with no tax added.",
+      "salesTaxesNumbersRequired": "Enter both registration numbers to turn taxes on.",
+      "tpsRate": "GST rate (%)",
+      "tvqRate": "QST rate (%)",
+      "salesTaxesRateHelp": "Between 0 and 20%, three decimals at most.",
+      "tpsNumber": "GST number",
+      "tvqNumber": "QST number",
+      "taxNumberHelp": "Shown on the buyer's receipt.",
+      "salesTaxesExample": "Example on {price}: GST {tps}, QST {tvq}, total paid {total}."
     },
     "admins": {
       "title": "Admin Management",
@@ -766,7 +847,12 @@
       "refresh": "Refresh",
       "cancel": "Cancel",
       "save": "Save",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "showcaseLabel": "Offered on showcase pages",
+      "showcaseHint": "Professionals can show it on their showcase page, and it can get its own city pages.",
+      "slugLabel": "URL segment",
+      "slugHint": "Used in the address of city pages, for example /specialite/anxiete. Leave empty to build it from the French label.",
+      "showcaseBadge": "Showcase pages"
     },
     "motifs": {
       "title": "Consultation reasons",
@@ -1749,7 +1835,18 @@
     "notAcceptingMarker": "not accepting new clients",
     "notAcceptingWarning": "This professional has turned off new client requests. You can still assign them, but they chose not to receive new clients.",
     "notAcceptingEmergencyMarker": "not accepting quick consultations",
-    "notAcceptingEmergencyWarning": "This professional has turned off quick one-time (urgent) consultations. You can still assign them, but they chose not to receive urgent requests."
+    "notAcceptingEmergencyWarning": "This professional has turned off quick one-time (urgent) consultations. You can still assign them, but they chose not to receive urgent requests.",
+    "directPendingBadge": "Direct request — waiting for {name}",
+    "directRespondBy": "reply by {deadline}",
+    "directPendingActionsHint": "Direct request waiting for a reply from {name}: matching, scheduling and the general pool are unavailable until the professional replies or the deadline passes.",
+    "directDeclinedBadge": "Direct request declined",
+    "directExpiredBadge": "Direct request not answered",
+    "directReasonSlotUnavailable": "Slot does not suit them",
+    "directReasonNotAFit": "Outside their practice",
+    "directReasonNotAccepting": "Not accepting new clients",
+    "directReasonOther": "Other reason",
+    "directDeclineNote": "Note: {note}",
+    "directReroutedBadge": "Direct request → matching"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Availability grid by period (morning, afternoon, evening) and week type",
@@ -2010,7 +2107,8 @@
       "schoolServices": "School Services",
       "platform": "Space",
       "contact": "Contact",
-      "professional": "I am a Professional"
+      "professional": "I am a Professional",
+      "professionals": "Our professionals"
     },
     "menuSections": {
       "navigation": "Navigation",
@@ -2348,6 +2446,7 @@
     "paywallTitle": "Unlock this resource",
     "paywallBody": "Get the full content, videos and exercises. One-time payment, lifetime access, on all your devices.",
     "priceAllInclusive": "All-inclusive price, in Canadian dollars.",
+    "pricePlusTaxes": "In Canadian dollars, plus GST and QST, added at payment.",
     "perk1": "Lifetime access, no subscription",
     "perk2": "Read on desktop, tablet or mobile",
     "perk3": "Secure payment through Stripe",
@@ -2360,12 +2459,31 @@
     "ctaTitle": "Ready to talk to a professional?",
     "ctaButton": "Book an appointment",
     "ownedCtaTitle": "More resources are waiting for you.",
-    "ownedCtaButton": "All resources"
+    "ownedCtaButton": "All resources",
+    "byline": "By {name}",
+    "productType_video": "Video",
+    "productType_audio": "Audio",
+    "productType_pdf": "PDF document",
+    "productType_webinar": "Webinar",
+    "productType_external": "External link",
+    "productPreviewNotice": "Preview: this product is not on sale right now. Only its professional and the team see it.",
+    "productWithdrawnNotice": "This product is no longer on sale, but you bought it: it stays yours.",
+    "productDownloadPdf": "Download the document",
+    "productExternalCta": "View the product",
+    "webinarWhen": "On {date}",
+    "webinarDuration": "{minutes} minutes",
+    "webinarJoin": "Join the webinar",
+    "webinarReplay": "Watch the replay"
   },
   "ResourceCheckout": {
     "title": "Unlock the resource",
     "resourceLabel": "Resource",
     "amountToPay": "Amount to pay",
+    "subtotal": "Price",
+    "tps": "GST ({rate}%)",
+    "tvq": "QST ({rate}%)",
+    "total": "Total",
+    "taxesEstimate": "The exact total is confirmed at the next step.",
     "emailLabel": "Your email",
     "emailPlaceholder": "you@example.com",
     "emailWhy": "We'll send your personal access link to this address.",
@@ -3268,12 +3386,17 @@
       "types": {
         "individualSession": "Individual session",
         "coupleSession": "Couple session",
-        "groupSession": "Group session"
+        "groupSession": "Group session",
+        "quickConsultation": "Quick one-time consultation"
       },
       "errors": {
         "RATE_EXCEEDS_CLIENT_PRICE": "The professional rate cannot exceed the client price.",
-        "CLIENT_PRICE_MUST_BE_POSITIVE": "The client price must be greater than zero."
-      }
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "The client price must be greater than zero.",
+        "INVALID_QUICK_DURATION": "The length must be a whole number of minutes, from 15 to 90."
+      },
+      "quickDuration": "Length (minutes)",
+      "quickDurationHelp": "A whole number from {min} to {max}. Left empty: {minutes} minutes.",
+      "quickHelp": "Without a rate here, the platform's default price for this service applies, otherwise the individual session's."
     },
     "sidebar": {
       "logo": "Logo",
@@ -3321,7 +3444,16 @@
       "employees": "Employees",
       "administration": "Administration",
       "organizations": "Paying organizations",
-      "organizationInvoices": "Organization invoices"
+      "organizationInvoices": "Organization invoices",
+      "showcases": "Showcase pages",
+      "professionalsDirectory": "Our professionals (website)",
+      "showcase": "My showcase page",
+      "waitlist": "Waitlist",
+      "waitlists": "Waitlists",
+      "products": "Trainings and products",
+      "productsReview": "Products to review",
+      "articles": "My articles",
+      "articlesReview": "Articles to review"
     },
     "overview": {
       "title": "Welcome Back",
@@ -3993,7 +4125,9 @@
         "addLinkFirst": "Please add a meeting link before starting the session.",
         "updateLinkFailed": "Failed to update meeting link. Please try again.",
         "startFailed": "Failed to start session. Please try again."
-      }
+      },
+      "directRequestPending": "Pending request",
+      "directRequestHint": "Answer this request in Proposals"
     },
     "analytics": {
       "badge": "Analytics",
@@ -4117,7 +4251,7 @@
       "privacy": "Privacy",
       "privacyDesc": "Manage your privacy and visibility settings.",
       "profileVisible": "Profile visible to clients",
-      "profileVisibleDesc": "Allow clients to find you through the platform.",
+      "profileVisibleDesc": "Allow clients to find you through the platform, and appear in « Our professionals » on the website.",
       "showRating": "Show my rating",
       "showRatingDesc": "Display your average rating on your public profile.",
       "visibleToPros": "Visible to other professionals",
@@ -5518,7 +5652,20 @@
         "noReasonProvided": "No reason provided",
         "failedToCancel": "Failed to cancel appointment",
         "currencySuffix": "CAD"
-      }
+      },
+      "directRequestSentTo": "Request sent to {name}",
+      "directRequestServiceStandard": "Standard consultation",
+      "directRequestServiceQuick": "Quick one-time consultation",
+      "directRequestRespondBy": "Answer expected by {deadline}",
+      "directRequestWithdraw": "Withdraw my request",
+      "directRequestWithdrawTitle": "Withdraw your request?",
+      "directRequestWithdrawMessage": "The time slot will be released and the professional will no longer see your request. You will not be charged.",
+      "directRequestKeep": "Keep my request",
+      "directRequestWithdrawing": "Withdrawing…",
+      "directRequestWithdrawn": "Your request has been withdrawn.",
+      "directRequestClosed": "The professional has already answered your request.",
+      "directRequestWithdrawError": "Unable to withdraw the request right now. Please try again.",
+      "directRequestUnavailable": "This time slot was not available — check the email you received to choose another slot or be matched."
     },
     "medicalProfile": {
       "loading": "Loading...",
@@ -7060,7 +7207,7 @@
     "accessFree": "Free access",
     "accessPremium": "Premium (paid)",
     "fieldPrice": "Price (CAD)",
-    "priceHint": "All-inclusive price, no tax is added. Visitors will see: {fr} / {en}.",
+    "priceHint": "Price before taxes. When GST and QST are turned on in the settings, they are added at payment. Visitors will see: {fr} / {en}.",
     "errorPriceRequired": "Enter a price greater than 0 for a premium resource.",
     "previewEditorLabel": "Free preview",
     "previewEditorHint": "Visible to everyone before purchase. Give a taste without revealing everything.",
@@ -7199,7 +7346,10 @@
     "backToList": "Back to news",
     "emptyContent": "Content for this post will be published soon.",
     "ctaTitle": "More announcements are waiting.",
-    "ctaButton": "All news"
+    "ctaButton": "All news",
+    "byline": "By {name}",
+    "disclaimer": "This article informs; it does not replace a consultation with a mental health professional. In an emergency, call 911.",
+    "previewNotice": "Preview: this article is not published. Only its author and the team see it."
   },
   "Press": {
     "badge": "MEDIA LIBRARY",
@@ -7284,5 +7434,1512 @@
     "verifyArrival": "Expected around {date}.",
     "verifyLink": "Open the verification page",
     "methodUnavailable": "This payment method is not available right now. Pay by card or by another method shown below."
+  },
+  "Showcase": {
+    "brand": "Je chemine",
+    "footer": {
+      "privacy": "Privacy",
+      "terms": "Terms of use",
+      "rights": "© {year} Je chemine. All rights reserved."
+    },
+    "profile": {
+      "previewBanner": "Preview: this version is not visible to the public.",
+      "photoAlt": "Photo of {name}",
+      "location": "{city} · {region}",
+      "memberOf": "{order}",
+      "permit": "Permit no. {number}",
+      "officeIn": "Office in {city}",
+      "experience": "{years, plural, =0 {Less than a year of experience} one {# year of experience} other {# years of experience}}",
+      "bookCta": "Request an appointment",
+      "matchCta": "Get matched with a professional",
+      "presentationTitle": "About",
+      "approachTitle": "My approach",
+      "valuesTitle": "Values",
+      "expertisesTitle": "Areas of expertise",
+      "servicesTitle": "Services and fees",
+      "standardTitle": "Standard consultation",
+      "notAccepting": "{name} is not taking new clients at the moment. Je chemine can match you with another professional.",
+      "pricesUnavailable": "Fees are confirmed with your request.",
+      "duration": "{minutes} minutes",
+      "quickTitle": "Quick one-time consultation",
+      "quickOffered": "For a specific, one-time need.",
+      "receipt": "A receipt is issued for every paid session.",
+      "cancellation": "Free cancellation up to {hours} hours before the appointment.",
+      "bookTitle": "Book an appointment",
+      "bookBody": "Send your request online in a few minutes. Je chemine confirms your appointment.",
+      "metaTitle": "{name}, {title} in {city}",
+      "metaTitleNoTitle": "{name}, mental health in {city}",
+      "metaDescription": "{name}, mental-health professional in {city} ({region}): profile, areas of expertise, fees and appointment requests with Je chemine.",
+      "productsTitle": "Trainings and products",
+      "productType_video": "Video",
+      "productType_audio": "Audio",
+      "productType_pdf": "PDF document",
+      "productType_webinar": "Webinar",
+      "productType_external": "External link",
+      "productFree": "Free",
+      "productOpen": "View"
+    },
+    "vitrine": {
+      "verified": "Page verified by Je chemine",
+      "others": "Other professionals in {city}",
+      "orderPermit": "{order} · permit no. {number}",
+      "placeBoth": "{city} and online",
+      "placeVideo": "Online consultations",
+      "heroSecondary": "See fees",
+      "nav": {
+        "label": "On this page",
+        "about": "About",
+        "approach": "Approach",
+        "services": "Fees",
+        "slots": "Availability",
+        "products": "Trainings",
+        "articles": "Articles"
+      },
+      "chips": {
+        "inPerson": "In person in {city}",
+        "video": "Video consultation",
+        "phone": "Phone consultation",
+        "chat": "Chat consultation"
+      },
+      "modesShort": {
+        "inPerson": "in person",
+        "video": "by video",
+        "phone": "by phone",
+        "chat": "by chat"
+      },
+      "trust": {
+        "receipt": "A receipt for every paid session",
+        "cancellation": "Free cancellation up to {hours} h before",
+        "answer": "An answer to your request within 24 hours at most"
+      },
+      "about": {
+        "eyebrow": "About",
+        "heading": "{title} in {city}",
+        "headingYears": "{title} for {years, plural, one {# year} other {# years}}, in {city}",
+        "headingNoTitle": "{name}, in {city}",
+        "factsTitle": "At a glance",
+        "credentialsTitle": "Background",
+        "quoteBy": "— {name}",
+        "officePhotoAlt": "The office of {name}"
+      },
+      "approach": {
+        "eyebrow": "Approach",
+        "title": "My approach",
+        "methodsTitle": "The methods I use",
+        "stepsTitle": "How a request works",
+        "step": "Step {number}",
+        "requestTitle": "Your request",
+        "requestBody": "You pick a time in the availability and fill in your request. The time is held for you while {name} reviews it.",
+        "answerTitle": "The answer",
+        "answerBody": "{name} confirms or declines within 24 hours at most. You receive the answer and the details by email.",
+        "firstTitle": "The first meeting",
+        "firstBody": "You go over your situation and set goals together, in the format you chose.",
+        "nextTitle": "What follows",
+        "nextBody": "The next meetings are scheduled with {name}. A receipt is issued for every paid session.",
+        "stepLabel": "Step {number}"
+      },
+      "values": {
+        "eyebrow": "Values",
+        "title": "What guides my practice",
+        "intro": "The principles behind every meeting, from the first conversation to follow-up."
+      },
+      "services": {
+        "eyebrow": "Services and fees",
+        "title": "Fees shown up front, no surprises",
+        "intro": "All fees are in Canadian dollars and shown before you make a request. Choose the consultation that suits you.",
+        "quickPoint": "For a specific, one-time need",
+        "priceLater": "Fee confirmed with your request",
+        "seeTimes": "See availability",
+        "seeQuick": "See times",
+        "standardPoint": "Ongoing support, session after session, at your own pace.",
+        "perSession": "per session",
+        "notesTitle": "Good to know"
+      },
+      "dispos": {
+        "eyebrow": "Availability",
+        "title": "Choose a time that works for you",
+        "intro": "Pick a day and a time: {name} answers your request within 24 hours at most.",
+        "closedTitle": "No consultation open right now",
+        "closedIntro": "Join the waitlist for {name}, or let Je chemine match you with another professional."
+      },
+      "products": {
+        "eyebrow": "Trainings and products",
+        "title": "Learn at your own pace, between sessions"
+      },
+      "articles": {
+        "eyebrow": "Articles",
+        "title": "Worth reading",
+        "read": "Read the article"
+      },
+      "expertises": {
+        "eyebrow": "Areas of expertise"
+      },
+      "cta": {
+        "title": "The first step is often the hardest",
+        "body": "Choose a time that works for you: your request goes straight to {name}.",
+        "waitlist": "Waitlist"
+      },
+      "emergencyTitle": "Need help quickly?",
+      "expertisesTitle": "What I help with",
+      "expertisesIntro": "The difficulties and life situations {name} can help you with.",
+      "ctaEyebrow": "First step",
+      "footer": {
+        "pageTitle": "On this page",
+        "platformTitle": "Je chemine",
+        "match": "Get matched with a professional",
+        "poweredTitle": "Powered by",
+        "poweredBody": "Page hosted on Je chemine, Quebec's mental-health platform.",
+        "site": "Discover Je chemine"
+      },
+      "sticky": {
+        "price": "{price} · {minutes} min",
+        "note": "Standard consultation",
+        "cta": "Book an appointment"
+      }
+    },
+    "titles": {
+      "psychologist": "Psychologist",
+      "psychotherapist": "Psychotherapist",
+      "neuropsychologist": "Neuropsychologist",
+      "psychoeducator": "Psychoeducator",
+      "occupationalTherapistMentalHealth": "Occupational therapist (mental health)",
+      "psychiatrist": "Psychiatrist",
+      "otherProfessionals": "Other professionals"
+    },
+    "orders": {
+      "OPQ": "Ordre des psychologues du Québec",
+      "OPPQ": "Ordre des psychoéducateurs et psychoéducatrices du Québec",
+      "OTSTCFQ": "Ordre des travailleurs sociaux et des thérapeutes conjugaux et familiaux du Québec",
+      "OCCOQ": "Ordre des conseillers et conseillères d'orientation du Québec",
+      "OEQ": "Ordre des ergothérapeutes du Québec",
+      "CMQ": "Collège des médecins du Québec",
+      "OIIQ": "Ordre des infirmières et infirmiers du Québec",
+      "OPSQ": "Ordre professionnel des sexologues du Québec"
+    },
+    "modalities": {
+      "inPerson": "In person",
+      "video": "Video consultation",
+      "phone": "Phone",
+      "chat": "Chat"
+    },
+    "languages": {
+      "french": "French",
+      "english": "English",
+      "arabic": "Arabic",
+      "spanish": "Spanish",
+      "mandarin": "Mandarin"
+    },
+    "therapyTypes": {
+      "solo": "Individual session",
+      "couple": "Couples session",
+      "group": "Group session"
+    }
+  },
+  "ShowcasePro": {
+    "title": "My showcase page",
+    "subtitle": "Your public page on Je chemine presents your practice to people looking for a professional in your city. The team prepares it and publishes it with your agreement; you then edit it whenever you want.",
+    "loadError": "Your showcase page could not be loaded. Try again in a moment.",
+    "cancel": "Cancel",
+    "notInvited": {
+      "title": "No showcase page yet",
+      "body": "The Je chemine team creates showcase pages with professionals. Once yours is published, you can edit it here."
+    },
+    "preparing": {
+      "title": "Your page is being prepared",
+      "body": "The Je chemine team is preparing your showcase page. You will get an email as soon as it is published, and you can then edit it here."
+    },
+    "status": {
+      "label": "Page status",
+      "invited": "Being prepared",
+      "draft": "Being prepared",
+      "published": "Live",
+      "approvedClosed": "Published",
+      "unpublished": "Taken down"
+    },
+    "statusText": {
+      "published": "Your page is live:",
+      "approvedClosed": "Your page is published. The public will see it as soon as showcase pages open.",
+      "liveEdits": "Your changes are published as soon as you save them. The page address and the professional order are managed by the team: write to us to change them. The page's city follows the office address in your profile.",
+      "unpublishedByProfessional": "You took your page down. You can put it back online at any time.",
+      "unpublishedByAdmin": "The team took your page down. Write to us to learn more."
+    },
+    "stats": {
+      "line": "Last {days} days: {views, plural, =0 {no visits} one {# visit} other {# visits}} and {clicks, plural, =0 {no clicks} one {# click} other {# clicks}} on \"Request an appointment\"."
+    },
+    "missingTitle": "Still to complete:",
+    "missing": {
+      "photo": "A photo",
+      "displayName": "The display name",
+      "headline": "The headline in French",
+      "bio": "A presentation in French of at least 200 characters",
+      "expertises": "At least 3 areas of expertise",
+      "order": "The professional order",
+      "title": "The professional title, in the profile",
+      "license": "The permit number, in the profile",
+      "modalities": "The consultation modes, in the profile",
+      "city": "A recognised city in the office address, in the profile"
+    },
+    "actions": {
+      "preview": "Preview",
+      "viewPublic": "View the public page",
+      "unpublish": "Take my page down",
+      "republish": "Put back online"
+    },
+    "unpublishDialog": {
+      "title": "Take your page down?",
+      "body": "The public will no longer see your page. You can put it back online whenever you want.",
+      "confirm": "Take my page down"
+    },
+    "facts": {
+      "title": "Information from the profile",
+      "hint": "It appears as is on the page. To change it, edit the profile.",
+      "editProfile": "Edit my profile",
+      "none": "Not provided",
+      "titleLabel": "Professional title",
+      "license": "Permit number",
+      "modalities": "Consultation modes",
+      "languages": "Languages",
+      "officeCity": "Office city",
+      "pageAddress": "Page address"
+    },
+    "photo": {
+      "title": "Photo",
+      "hint": "A recent professional photo, facing the camera and well lit. JPEG, PNG or WebP, 5 MB at most, at least 400 pixels on each side.",
+      "alt": "Showcase page photo",
+      "upload": "Add a photo",
+      "replace": "Replace the photo",
+      "remove": "Remove the photo"
+    },
+    "officePhotos": {
+      "title": "Office photos",
+      "hint": "Up to 6 photos of the office or consulting room. They are shown large on the page, instead of the ambience photos, in the order chosen. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
+      "add": "Add an office photo",
+      "remove": "Remove",
+      "moveUp": "Move earlier",
+      "moveDown": "Move later",
+      "alt": "Office photo {number}",
+      "full": "The maximum of 6 photos is reached. Remove one to add another."
+    },
+    "presentation": {
+      "title": "Presentation",
+      "language": "Text language",
+      "french": "French",
+      "english": "English",
+      "englishHint": "English is optional. Without a translation, English-speaking visitors see the French text."
+    },
+    "fields": {
+      "displayName": "Display name",
+      "displayNameHint": "As it appears at the top of the page.",
+      "headline": "Headline",
+      "headlinePlaceholder": "E.g. I help adults build lasting well-being.",
+      "intro": "Introduction",
+      "introPlaceholder": "A few sentences to introduce yourself.",
+      "bio": "Presentation",
+      "bioPlaceholder": "Your background, your practice and the people you work with. Leave an empty line between paragraphs.",
+      "approach": "My approach",
+      "approachPlaceholder": "How your sessions go and what your approach is based on.",
+      "values": "Values",
+      "valuesHint": "Up to 5 words or short phrases, for example \"Kindness\".",
+      "addValue": "Add a value",
+      "removeValue": "Remove this value",
+      "insuranceNote": "Insurance note",
+      "insuranceNotePlaceholder": "E.g. My services can be reimbursed by most group insurance plans.",
+      "valueDescription": "Description (optional)",
+      "quote": "Quote",
+      "quotePlaceholder": "One sentence that sums up the way of working, signed with the display name.",
+      "highlights": "Highlights",
+      "highlightsHint": "Up to 4 short mentions shown under the presentation, for example \"Receipts for group insurance\".",
+      "highlightsAdd": "Add a highlight",
+      "credentials": "Background",
+      "credentialsHint": "Up to 6 lines: degrees, trainings and notable experience.",
+      "credentialsAdd": "Add a line",
+      "focusAreas": "What I help with",
+      "focusAreasHint": "Up to 4 cards describing the situations most often worked on. The French title is required.",
+      "focusAreasAdd": "Add a card",
+      "focusAreasParts": {
+        "title": "Title",
+        "body": "Description"
+      },
+      "methods": "Methods",
+      "methodsHint": "Up to 4 approaches shown as cards, for example \"CBT — Cognitive behavioural therapy\". The French short name is required.",
+      "methodsAdd": "Add a method",
+      "methodsParts": {
+        "name": "Short name",
+        "title": "Title",
+        "body": "Description"
+      },
+      "removeItem": "Remove",
+      "characters": "{count} / {max} characters"
+    },
+    "expertises": {
+      "title": "Areas of expertise",
+      "hint": "Choose 3 to 12 areas. They help people find you by city and by need.",
+      "count": "{count, plural, =0 {None selected} one {# selected} other {# selected}}",
+      "none": "The team has not opened any areas of expertise for showcase pages yet."
+    },
+    "order": {
+      "title": "Professional order",
+      "select": "Choose the order",
+      "other": "Other order",
+      "otherLabel": "Name of the order"
+    },
+    "city": {
+      "title": "Page city"
+    },
+    "identity": {
+      "title": "Professional order and page city",
+      "hint": "The order is managed by the Je chemine team: write to us to change it. The city follows the office address in your profile."
+    },
+    "services": {
+      "title": "Services offered on the page",
+      "hint": "These choices apply right away. Fees come from the pricing grid.",
+      "standard": "Standard consultation",
+      "standardHint": "The usual sessions, at the grid's fees.",
+      "quick": "Quick one-time consultation",
+      "quickHint": "A one-time meeting for a specific need.",
+      "notAcceptingClients": "The profile says new clients are not accepted: this service does not appear on the page.",
+      "notAcceptingQuick": "The profile says quick one-time consultations are not accepted: this service does not appear on the page."
+    },
+    "editor": {
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "savedLive": "Changes saved and live.",
+      "unsaved": "Unsaved changes"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "No connection. Check your network and try again.",
+      "TOO_LONG": "A field is longer than allowed.",
+      "INVALID_FIELD": "A field has an invalid value.",
+      "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
+      "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
+      "TOO_MANY_VALUES": "Enter at most 5 values.",
+      "TOO_MANY_ITEMS": "A list has more items than allowed.",
+      "OFFICE_PHOTO_LIMIT": "The maximum of 6 office photos is reached.",
+      "OFFICE_PHOTO_NOT_FOUND": "This photo is no longer on the page. Reload it.",
+      "INVALID_ORDER": "Choose a professional order from the list.",
+      "NOTHING_TO_SAVE": "There are no changes to save.",
+      "NOT_FOUND": "Showcase page not found.",
+      "NO_FILE": "Choose a file.",
+      "PHOTO_TOO_LARGE": "The photo is larger than 5 MB.",
+      "PHOTO_INVALID": "Format refused. Use a JPEG, PNG or WebP image.",
+      "PHOTO_TOO_SMALL": "The photo is too small: it needs at least 400 pixels on each side.",
+      "PHOTO_INFECTED": "The antivirus scan refused this file.",
+      "SCAN_UNAVAILABLE": "The antivirus scan is unavailable. Try again in a few minutes.",
+      "RATE_LIMITED": "Too many attempts. Try again later.",
+      "CONSENT_REQUIRED": "Confirm that the professional agreed to the publication of their page.",
+      "INCOMPLETE": "The page is not complete. See the list of missing items.",
+      "IN_PREPARATION": "Your page is being prepared by the team: you can edit it once it is published.",
+      "NOT_PUBLISHED": "The page is not live.",
+      "NOT_UNPUBLISHED": "The page is not taken down.",
+      "FORBIDDEN": "This action is not allowed.",
+      "PROFESSIONAL_NOT_ACTIVE": "The professional's account is not active.",
+      "PROFESSIONAL_NOT_FOUND": "Professional not found.",
+      "WITHDRAWN_BY_PROFESSIONAL": "The professional took their page down: only they can put it back online.",
+      "NOTHING_TO_PUBLISH": "There is nothing new to publish.",
+      "REVISION_CHANGED": "The page changed since you loaded it. Reload it before going on.",
+      "SLUG_TAKEN": "This address is already in use.",
+      "INVALID_SLUG": "Invalid address: lowercase letters, digits and hyphens only.",
+      "OFFICE_CITY_UNKNOWN": "The office address in the profile does not name a recognised city. Correct it, then try again.",
+      "ALREADY_INVITED": "This professional already has a showcase page.",
+      "CONFLICT": "The page was changed at the same time. Reload it.",
+      "INVALID_ACTION": "Unknown action.",
+      "ACCOUNT_NOT_ACTIVE": "Your account must be active to edit your page."
+    },
+    "customize": {
+      "title": "Customize the page",
+      "hint": "Your colour, the order of the sections, their titles and your ambience photos. Changes go live when you save.",
+      "accentTitle": "Page colour",
+      "accents": {
+        "teal": "Teal",
+        "forest": "Forest",
+        "ocean": "Ocean",
+        "plum": "Plum",
+        "terracotta": "Terracotta"
+      },
+      "sectionsTitle": "Sections and order",
+      "sectionsHint": "Move sections and hide the ones you do not want to show. A section with no content stays hidden.",
+      "sections": {
+        "about": "About",
+        "approach": "Approach and how a request works",
+        "values": "Values",
+        "services": "Services and fees",
+        "slots": "Availability",
+        "expertises": "What I help with",
+        "products": "Trainings and products",
+        "articles": "Articles",
+        "cta": "Closing band"
+      },
+      "show": "Show “{section}”",
+      "moveUp": "Move “{section}” up",
+      "moveDown": "Move “{section}” down",
+      "required": "Services and fees and Availability are always shown.",
+      "textsTitle": "Section titles and texts",
+      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A text replaces the page’s own only when it is written in French.",
+      "texts": {
+        "aboutTitle": "“About” title",
+        "approachTitle": "“Approach” title",
+        "methodsTitle": "Methods title",
+        "stepsTitle": "“How a request works” title",
+        "valuesTitle": "“Values” title",
+        "valuesIntro": "Text under “Values”",
+        "servicesTitle": "“Services and fees” title",
+        "servicesIntro": "Text under “Services and fees”",
+        "standardPoint": "Standard consultation description",
+        "quickPoint": "Quick consultation description",
+        "disposTitle": "“Availability” title",
+        "disposIntro": "Text under “Availability”",
+        "expertisesTitle": "“What I help with” title",
+        "expertisesIntro": "Text under “What I help with”",
+        "productsTitle": "“Trainings and products” title",
+        "articlesTitle": "“Articles” title",
+        "ctaTitle": "Closing band title",
+        "ctaBody": "Closing band text"
+      },
+      "photosTitle": "Ambience photos",
+      "photosHint": "Choose your photos from Je chemine’s library. Your office photos always come first.",
+      "photoSlots": {
+        "band": "Large photo under the introduction",
+        "about": "Photo beside “About”",
+        "closing": "Closing band photo"
+      },
+      "photoAuto": "Automatic",
+      "photoOption": "Photo {number}"
+    }
+  },
+  "ShowcaseAdmin": {
+    "editor": {
+      "fields": {
+        "introPlaceholder": "A few sentences to introduce the professional.",
+        "bioPlaceholder": "Their background, their practice and the people they work with. Leave an empty line between paragraphs.",
+        "approachPlaceholder": "How their sessions go and what their approach is based on."
+      },
+      "expertises": {
+        "hint": "Choose 3 to 12 areas. They help people find this professional by city and by need."
+      }
+    },
+    "title": "Showcase pages",
+    "subtitle": "Activate a professional's page, fill it in, then publish it with their agreement. They can then edit it themselves.",
+    "cancel": "Cancel",
+    "access": {
+      "title": "Restricted access",
+      "body": "This screen is for admins who manage professionals. Ask a super admin for this permission."
+    },
+    "badges": {
+      "notInvited": "No page",
+      "invited": "To prepare",
+      "draft": "Being prepared",
+      "published": "Live",
+      "approvedClosed": "Published, pages closed",
+      "unpublished": "Taken down"
+    },
+    "switch": {
+      "title": "Public access",
+      "on": "Open: published pages are visible to the public.",
+      "off": "Closed: professionals' pages, such as jechemine.ca/amel-sassi, show a not-found page. You can activate, prepare and publish pages meanwhile.",
+      "turnOn": "Open to the public",
+      "turnOff": "Close to the public",
+      "confirmOnTitle": "Open showcase pages to the public?",
+      "confirmOnBody": "Published pages become visible at their address on www.jechemine.ca and can be indexed by search engines.",
+      "confirmOffTitle": "Close showcase pages?",
+      "confirmOffBody": "Professionals' pages will no longer be visible. Pages stay published and come back when you reopen.",
+      "confirm": "Confirm"
+    },
+    "list": {
+      "title": "Approved professionals",
+      "refresh": "Refresh",
+      "search": "Search by name or email",
+      "filters": {
+        "all": "All",
+        "inProgress": "Being prepared",
+        "published": "Live",
+        "unpublished": "Taken down",
+        "notInvited": "No page"
+      },
+      "empty": "No professional matches.",
+      "columns": {
+        "professional": "Professional",
+        "city": "City",
+        "page": "Page",
+        "stats": "Visits ({days} days)",
+        "actions": "Actions"
+      },
+      "stats": "{views, plural, one {# visit} other {# visits}} · {clicks, plural, one {# click} other {# clicks}}",
+      "accountInactive": "Inactive account",
+      "changes": "Unpublished corrections",
+      "professionalEdit": "Edited by the professional on {date}",
+      "open": "Open",
+      "activate": "Activate the page"
+    },
+    "activate": {
+      "title": "Activate the page of {name}",
+      "body": "A showcase page is created for this professional, prefilled from their profile. No email is sent to them: you fill in the page, then publish it with their agreement.",
+      "cityFromOffice": "Page city: {city}, from the office address in their profile.",
+      "noOfficeCity": "The office address in their profile does not name a recognised city. Correct it in their file before activating the page.",
+      "slug": "Page address (optional)",
+      "slugHint": "Leave empty to use the first and last name. Lowercase letters, digits and hyphens only.",
+      "preview": "Address: {url}",
+      "submit": "Activate and prepare the page"
+    },
+    "detail": {
+      "back": "Back to showcase pages",
+      "notFound": "This professional has no showcase page.",
+      "loadError": "The showcase page could not be loaded.",
+      "done": "Done.",
+      "profileLink": "Professional's file",
+      "publicLink": "View the public page",
+      "reviewTitle": "Publication",
+      "revision": "Revision {revision}",
+      "consentCurrent": "The professional accepted publication on {date}.",
+      "consentAttested": "The professional's agreement to publication was confirmed by the team on {date}.",
+      "consentMissing": "No agreement on record: when publishing, you will confirm that the professional agreed to the publication of their page.",
+      "lastProfessionalEdit": "Last edited by the professional on {date}: it is already live.",
+      "unpublishedCorrections": "Your corrections are not published yet: the public sees the previous version.",
+      "previewDraft": "Preview the draft",
+      "previewPublished": "Preview the live version",
+      "publish": "Publish the page",
+      "publishChanges": "Publish the corrections",
+      "publishTitle": "Publish revision {revision}?",
+      "publishBody": "This revision becomes the public page. The professional gets an email and can then edit their page themselves; their changes are live as soon as they save them.",
+      "consentAttest": "I confirm that the professional agreed to Je chemine publishing this page (photo, name, title, order and permit, city, presentation, areas of expertise and fees), checked that it is accurate, and knows they can edit it or take it down at any time.",
+      "unpublish": "Take the page down",
+      "unpublishTitle": "Take the page down?",
+      "unpublishBody": "The public no longer sees the page. The professional is notified by email, with the reason if you give one.",
+      "reason": "Reason (optional)",
+      "republish": "Put back online",
+      "move": "Change the address",
+      "moveTitle": "Change the page address",
+      "moveBody": "If the page was ever published, the old address redirects to the new one.",
+      "slug": "Address",
+      "save": "Save",
+      "editorTitle": "Page content",
+      "editorHint": "Your changes stay in the draft until you publish. Once the page is published, the professional's changes are live as soon as they save them. The services offered change right away.",
+      "historyTitle": "History",
+      "historyEmpty": "No events.",
+      "history": {
+        "activate": "Page activated",
+        "approve": "Published",
+        "edit": "Edited by the professional",
+        "unpublish": "Taken down",
+        "republish": "Put back online",
+        "move": "Address changed",
+        "invite": "Invitation",
+        "submit": "Sent for review",
+        "request_changes": "Changes requested",
+        "remind": "Reminder sent"
+      },
+      "actors": {
+        "professional": "Professional",
+        "admin": "Admin",
+        "system": "System"
+      }
+    }
+  },
+  "ShowcaseBooking": {
+    "title": "Availability",
+    "servicesLabel": "Type of consultation",
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "durationOnly": "{minutes}-minute session",
+    "durationAndPrice": "{minutes}-minute session · {price}",
+    "loading": "Loading availability…",
+    "error": "Availability could not be loaded. Try again in a moment.",
+    "unavailable": "This professional is not taking new requests for this type of consultation right now.",
+    "none": "No availability in the weeks shown.",
+    "daysLabel": "Available days",
+    "slotsLabel": "Available times on {day}",
+    "slotAction": "Request an appointment on {day} at {time}",
+    "more": "Show the following two weeks",
+    "howItWorks": "Choose a time, then send your request: the time is held for you until the professional answers.",
+    "matchInstead": "Get matched with another professional",
+    "joinWaitlist": "Join the waitlist",
+    "noTimeSuits": "No time suits you? Join the waitlist.",
+    "modeNote": "{minutes} minutes · {modes} · {price}",
+    "modeNoteNoPrice": "{minutes} minutes · {modes}",
+    "prevDays": "Earlier days",
+    "nextDays": "Later days",
+    "timezone": "Times are shown in Montreal time.",
+    "slotChoose": "Choose {time}, {day}",
+    "requestTitle": "Your request",
+    "noSlotTitle": "No time selected",
+    "noSlotBody": "Pick a day, then a time. The time is held for you while {name} reviews your request.",
+    "chosenMeta": "{service} · {minutes} min · {price}",
+    "chosenMetaNoPrice": "{service} · {minutes} min",
+    "requestCta": "Request this appointment",
+    "stepService": "The consultation",
+    "stepTime": "The time",
+    "stepRequest": "Your request",
+    "optionMinutes": "{minutes} minutes",
+    "summaryService": "Consultation",
+    "summaryDuration": "Length",
+    "summaryWhen": "Time",
+    "summaryPrice": "Fee",
+    "summaryPending": "To choose",
+    "pickFirst": "Pick a time to continue",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "slotCount": "{count, plural, one {# time} other {# times}}"
+  },
+  "DirectRequests": {
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "reasons": {
+      "slot_unavailable": "The time does not work for me",
+      "not_a_fit": "The request does not fit my practice",
+      "not_accepting": "I am not taking new clients",
+      "other": "Another reason"
+    },
+    "card": {
+      "title": "Direct requests",
+      "description": "These people chose one of your times on your showcase page. The time is held for them until you answer.",
+      "slot": "Time",
+      "modality": "Modality",
+      "reason": "Reason",
+      "for": "For",
+      "minutes": "{minutes} min",
+      "answerBy": "Answer before {time}",
+      "view": "View the request",
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "answer": {
+      "acceptTitle": "Accept the request",
+      "acceptBody": "The appointment with {name} will be confirmed for {slot}.",
+      "acceptWhatNext": "The person immediately receives the appointment confirmation and the payment instructions.",
+      "declineTitle": "Decline the request",
+      "declineBody": "{name} will be told the time on {slot} is not available, and can choose another one or be matched. The reason is not shared with them.",
+      "address": "Session address",
+      "addressPlaceholder": "Office address",
+      "saveOffice": "Save as my office address",
+      "note": "Note for the team (optional)",
+      "noteHelp": "Seen only by the Je chemine team.",
+      "cancel": "Cancel",
+      "confirmAccept": "Confirm the appointment",
+      "confirmDecline": "Decline"
+    },
+    "errors": {
+      "SLOT_CONFLICT": "This time now overlaps another session in your schedule.",
+      "SLOT_HELD": "This time is held for another request.",
+      "DIRECT_REQUEST_CLOSED": "This request is no longer waiting for an answer.",
+      "DIRECT_REQUEST_EXPIRED": "The time to answer this request has passed.",
+      "OFFICE_ADDRESS_REQUIRED": "Enter the address of the in-person session.",
+      "generic": "The answer could not be saved. Try again."
+    },
+    "reroute": {
+      "title": "Get matched with a professional",
+      "body": "Je chemine finds the professional who suits you, from the request you already made. There is nothing new to fill in.",
+      "cta": "Match me with a professional",
+      "working": "Sending…",
+      "doneTitle": "Done",
+      "doneBody": "Your request went to matching. You will receive an email as soon as a professional accepts it.",
+      "invalidTitle": "This link is no longer valid",
+      "invalidBody": "It was already used, it expired, or our team is already handling your request. For any question, write to us.",
+      "error": "Something went wrong. Try again in a moment.",
+      "home": "Back to the home page"
+    },
+    "funnel": {
+      "loading": "Checking the time you chose…",
+      "unavailable": "This time can no longer be requested online. Your request will go to our matching, which will suggest a professional.",
+      "eyebrow": "Time chosen on the professional's page",
+      "minutes": "{minutes} min",
+      "holdNote": "The time is held for you as soon as you send your request, until the professional answers.",
+      "changeSlot": "Choose another time",
+      "reviewLabel": "Appointment request",
+      "reviewValue": "{name}, {slot}",
+      "whatNextBody": "{name} receives your request and answers promptly. As soon as they confirm, you receive the appointment details and the payment instructions.",
+      "successBody": "Your request was sent to {name} for {slot}. The time is held for you until they answer; a confirmation email was sent to you.",
+      "errors": {
+        "SLOT_TAKEN": "Someone else just booked this time. Choose another time on the professional's page.",
+        "SERVICE_UNAVAILABLE": "This professional is not taking this type of request right now.",
+        "SHOWCASE_NOT_FOUND": "This professional's page is no longer available."
+      }
+    }
+  },
+  "ShowcaseWaitlist": {
+    "title": "Waitlist",
+    "exclusiveTitle": "{name}'s waitlist",
+    "exclusiveBody": "No time suits you? Leave your details: as soon as a time that suits you opens up, it is offered to you and held for 15 minutes.",
+    "join": "Join the list",
+    "generalTitle": "Je chemine's general waitlist",
+    "generalBody": "Rather not wait for this professional in particular? Je chemine matches you with the professional who suits you.",
+    "generalCta": "Get matched with a professional",
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone (optional)",
+      "phoneHelp": "To get a text message when a time opens up.",
+      "service": "Consultation type",
+      "modality": "Modality",
+      "motifs": "Reason for consulting (up to {max}, optional)",
+      "periods": "Times of day that suit you",
+      "days": "Days that suit you",
+      "anyTimeHelp": "With nothing selected, any time and any day suits you."
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "periods": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "days": {
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat",
+      "sunday": "Sun"
+    },
+    "consent": "I agree that Je chemine keeps my details to offer me a time with {name}, for 90 days at most. I can leave the list at any time with the link I receive by email.",
+    "smsConsent": "I also agree to receive a text message when a time opens up.",
+    "submit": "Join",
+    "sending": "Joining…",
+    "doneTitle": "Done",
+    "doneBody": "You are on {name}'s waitlist. We just sent you an email, and will write as soon as a time that suits you opens up.",
+    "errors": {
+      "consent": "Tick the consent box to join.",
+      "email": "Check the email address.",
+      "phone": "Check the phone number, or leave it empty.",
+      "invalid": "Check the form fields.",
+      "full": "This professional's waitlist is full for now. Je chemine can match you with another professional.",
+      "rateLimited": "Too many attempts. Try again in a few minutes.",
+      "unavailable": "This professional's waitlist is not available right now.",
+      "generic": "Your place could not be saved. Try again in a moment."
+    }
+  },
+  "Waitlist": {
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "claim": {
+      "loading": "Loading…",
+      "title": "A time is waiting for you",
+      "intro": "A time with {name} opened up and is held for you.",
+      "service": "Consultation",
+      "when": "Time",
+      "duration": "Length",
+      "minutes": "{minutes} minutes",
+      "price": "Fee",
+      "slot": "{day} at {time}",
+      "heldFor": "Held for you for {countdown} more",
+      "whatNext": "When you book it, your request goes to {name}, who confirms the appointment. The payment instructions follow their confirmation.",
+      "cta": "Book this time",
+      "booking": "Booking…",
+      "viewPage": "View the professional's page",
+      "error": "The time could not be booked. Try again.",
+      "doneTitle": "Request sent",
+      "doneBody": "{name} received your request for {slot} and will answer by {deadline} at the latest. A confirmation email was sent to you.",
+      "expiredTitle": "This time is no longer held",
+      "expiredBody": "The 15 minutes passed and the time was offered to someone else. You keep your place on the list, unless three times were left unanswered.",
+      "claimedTitle": "This time was already booked",
+      "claimedBody": "This link was already used. The confirmation of your request is in your email.",
+      "invalidTitle": "This link is not valid",
+      "invalidBody": "Check that the link is complete, or open it straight from the email or text message you received.",
+      "unavailableTitle": "This time can no longer be requested",
+      "unavailableBody": "The professional changed their availability. You keep your place on the waitlist, and this time does not count as unanswered.",
+      "offTitle": "Waitlist unavailable",
+      "offBody": "Waitlists are not available right now.",
+      "errorTitle": "Something went wrong",
+      "errorBody": "Try again in a moment.",
+      "home": "Back to the home page"
+    },
+    "leave": {
+      "title": "Leave the waitlist",
+      "body": "You will no longer be offered times with this professional. You can join again from their page.",
+      "cta": "Leave the waitlist",
+      "working": "Sending…",
+      "doneTitle": "You left the waitlist",
+      "doneBody": "Your details will no longer be used to offer you a time.",
+      "invalidTitle": "This link is no longer valid",
+      "invalidBody": "You may have left the list already, or your place ended.",
+      "error": "Something went wrong. Try again in a moment.",
+      "home": "Back to the home page"
+    }
+  },
+  "WaitlistPro": {
+    "title": "Waitlist",
+    "subtitle": "People who could not find a suitable time on your showcase page can join this list. When a time frees up, it is offered to the first person it suits: they get an email, and a text message if they agreed to it, and the time is held for them for 15 minutes. If they confirm, you receive a request to accept or decline in \"Direct requests\". After 3 unanswered offers or 90 days, their place on the list ends.",
+    "loadError": "Your waitlist could not be loaded.",
+    "retry": "Try again",
+    "count": "{count, plural, one {# person waiting} other {# people waiting}}",
+    "empty": {
+      "title": "No one is waiting right now",
+      "body": "When someone joins the waitlist from your showcase page, they will appear here."
+    },
+    "card": {
+      "position": "Position {position}",
+      "offer": "Offered time: {day} at {time} — held until {until}",
+      "modality": "Modality:",
+      "moments": "Availability:",
+      "anyTime": "Any time",
+      "anyMoment": "Any time of day",
+      "anyDay": "Any day",
+      "joined": "Joined:",
+      "ends": "Place ends:",
+      "motifs": "Reasons for consultation",
+      "remove": "Remove from list"
+    },
+    "remove": {
+      "title": "Remove this person from the list?",
+      "body": "{name} will no longer be on your waitlist and will be told by email. Any time currently offered to them will be freed.",
+      "cancel": "Cancel",
+      "confirm": "Remove from list",
+      "done": "{name} was removed from your waitlist.",
+      "gone": "{name} can no longer be removed: they may be booking right now, or their place has already ended. The list has been updated.",
+      "error": "The removal did not go through. Please try again."
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "periods": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
+  },
+  "WaitlistAdmin": {
+    "title": "Waitlists",
+    "subtitle": "People who found no suitable time on a professional's page. When a time frees up, the first person it suits is emailed (and texted if they agreed) and the time is held for them for 15 minutes. If they confirm, a request goes to the professional. After 3 unanswered offers or 90 days, the place ends.",
+    "contactNote": "Contact details are shown only with the permission to manage patients.",
+    "refresh": "Refresh",
+    "search": "Search a professional or a person",
+    "count": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+    "empty": "No entries to show.",
+    "contactHidden": "Contact details hidden",
+    "endsOn": "Ends {date}",
+    "closedOn": "Closed {date}",
+    "consent": "{date} (v. {version})",
+    "smsYes": "Text: yes",
+    "smsNo": "Text: no",
+    "cancel": "Cancel",
+    "access": {
+      "title": "Restricted access",
+      "body": "You need the permission to manage professionals to see the waitlists."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Could not reach the server. Check your connection."
+    },
+    "scopes": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "columns": {
+      "offers": "Offers",
+      "professional": "Professional",
+      "person": "Person",
+      "contact": "Contact",
+      "consultation": "Consultation",
+      "status": "Status",
+      "position": "Position",
+      "missed": "Missed offers",
+      "joined": "Joined",
+      "ends": "Place ends",
+      "consent": "Consent",
+      "actions": "Actions"
+    },
+    "locales": {
+      "fr": "French",
+      "en": "English"
+    },
+    "services": {
+      "standard": "Standard consultation",
+      "quick": "Quick one-time consultation"
+    },
+    "modalities": {
+      "video": "Video",
+      "in-person": "In person",
+      "phone": "Phone",
+      "both": "Video or in person"
+    },
+    "statuses": {
+      "active": "Waiting",
+      "offered": "Offer sent",
+      "converted": "Request created",
+      "expired": "Ended",
+      "left": "Left",
+      "removed": "Removed"
+    },
+    "reasons": {
+      "missed": "3 unanswered offers",
+      "expired": "90 days passed",
+      "professional": "Removed by the professional",
+      "admin": "Removed by the team"
+    },
+    "outcomes": {
+      "pending": "No answer yet",
+      "claiming": "Confirming",
+      "claimed": "Confirmed",
+      "expired": "Time ran out",
+      "slot_lost": "Time no longer available",
+      "withdrawn": "Withdrawn"
+    },
+    "channels": {
+      "email": "Email",
+      "sms": "Text"
+    },
+    "offers": {
+      "toggle": "Show offer history ({count})",
+      "title": "Offer history",
+      "none": "No offers sent.",
+      "time": "Time",
+      "sent": "Sent",
+      "heldUntil": "Held until",
+      "outcome": "Outcome",
+      "channels": "Channels",
+      "requestCreated": "Request created"
+    },
+    "remove": {
+      "action": "Remove",
+      "title": "Remove {name} from the waitlist?",
+      "body": "They will no longer get offers for {professional} and will be notified by email.",
+      "confirm": "Remove",
+      "done": "The person was removed from the waitlist.",
+      "gone": "This entry can no longer be removed: it is already closed or the person is booking right now. The list was refreshed."
+    }
+  },
+  "ProductsPro": {
+    "title": "Trainings and products",
+    "subtitle": "Publish and sell your trainings, videos, audio, PDFs and webinars on Je chemine, or promote a link to your own website.",
+    "common": {
+      "cancel": "Cancel"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "review": "The team reviews every product before it goes live. Submit it when it is ready; the team approves it or sends it back with comments.",
+      "commission": "The platform keeps a share of each sale, which covers Stripe fees. The rest is credited to the balance shown in “Billing”.",
+      "access": "People who bought a product keep access to it, even if you later take it down."
+    },
+    "list": {
+      "new": "New product",
+      "loadError": "Your products could not be loaded.",
+      "retry": "Try again",
+      "emptyTitle": "No products yet",
+      "emptyBody": "Create your first product: choose its type, give it a title, then complete it before submitting it to the team.",
+      "price": "Price",
+      "free": "Free",
+      "noPrice": "Not set",
+      "sales": "Sales",
+      "updated": "Updated",
+      "viewPublic": "View public page",
+      "edit": "Edit"
+    },
+    "create": {
+      "title": "New product",
+      "description": "Choose the type of product and its French title. You can complete the rest afterwards.",
+      "type": "Product type",
+      "titleFr": "French title",
+      "titleHint": "The title is also used to create the page address, which cannot be changed later.",
+      "submit": "Create draft"
+    },
+    "types": {
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinar",
+      "external": "External link"
+    },
+    "typeHints": {
+      "video": "A video hosted on YouTube, Vimeo, Dailymotion or Loom, available after purchase.",
+      "audio": "Audio hosted on Spotify, Apple Podcasts or SoundCloud, available after purchase.",
+      "pdf": "A PDF document you upload, downloadable after purchase.",
+      "webinar": "A live session on a set date, with the room link and, if you like, a replay.",
+      "external": "A free link to your own website, to promote an offer sold elsewhere."
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "unpublished": "Taken down"
+    },
+    "badges": {
+      "live": "Live",
+      "changesPending": "Changes to review"
+    },
+    "banner": {
+      "draft": "This product is not visible yet. Complete it, then submit it to the team.",
+      "submitted": "The team is reviewing this product. You will get an email as soon as a decision is made.",
+      "approved": "This product was approved. It is sold on the site as long as your account is active.",
+      "rejected": "The team sent this product back. Make the requested changes, then submit it again.",
+      "unpublishedByProfessional": "You took this product down. Submit it again to bring it back online.",
+      "unpublishedByAdmin": "The team took this product down. Submit it again to bring it back online.",
+      "notes": "Comments from the team",
+      "changesPending": "Your latest changes are already live and the team will review them."
+    },
+    "editor": {
+      "back": "Trainings and products",
+      "loadError": "This product could not be loaded.",
+      "retry": "Try again",
+      "sales": "{count, plural, =0 {no sales} one {# sale} other {# sales}}",
+      "lockedNotice": "This product is under review and cannot be edited. Withdraw the submission to edit it.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "unsaved": "You have unsaved changes."
+    },
+    "fields": {
+      "sectionFrench": "Presentation",
+      "titleFr": "Title",
+      "summaryFr": "Summary",
+      "summaryHint": "{count} / {max} characters. Shown in lists and under the title.",
+      "sectionPrice": "Price and visibility",
+      "price": "Price (before taxes)",
+      "priceHint": "Between $5 and $1,000. GST and QST are added at payment when they apply; your share is calculated on this price.",
+      "externalFree": "An external link is always free on Je chemine.",
+      "listInLibrary": "Also list in the site library",
+      "listInLibraryHint": "The product also appears in the resource library, in addition to your page.",
+      "sectionCover": "Cover image",
+      "coverHint": "PNG, JPEG or WebP, 2 MB at most. Landscape format recommended.",
+      "coverAlt": "Cover image preview",
+      "uploadCover": "Add an image",
+      "replaceCover": "Replace image",
+      "removeCover": "Remove image",
+      "sectionDelivery": "What the buyer gets",
+      "mediaUrlFr": "Video or audio link",
+      "mediaUrlEn": "English version link (optional)",
+      "mediaHintVideo": "A YouTube, Vimeo, Dailymotion or Loom link (https).",
+      "mediaHintAudio": "A Spotify, Apple Podcasts or SoundCloud link (https).",
+      "fileFr": "PDF file",
+      "fileEn": "English PDF file (optional)",
+      "fileHint": "PDF, 10 MB at most. The file is uploaded right away, without waiting for you to save.",
+      "fileEnHint": "Without an English file, the French PDF is offered.",
+      "fileUploaded": "File uploaded.",
+      "noFile": "No file",
+      "uploadFile": "Upload a PDF",
+      "replaceFile": "Replace PDF",
+      "webinarStartsAt": "Date and time",
+      "webinarTimezone": "Montréal time.",
+      "webinarDuration": "Length (minutes)",
+      "webinarDurationHint": "Between 15 and {max} minutes.",
+      "webinarJoinUrl": "Room link",
+      "webinarJoinHint": "Zoom, Teams, Google Meet or other (https). Shared only with registered people.",
+      "webinarReplayUrl": "Replay link (optional)",
+      "webinarReplayHint": "Add it after the session for registered people.",
+      "externalUrl": "Link to your website",
+      "externalHint": "The address (https) of the page that presents the offer.",
+      "sectionBody": "Content",
+      "previewFr": "Teaser (optional)",
+      "previewHint": "Shown to everyone, above the price. Without a teaser, the summary is used.",
+      "contentFr": "Content",
+      "contentHint": "Only for people who bought the product.",
+      "contentHintExternal": "The description shown on the link's page.",
+      "sectionEnglish": "English version (optional)",
+      "englishHint": "Any English field left empty uses the French text.",
+      "titleEn": "English title",
+      "summaryEn": "English summary",
+      "previewEn": "English teaser",
+      "contentEn": "English content",
+      "webinarRemindersHint": "Buyers get an email reminder the day before and an hour before it starts."
+    },
+    "missing": {
+      "title": "What's missing",
+      "none": "Everything is ready to submit.",
+      "afterSave": "The list updates after you save."
+    },
+    "requirements": {
+      "title": "A French title",
+      "summary": "A French summary",
+      "content": "A description or a summary",
+      "price": "A price between $5 and $1,000",
+      "media": "The video or audio link",
+      "file": "The PDF file",
+      "link": "The link to your website",
+      "webinar": "The webinar date and room link",
+      "attestation": "The content rights attestation"
+    },
+    "actions": {
+      "submit": "Submit to the team",
+      "withdraw": "Withdraw submission",
+      "unpublish": "Take down",
+      "delete": "Delete",
+      "preview": "Preview page"
+    },
+    "submit": {
+      "title": "Submit this product",
+      "body": "The team will review the product before it goes live. You cannot edit it during the review.",
+      "stillMissing": "Still missing:",
+      "attest": "I confirm that I hold the rights to this content and accept the professionals' terms of sale",
+      "confirm": "Submit",
+      "done": "Product submitted. The team will email you as soon as a decision is made.",
+      "saveFirst": "Your changes could not be saved. Fix them before submitting."
+    },
+    "withdraw": {
+      "done": "Submission withdrawn. The product is a draft again."
+    },
+    "unpublish": {
+      "title": "Take this product down?",
+      "body": "It will no longer be sold. People who already bought it keep access. To bring it back online, you will need to submit it again.",
+      "confirm": "Take down",
+      "done": "The product was taken down."
+    },
+    "delete": {
+      "title": "Delete this product?",
+      "body": "The product and its files will be permanently deleted.",
+      "confirm": "Delete",
+      "hasSales": "This product has already been bought: it cannot be deleted, since the people who bought it keep access. You can take it down instead."
+    },
+    "errors": {
+      "INVALID_TITLE": "The title is required and must be 120 characters or fewer.",
+      "INVALID_SUMMARY": "The summary must be 400 characters or fewer.",
+      "INVALID_HTML": "The content could not be read.",
+      "HTML_TOO_LARGE": "The content is too long. Shorten it or remove some images.",
+      "INVALID_PRICE": "The price must be between $5 and $1,000.",
+      "INVALID_MEDIA_URL": "This link is not accepted. Use an https link from one of the listed services.",
+      "INVALID_LINK": "This link is not valid. It must start with https://.",
+      "INVALID_WEBINAR": "The webinar date or length is not valid.",
+      "INVALID_IMAGE": "This image is not valid. Upload it again.",
+      "INVALID_TYPE": "This product type is not available.",
+      "UNDER_REVIEW": "This product is under review. Withdraw the submission to edit it.",
+      "TRANSITION_NOT_ALLOWED": "This action is no longer possible in the product's current state.",
+      "INCOMPLETE": "The product is not complete yet:",
+      "HAS_SALES": "This product has already been bought and cannot be deleted. You can take it down instead.",
+      "NOT_FOUND": "This product could not be found.",
+      "SCAN_UNAVAILABLE": "The virus scan is unavailable right now. Try again in a few minutes.",
+      "ACCOUNT_NOT_ACTIVE": "This section is for professionals whose account is active and approved.",
+      "FILE_TOO_LARGE": "This file is too large.",
+      "FILE_REJECTED": "This file is not accepted. Check its format and size.",
+      "generic": "Something went wrong. Try again."
+    }
+  },
+  "ProductsAdmin": {
+    "title": "Products",
+    "subtitle": "Trainings and digital products that professionals sell on Je chemine. Approve to put them on sale, reject with notes, or take a live product down.",
+    "previewNote": "The team never edits a professional's text: open the preview to see the product as it will be shown.",
+    "refresh": "Refresh",
+    "scopes": {
+      "review": "To review",
+      "all": "All"
+    },
+    "search": "Search by title or professional",
+    "count": "{count, plural, =0 {No products} one {# product} other {# products}}",
+    "empty": "No matching products.",
+    "emptyReview": "Nothing to review right now.",
+    "columns": {
+      "title": "Title",
+      "professional": "Professional",
+      "type": "Type",
+      "price": "Price",
+      "status": "Status",
+      "submitted": "Submitted",
+      "sales": "Sales",
+      "actions": "Actions"
+    },
+    "preview": "Preview",
+    "free": "Free",
+    "changesPending": "Changes to review",
+    "live": "Live",
+    "lastNotes": "Latest notes: {notes}",
+    "types": {
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinar",
+      "external": "External link"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "unpublished": "Taken down"
+    },
+    "actions": {
+      "approve": "Approve",
+      "approveChanges": "Approve changes",
+      "reject": "Reject",
+      "unpublish": "Take down"
+    },
+    "rejectDialog": {
+      "title": "Reject “{title}”",
+      "body": "Your notes will be sent to the professional to help them fix their product.",
+      "notesLabel": "Notes (required)",
+      "notesPlaceholder": "Explain what needs to be fixed…",
+      "confirm": "Reject product"
+    },
+    "unpublishDialog": {
+      "title": "Take down “{title}”",
+      "body": "The product will no longer be on sale. People who already bought it keep their access.",
+      "confirm": "Take down product"
+    },
+    "cancel": "Cancel",
+    "done": {
+      "approve": "“{title}” is approved and on sale.",
+      "approveChanges": "Changes to “{title}” are approved.",
+      "reject": "“{title}” was rejected; the notes were sent.",
+      "unpublish": "“{title}” was taken down."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Could not connect. Check your network and try again.",
+      "NOTES_REQUIRED": "Add notes explaining the rejection.",
+      "TRANSITION_NOT_ALLOWED": "This product changed in the meantime. The list has been refreshed.",
+      "NOT_FOUND": "This product no longer exists. The list has been refreshed.",
+      "INVALID_ACTION": "Unknown action."
+    },
+    "access": {
+      "title": "Access required",
+      "body": "Content management rights are needed to review products. Ask a super admin for access."
+    }
+  },
+  "ArticlesPro": {
+    "title": "My articles",
+    "subtitle": "Write articles for your page. The team reads them before they are published.",
+    "common": { "cancel": "Cancel" },
+    "howItWorks": {
+      "title": "How it works",
+      "review": "Every article is read by the team before it is published on your page. Your changes to a live article are read too.",
+      "rules": "No testimonials and no promises of results. A note reminds readers that an article does not replace a consultation.",
+      "news": "The team can also show an article in the site's News."
+    },
+    "list": {
+      "new": "New article",
+      "loadError": "Your articles could not be loaded.",
+      "emptyTitle": "No articles yet",
+      "emptyBody": "Give your first article a title, write it, then send it to the team.",
+      "updated": "Edited on",
+      "viewPublic": "View the article",
+      "edit": "Edit"
+    },
+    "create": {
+      "title": "New article",
+      "description": "Give a French title. You will write the rest next.",
+      "titleFr": "French title",
+      "titleHint": "The title also makes the article's address, which does not change afterwards.",
+      "submit": "Create the draft"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Under review",
+      "approved": "Published",
+      "rejected": "Sent back",
+      "unpublished": "Taken down"
+    },
+    "badges": {
+      "live": "Live",
+      "changesPending": "Changes to review",
+      "inNews": "In News"
+    },
+    "banner": {
+      "draft": "This article is not visible yet. Write it, then send it to the team.",
+      "submitted": "The team is reading this article. You will get an email as soon as a decision is made.",
+      "approved": "This article is published on your page while your account is active.",
+      "rejected": "The team sent this article back. Make the requested changes, then send it again.",
+      "unpublishedByProfessional": "You took this article down. Send it again to put it back online.",
+      "unpublishedByAdmin": "The team took this article down. Send it again to put it back online.",
+      "notes": "Comments from the team",
+      "changesPending": "Your latest changes are already live and the team will read them."
+    },
+    "editor": {
+      "back": "My articles",
+      "loadError": "This article could not be loaded.",
+      "lockedNotice": "This article is under review and cannot be edited. Withdraw it to edit it.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "unsaved": "You have unsaved changes."
+    },
+    "fields": {
+      "sectionFrench": "Presentation",
+      "titleFr": "Title",
+      "summaryFr": "Summary",
+      "summaryHint": "{count} / {max} characters. Shown on your page and under the title.",
+      "sectionCover": "Cover image",
+      "coverHint": "PNG, JPEG or WebP, 2 MB at most. Landscape recommended. No recognisable person.",
+      "coverAlt": "Cover image preview",
+      "uploadCover": "Add an image",
+      "replaceCover": "Replace the image",
+      "removeCover": "Remove the image",
+      "contentFr": "Article text",
+      "contentHint": "Headings, lists, quotes and images are allowed. No testimonials and no promises of results.",
+      "sectionEnglish": "English version (optional)",
+      "englishHint": "Any field left empty in English uses the French text.",
+      "titleEn": "English title",
+      "summaryEn": "English summary",
+      "contentEn": "English text"
+    },
+    "missing": {
+      "title": "What is missing",
+      "none": "Everything is ready to send.",
+      "afterSave": "The list updates after saving."
+    },
+    "requirements": {
+      "title": "A French title",
+      "summary": "A French summary",
+      "content": "The article's text",
+      "attestation": "The confirmation: no testimonial and no promise of results"
+    },
+    "actions": {
+      "submit": "Send to the team",
+      "withdraw": "Withdraw",
+      "unpublish": "Take off my page",
+      "delete": "Delete",
+      "view": "View the article"
+    },
+    "submit": {
+      "title": "Send this article",
+      "body": "The team will read the article before it is published. You cannot edit it during the review.",
+      "attest": "I confirm this article contains no testimonial and no promise of results, and that I hold its rights.",
+      "confirm": "Send",
+      "done": "Article sent. The team will write to you as soon as a decision is made.",
+      "saveFirst": "Your changes could not be saved. Fix them before sending."
+    },
+    "withdraw": { "done": "Withdrawn. The article is a draft again." },
+    "unpublish": {
+      "title": "Take this article off your page?",
+      "body": "It will no longer be visible. To put it back online, send it to the team again.",
+      "confirm": "Take off my page",
+      "done": "The article was taken off your page."
+    },
+    "delete": {
+      "title": "Delete this article?",
+      "body": "The article will be deleted for good.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "INVALID_TITLE": "The title is required and must be 120 characters at most.",
+      "INVALID_SUMMARY": "The summary must be 400 characters at most.",
+      "INVALID_HTML": "The text could not be read.",
+      "HTML_TOO_LARGE": "The text is too long. Shorten it or remove images.",
+      "INVALID_IMAGE": "This image is not valid. Upload it again.",
+      "UNDER_REVIEW": "This article is under review. Withdraw it to edit it.",
+      "TRANSITION_NOT_ALLOWED": "This action is no longer possible in the article's current state.",
+      "INCOMPLETE": "The article is not complete yet:",
+      "NOT_FOUND": "This article was not found.",
+      "ACCOUNT_NOT_ACTIVE": "This section is for professionals whose account is active and approved.",
+      "FILE_TOO_LARGE": "This file is too large.",
+      "FILE_REJECTED": "This file is not accepted. Check its format and size."
+    }
+  },
+  "ArticlesAdmin": {
+    "title": "Articles to review",
+    "subtitle": "The articles professionals write for their page. Approve to publish, send back with notes, take down, or show an article in the site's News.",
+    "refresh": "Refresh",
+    "scopes": { "review": "To review", "all": "All" },
+    "empty": "No articles.",
+    "emptyReview": "Nothing to review right now.",
+    "columns": {
+      "title": "Title",
+      "professional": "Professional",
+      "status": "Status",
+      "submitted": "Sent on",
+      "news": "News",
+      "actions": "Actions"
+    },
+    "preview": "Read the article",
+    "changesPending": "Changes to review",
+    "live": "Live",
+    "lastNotes": "Latest notes: {notes}",
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Sent",
+      "approved": "Published",
+      "rejected": "Sent back",
+      "unpublished": "Taken down"
+    },
+    "actions": {
+      "approve": "Approve",
+      "approveChanges": "Approve the changes",
+      "reject": "Send back",
+      "unpublish": "Take down",
+      "feature": "Show in News",
+      "unfeature": "Remove from News"
+    },
+    "rejectDialog": {
+      "title": "Send back “{title}”",
+      "body": "Your notes are sent to the professional to help them fix their article.",
+      "notesLabel": "Notes (required)",
+      "notesPlaceholder": "Explain what needs fixing…",
+      "confirm": "Send the article back"
+    },
+    "unpublishDialog": {
+      "title": "Take down “{title}”",
+      "body": "The article will no longer be visible, on the professional's page or in News.",
+      "confirm": "Take the article down"
+    },
+    "cancel": "Cancel",
+    "done": {
+      "approve": "“{title}” is approved and published.",
+      "approveChanges": "The changes to “{title}” are approved.",
+      "reject": "“{title}” was sent back; the notes were sent.",
+      "unpublish": "“{title}” was taken down.",
+      "feature": "“{title}” is shown in News.",
+      "unfeature": "“{title}” was removed from News."
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "No connection. Check your network and try again.",
+      "NOTES_REQUIRED": "Add notes to explain why it is sent back.",
+      "TRANSITION_NOT_ALLOWED": "This article changed meanwhile. The list was updated.",
+      "NOT_FOUND": "This article no longer exists. The list was updated.",
+      "INVALID_ACTION": "Unknown action."
+    },
+    "access": {
+      "title": "Restricted access",
+      "body": "This screen is for admins who manage content. Ask a super admin for this permission."
+    }
+  },
+  "ContentEditor": {
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "paragraph": "Paragraph",
+    "heading2": "Section title (H2)",
+    "heading3": "Subsection (H3)",
+    "bulletList": "Bullet list",
+    "orderedList": "Numbered list",
+    "blockquote": "Callout (blockquote)",
+    "link": "Insert link",
+    "image": "Insert image",
+    "undo": "Undo",
+    "redo": "Redo",
+    "linkPrompt": "Link address (leave empty to remove the link)",
+    "uploadTooLarge": "This image is too large.",
+    "uploadType": "This image format is not accepted.",
+    "uploadInfected": "The antivirus refused this file.",
+    "uploadScanUnavailable": "The antivirus is not answering right now. Try again in a few minutes.",
+    "uploadFailed": "The image could not be uploaded. Please try again."
   }
 }

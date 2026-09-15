@@ -20,6 +20,8 @@ const h = vi.hoisted(() => ({
   entFindOneAndUpdate: vi.fn(),
   entUpdateOne: vi.fn(),
   userFindById: vi.fn(),
+  userExists: vi.fn(),
+  settingsFindOne: vi.fn(),
   customersList: vi.fn(),
   customersCreate: vi.fn(),
   piCreate: vi.fn(),
@@ -60,7 +62,8 @@ vi.mock("@/models/ResourceEntitlement", () => ({
     updateOne: h.entUpdateOne,
   },
 }));
-vi.mock("@/models/User", () => ({ default: { findById: h.userFindById } }));
+vi.mock("@/models/User", () => ({ default: { findById: h.userFindById, exists: h.userExists } }));
+vi.mock("@/models/PlatformSettings", () => ({ default: { findOne: h.settingsFindOne } }));
 vi.mock("@/lib/resource-entitlement", () => ({
   RESOURCE_PURCHASE_TYPE: "resource_purchase",
   newAccessToken: () => "f".repeat(64),
@@ -110,6 +113,9 @@ beforeEach(() => {
   h.customersList.mockResolvedValue({ data: [{ id: "cus_existing" }] });
   h.customersCreate.mockResolvedValue({ id: "cus_new" });
   h.piCreate.mockResolvedValue({ id: "pi_new", client_secret: "cs_new" });
+  // No settings saved: no commission override, taxes off. (clearAllMocks keeps
+  // implementations, so a describe that changed it must not leak into the next.)
+  h.settingsFindOne.mockImplementation(() => ({ select: () => ({ lean: async () => null }) }));
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -399,5 +405,203 @@ describe("rate limiting", () => {
     expect(res.status).toBe(429);
     expect(h.piCreate).not.toHaveBeenCalled();
     expect(h.entryFind).not.toHaveBeenCalled();
+  });
+});
+
+describe("a professional's product (spec 003 phase 5)", () => {
+  const PRO_ID = "0123456789abcdef01234567";
+  const SNAPSHOT_KEYS = ["ownerProfessionalId", "commissionBps", "productType", "taxTreatment"];
+
+  const productDoc = (locale: string, over: Record<string, unknown> = {}) =>
+    doc(locale, {
+      ownerProfessionalId: PRO_ID,
+      productType: "pdf",
+      moderation: { status: "approved" },
+      ...over,
+    });
+  const settingsQuery = (value: unknown) => ({ select: () => ({ lean: async () => value }) });
+  const entitlementSet = (n = 0) =>
+    (h.entFindOneAndUpdate.mock.calls[n]?.[1] as { $set: Record<string, unknown> }).$set;
+
+  beforeEach(() => {
+    h.entryFind.mockResolvedValue([productDoc("fr"), productDoc("en")]);
+    h.userExists.mockResolvedValue({ _id: PRO_ID });
+    h.settingsFindOne.mockImplementation(() => settingsQuery({ productCommissionPercentage: 12.5 }));
+  });
+
+  it("404s while the professional's account is not active", async () => {
+    h.userExists.mockResolvedValue(null);
+
+    const res = await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(res.status).toBe(404);
+    expect(h.userExists).toHaveBeenCalledWith({ _id: PRO_ID, role: "professional", status: "active" });
+    expect(h.entFindOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.piCreate).not.toHaveBeenCalled();
+  });
+
+  it("404s a product the team has not approved", async () => {
+    for (const moderation of [{ status: "submitted" }, { status: "draft" }, { status: "rejected" }, { status: "unpublished" }, undefined]) {
+      h.entryFind.mockResolvedValue([productDoc("fr", { moderation }), productDoc("en", { moderation })]);
+      const res = await POST(req({ email: "guest@example.com" }), ctx());
+      expect(res.status).toBe(404);
+    }
+    expect(h.entFindOneAndUpdate).not.toHaveBeenCalled();
+    expect(h.piCreate).not.toHaveBeenCalled();
+  });
+
+  it("snapshots the owner, commission, type and tax treatment on the entitlement", async () => {
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(entitlementSet()).toMatchObject({
+      ownerProfessionalId: PRO_ID,
+      commissionBps: 1250,
+      productType: "pdf",
+      taxTreatment: "inclusive_untracked",
+    });
+  });
+
+  it("takes the default 20 % commission when no setting is saved", async () => {
+    for (const settings of [null, {}]) {
+      h.entFindOneAndUpdate.mockClear();
+      h.settingsFindOne.mockImplementation(() => settingsQuery(settings));
+      await POST(req({ email: "guest@example.com" }), ctx());
+      expect(entitlementSet().commissionBps).toBe(2000);
+    }
+  });
+
+  it("carries the owner and the commission in the intent's metadata", async () => {
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    const md = createArgs().metadata;
+    expect(md.ownerProfessionalId).toBe(PRO_ID);
+    expect(md.commissionBps).toBe("1250");
+    expect(md.type).toBe("resource_purchase");
+  });
+
+  it("adds none of these to the team's own resources", async () => {
+    h.entryFind.mockResolvedValue([doc("fr"), doc("en")]);
+
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    const set = entitlementSet();
+    const md = createArgs().metadata;
+    for (const key of SNAPSHOT_KEYS) {
+      expect(key in set).toBe(false);
+      expect(key in md).toBe(false);
+    }
+    expect(h.userExists).not.toHaveBeenCalled();
+  });
+});
+
+describe("TPS and TVQ added at checkout", () => {
+  const PRO_ID = "0123456789abcdef01234567";
+  const TAXES_ON = {
+    enabled: true,
+    tpsRatePercent: 5,
+    tvqRatePercent: 9.975,
+    tpsNumber: "123456789 RT0001",
+    tvqNumber: "1234567890 TQ0001",
+  };
+  const settingsQuery = (value: unknown) => ({ select: () => ({ lean: async () => value }) });
+  const update = (n = 0) =>
+    h.entFindOneAndUpdate.mock.calls[n]?.[1] as { $set: Record<string, unknown>; $unset?: Record<string, unknown> };
+  const body = (res: unknown) => (res as { body: Record<string, unknown> }).body;
+
+  beforeEach(() => {
+    h.settingsFindOne.mockImplementation(() => settingsQuery({ salesTaxes: TAXES_ON }));
+  });
+
+  it("charges the price plus TPS and TVQ, computed on the server", async () => {
+    h.entryFind.mockResolvedValue([doc("fr", { priceCents: 4900 }), doc("en", { priceCents: 4900 })]);
+
+    const res = await POST(req({ email: "guest@example.com", amountCents: 4900, taxes: null }), ctx());
+
+    expect(createArgs().amount).toBe(5634);
+    expect(update().$set).toMatchObject({
+      amountCents: 5634,
+      taxTreatment: "added",
+      subtotalCents: 4900,
+      tpsCents: 245,
+      tvqCents: 489,
+      tpsRatePercent: 5,
+      tvqRatePercent: 9.975,
+      tpsNumber: "123456789 RT0001",
+      tvqNumber: "1234567890 TQ0001",
+    });
+    expect(update().$unset).toBeUndefined();
+    expect(createArgs().metadata).toMatchObject({ subtotalCents: "4900", tpsCents: "245", tvqCents: "489" });
+    expect(body(res)).toMatchObject({
+      amountCents: 5634,
+      subtotalCents: 4900,
+      tpsCents: 245,
+      tvqCents: 489,
+      taxes: { tpsRatePercent: 5, tvqRatePercent: 9.975 },
+    });
+    // The key follows the amount charged, so a rate change never reuses an old intent.
+    expect(createOpts().idempotencyKey).toContain("5634");
+  });
+
+  it("taxes a professional's product the same way, the commission snapshot untouched", async () => {
+    const product = (locale: string) =>
+      doc(locale, { priceCents: 4900, ownerProfessionalId: PRO_ID, productType: "pdf", moderation: { status: "approved" } });
+    h.entryFind.mockResolvedValue([product("fr"), product("en")]);
+    h.userExists.mockResolvedValue({ _id: PRO_ID });
+    h.settingsFindOne.mockImplementation(() => settingsQuery({ salesTaxes: TAXES_ON, productCommissionPercentage: 20 }));
+
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(createArgs().amount).toBe(5634);
+    expect(update().$set).toMatchObject({ ownerProfessionalId: PRO_ID, commissionBps: 2000, subtotalCents: 4900, taxTreatment: "added" });
+  });
+
+  it("charges the displayed price alone while taxes are off or a number is missing, and clears an older attempt's taxes", async () => {
+    for (const salesTaxes of [{ ...TAXES_ON, enabled: false }, { ...TAXES_ON, tvqNumber: "" }, undefined]) {
+      h.piCreate.mockClear();
+      h.entFindOneAndUpdate.mockClear();
+      h.settingsFindOne.mockImplementation(() => settingsQuery({ salesTaxes }));
+
+      const res = await POST(req({ email: "guest@example.com" }), ctx());
+
+      expect(createArgs().amount).toBe(1900);
+      expect(update().$set).not.toHaveProperty("subtotalCents");
+      expect(update().$set).not.toHaveProperty("taxTreatment");
+      expect(Object.keys(update().$unset ?? {}).sort()).toEqual(
+        ["subtotalCents", "taxTreatment", "tpsCents", "tpsNumber", "tpsRatePercent", "tvqCents", "tvqNumber", "tvqRatePercent"],
+      );
+      expect(createArgs().metadata).not.toHaveProperty("tpsCents");
+      expect(body(res)).toMatchObject({ amountCents: 1900, subtotalCents: 1900, tpsCents: 0, tvqCents: 0, taxes: null });
+    }
+  });
+
+  it("keeps a product bought while taxes are off marked as untaxed", async () => {
+    const product = (locale: string) =>
+      doc(locale, { ownerProfessionalId: PRO_ID, productType: "pdf", moderation: { status: "approved" } });
+    h.entryFind.mockResolvedValue([product("fr"), product("en")]);
+    h.userExists.mockResolvedValue({ _id: PRO_ID });
+    h.settingsFindOne.mockImplementation(() => settingsQuery({ salesTaxes: { ...TAXES_ON, enabled: false } }));
+
+    await POST(req({ email: "guest@example.com" }), ctx());
+
+    expect(update().$set).toMatchObject({ taxTreatment: "inclusive_untracked" });
+    expect(Object.keys(update().$unset ?? {})).not.toContain("taxTreatment");
+  });
+
+  it("reuses an in-flight intent only when it is for the taxed total", async () => {
+    h.entryFind.mockResolvedValue([doc("fr", { priceCents: 4900 }), doc("en", { priceCents: 4900 })]);
+    h.entFindOneAndUpdate.mockResolvedValue({ _id: ENT_ID, stripePaymentIntentId: "pi_inflight" });
+
+    // Started before taxes were turned on: 49,00 $ only. Cancelled, a new one for 56,34 $.
+    h.piRetrieve.mockResolvedValue({ id: "pi_inflight", status: "requires_payment_method", amount: 4900 });
+    await POST(req({ email: "guest@example.com" }), ctx());
+    expect(h.piCancel).toHaveBeenCalledWith("pi_inflight");
+    expect(createArgs().amount).toBe(5634);
+
+    // Already for the total: reused, with the breakdown.
+    h.piCreate.mockClear();
+    h.piRetrieve.mockResolvedValue({ id: "pi_inflight", client_secret: "cs", status: "requires_payment_method", amount: 5634 });
+    const res = await POST(req({ email: "guest@example.com" }), ctx());
+    expect(h.piCreate).not.toHaveBeenCalled();
+    expect(body(res)).toMatchObject({ reused: true, amountCents: 5634, tpsCents: 245, tvqCents: 489 });
   });
 });

@@ -53,6 +53,15 @@ export async function POST(
       );
     }
 
+    // A pending request from a showcase page holds its slot and is answered
+    // through accept-direct / decline-direct (spec 003), never matched here.
+    if (appointment.directRequest?.state === "pending") {
+      return NextResponse.json(
+        { error: "Answer this request from its direct request card", code: "USE_DIRECT_ROUTES" },
+        { status: 409 },
+      );
+    }
+
     // Check if appointment can be accepted
     if (appointment.status !== "pending") {
       return NextResponse.json(

@@ -5,6 +5,7 @@ import {
   requireContentAdmin,
   normalizeAliases,
   serializeCatalogItem,
+  catalogSlug,
 } from "@/lib/pro-catalog";
 
 // PATCH /api/admin/pro-catalog/[id]
@@ -43,6 +44,48 @@ export async function PATCH(
     }
     if (typeof body?.active === "boolean") {
       update.active = body.active;
+    }
+
+    // Spec 003: only an expertise can be offered on showcase pages. Its URL
+    // segment is made from the label the first time it is offered, and kept
+    // when it stops being offered (its pages may come back).
+    if (typeof body?.showcase === "boolean" || typeof body?.slug === "string") {
+      const current = await ProCatalogItem.findById(id).select("category labelFr slug").lean();
+      if (!current) {
+        return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      }
+      if (current.category !== "expertise") {
+        return NextResponse.json(
+          { error: "Seules les expertises peuvent figurer sur les pages vitrines" },
+          { status: 400 },
+        );
+      }
+      if (typeof body.showcase === "boolean") update.showcase = body.showcase;
+      const requested =
+        typeof body.slug === "string" && body.slug.trim() ? body.slug : undefined;
+      if (requested !== undefined || (body.showcase === true && !current.slug)) {
+        const candidate = catalogSlug(
+          requested,
+          typeof update.labelFr === "string" ? update.labelFr : current.labelFr,
+        );
+        if (!candidate) {
+          return NextResponse.json({ error: "Segment d'adresse invalide" }, { status: 400 });
+        }
+        const slugTaken = await ProCatalogItem.findOne({
+          _id: { $ne: new mongoose.Types.ObjectId(id) },
+          category: "expertise",
+          slug: candidate,
+        })
+          .select("_id")
+          .lean();
+        if (slugTaken) {
+          return NextResponse.json(
+            { error: "Ce segment d'adresse est déjà utilisé par une autre expertise" },
+            { status: 409 },
+          );
+        }
+        update.slug = candidate;
+      }
     }
 
     // Uniqueness is per-category, so check against the existing item's category.

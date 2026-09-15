@@ -1,28 +1,16 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
+import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
 import {
-  sendGuestPaymentConfirmation,
-  sendPaymentInvitation,
-} from "@/lib/notifications";
-import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
-import { resolveBillingUrl } from "@/lib/client-portal-urls";
-import { parseAppointmentDate } from "@/lib/appointment-date";
-import Profile from "@/models/Profile";
-import { resolveSessionLocation } from "@/lib/session-location";
-
-function getBaseUrl(): string {
-  return (
-    process.env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000"
-  );
-}
+  queueFirstAppointmentConfirmation,
+  resolveFirstAppointmentLocation,
+} from "@/lib/first-appointment-confirmation";
+import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
 
 /**
  * POST /api/appointments/[id]/schedule-first
@@ -123,6 +111,20 @@ export async function POST(
       );
     }
 
+    // A client's pending request from a showcase page holds its time (spec 003).
+    const held = await findSlotCollision({
+      professionalId: session.user.id,
+      dayKey: appointmentDayKey(appointmentDate),
+      time,
+      durationMinutes:
+        typeof duration === "number" && duration > 0 ? duration : appointment.duration,
+      exceptAppointmentId: id,
+      holdsOnly: true,
+    });
+    if (held) {
+      return NextResponse.json(slotCollisionError(held), { status: 409 });
+    }
+
     // Refresh pricing to the assigned pro's rate (matched-via-routing requests
     // carry platform-default pricing until now).
     const pricing = await calculateAppointmentPricing(
@@ -143,25 +145,14 @@ export async function POST(
     // no address anywhere — and the reminder then had only the platform's own
     // footer address to show. Later appointments were fine because the other
     // scheduling paths do collect one.
-    //
-    // Resolution order: what the professional just typed, then whatever the
-    // appointment already carries, then their saved office address.
     if (resolvedType === "in-person") {
-      const typed = location?.trim();
-      let resolved = typed || appointment.location?.trim() || "";
-
-      const profile = await Profile.findOne({ userId: session.user.id })
-        .select("officeAddress officeNotes")
-        .lean();
-
-      if (!resolved) {
-        const office = resolveSessionLocation({
-          appointmentType: "in-person",
-          officeAddress: profile?.officeAddress,
-        });
-        resolved = office.lines.join(", ");
-      }
-
+      const resolved = await resolveFirstAppointmentLocation({
+        professionalId: session.user.id,
+        typed: location,
+        current: appointment.location,
+        saveAsDefaultOffice,
+        logPrefix: "[schedule-first]",
+      });
       if (!resolved) {
         return NextResponse.json(
           {
@@ -172,21 +163,7 @@ export async function POST(
           { status: 400 },
         );
       }
-
       appointment.location = resolved;
-
-      // Remember it, so the professional types it once rather than at every
-      // first appointment. Stored on `street` because what they typed is a
-      // single line; the structured fields stay available in their profile
-      // for anyone who wants to fill them in properly.
-      if (saveAsDefaultOffice && typed && profile && !profile.officeAddress?.street) {
-        await Profile.updateOne(
-          { userId: session.user.id },
-          { $set: { "officeAddress.street": typed } },
-        ).catch((err) =>
-          console.error("[schedule-first] saving default office failed:", err),
-        );
-      }
     }
     if (notes?.trim()) appointment.notes = notes.trim();
     appointment.status = "scheduled";
@@ -197,103 +174,12 @@ export async function POST(
     appointment.payment.professionalPayout = pricing.professionalPayout;
     await appointment.save();
 
-    // Build the single 1st-RDV confirmation email (carries the payment CTA).
-    const client = appointment.clientId as unknown as {
-      _id: { toString: () => string };
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      language?: string;
-      role?: string;
-      status?: string;
-    } | null;
-
-    if (client?.email) {
-      const professional = await User.findById(session.user.id)
-        .select("firstName lastName email")
-        .lean();
-      const professionalName = professional
-        ? `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim()
-        : undefined;
-
-      const isActiveClient =
-        client.role === "client" && client.status === "active";
-
-      // Quebec LSSSS art. 14: adult loved-one bookings route to the beneficiary.
-      const recipient = resolveAppointmentRecipient(
-        {
-          bookingFor: appointment.bookingFor,
-          lovedOneInfo: appointment.lovedOneInfo,
-        },
-        {
-          firstName: client.firstName,
-          lastName: client.lastName,
-          email: client.email,
-          language: client.language,
-        },
-      );
-      const locale = recipient.language;
-      const base = getBaseUrl();
-
-      const billingUrl = await resolveBillingUrl({
-        userStatus: isActiveClient ? "active" : "inactive",
-        appointment: appointment as Parameters<
-          typeof resolveBillingUrl
-        >[0]["appointment"],
-        base,
-        recipientLocale: locale,
-      });
-
-      if (!isActiveClient) {
-        const guestPayArgs = {
-          guestName: recipient.name,
-          guestEmail: recipient.email,
-          professionalName,
-          date: appointmentDate.toISOString(),
-          time,
-          duration: appointment.duration || 60,
-          type: appointment.type,
-          therapyType:
-            (appointment.therapyType as "solo" | "couple" | "group") || "solo",
-          price: appointment.payment?.price ?? 0,
-          paymentLink: billingUrl,
-          locale,
-          // Nudge the guest to finalize their account (parallel to the jumelage
-          // email) — claim flow seeded with their email.
-          completeAccountUrl: `${base}/signup/member?email=${encodeURIComponent(
-            recipient.email,
-          )}`,
-        };
-        after(() =>
-          sendGuestPaymentConfirmation(guestPayArgs).catch((err) =>
-            console.error("[schedule-first] guest confirmation error:", err),
-          ),
-        );
-      } else {
-        const payInviteArgs = {
-          clientName: recipient.name,
-          clientEmail: recipient.email,
-          professionalName: professionalName ?? "",
-          professionalEmail: professional?.email ?? "",
-          date: appointmentDate.toISOString(),
-          time,
-          duration: appointment.duration || 60,
-          type: appointment.type,
-          price: appointment.payment?.price ?? 0,
-          paymentUrl: billingUrl,
-          locale,
-          // This branch is active-clients only (isActiveClient above), so the
-          // auth-gated profile deep-link is safe. Payment is the primary CTA;
-          // this nudges the profile-completion half ("ignore if already done").
-          completeProfileUrl: `${base}/client/dashboard/profile`,
-        };
-        after(() =>
-          sendPaymentInvitation(payInviteArgs).catch((err) =>
-            console.error("[schedule-first] payment invitation error:", err),
-          ),
-        );
-      }
-    }
+    // The single 1st-RDV confirmation email (carries the payment CTA).
+    await queueFirstAppointmentConfirmation({
+      appointment,
+      professionalId: session.user.id,
+      logPrefix: "[schedule-first]",
+    });
 
     return NextResponse.json({
       id: appointment._id.toString(),

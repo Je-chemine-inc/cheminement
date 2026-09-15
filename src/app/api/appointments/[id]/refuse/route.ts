@@ -41,6 +41,15 @@ export async function POST(
       );
     }
 
+    // A pending request from a showcase page is declined through
+    // decline-direct (spec 003): it frees the slot and never cascades.
+    if (appointment.directRequest?.state === "pending") {
+      return NextResponse.json(
+        { error: "Answer this request from its direct request card", code: "USE_DIRECT_ROUTES" },
+        { status: 409 },
+      );
+    }
+
     // Check if appointment can be refused
     if (appointment.status !== "pending") {
       return NextResponse.json(

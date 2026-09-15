@@ -58,7 +58,36 @@ export type EmailNotificationType =
   | "interac_payment_reminder"
   // Professional rate-change requests (spec 001 AC-22).
   | "rate_proposal_submitted"
-  | "rate_proposal_decision";
+  | "rate_proposal_decision"
+  // Spec 003: showcase pages. Invitation, reminder, changes requested and
+  // « to review » belong to the review flow retired on 2026-09-14 and are no
+  // longer sent; they stay so saved settings keep their shape.
+  | "showcase_invitation"
+  | "showcase_reminder"
+  | "showcase_published"
+  | "showcase_changes_requested"
+  | "showcase_unpublished"
+  | "admin_showcase_submitted"
+  | "admin_showcase_updated"
+  // Spec 003 phase 3: direct requests from a showcase page.
+  | "direct_request_received"
+  | "direct_request_confirmation"
+  | "direct_request_unavailable"
+  | "admin_direct_request_returned"
+  // Spec 003 phase 4: a professional's waitlist.
+  | "waitlist_joined"
+  | "waitlist_offer"
+  | "waitlist_removed"
+  // Spec 003 phase 5: products professionals sell.
+  | "product_sold"
+  | "product_moderation_decision"
+  | "admin_product_submitted"
+  | "product_webinar_reminder"
+  // Articles professionals write for their page (2026-09-15).
+  | "article_moderation_decision"
+  | "admin_article_submitted"
+  // A cancellation refund Stripe refused or did not confirm (2026-09-15).
+  | "admin_appointment_refund_problem";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -178,6 +207,8 @@ export interface IPlatformSettings extends Document {
     solo: number;
     couple: number;
     group: number;
+    /** A quick one-time consultation (spec 003). Unset: the individual session's price. */
+    quick?: number | null;
   };
   platformFeePercentage: number;
   currency: string;
@@ -209,6 +240,41 @@ export interface IPlatformSettings extends Document {
    * microdeposit path cannot be tested without real Stripe keys.
    */
   organizationPadEnabled?: boolean;
+  /**
+   * Spec 003 kill switch: the showcase pages (www.jechemine.ca/<slug>), their
+   * booking requests and waitlists. Off by default: every page is a 404 and no
+   * showcase API answers.
+   */
+  showcaseEnabled?: boolean;
+  /**
+   * « Nos professionnels » (www /professionnels): the team's order and who it hides, replaced whole
+   * on each save (Admin → « Nos professionnels (site) »). Absent: nobody hidden, everyone by last name.
+   * `updatedAt` is the version a save must be made on. See lib/professionals-directory.ts.
+   */
+  professionalsDirectory?: {
+    order: mongoose.Types.ObjectId[];
+    hidden: mongoose.Types.ObjectId[];
+    updatedAt?: Date;
+    updatedBy?: mongoose.Types.ObjectId;
+  };
+  /**
+   * The platform's share of a professional's product sale, in percent (spec
+   * 003 phase 5). It absorbs Stripe's fees. Snapshotted on each purchase.
+   */
+  productCommissionPercentage?: number;
+  /**
+   * TPS and TVQ added at checkout on online sales (professionals' products and
+   * the team's premium resources). Off by default; charged only once both
+   * registration numbers are set. Each purchase keeps the amounts and rates it
+   * was charged with (see lib/sales-taxes.ts).
+   */
+  salesTaxes?: {
+    enabled: boolean;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  };
   platformContact: IPlatformContact;
   createdAt: Date;
   updatedAt: Date;
@@ -399,6 +465,90 @@ const defaultEmailTemplates: Record<
     enabled: true,
     subject: "Votre demande de tarif — Je chemine",
   },
+  showcase_invitation: {
+    enabled: true,
+    subject: "Votre page vitrine sur Je chemine",
+  },
+  showcase_reminder: {
+    enabled: true,
+    subject: "Rappel : votre page vitrine vous attend",
+  },
+  showcase_published: {
+    enabled: true,
+    subject: "Votre page vitrine est publiée",
+  },
+  showcase_changes_requested: {
+    enabled: true,
+    subject: "Quelques modifications à votre page vitrine",
+  },
+  showcase_unpublished: {
+    enabled: true,
+    subject: "Votre page vitrine est retirée",
+  },
+  admin_showcase_submitted: {
+    enabled: true,
+    subject: "Page vitrine à vérifier — Je chemine",
+  },
+  admin_showcase_updated: {
+    enabled: true,
+    subject: "Page vitrine modifiée par un professionnel — Je chemine",
+  },
+  direct_request_received: {
+    enabled: true,
+    subject: "Nouvelle demande de rendez-vous",
+  },
+  direct_request_confirmation: {
+    enabled: true,
+    subject: "Votre demande de rendez-vous a été envoyée",
+  },
+  direct_request_unavailable: {
+    enabled: true,
+    subject: "Votre demande de rendez-vous",
+  },
+  admin_direct_request_returned: {
+    enabled: true,
+    subject: "Demande directe revenue — Je chemine",
+  },
+  waitlist_joined: {
+    enabled: true,
+    subject: "Vous êtes sur la liste d'attente",
+  },
+  waitlist_offer: {
+    enabled: true,
+    subject: "Un créneau s'est libéré",
+  },
+  waitlist_removed: {
+    enabled: true,
+    subject: "Votre inscription à la liste d'attente a pris fin",
+  },
+  product_sold: {
+    enabled: true,
+    subject: "Vous avez fait une vente — Je chemine",
+  },
+  product_moderation_decision: {
+    enabled: true,
+    subject: "Votre produit — Je chemine",
+  },
+  admin_product_submitted: {
+    enabled: true,
+    subject: "Produit à vérifier — Je chemine",
+  },
+  product_webinar_reminder: {
+    enabled: true,
+    subject: "Rappel : votre webinaire — Je chemine",
+  },
+  article_moderation_decision: {
+    enabled: true,
+    subject: "Votre article — Je chemine",
+  },
+  admin_article_submitted: {
+    enabled: true,
+    subject: "Article à vérifier — Je chemine",
+  },
+  admin_appointment_refund_problem: {
+    enabled: true,
+    subject: "Remboursement à vérifier — Je chemine",
+  },
 };
 
 /**
@@ -456,6 +606,8 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
         required: true,
         default: 80,
       },
+      // A quick one-time consultation (spec 003). Unset: the individual session's price.
+      quick: { type: Number, min: 0 },
     },
     platformFeePercentage: {
       type: Number,
@@ -498,6 +650,28 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     },
     organizationBillingEnabled: { type: Boolean, default: false },
     organizationPadEnabled: { type: Boolean, default: false },
+    showcaseEnabled: { type: Boolean, default: false },
+    // « Nos professionnels »: the team's order and hidden list. Absent until the team first saves.
+    professionalsDirectory: {
+      type: new mongoose.Schema(
+        {
+          order: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+          hidden: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+          updatedAt: Date,
+          updatedBy: mongoose.Schema.Types.ObjectId,
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+    productCommissionPercentage: { type: Number, default: 20, min: 0, max: 100 },
+    salesTaxes: {
+      enabled: { type: Boolean, default: false },
+      tpsRatePercent: { type: Number, default: 5, min: 0, max: 20 },
+      tvqRatePercent: { type: Number, default: 9.975, min: 0, max: 20 },
+      tpsNumber: { type: String, trim: true, default: "" },
+      tvqNumber: { type: String, trim: true, default: "" },
+    },
     // Footer social-media hyperlinks (admin-editable; empty hides the icon).
     socialLinks: {
       facebook: { type: String, trim: true, default: DEFAULT_SOCIAL_LINKS.facebook },

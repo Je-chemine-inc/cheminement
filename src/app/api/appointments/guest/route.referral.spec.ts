@@ -47,6 +47,13 @@ vi.mock("next/server", () => ({
   },
 }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
+// Showcase slot requests (spec 003) are not part of these referral cases.
+vi.mock("@/lib/direct-request", () => ({
+  prepareDirectRequest: vi.fn(),
+  attachDirectRequest: vi.fn(),
+  abandonDirectRequest: vi.fn(),
+  notifyDirectRequestCreated: vi.fn(),
+}));
 vi.mock("@/lib/pricing", () => ({
   calculateAppointmentPricing: vi.fn().mockResolvedValue({
     sessionPrice: 175,

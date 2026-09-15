@@ -5,10 +5,12 @@ import connectToDatabase from "@/lib/mongodb";
 import Profile from "@/models/Profile";
 import { authOptions } from "@/lib/auth";
 import {
+  QUICK_CONSULTATION_MINUTES,
+  RATE_KEYS,
+  parseQuickConsultationMinutes,
   ratesToSetPaths,
   ratesToUnsetPaths,
   spreadOf,
-  THERAPY_TYPES,
   validateRatesInput,
   type RatesInput,
 } from "@/lib/professional-pricing";
@@ -25,11 +27,14 @@ import {
  *
  * `clientPrice` left unset means the professional follows
  * `PlatformSettings.defaultPricing` for that therapy type.
+ *
+ * The quick one-time consultation (spec 003) is priced here too, under the
+ * `quick` key, with its length in `quickConsultation.durationMinutes`.
  */
 
 /** Shape returned to the admin UI: stored values plus the derived spread. */
 function serialise(rates: RatesInput | undefined) {
-  return THERAPY_TYPES.reduce(
+  return RATE_KEYS.reduce(
     (acc, type) => {
       const entry = rates?.[type];
       const clientPrice = entry?.clientPrice ?? null;
@@ -48,6 +53,15 @@ function serialise(rates: RatesInput | undefined) {
     },
     {} as Record<string, unknown>,
   );
+}
+
+function serialiseQuickConsultation(
+  quickConsultation: { durationMinutes?: number | null } | undefined,
+) {
+  return {
+    durationMinutes: quickConsultation?.durationMinutes ?? null,
+    defaultMinutes: QUICK_CONSULTATION_MINUTES.default,
+  };
 }
 
 async function requireAdminAndProfile(id: string) {
@@ -81,7 +95,10 @@ export async function GET(
     const { error, profile } = await requireAdminAndProfile(id);
     if (error) return error;
 
-    return NextResponse.json({ rates: serialise(profile!.rates) });
+    return NextResponse.json({
+      rates: serialise(profile!.rates),
+      quickConsultation: serialiseQuickConsultation(profile!.quickConsultation),
+    });
   } catch (err: unknown) {
     console.error("Get professional pricing error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -109,11 +126,29 @@ export async function PATCH(
       );
     }
 
-    const $set = ratesToSetPaths(result.rates);
-    const $unset = ratesToUnsetPaths(result.rates);
+    const minutes = parseQuickConsultationMinutes(
+      body?.quickConsultation?.durationMinutes,
+    );
+    if (!minutes.ok) {
+      return NextResponse.json(
+        { error: "INVALID_QUICK_DURATION", field: "quickConsultation" },
+        { status: 400 },
+      );
+    }
+
+    const $set: Record<string, number> = ratesToSetPaths(result.rates);
+    const $unset: Record<string, ""> = ratesToUnsetPaths(result.rates);
+    if (typeof minutes.value === "number") {
+      $set["quickConsultation.durationMinutes"] = minutes.value;
+    } else if (minutes.value === null) {
+      $unset["quickConsultation.durationMinutes"] = "";
+    }
 
     if (Object.keys($set).length === 0 && Object.keys($unset).length === 0) {
-      return NextResponse.json({ rates: serialise(profile!.rates) });
+      return NextResponse.json({
+        rates: serialise(profile!.rates),
+        quickConsultation: serialiseQuickConsultation(profile!.quickConsultation),
+      });
     }
 
     const updated = await Profile.findOneAndUpdate(
@@ -125,7 +160,10 @@ export async function PATCH(
       { new: true },
     );
 
-    return NextResponse.json({ rates: serialise(updated?.rates) });
+    return NextResponse.json({
+      rates: serialise(updated?.rates),
+      quickConsultation: serialiseQuickConsultation(updated?.quickConsultation),
+    });
   } catch (err: unknown) {
     console.error("Update professional pricing error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

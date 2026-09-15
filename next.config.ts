@@ -41,7 +41,10 @@ const nextConfig: NextConfig = {
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com",
           "img-src 'self' data: blob: https://images.unsplash.com https://api.dicebear.com",
-          "frame-src https://js.stripe.com https://hooks.stripe.com",
+          // The embedded players of /medias and of products (the list in
+          // PRODUCT_FRAME_HOSTS, src/lib/product-rules.ts — keep them together).
+          // Without them production blocked every video and podcast embed.
+          "frame-src https://js.stripe.com https://hooks.stripe.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.dailymotion.com https://www.loom.com https://open.spotify.com https://embed.podcasts.apple.com https://w.soundcloud.com",
           "connect-src 'self' https://api.stripe.com https://maps.googleapis.com",
           "object-src 'none'",
           "base-uri 'self'",

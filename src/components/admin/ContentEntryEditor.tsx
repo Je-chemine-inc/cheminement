@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -65,24 +66,29 @@ function Toolbar({
   pickImage: () => void;
   uploading: boolean;
 }) {
+  const t = useTranslations("ContentEditor");
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-muted/30 p-2">
+    <div
+      role="group"
+      aria-label={t("toolbar")}
+      className="flex flex-wrap items-center gap-1 border-b border-border/60 bg-muted/30 p-2"
+    >
       <ToolbarButton
-        label="Bold"
+        label={t("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive("bold")}
       >
         <Bold className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Italic"
+        label={t("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive("italic")}
       >
         <Italic className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Underline"
+        label={t("underline")}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         active={editor.isActive("underline")}
       >
@@ -92,14 +98,14 @@ function Toolbar({
       <span className="mx-1 h-5 w-px bg-border/60" />
 
       <ToolbarButton
-        label="Paragraph"
+        label={t("paragraph")}
         onClick={() => editor.chain().focus().setParagraph().run()}
         active={editor.isActive("paragraph")}
       >
         <Pilcrow className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Section title (H2)"
+        label={t("heading2")}
         onClick={() =>
           editor.chain().focus().toggleHeading({ level: 2 }).run()
         }
@@ -108,7 +114,7 @@ function Toolbar({
         <Heading2 className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Subsection (H3)"
+        label={t("heading3")}
         onClick={() =>
           editor.chain().focus().toggleHeading({ level: 3 }).run()
         }
@@ -120,21 +126,21 @@ function Toolbar({
       <span className="mx-1 h-5 w-px bg-border/60" />
 
       <ToolbarButton
-        label="Bullet list"
+        label={t("bulletList")}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive("bulletList")}
       >
         <List className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Numbered list"
+        label={t("orderedList")}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive("orderedList")}
       >
         <ListOrdered className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Callout (blockquote)"
+        label={t("blockquote")}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         active={editor.isActive("blockquote")}
       >
@@ -143,11 +149,11 @@ function Toolbar({
 
       <span className="mx-1 h-5 w-px bg-border/60" />
 
-      <ToolbarButton label="Insert link" onClick={promptUrl}>
+      <ToolbarButton label={t("link")} onClick={promptUrl}>
         <LinkIcon className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Insert image"
+        label={t("image")}
         onClick={pickImage}
         disabled={uploading}
       >
@@ -161,14 +167,14 @@ function Toolbar({
       <span className="mx-1 h-5 w-px bg-border/60" />
 
       <ToolbarButton
-        label="Undo"
+        label={t("undo")}
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
       >
         <Undo2 className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
-        label="Redo"
+        label={t("redo")}
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
       >
@@ -178,16 +184,43 @@ function Toolbar({
   );
 }
 
+type UploadErrorKey =
+  | "uploadTooLarge"
+  | "uploadType"
+  | "uploadInfected"
+  | "uploadScanUnavailable"
+  | "uploadFailed";
+
+/**
+ * The upload routes answer in English, or in both languages at once; the
+ * editor tells the writer in their own. See lib/upload-pipeline.ts and the two
+ * upload routes for the statuses.
+ */
+function uploadErrorKey(status: number, error: string): UploadErrorKey {
+  if (status === 400 && /size/i.test(error)) return "uploadTooLarge";
+  if (status === 400 || status === 415) return "uploadType";
+  if (status === 422) return "uploadInfected";
+  if (status === 503) return "uploadScanUnavailable";
+  return "uploadFailed";
+}
+
 export default function ContentEntryEditor({
   value,
   onChange,
   uploadFolder = "content",
+  uploadEndpoint = "/api/admin/uploads",
+  accept = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml",
 }: {
   value: string;
   onChange: (html: string) => void;
   /** Subfolder under /public/uploads to place inline images. */
   uploadFolder?: "content" | "problematiques" | "misc";
+  /** Where inline images are uploaded: a professional's product uses its own route (spec 003 phase 5). */
+  uploadEndpoint?: string;
+  /** The image types the picker offers. */
+  accept?: string;
 }) {
+  const t = useTranslations("ContentEditor");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -225,7 +258,7 @@ export default function ContentEntryEditor({
   const promptUrl = () => {
     if (!editor) return;
     const previous = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("URL", previous ?? "https://");
+    const url = window.prompt(t("linkPrompt"), previous ?? "https://");
     if (url === null) return;
     if (url === "") {
       editor.chain().focus().unsetLink().run();
@@ -254,19 +287,22 @@ export default function ContentEntryEditor({
       const form = new FormData();
       form.append("file", file);
       form.append("folder", uploadFolder);
-      const res = await fetch("/api/admin/uploads", {
+      const res = await fetch(uploadEndpoint, {
         method: "POST",
         body: form,
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? `Upload failed (${res.status})`);
+        const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+        const detail = typeof data.error === "string" ? data.error : "";
+        console.warn("Image upload refused:", res.status, detail);
+        setUploadError(t(uploadErrorKey(res.status, detail)));
+        return;
       }
       const { url } = (await res.json()) as { url: string };
       editor.chain().focus().setImage({ src: url, alt: file.name }).run();
     } catch (err) {
       console.error("Image upload error:", err);
-      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      setUploadError(t("uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -289,12 +325,15 @@ export default function ContentEntryEditor({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        accept={accept}
         className="hidden"
         onChange={handleFileChange}
       />
       {uploadError ? (
-        <div className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-xs text-destructive">
+        <div
+          role="alert"
+          className="border-b border-destructive/20 bg-destructive/5 px-4 py-2 text-xs text-destructive"
+        >
           {uploadError}
         </div>
       ) : null}

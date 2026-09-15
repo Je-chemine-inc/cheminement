@@ -18,6 +18,12 @@ const h = vi.hoisted(() => ({
   refunded: [] as Array<Record<string, unknown>>,
   refundQuery: { value: null as unknown },
   appointmentModelLoaded: false,
+  // Product purchases looked up by id, as ResourceEntitlement.find returns them.
+  entitlements: [] as Array<Record<string, unknown>>,
+  entitlementQuery: { value: null as unknown },
+  // The team's own resource purchases (the other ResourceEntitlement query).
+  teamPurchases: [] as Array<Record<string, unknown>>,
+  teamQuery: { value: null as unknown },
 }));
 
 // Loading the module is what registers the model populate() needs.
@@ -33,6 +39,19 @@ vi.mock("@/models/Appointment", () => {
     },
   };
 });
+
+vi.mock("@/models/ResourceEntitlement", () => ({
+  default: {
+    find: (filter: Record<string, unknown>) => {
+      // By id: the taxes of product sales. Otherwise: the team's own purchases.
+      const byId = "_id" in filter;
+      if (byId) h.entitlementQuery.value = filter;
+      else h.teamQuery.value = filter;
+      const q = { select: () => q, lean: async () => (byId ? h.entitlements : h.teamPurchases) };
+      return q;
+    },
+  },
+}));
 
 /** Keeps only the selected (dotted) paths of a populated document, like MongoDB. */
 function project(doc: unknown, select: string | undefined): unknown {
@@ -110,6 +129,9 @@ vi.mock("@/models/ProfessionalLedgerEntry", () => ({
 
 import { GET } from "./route";
 
+/** Columns: …, brut, frais, net, canal, type_ligne (index 11), tps (12), tvq (13). */
+const TYPE = 11;
+
 const credit = (key: string, paymentChannel: string, status: string, createdAt = "2026-09-10T17:21:06Z") => ({
   _id: `ledger-${key}`,
   entryKind: "credit",
@@ -136,7 +158,7 @@ const exportCsv = async () => {
     status: number;
     body: string;
   };
-  return { status: res.status, lines: String(res.body).replace(/^\uFEFF/, "").split("\n") };
+  return { status: res.status, lines: String(res.body).replace(/^﻿/, "").split("\n") };
 };
 
 beforeEach(() => {
@@ -146,6 +168,10 @@ beforeEach(() => {
   h.rows = [];
   h.refunded = [];
   h.refundQuery.value = null;
+  h.entitlements = [];
+  h.entitlementQuery.value = null;
+  h.teamPurchases = [];
+  h.teamQuery.value = null;
 });
 
 const refundedSession = (key: string, payment: Record<string, unknown> = {}) => ({
@@ -211,34 +237,34 @@ describe("GET /api/admin/accounting/sales-journal", () => {
 });
 
 /**
- * The journal had no refund lines: a refunded card session stayed listed at
- * its full amount. A refund never reduces the professional's ledger credit,
- * so the clinic absorbs it — the refund line takes the amount off the
- * platform's share and leaves the professional's at zero.
+ * The journal had no refund lines: a refunded card sale stayed listed at its
+ * full amount. A refund never reduces the professional's ledger credit, so the
+ * clinic absorbs it — the refund line takes the amount off the platform's
+ * share and leaves the professional's at zero.
  */
 describe("GET /api/admin/accounting/sales-journal — refunds", () => {
   it("a refunded card sale comes back as a negative line on the refund's date", async () => {
     h.rows = [credit("card-refunded", "stripe", "refunded")];
     h.refunded = [refundedSession("card-refunded")];
     const { lines } = await exportCsv();
-    expect(lines[0].split(",").at(-1)).toBe("type_ligne");
+    expect(lines[0].split(",").slice(TYPE)).toEqual(["type_ligne", "tps_cad", "tvq_cad"]);
     expect(lines).toHaveLength(3);
     const sale = lines[1].split(",");
     const refund = lines[2].split(",");
-    expect(sale.slice(7)).toEqual(["175", "25", "150", "stripe", "vente"]);
+    expect(sale.slice(7)).toEqual(["175", "25", "150", "stripe", "vente", "", ""]);
     expect(refund[0]).toBe("2026-09-20");
     expect(refund[1]).toBe("2026-B19");
     expect(refund[2]).toBe("pro-1");
     expect(refund[4]).toBe("apt-card-refunded");
     expect(refund[5]).toBe("2026-09-09");
-    expect(refund.slice(7)).toEqual(["-175", "-175", "0", "stripe", "remboursement"]);
+    expect(refund.slice(7)).toEqual(["-175", "-175", "0", "stripe", "remboursement", "", ""]);
   });
 
   it("a partial refund takes back only what was refunded", async () => {
     h.rows = [credit("card-partial", "stripe", "partially_refunded")];
     h.refunded = [refundedSession("card-partial", { status: "partially_refunded", refundedAmount: 50 })];
     const { lines } = await exportCsv();
-    expect(lines[2].split(",").slice(7)).toEqual(["-50", "-50", "0", "stripe", "remboursement"]);
+    expect(lines[2].split(",").slice(7)).toEqual(["-50", "-50", "0", "stripe", "remboursement", "", ""]);
   });
 
   it("an Interac session is given no refund line", async () => {
@@ -263,10 +289,124 @@ describe("GET /api/admin/accounting/sales-journal — refunds", () => {
     ];
     h.refunded = [refundedSession("early")];
     const { lines } = await exportCsv();
-    expect(lines.slice(1).map((l) => [l.split(",")[0], l.split(",").at(-1)])).toEqual([
+    expect(lines.slice(1).map((l) => [l.split(",")[0], l.split(",")[TYPE]])).toEqual([
       ["2026-09-10", "vente"],
       ["2026-09-20", "remboursement"],
       ["2026-09-25", "vente"],
     ]);
+  });
+});
+
+/**
+ * TPS and TVQ added at checkout on a professional's product: the accountant
+ * needs what was collected, next to the professional's share of the price
+ * before taxes. A reversal takes them back with the sale.
+ */
+describe("GET /api/admin/accounting/sales-journal — TPS and TVQ on products", () => {
+  const productCredit = (key: string, sign: 1 | -1, entitlementId: string) => ({
+    _id: `ledger-${key}`,
+    entryKind: "credit",
+    createdAt: new Date(sign > 0 ? "2026-09-12T10:00:00Z" : "2026-09-14T10:00:00Z"),
+    cycleKey: "2026-B19",
+    professionalId: { _id: "pro-1", firstName: "Nathalie", lastName: "Pro", email: "pro@example.com" },
+    appointmentId: null,
+    productSlug: "guide-stress",
+    entitlementId,
+    grossAmountCad: 49 * sign,
+    platformFeeCad: 9.8 * sign,
+    netToProfessionalCad: 39.2 * sign,
+    paymentChannel: "stripe",
+    source: sign > 0 ? "product_sale" : "product_sale_reversal",
+  });
+
+  it("prints the TPS and TVQ collected on a taxed sale, negative on its reversal", async () => {
+    h.rows = [productCredit("sale", 1, "ent-taxed"), productCredit("reversal", -1, "ent-taxed")];
+    h.entitlements = [{ _id: "ent-taxed", tpsCents: 245, tvqCents: 489 }];
+    const { lines } = await exportCsv();
+    expect(lines).toHaveLength(3);
+    expect(lines[1].split(",").slice(6)).toEqual(["guide-stress", "49", "9.8", "39.2", "stripe", "vente_produit", "2.45", "4.89"]);
+    expect(lines[2].split(",").slice(6)).toEqual(["guide-stress", "-49", "-9.8", "-39.2", "stripe", "remboursement_produit", "-2.45", "-4.89"]);
+    expect(h.entitlementQuery.value).toEqual({ _id: { $in: ["ent-taxed", "ent-taxed"] } });
+  });
+
+  it("leaves the tax cells empty for a product bought while taxes were off", async () => {
+    h.rows = [productCredit("untaxed", 1, "ent-untaxed")];
+    h.entitlements = [{ _id: "ent-untaxed" }];
+    const { lines } = await exportCsv();
+    expect(lines[1].split(",").slice(TYPE)).toEqual(["vente_produit", "", ""]);
+  });
+
+  it("does not look up purchases by id when no line is a product sale", async () => {
+    h.rows = [credit("card-paid", "stripe", "paid")];
+    await exportCsv();
+    expect(h.entitlementQuery.value).toBeNull();
+  });
+});
+
+/**
+ * The team's own premium resources belong to no professional, so no ledger
+ * line exists for them: without reading the purchases, their revenue and the
+ * TPS/TVQ collected on them never reached the accountant.
+ */
+describe("GET /api/admin/accounting/sales-journal — the team's own resources", () => {
+  const teamPurchase = (over: Record<string, unknown> = {}) => ({
+    slug: "guide-equipe",
+    status: "paid",
+    paidAt: new Date("2026-09-12T15:00:00Z"),
+    amountCents: 5634,
+    subtotalCents: 4900,
+    tpsCents: 245,
+    tvqCents: 489,
+    ...over,
+  });
+
+  it("lists a sale: the whole price before taxes is the platform's, with the TPS and TVQ collected", async () => {
+    h.teamPurchases = [teamPurchase()];
+    const { lines } = await exportCsv();
+    expect(lines).toHaveLength(2);
+    const cells = lines[1].split(",");
+    expect(cells.slice(0, 2)).toEqual(["2026-09-12", expect.any(String)]);
+    expect(cells.slice(2, 6)).toEqual(["", "", "", ""]);
+    expect(cells.slice(6)).toEqual(["guide-equipe", "49", "49", "0", "stripe", "vente_ressource", "2.45", "4.89"]);
+  });
+
+  it("a full refund comes back as a negative line on the refund's date", async () => {
+    h.teamPurchases = [teamPurchase({ status: "refunded", refundedAt: new Date("2026-09-20T15:00:00Z") })];
+    const { lines } = await exportCsv();
+    expect(lines).toHaveLength(3);
+    expect(lines[2].split(",")[0]).toBe("2026-09-20");
+    expect(lines[2].split(",").slice(6)).toEqual(["guide-equipe", "-49", "-49", "0", "stripe", "remboursement_ressource", "-2.45", "-4.89"]);
+  });
+
+  it("sold one year, refunded the next: each line in its own year only", async () => {
+    h.teamPurchases = [
+      teamPurchase({ slug: "vendu-avant", paidAt: new Date("2025-12-20T15:00:00Z"), status: "refunded", refundedAt: new Date("2026-01-05T15:00:00Z") }),
+      teamPurchase({ slug: "rembourse-apres", paidAt: new Date("2026-12-28T15:00:00Z"), status: "refunded", refundedAt: new Date("2027-01-04T15:00:00Z") }),
+    ];
+    const { lines } = await exportCsv();
+    expect(lines.slice(1).map((l) => [l.split(",")[6], l.split(",")[TYPE]])).toEqual([
+      ["vendu-avant", "remboursement_ressource"],
+      ["rembourse-apres", "vente_ressource"],
+    ]);
+  });
+
+  it("a purchase made while taxes were off: the amount paid, empty tax cells", async () => {
+    h.teamPurchases = [{ slug: "guide-ancien", status: "paid", paidAt: new Date("2026-03-02T15:00:00Z"), amountCents: 1900 }];
+    const { lines } = await exportCsv();
+    expect(lines[1].split(",").slice(6)).toEqual(["guide-ancien", "19", "19", "0", "stripe", "vente_ressource", "", ""]);
+  });
+
+  it("asks only for the team's paid or refunded purchases touching the year, and keeps date order with the rest", async () => {
+    h.rows = [credit("card-paid", "stripe", "paid", "2026-09-15T10:00:00Z")];
+    h.teamPurchases = [teamPurchase()];
+    const { lines } = await exportCsv();
+    const q = h.teamQuery.value as Record<string, unknown>;
+    expect(q.ownerProfessionalId).toEqual({ $exists: false });
+    expect(q.status).toEqual({ $in: ["paid", "refunded"] });
+    expect(q.$or).toEqual([
+      { paidAt: { $gte: new Date(2026, 0, 1), $lt: new Date(2027, 0, 1) } },
+      { refundedAt: { $gte: new Date(2026, 0, 1), $lt: new Date(2027, 0, 1) } },
+    ]);
+    expect(lines.slice(1).map((l) => l.split(",")[TYPE])).toEqual(["vente_ressource", "vente"]);
   });
 });

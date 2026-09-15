@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  QUICK_CONSULTATION_MINUTES,
+  RATE_KEYS,
   rateFromSpreadPercentage,
   spreadOf,
-  THERAPY_TYPES,
-  type TherapyType,
+  type RateKey,
 } from "@/lib/professional-pricing";
 import RepriceUnpaidAppointments from "./RepriceUnpaidAppointments";
 
@@ -19,7 +20,8 @@ import RepriceUnpaidAppointments from "./RepriceUnpaidAppointments";
  * The client pays `clientPrice`, the professional receives `professionalRate`,
  * and the platform keeps the spread. Both amounts are edited and stored
  * explicitly; the percentage box is a convenience that back-computes the rate,
- * never the stored source of truth (spec 001 AC-7).
+ * never the stored source of truth (spec 001 AC-7). The quick one-time
+ * consultation (spec 003) has its own row, with its length.
  *
  * Rendered only when an admin is viewing another professional's profile — a
  * professional cannot reach this, and `PUT /api/profile` drops `pricing`/`rates`
@@ -31,19 +33,28 @@ interface RateRow {
   professionalRate: string;
 }
 
-type RatesState = Record<TherapyType, RateRow>;
+type RatesState = Record<RateKey, RateRow>;
 
 const EMPTY: RatesState = {
   solo: { clientPrice: "", professionalRate: "" },
   couple: { clientPrice: "", professionalRate: "" },
   group: { clientPrice: "", professionalRate: "" },
+  quick: { clientPrice: "", professionalRate: "" },
 };
 
-const LABEL_KEY: Record<TherapyType, string> = {
+const LABEL_KEY: Record<RateKey, string> = {
   solo: "individualSession",
   couple: "coupleSession",
   group: "groupSession",
+  quick: "quickConsultation",
 };
+
+/** Validation codes with their own wording; anything else gets the generic message. */
+const KNOWN_ERRORS = [
+  "RATE_EXCEEDS_CLIENT_PRICE",
+  "CLIENT_PRICE_MUST_BE_POSITIVE",
+  "INVALID_QUICK_DURATION",
+];
 
 const numeric = (v: string): number | undefined => {
   if (v.trim() === "") return undefined;
@@ -58,11 +69,12 @@ export default function AdminProfessionalPricing({
   /** The professional whose pricing is being edited. */
   userId: string;
   /** Platform defaults, shown as the effective client price when none is set. */
-  defaultPricing?: Partial<Record<TherapyType, number>>;
+  defaultPricing?: Partial<Record<RateKey, number>>;
 }) {
   const t = useTranslations("Dashboard.adminPricing");
 
   const [rates, setRates] = useState<RatesState>(EMPTY);
+  const [quickMinutes, setQuickMinutes] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   // Bumped after a successful save so the re-price list re-reads what the new
@@ -79,7 +91,7 @@ export default function AdminProfessionalPricing({
       const data = await res.json();
 
       const next = { ...EMPTY };
-      for (const type of THERAPY_TYPES) {
+      for (const type of RATE_KEYS) {
         const row = data?.rates?.[type];
         next[type] = {
           clientPrice: row?.clientPrice != null ? String(row.clientPrice) : "",
@@ -88,6 +100,8 @@ export default function AdminProfessionalPricing({
         };
       }
       setRates(next);
+      const minutes = data?.quickConsultation?.durationMinutes;
+      setQuickMinutes(typeof minutes === "number" ? String(minutes) : "");
       setMessage(null);
     } catch {
       setMessageType("error");
@@ -101,11 +115,11 @@ export default function AdminProfessionalPricing({
     void load();
   }, [load]);
 
-  const setField = (type: TherapyType, field: keyof RateRow, value: string) =>
+  const setField = (type: RateKey, field: keyof RateRow, value: string) =>
     setRates((prev) => ({ ...prev, [type]: { ...prev[type], [field]: value } }));
 
   /** Percentage box: back-compute the rate, then store the amount. */
-  const applyPercentage = (type: TherapyType, pct: string) => {
+  const applyPercentage = (type: RateKey, pct: string) => {
     const price = numeric(rates[type].clientPrice);
     const parsed = numeric(pct);
     if (price === undefined || parsed === undefined) return;
@@ -121,7 +135,7 @@ export default function AdminProfessionalPricing({
     setMessage(null);
     try {
       const payload: Record<string, unknown> = {};
-      for (const type of THERAPY_TYPES) {
+      for (const type of RATE_KEYS) {
         const price = rates[type].clientPrice.trim();
         const rate = rates[type].professionalRate.trim();
         payload[type] = {
@@ -129,11 +143,16 @@ export default function AdminProfessionalPricing({
           professionalRate: rate === "" ? null : Number(rate),
         };
       }
+      const minutes = quickMinutes.trim();
 
       const res = await fetch(`/api/admin/professionals/${userId}/pricing`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rates: payload }),
+        body: JSON.stringify({
+          rates: payload,
+          // Sent as typed: the server refuses anything but whole minutes in bounds.
+          quickConsultation: { durationMinutes: minutes === "" ? null : minutes },
+        }),
       });
       const data = await res.json();
 
@@ -141,9 +160,8 @@ export default function AdminProfessionalPricing({
         setMessageType("error");
         // Known validation codes get a translated message; anything else falls
         // back to a generic one rather than leaking a raw error code.
-        const known = ["RATE_EXCEEDS_CLIENT_PRICE", "CLIENT_PRICE_MUST_BE_POSITIVE"];
         setMessage(
-          known.includes(data?.error) ? t(`errors.${data.error}`) : t("saveFailed"),
+          KNOWN_ERRORS.includes(data?.error) ? t(`errors.${data.error}`) : t("saveFailed"),
         );
         return;
       }
@@ -179,7 +197,7 @@ export default function AdminProfessionalPricing({
       <p className="text-sm text-muted-foreground mb-6">{t("description")}</p>
 
       <div className="space-y-6">
-        {THERAPY_TYPES.map((type) => {
+        {RATE_KEYS.map((type) => {
           const price = numeric(rates[type].clientPrice);
           const rate = numeric(rates[type].professionalRate);
           const fallbackPrice = defaultPricing?.[type];
@@ -284,6 +302,37 @@ export default function AdminProfessionalPricing({
                           percentage: spread.percentage,
                         })}
               </p>
+
+              {type === "quick" ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <Label htmlFor="quick-duration" className="text-xs mb-1 block">
+                      {t("quickDuration")}
+                    </Label>
+                    <Input
+                      id="quick-duration"
+                      type="number"
+                      min={QUICK_CONSULTATION_MINUTES.min}
+                      max={QUICK_CONSULTATION_MINUTES.max}
+                      step="1"
+                      inputMode="numeric"
+                      placeholder={String(QUICK_CONSULTATION_MINUTES.default)}
+                      value={quickMinutes}
+                      onChange={(e) => setQuickMinutes(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:col-span-2 sm:self-end">
+                    {t("quickDurationHelp", {
+                      min: QUICK_CONSULTATION_MINUTES.min,
+                      max: QUICK_CONSULTATION_MINUTES.max,
+                      minutes: QUICK_CONSULTATION_MINUTES.default,
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground sm:col-span-3">
+                    {t("quickHelp")}
+                  </p>
+                </div>
+              ) : null}
             </div>
           );
         })}

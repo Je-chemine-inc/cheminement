@@ -8,6 +8,7 @@ import {
   anonymizeExpiredAccounts,
   anonymizeSingleUser,
 } from "@/lib/data-lifecycle";
+import { syncProfessionalProducts } from "@/lib/products";
 
 async function getAuthorizedAdmin(session: Session | null) {
   if (!session?.user?.id || session.user.role !== "admin") return null;
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
         { status: 404 },
       );
     }
+    // An anonymized professional's products leave the site (spec 003 phase 5).
+    await syncProfessionalProducts(userId).catch((err) =>
+      console.error("data-lifecycle: products sync failed:", err),
+    );
     return NextResponse.json({ ok: true });
   }
 

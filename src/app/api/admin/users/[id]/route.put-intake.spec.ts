@@ -33,6 +33,7 @@ vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) 
 vi.mock("@/lib/intake-rematch", () => ({
   rematchWaitingDemandesForReenabledPro: h.rematch,
 }));
+vi.mock("@/lib/products", () => ({ syncProfessionalProducts: vi.fn() }));
 vi.mock("@/models/User", () => ({
   default: { findById: () => h.userFindById(), findByIdAndUpdate: vi.fn() },
 }));

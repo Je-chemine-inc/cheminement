@@ -15,6 +15,8 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import MedicalProfile from "@/models/MedicalProfile";
 import Profile from "@/models/Profile";
+import WaitlistEntry from "@/models/WaitlistEntry";
+import { WAITLIST_CLOSED_RETENTION_DAYS } from "@/lib/waitlist-rules";
 
 const RETENTION_YEARS = 7;
 const RETENTION_MS = RETENTION_YEARS * 365.25 * 24 * 60 * 60 * 1000;
@@ -106,6 +108,20 @@ export async function anonymizeExpiredAccounts(): Promise<AnonymizationReport> {
 
   report.skipped = report.scanned - report.anonymized - report.errors;
   return report;
+}
+
+/**
+ * A waitlist entry is kept while the person waits, and as the record of their
+ * consent for a while after (spec 003 phase 4). Once closed — converted into a
+ * request, expired, left or removed — it is deleted after
+ * WAITLIST_CLOSED_RETENTION_DAYS. A converted entry's request lives on in the
+ * Appointment. Run by the waitlist job.
+ */
+export async function purgeClosedWaitlistEntries(now: Date = new Date()): Promise<number> {
+  await connectToDatabase();
+  const cutoff = new Date(now.getTime() - WAITLIST_CLOSED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const res = await WaitlistEntry.deleteMany({ isOpen: false, closedAt: { $lte: cutoff } });
+  return res.deletedCount ?? 0;
 }
 
 /**

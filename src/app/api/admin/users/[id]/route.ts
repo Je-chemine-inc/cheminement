@@ -17,6 +17,7 @@ import Conversation from "@/models/Conversation";
 import Message from "@/models/Message";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
+import { syncProfessionalProducts } from "@/lib/products";
 
 /** Payment states in which money was taken for a session. */
 const PAYMENT_TAKEN_STATUSES = ["paid", "processing", "refunded", "partially_refunded"] as const;
@@ -267,6 +268,13 @@ export async function PUT(
       await User.findByIdAndUpdate(userId, { $set: userUpdates }, { new: true, runValidators: true });
     }
 
+    // A professional's products follow their account's status (spec 003 phase 5).
+    if (userToUpdate.role === "professional" && "status" in userUpdates) {
+      await syncProfessionalProducts(userId).catch((err) =>
+        console.error("Admin user update: products sync failed:", err),
+      );
+    }
+
     // Update profile if there are profile fields
     let reEnabledNewClients = false;
     let reEnabledEmergency = false;
@@ -441,6 +449,13 @@ export async function DELETE(
       Message.deleteMany({ senderId: userObjectId }),
       Conversation.deleteMany({ participants: userObjectId }),
     ]);
+
+    // A deleted professional's products leave the site (spec 003 phase 5).
+    if (user.role === "professional") {
+      await syncProfessionalProducts(userId).catch((err) =>
+        console.error("Admin user delete: products sync failed:", err),
+      );
+    }
 
     return NextResponse.json({ success: true, message: "User deleted" });
   } catch (error) {

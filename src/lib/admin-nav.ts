@@ -8,9 +8,14 @@
 export type AdminUiPermissions = {
   /** « Facturation et paiements », « Comptabilité & cycles », organizations. */
   manageBilling: boolean;
+  /** « Pages vitrines » (spec 003): who the public sees, and what. */
+  manageProfessionals: boolean;
 };
 
-export const NO_ADMIN_UI_PERMISSIONS: AdminUiPermissions = { manageBilling: false };
+export const NO_ADMIN_UI_PERMISSIONS: AdminUiPermissions = {
+  manageBilling: false,
+  manageProfessionals: false,
+};
 
 type NavItem = { requires?: keyof AdminUiPermissions };
 

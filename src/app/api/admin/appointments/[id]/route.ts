@@ -6,7 +6,9 @@ import connectToDatabase from "@/lib/mongodb";
 import Admin from "@/models/Admin";
 import Appointment from "@/models/Appointment";
 import { sendAppointmentChangeNotification } from "@/lib/notifications";
-import { parseAppointmentDate } from "@/lib/appointment-date";
+import { appointmentDayKey, parseAppointmentDate } from "@/lib/appointment-date";
+import { findSlotCollision, slotCollisionError } from "@/lib/slot-occupancy";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 
 type PopulatedParty = {
   firstName?: string;
@@ -135,6 +137,19 @@ export async function PATCH(
           { status: 409 },
         );
       }
+      // A client's pending request from a showcase page holds its time (spec 003).
+      const held = await findSlotCollision({
+        professionalId: appointment.professionalId._id.toString(),
+        dayKey: appointmentDayKey(newDate),
+        time: newTime,
+        durationMinutes:
+          typeof body.duration === "number" && body.duration > 0 ? body.duration : appointment.duration,
+        exceptAppointmentId: id,
+        holdsOnly: true,
+      });
+      if (held) {
+        return NextResponse.json(slotCollisionError(held), { status: 409 });
+      }
     }
 
     if (body.date !== undefined) appointment.date = newDate;
@@ -156,6 +171,12 @@ export async function PATCH(
     }
 
     await appointment.save();
+
+    // The old time of a moved session goes to the professional's waitlist (spec 003 phase 4).
+    if (isReschedule && appointment.status === "scheduled" && appointment.professionalId) {
+      const freedFor = appointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
+    }
 
     // Notify both parties only when the slot actually moved and the
     // appointment is still live (pending/scheduled). Field-only edits
@@ -242,11 +263,16 @@ export async function DELETE(
       : undefined;
     const previousTime = appointment.time;
 
+    const wasScheduled = appointment.status === "scheduled";
     appointment.status = "cancelled";
     appointment.cancelledBy = "admin";
     appointment.cancelledAt = new Date();
     appointment.cancelReason = "admin_cancelled";
     await appointment.save();
+    if (wasScheduled && appointment.professionalId) {
+      const freedFor = appointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
+    }
 
     const client = appointment.clientId as unknown as PopulatedParty;
     const professional = appointment.professionalId as unknown as PopulatedParty;

@@ -7,17 +7,21 @@ import { getLocale, getTranslations } from "next-intl/server";
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarClock,
   Check,
   CheckCircle2,
+  Download,
   ExternalLink,
   Lock,
   Unlock,
 } from "lucide-react";
-import { getPublishedContent } from "@/lib/content-entry";
+import { getContentAnyStatus, getPublishedContent, type ContentEntryDTO } from "@/lib/content-entry";
 import { getMediaEmbed } from "@/lib/media-embed";
 import { isPremiumEntry, stripPremiumPayload } from "@/lib/content-premium";
-import { resolveResourceAccess } from "@/lib/resource-access";
+import { resolveResourceAccess, type ResourceAccessResult } from "@/lib/resource-access";
+import { productByline } from "@/lib/products";
 import { formatCad } from "@/lib/format-currency";
+import { loadCheckoutTaxRates } from "@/lib/sales-tax-settings";
 import { authOptions } from "@/lib/auth";
 import StripAccessToken from "@/components/resources/StripAccessToken";
 import ResourceBuyButton from "@/components/resources/ResourceBuyButton";
@@ -31,13 +35,46 @@ import type { ContentLocale, MediaType } from "@/models/ContentEntry";
  * auth cookie AND on ?token=. Any static or ISR caching would hand one buyer's
  * page to every visitor. For the same reason there is no generateStaticParams
  * and no revalidate.
+ *
+ * A professional's product (spec 003 phase 5) is read here too, with its
+ * byline and its own delivery: a PDF download, a webinar's date and room, or a
+ * link out. An unpublished product — taken down, or its professional no longer
+ * active — stays readable by the people who bought it, and by its professional
+ * and admins as a preview; for everyone else it does not exist.
  */
 export const dynamic = "force-dynamic";
 
+async function currentLocale(): Promise<ContentLocale> {
+  return (await getLocale()) === "fr" ? "fr" : "en";
+}
+
 async function loadEntry(slug: string) {
-  const localeRaw = await getLocale();
-  const locale: ContentLocale = localeRaw === "fr" ? "fr" : "en";
-  return getPublishedContent("resource", slug, locale);
+  return getPublishedContent("resource", slug, await currentLocale());
+}
+
+type Readable = {
+  doc: ContentEntryDTO;
+  byline: { name: string; pageUrl: string | null } | null;
+  /** Why an unpublished product is shown to this visitor. */
+  notice: "preview" | "withdrawn" | null;
+};
+
+async function loadReadable(slug: string, token: string | undefined): Promise<Readable | null> {
+  const locale = await currentLocale();
+  const published = await getPublishedContent("resource", slug, locale);
+  if (published && !published.ownerProfessionalId) return { doc: published, byline: null, notice: null };
+
+  const any = published ?? (await getContentAnyStatus("resource", slug, locale));
+  if (!any?.ownerProfessionalId) return null;
+  const byline = await productByline(any.ownerProfessionalId);
+  if (published && byline) return { doc: any, byline, notice: null };
+
+  const session = await getServerSession(authOptions);
+  if (session?.user?.isAdmin || session?.user?.id === any.ownerProfessionalId) {
+    return { doc: any, byline, notice: "preview" };
+  }
+  const access = await resolveResourceAccess(slug, { isPremium: true, token });
+  return access.granted ? { doc: any, byline, notice: "withdrawn" } : null;
 }
 
 /**
@@ -53,7 +90,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const doc = await loadEntry(slug);
-  if (!doc) return { title: "Not found" };
+  if (!doc) return { title: "Not found", robots: { index: false, follow: false } };
   return {
     title: doc.title,
     description: doc.summary || undefined,
@@ -73,34 +110,52 @@ export default async function BookResourcePage({
 }) {
   const { slug } = await params;
   const { token } = await searchParams;
-  const doc = await loadEntry(slug);
-  if (!doc) {
+  const readable = await loadReadable(slug, token);
+  if (!readable) {
     // Covers drafts and unknown slugs alike — an unpublished resource must not
     // announce its own existence.
     notFound();
   }
+  const { doc, byline, notice } = readable;
 
   const locale = await getLocale();
   const t = await getTranslations("BookResource");
 
   const premium = isPremiumEntry(doc);
-  const access = await resolveResourceAccess(slug, { isPremium: premium, token });
+  // The professional and admins preview the whole product; a buyer of a
+  // withdrawn product was already checked in loadReadable.
+  const access: ResourceAccessResult =
+    notice === "preview" ? { granted: true, via: null } : await resolveResourceAccess(slug, { isPremium: premium, token });
   // Only used to pre-fill the checkout, never to decide access — that is
   // resolveResourceAccess's job and its answer is already in `access`.
   const session = premium && !access.granted ? await getServerSession(authOptions) : null;
+  // TPS and TVQ the checkout would add, to show before paying; the charge itself is computed at checkout.
+  const taxRates = premium && !access.granted ? await loadCheckoutTaxRates() : null;
 
   // THE boundary. Everything below renders from `view`, never from `doc`.
   const view = access.granted ? doc : stripPremiumPayload(doc);
   const contentHtml = "contentHtml" in view ? view.contentHtml : "";
   const mediaUrl = "mediaUrl" in view ? view.mediaUrl : undefined;
+  const productFileId = "productFileId" in view ? view.productFileId : undefined;
+  const webinarAccess = "webinarAccess" in view ? view.webinarAccess : undefined;
 
   const mediaType: MediaType = doc.mediaType ?? "article";
   const embed = getMediaEmbed(mediaType, mediaUrl);
   const locked = premium && !access.granted;
+  const productType = doc.productType;
+  const tag = locale === "en" ? "en-CA" : "fr-CA";
+  const fileQuery = new URLSearchParams({ locale: doc.locale });
+  if (access.via === "token" && token) fileQuery.set("token", token);
 
   return (
     <article className="bg-background">
       {token ? <StripAccessToken /> : null}
+
+      {notice ? (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
+          {notice === "preview" ? t("productPreviewNotice") : t("productWithdrawnNotice")}
+        </div>
+      ) : null}
 
       <div className="border-b border-border/60 bg-background">
         <div className="container mx-auto px-6 py-3">
@@ -134,15 +189,46 @@ export default async function BookResourcePage({
                   {t("freeTag")}
                 </span>
               )}
+              {productType ? (
+                <span className="rounded-full bg-background px-3 py-1 text-xs text-muted-foreground shadow-sm">
+                  {t(`productType_${productType}`)}
+                </span>
+              ) : null}
             </div>
 
             <h1 className="font-serif text-3xl font-light leading-tight text-foreground md:text-4xl lg:text-5xl">
               {view.title}
             </h1>
 
+            {byline ? (
+              <p className="text-sm text-muted-foreground">
+                {byline.pageUrl ? (
+                  <a href={byline.pageUrl} className="text-primary hover:underline">
+                    {t("byline", { name: byline.name })}
+                  </a>
+                ) : (
+                  t("byline", { name: byline.name })
+                )}
+              </p>
+            ) : null}
+
             {view.summary ? (
               <p className="max-w-3xl text-base text-muted-foreground md:text-lg">
                 {view.summary}
+              </p>
+            ) : null}
+
+            {productType === "webinar" && doc.webinar?.startsAt ? (
+              <p className="inline-flex items-center gap-2 text-sm text-foreground">
+                <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
+                {t("webinarWhen", {
+                  date: new Intl.DateTimeFormat(tag, {
+                    dateStyle: "full",
+                    timeStyle: "short",
+                    timeZone: "America/Toronto",
+                  }).format(new Date(doc.webinar.startsAt)),
+                })}
+                {doc.webinar.durationMinutes ? ` · ${t("webinarDuration", { minutes: doc.webinar.durationMinutes })}` : null}
               </p>
             ) : null}
 
@@ -231,6 +317,54 @@ export default async function BookResourcePage({
             </a>
           ) : null}
 
+          {!locked && productType === "pdf" && productFileId ? (
+            <a
+              href={`/api/products/${slug}/file?${fileQuery.toString()}`}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              {t("productDownloadPdf")}
+            </a>
+          ) : null}
+
+          {!locked && productType === "webinar" && webinarAccess ? (
+            <div className="flex flex-wrap gap-3">
+              {webinarAccess.joinUrl ? (
+                <a
+                  href={webinarAccess.joinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  {t("webinarJoin")}
+                </a>
+              ) : null}
+              {webinarAccess.replayUrl ? (
+                <a
+                  href={webinarAccess.replayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-5 py-2.5 text-sm text-foreground transition-colors hover:bg-muted"
+                >
+                  {t("webinarReplay")}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+
+          {productType === "external" && doc.externalUrl ? (
+            <a
+              href={doc.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              {t("productExternalCta")}
+            </a>
+          ) : null}
+
           {locked ? (
             <>
               {view.previewHtml?.trim() ? (
@@ -265,7 +399,7 @@ export default async function BookResourcePage({
                   {formatCad(doc.priceCents, locale)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("priceAllInclusive")}
+                  {taxRates ? t("pricePlusTaxes") : t("priceAllInclusive")}
                 </p>
 
                 <ul className="mx-auto mt-6 max-w-xs space-y-2 text-left text-sm text-muted-foreground">
@@ -282,6 +416,7 @@ export default async function BookResourcePage({
                     slug={slug}
                     title={doc.title}
                     priceCents={doc.priceCents}
+                    taxRates={taxRates}
                     isSignedIn={Boolean(session?.user?.id)}
                     signedInEmail={session?.user?.email ?? undefined}
                   />
@@ -302,7 +437,7 @@ export default async function BookResourcePage({
               className="legal-prose w-full"
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
-          ) : embed ? null : (
+          ) : embed || productType ? null : (
             <div className="rounded-xl border border-dashed border-border/60 p-12 text-center text-muted-foreground">
               <p>{t("emptyContent")}</p>
             </div>

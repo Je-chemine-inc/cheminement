@@ -32,14 +32,20 @@ interface CatalogItem {
   labelFr: string;
   labelEn: string;
   active: boolean;
+  /** Spec 003: an expertise offered as a tag on showcase pages. */
+  showcase: boolean;
+  /** Its URL segment on the city pages. */
+  slug: string;
 }
 
-const emptyDraft = (category: Category) => ({
+const emptyDraft = (category: Category): CatalogItem => ({
   id: "",
   category,
   labelFr: "",
   labelEn: "",
   active: true,
+  showcase: false,
+  slug: "",
 });
 
 export default function AdminProCatalogPage() {
@@ -89,7 +95,7 @@ export default function AdminProCatalogPage() {
     setEditorOpen(true);
   };
   const openEdit = (item: CatalogItem) => {
-    setDraft(item);
+    setDraft({ ...item, showcase: item.showcase === true, slug: item.slug ?? "" });
     setMutationError(null);
     setEditorOpen(true);
   };
@@ -115,6 +121,11 @@ export default function AdminProCatalogPage() {
             labelFr,
             labelEn,
             active: draft.active,
+            // Only an expertise can appear on showcase pages; the API refuses
+            // these fields for the other categories.
+            ...(draft.category === "expertise"
+              ? { showcase: draft.showcase, slug: draft.slug.trim().toLowerCase() }
+              : {}),
           }),
         },
       );
@@ -219,7 +230,7 @@ export default function AdminProCatalogPage() {
               className="flex items-center justify-between gap-3 p-3"
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-light text-foreground truncate">
                     {item.labelFr}
                   </span>
@@ -227,6 +238,9 @@ export default function AdminProCatalogPage() {
                     <Badge variant="outline" className="text-muted-foreground">
                       {t("inactive")}
                     </Badge>
+                  )}
+                  {item.category === "expertise" && item.showcase && (
+                    <Badge variant="secondary">{t("showcaseBadge")}</Badge>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
@@ -296,6 +310,32 @@ export default function AdminProCatalogPage() {
               />
               {t("activeLabel")}
             </label>
+            {draft.category === "expertise" && (
+              <div className="space-y-3 rounded-lg border border-border/60 p-3">
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={draft.showcase}
+                    onChange={(e) => setDraft({ ...draft, showcase: e.target.checked })}
+                  />
+                  <span>
+                    {t("showcaseLabel")}
+                    <span className="block text-xs text-muted-foreground">{t("showcaseHint")}</span>
+                  </span>
+                </label>
+                <div className="space-y-2">
+                  <Label htmlFor="pro-catalog-slug">{t("slugLabel")}</Label>
+                  <Input
+                    id="pro-catalog-slug"
+                    value={draft.slug}
+                    placeholder="anxiete"
+                    onChange={(e) => setDraft({ ...draft, slug: e.target.value.toLowerCase() })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("slugHint")}</p>
+                </div>
+              </div>
+            )}
             {mutationError && (
               <p className="text-sm text-destructive">{mutationError}</p>
             )}

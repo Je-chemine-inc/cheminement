@@ -6,9 +6,11 @@ import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
 import {
   triggerDueCascadeCron,
+  triggerDueWaitlistOffers,
   triggerDuePaymentReminders,
   triggerDueInteracReconciliation,
   triggerDueAppointmentReminders,
+  triggerDueProductJobs,
 } from "@/lib/lazy-cron";
 import { resolveServiceRequestParties } from "@/lib/service-request-parties";
 
@@ -43,6 +45,8 @@ export async function GET() {
     // progresses without an external scheduler. Throttled + idempotent — see
     // lazy-cron.ts. after() runs it post-response so it never slows the queue.
     after(() => triggerDueCascadeCron());
+    // Waitlist offers and direct request deadlines (spec 003 phase 4).
+    after(() => triggerDueWaitlistOffers());
     // Same opportunistic trigger for the post-session invoice dunning
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());
@@ -50,6 +54,9 @@ export async function GET() {
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
     // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
+    // Webinar reminders and product status upkeep (spec 003 phase 5).
+    // Throttled (10 min).
+    after(() => triggerDueProductJobs());
 
     // All pending requests: unassigned (awaiting jumelage) AND matched-but-not-
     // yet-scheduled (routingStatus "accepted" + a professionalId). Surfacing the
@@ -128,6 +135,20 @@ export async function GET() {
               referralReason: a.referralInfo.referralReason,
               documentUrl: a.referralInfo.documentUrl ?? null,
               documentName: a.referralInfo.documentName ?? null,
+            }
+          : null,
+        // Spec 003: a request for one professional's showcase slot. Minimal
+        // projection — never the reroute token hash or the hold id.
+        directRequest: a.directRequest
+          ? {
+              state: a.directRequest.state,
+              service: a.directRequest.service,
+              dayKey: a.directRequest.dayKey,
+              time: a.directRequest.time,
+              respondBy: a.directRequest.respondBy,
+              professionalName: a.directRequest.professionalName,
+              declineReason: a.directRequest.declineReason ?? null,
+              declineNote: a.directRequest.declineNote ?? null,
             }
           : null,
       };

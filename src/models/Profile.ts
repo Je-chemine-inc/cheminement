@@ -76,7 +76,15 @@ export interface IProfile extends Document {
     solo?: ProfessionalRate;
     couple?: ProfessionalRate;
     group?: ProfessionalRate;
+    /**
+     * The quick one-time consultation (spec 003), booked as a solo session.
+     * Unset: `PlatformSettings.defaultPricing.quick`, else the solo pricing —
+     * see calculateAppointmentPricing.
+     */
+    quick?: ProfessionalRate;
   };
+  /** The quick one-time consultation's length, set by an admin (spec 003). Unset: 30 minutes. */
+  quickConsultation?: { durationMinutes?: number };
   education?: {
     degree: string;
     institution: string;
@@ -221,6 +229,12 @@ const ProfileSchema = new Schema<IProfile>(
       solo: { clientPrice: Number, professionalRate: Number },
       couple: { clientPrice: Number, professionalRate: Number },
       group: { clientPrice: Number, professionalRate: Number },
+      // The quick one-time consultation (spec 003).
+      quick: { clientPrice: Number, professionalRate: Number },
+    },
+    // The quick one-time consultation's length, set by an admin (spec 003).
+    quickConsultation: {
+      durationMinutes: { type: Number, min: 15, max: 90 },
     },
     education: [
       {

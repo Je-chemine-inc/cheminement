@@ -5,7 +5,8 @@
  * accounts; reactivation requires a currently-inactive account and clears
  * deactivatedAt; deactivation requires an active account and stamps
  * deactivatedAt. These guards are what keep the "Réactiver le compte" button
- * from becoming a second, unguarded path from pending -> active.
+ * from becoming a second, unguarded path from pending -> active. A
+ * professional's products follow the account (spec 003 phase 5).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -17,11 +18,12 @@ const h = vi.hoisted(() => {
   const findByIdAndUpdate = vi.fn();
   const adminFindOne = vi.fn();
   const userFindById = vi.fn();
+  const syncProfessionalProducts = vi.fn();
   const store: {
     user: Record<string, unknown> | null;
     admin: Record<string, unknown> | null;
   } = { user: null, admin: null };
-  return { getServerSession, findByIdAndUpdate, adminFindOne, userFindById, store };
+  return { getServerSession, findByIdAndUpdate, adminFindOne, userFindById, syncProfessionalProducts, store };
 });
 
 vi.mock("next/server", () => ({
@@ -45,6 +47,9 @@ vi.mock("@/models/User", () => ({
 }));
 vi.mock("@/models/Admin", () => ({
   default: { findOne: (...args: unknown[]) => h.adminFindOne(...args) },
+}));
+vi.mock("@/lib/products", () => ({
+  syncProfessionalProducts: h.syncProfessionalProducts,
 }));
 
 import { POST as accountActivationPOST } from "@/app/api/admin/users/[id]/account-activation/route";
@@ -70,6 +75,7 @@ beforeEach(() => {
     select: () => Promise.resolve(h.store.user),
   }));
   h.findByIdAndUpdate.mockResolvedValue({});
+  h.syncProfessionalProducts.mockResolvedValue(0);
 });
 
 describe("POST /api/admin/users/[id]/account-activation", () => {
@@ -143,5 +149,35 @@ describe("POST /api/admin/users/[id]/account-activation", () => {
     h.store.user = null;
     const res = await call({ activate: true }, ADMIN_SESSION);
     expect(res.status).toBe(404);
+  });
+
+  it("takes a deactivated professional's products off sale, once the account is saved", async () => {
+    h.store.user = { _id: USER_ID, role: "professional", status: "active" };
+    await call({ activate: false }, ADMIN_SESSION);
+    expect(h.syncProfessionalProducts).toHaveBeenCalledWith(USER_ID);
+    expect(h.findByIdAndUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      h.syncProfessionalProducts.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("puts a reactivated professional's products back on sale", async () => {
+    h.store.user = { _id: USER_ID, role: "professional", status: "inactive" };
+    await call({ activate: true }, ADMIN_SESSION);
+    expect(h.syncProfessionalProducts).toHaveBeenCalledWith(USER_ID);
+  });
+
+  it("leaves products alone for a client, and when the change is refused", async () => {
+    await call({ activate: true }, ADMIN_SESSION);
+    h.store.user = { _id: USER_ID, role: "professional", status: "pending" };
+    expect((await call({ activate: false }, ADMIN_SESSION)).status).toBe(409);
+    expect(h.syncProfessionalProducts).not.toHaveBeenCalled();
+  });
+
+  it("still answers 200 when the products sync fails", async () => {
+    h.store.user = { _id: USER_ID, role: "professional", status: "active" };
+    h.syncProfessionalProducts.mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await call({ activate: false }, ADMIN_SESSION);
+    expect(res.status).toBe(200);
   });
 });

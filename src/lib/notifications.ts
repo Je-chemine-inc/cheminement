@@ -32,6 +32,7 @@ import type { EmailTemplateKey } from "@/models/EmailTemplate";
 import { findRealAccountByEmail } from "@/lib/account-dedup";
 import { getInteracDepositEmail } from "@/lib/interac-deposit-email";
 import { organizationFormFileName } from "@/lib/organization-invoice-form";
+import type { ShowcaseEditableField } from "@/lib/showcase-workflow";
 
 /**
  * Loads an admin-editable email template + renders {{placeholder}} tokens.
@@ -2287,19 +2288,65 @@ export async function sendGuestPaymentComplete(
  * `lang` comes from the entitlement row (the language they bought in), never
  * inferred at send time.
  */
+/**
+ * The TPS and TVQ lines of a resource receipt, with the registration numbers;
+ * empty when no tax was added at checkout.
+ */
+function resourceReceiptTaxRows(
+  taxes: {
+    subtotalCents: number;
+    tpsCents: number;
+    tvqCents: number;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  } | null | undefined,
+  lang: "fr" | "en",
+): { label: string; value: string }[] {
+  if (!taxes) return [];
+  const rate = (value: number) =>
+    value.toLocaleString(lang === "fr" ? "fr-CA" : "en-CA", { maximumFractionDigits: 3 });
+  // The total is already the email's "amount paid"; these lines say what it is made of.
+  return lang === "fr"
+    ? [
+        { label: "Prix", value: formatCents(taxes.subtotalCents, lang) },
+        { label: `TPS (${rate(taxes.tpsRatePercent)} %) — n° ${taxes.tpsNumber}`, value: formatCents(taxes.tpsCents, lang) },
+        { label: `TVQ (${rate(taxes.tvqRatePercent)} %) — n° ${taxes.tvqNumber}`, value: formatCents(taxes.tvqCents, lang) },
+      ]
+    : [
+        { label: "Price", value: formatCents(taxes.subtotalCents, lang) },
+        { label: `GST (${rate(taxes.tpsRatePercent)}%) — No. ${taxes.tpsNumber}`, value: formatCents(taxes.tpsCents, lang) },
+        { label: `QST (${rate(taxes.tvqRatePercent)}%) — No. ${taxes.tvqNumber}`, value: formatCents(taxes.tvqCents, lang) },
+      ];
+}
+
 export async function sendResourcePurchaseComplete(data: {
   buyerEmail: string;
   buyerName?: string;
   resourceTitle: string;
+  /** What was charged: the price plus TPS and TVQ when they were added. */
   amountCents: number;
   accessUrl: string;
   locale: "fr" | "en";
+  /** TPS and TVQ added at checkout, with the registration numbers a receipt must show. */
+  taxes?: {
+    subtotalCents: number;
+    tpsCents: number;
+    tvqCents: number;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  } | null;
 }): Promise<boolean> {
   const branding = await getBranding();
   const currency = await getCurrency();
   const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
   const buyerName = data.buyerName?.trim() || (lang === "fr" ? "bonjour" : "there");
   const price = (data.amountCents / 100).toFixed(2);
+  // The receipt lines for TPS and TVQ, shown whatever the editable template says.
+  const taxRows = resourceReceiptTaxRows(data.taxes, lang);
 
   const editable = await loadEditableTemplate("resourcePurchaseComplete", lang, {
     buyerName,
@@ -2315,6 +2362,7 @@ export async function sendResourcePurchaseComplete(data: {
       theme: "success",
       greeting: "",
       intro: editable.bodyHtml,
+      ...(taxRows.length ? { details: taxRows, detailsBorderColor: "#22c55e" } : {}),
       button: { text: editable.ctaText || (lang === "fr" ? "Lire la ressource" : "Read the resource"), url: data.accessUrl },
       branding,
       lang,
@@ -2323,6 +2371,7 @@ export async function sendResourcePurchaseComplete(data: {
       [
         editable.title,
         editable.bodyHtml.replace(/<[^>]+>/g, " ").replace(/s+/g, " ").trim(),
+        ...taxRows.map((row) => (lang === "fr" ? `${row.label} : ${row.value}` : `${row.label}: ${row.value}`)),
         `${data.resourceTitle} : ${data.accessUrl}`,
       ],
       lang,
@@ -2347,6 +2396,7 @@ export async function sendResourcePurchaseComplete(data: {
         label: lang === "fr" ? "Ressource" : "Resource",
         value: data.resourceTitle,
       },
+      ...taxRows,
     ],
     detailsBorderColor: "#22c55e",
     price: {
@@ -2376,6 +2426,7 @@ export async function sendResourcePurchaseComplete(data: {
           "Votre ressource est débloquée",
           `Bonjour ${buyerName},`,
           `Ressource : ${data.resourceTitle}`,
+          ...taxRows.map((row) => `${row.label} : ${row.value}`),
           `Montant payé : ${price} $ ${currency}`,
           `Lien d'accès : ${data.accessUrl}`,
           "Conservez ce courriel : ce lien est personnel.",
@@ -2384,6 +2435,7 @@ export async function sendResourcePurchaseComplete(data: {
           "Your resource is unlocked",
           `Hello ${buyerName},`,
           `Resource: ${data.resourceTitle}`,
+          ...taxRows.map((row) => `${row.label}: ${row.value}`),
           `Amount paid: ${currency} ${price}`,
           `Access link: ${data.accessUrl}`,
           "Keep this email: the link is personal.",
@@ -8420,5 +8472,1144 @@ export async function sendRateProposalDecisionEmail(data: {
   return sendEmail(
     { to: data.professionalEmail, subject: title, html, text },
     "rate_proposal_decision",
+  );
+}
+
+// =============================================================================
+// Showcase pages (spec 003)
+// =============================================================================
+
+function showcaseAppUrl(path: string): string {
+  const base =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  return `${base}${path}`;
+}
+
+const SHOWCASE_DASHBOARD_PATH = "/professional/dashboard/showcase";
+
+const SHOWCASE_SIGNATURE = {
+  fr: "Merci,\nL'équipe de Je chemine",
+  en: "Thank you,\nThe Je chemine team",
+};
+
+const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> = {
+  displayName: "nom affiché",
+  headline: "phrase d'accroche",
+  intro: "introduction",
+  bio: "présentation",
+  approach: "approche",
+  values: "valeurs",
+  expertiseIds: "champs d'expertise",
+  insuranceNote: "note sur les assurances",
+  quote: "citation",
+  highlights: "points forts",
+  credentials: "parcours",
+  focusAreas: "ce que j'accompagne",
+  methods: "méthodes",
+  photo: "photo",
+  officePhotos: "photos du cabinet",
+  texts: "titres et textes des sections",
+  sectionOrder: "ordre des sections",
+  hiddenSections: "sections affichées",
+  accent: "couleur de la page",
+  ambience: "photos d'ambiance",
+};
+
+/**
+ * A professional changed their published showcase page; the change is already
+ * online. French-only team alert, at most one per page per hour (the page's
+ * history in the admin lists every change).
+ */
+export async function sendAdminShowcaseUpdatedAlert(data: {
+  professionalName: string;
+  professionalId: string;
+  cityName: string;
+  publicUrl: string;
+  fields: readonly ShowcaseEditableField[];
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminShowcaseUpdatedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl(`/admin/dashboard/showcases/${data.professionalId}`);
+  const title = "Page vitrine modifiée par un professionnel";
+  const changed = data.fields.map((field) => SHOWCASE_FIELD_LABELS_FR[field]).join(", ");
+  const intro = `${data.professionalName} a modifié sa page vitrine. Les modifications sont déjà en ligne ; l'historique de la page les détaille.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Ville", value: data.cityName },
+      { label: "Modifié", value: changed },
+      { label: "Adresse", value: data.publicUrl, isLink: true },
+    ],
+    button: { text: "Voir la page dans l'administration", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText(
+    [title, intro, `Modifié : ${changed}`, `Adresse : ${data.publicUrl}`, `Administration : ${url}`],
+    "fr",
+  );
+  const subject = await getSubject("admin_showcase_updated", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_showcase_updated");
+  }
+}
+
+/**
+ * An admin published a professional's page, or corrections to it. Tells the
+ * professional they can now edit the page themselves. While the showcase
+ * pages are not open to the public yet (`live` false), the email sends them
+ * to their dashboard rather than to an address that would only redirect.
+ */
+export async function sendShowcasePublishedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  publicUrl: string;
+  live: boolean;
+  firstPublication: boolean;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: data.firstPublication
+        ? "Votre page vitrine est publiée"
+        : "Votre page vitrine a été mise à jour",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: data.firstPublication
+        ? data.live
+          ? "L'équipe Je chemine a préparé et publié votre page vitrine. Elle est en ligne : vous pouvez la partager dès maintenant."
+          : "L'équipe Je chemine a préparé et publié votre page vitrine. Le public la verra dès l'ouverture des pages vitrines ; vous pouvez déjà la consulter et la modifier."
+        : "L'équipe Je chemine a publié des corrections à votre page vitrine.",
+      address: "Adresse",
+      dashboard: "Modifier ma page",
+      viewPage: "Voir ma page",
+      outro: `Vous pouvez modifier votre texte, votre photo et vos champs d'expertise à tout moment depuis votre tableau de bord : vos modifications sont en ligne dès que vous les enregistrez. Vous pouvez aussi retirer votre page en un clic.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: data.firstPublication
+        ? "Your showcase page is published"
+        : "Your showcase page was updated",
+      greeting: `Hello ${data.professionalName},`,
+      intro: data.firstPublication
+        ? data.live
+          ? "The Je chemine team prepared and published your showcase page. It is online: you can share it right away."
+          : "The Je chemine team prepared and published your showcase page. The public will see it once showcase pages open; you can already view and edit it."
+        : "The Je chemine team published corrections to your showcase page.",
+      address: "Address",
+      dashboard: "Edit my page",
+      viewPage: "View my page",
+      outro: `You can change your text, your photo and your areas of expertise at any time from your dashboard: your changes are online as soon as you save them. You can also take your page down in one click.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      ...(data.live ? [{ label: copy.address, value: data.publicUrl, isLink: true }] : []),
+      { label: copy.dashboard, value: dashboardUrl, isLink: true },
+    ],
+    button: data.live
+      ? { text: copy.viewPage, url: data.publicUrl }
+      : { text: copy.dashboard, url: dashboardUrl },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.intro,
+      ...(data.live ? [`${copy.address} : ${data.publicUrl}`] : []),
+      `${copy.dashboard} : ${dashboardUrl}`,
+      copy.outro,
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "showcase_published",
+  );
+}
+
+/** An admin took a professional's page off the site. */
+export async function sendShowcaseUnpublishedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  note?: string;
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const url = showcaseAppUrl(SHOWCASE_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: "Votre page vitrine est retirée",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro:
+        "Notre équipe a retiré votre page vitrine du site. Elle n'est plus visible par le public.",
+      noteTitle: "Motif",
+      cta: "Voir ma page vitrine",
+      outro: `Pour toute question, répondez simplement à ce courriel.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: "Your showcase page was taken down",
+      greeting: `Hello ${data.professionalName},`,
+      intro:
+        "Our team took your showcase page off the site. It is no longer visible to the public.",
+      noteTitle: "Reason",
+      cta: "Open my showcase page",
+      outro: `If you have any question, simply reply to this email.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "warning",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    ...(data.note ? { infoBox: { title: copy.noteTitle, content: data.note, theme: "info" as const } } : {}),
+    button: { text: copy.cta, url },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.note ? `${copy.noteTitle} : ${data.note}` : "", `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "showcase_unpublished",
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Direct requests from a showcase page (spec 003 phase 3)                   */
+/* ------------------------------------------------------------------------ */
+
+type DirectRequestServiceKey = "standard" | "quick";
+
+const DIRECT_REQUEST_SERVICE_LABELS: Record<"fr" | "en", Record<DirectRequestServiceKey, string>> = {
+  fr: { standard: "Consultation standard", quick: "Consultation ponctuelle rapide" },
+  en: { standard: "Standard consultation", quick: "Quick one-time consultation" },
+};
+
+const DIRECT_REQUEST_DECLINE_LABELS_FR: Record<string, string> = {
+  slot_unavailable: "Le créneau ne lui convient pas",
+  not_a_fit: "La demande ne correspond pas à sa pratique",
+  not_accepting: "N'accepte pas de nouveaux clients",
+  other: "Autre raison",
+};
+
+const toEmailLang = (locale?: string | null): "fr" | "en" => (locale === "en" ? "en" : "fr");
+
+/** A slot's Montréal day and time as stored: "jeudi 17 septembre 2026 à 10 h 00". */
+function formatShowcaseSlot(dayKey: string, time: string, lang: "fr" | "en"): string {
+  const at = new Date(`${dayKey}T${time}:00Z`);
+  const tag = lang === "en" ? "en-CA" : "fr-CA";
+  const day = new Intl.DateTimeFormat(tag, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(at);
+  const clock = new Intl.DateTimeFormat(tag, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(at);
+  return lang === "en" ? `${day} at ${clock}` : `${day} à ${clock}`;
+}
+
+/** An instant as read in Montréal. */
+function formatMontrealInstant(at: Date, lang: "fr" | "en"): string {
+  const tag = lang === "en" ? "en-CA" : "fr-CA";
+  const day = new Intl.DateTimeFormat(tag, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Toronto",
+  }).format(at);
+  const clock = new Intl.DateTimeFormat(tag, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Toronto",
+  }).format(at);
+  return lang === "en" ? `${day} at ${clock}` : `${day} à ${clock}`;
+}
+
+/**
+ * A client asked the professional for one of their slots from the showcase
+ * page. The slot is held until the professional answers. Names the client by
+ * first name and initial only; the rest is on the dashboard.
+ */
+export async function sendDirectRequestReceivedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  clientName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  respondBy: Date;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/professional/dashboard/proposals");
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const deadline = formatMontrealInstant(data.respondBy, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Nouvelle demande de rendez-vous",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: `${data.clientName} a choisi un de vos créneaux sur votre page vitrine et vous demande un rendez-vous. Le créneau lui est réservé jusqu'à votre réponse.`,
+      labels: { service: "Consultation", slot: "Créneau", deadline: "Répondre avant" },
+      boxTitle: "Sans réponse",
+      box: "Sans réponse avant l'échéance, la demande est retirée, le créneau est libéré et la personne en est avisée.",
+      cta: "Répondre à la demande",
+    },
+    en: {
+      title: "New appointment request",
+      greeting: `Hello ${data.professionalName},`,
+      intro: `${data.clientName} chose one of your times on your showcase page and is asking you for an appointment. The time is held for them until you answer.`,
+      labels: { service: "Consultation", slot: "Time", deadline: "Answer before" },
+      boxTitle: "Without an answer",
+      box: "Without an answer by the deadline, the request is withdrawn, the time is freed and the person is told.",
+      cta: "Answer the request",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+      { label: copy.labels.deadline, value: deadline },
+    ],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "warning" },
+    button: { text: copy.cta, url },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.service} : ${service}`, `${copy.labels.slot} : ${slot}`, `${copy.labels.deadline} : ${deadline}`, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.professionalEmail, subject: copy.title, html, text },
+    "direct_request_received",
+  );
+}
+
+/** The client's request went to the professional; the slot is held until they answer. */
+export async function sendDirectRequestConfirmationEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  respondBy: Date;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const deadline = formatMontrealInstant(data.respondBy, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Votre demande de rendez-vous a été envoyée",
+      greeting: `Bonjour ${data.clientName},`,
+      intro: `Votre demande a été envoyée à ${data.professionalName}. Le créneau vous est réservé jusqu'à sa réponse, au plus tard le ${deadline}.`,
+      labels: { professional: "Professionnel", service: "Consultation", slot: "Créneau" },
+      boxTitle: "Et ensuite ?",
+      box: `Dès que ${data.professionalName} confirme, vous recevez la confirmation du rendez-vous et les instructions de paiement. Rien ne vous est demandé avant. Si le créneau ne convient pas, vous pourrez en choisir un autre ou être jumelé avec un autre professionnel.`,
+    },
+    en: {
+      title: "Your appointment request was sent",
+      greeting: `Hello ${data.clientName},`,
+      intro: `Your request was sent to ${data.professionalName}. The time is held for you until they answer, by ${deadline} at the latest.`,
+      labels: { professional: "Professional", service: "Consultation", slot: "Time" },
+      boxTitle: "What happens next?",
+      box: `As soon as ${data.professionalName} confirms, you receive the appointment confirmation and the payment instructions. Nothing is asked of you before. If the time does not work, you will be able to choose another one or be matched with another professional.`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.professional, value: data.professionalName },
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+    ],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.professional} : ${data.professionalName}`, `${copy.labels.service} : ${service}`, `${copy.labels.slot} : ${slot}`, copy.box],
+    lang,
+  );
+  return sendEmail(
+    { to: data.clientEmail, subject: copy.title, html, text },
+    "direct_request_confirmation",
+  );
+}
+
+/**
+ * The professional declined, or did not answer in time. Two ways on: choose
+ * another time on the page, or let Je chemine match the client (a link valid
+ * 14 days). Never gives the professional's reason.
+ */
+export async function sendDirectRequestUnavailableEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  outcome: "declined" | "expired";
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  pageUrl: string;
+  rerouteUrl: string;
+  locale?: string | null;
+  /** The request came from the waitlist and the person keeps their place on it. */
+  backOnWaitlist?: boolean;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const waitlistFr = data.backOnWaitlist
+    ? " Vous gardez votre place sur sa liste d'attente : nous vous écrirons dès qu'un autre créneau se libère."
+    : "";
+  const waitlistEn = data.backOnWaitlist
+    ? " You keep your place on their waitlist: we will write to you as soon as another time opens up."
+    : "";
+  const copy = {
+    fr: {
+      title:
+        data.outcome === "declined"
+          ? "Ce créneau n'est pas disponible"
+          : "Votre demande n'a pas reçu de réponse à temps",
+      greeting: `Bonjour ${data.clientName},`,
+      intro:
+        data.outcome === "declined"
+          ? `${data.professionalName} ne peut pas vous recevoir le ${slot}. Le créneau a été libéré.${waitlistFr}`
+          : `${data.professionalName} n'a pas pu répondre à temps à votre demande pour le ${slot}. Le créneau a été libéré.`,
+      cta: "Choisir un autre créneau",
+      preamble: "Ou laissez Je chemine vous jumeler avec le professionnel qui vous convient :",
+      secondary: "Être jumelé avec un professionnel",
+      outro: `Ce lien de jumelage est valable 14 jours.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title:
+        data.outcome === "declined"
+          ? "This time is not available"
+          : "Your request was not answered in time",
+      greeting: `Hello ${data.clientName},`,
+      intro:
+        data.outcome === "declined"
+          ? `${data.professionalName} cannot see you on ${slot}. The time was freed.${waitlistEn}`
+          : `${data.professionalName} could not answer your request for ${slot} in time. The time was freed.`,
+      cta: "Choose another time",
+      preamble: "Or let Je chemine match you with the professional who suits you:",
+      secondary: "Get matched with a professional",
+      outro: `The matching link is valid for 14 days.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [{ label: lang === "en" ? "Consultation" : "Consultation", value: DIRECT_REQUEST_SERVICE_LABELS[lang][data.service] }],
+    button: { text: copy.cta, url: data.pageUrl },
+    secondaryButton: { preamble: copy.preamble, text: copy.secondary, url: data.rerouteUrl },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.cta} : ${data.pageUrl}`, `${copy.preamble} ${data.rerouteUrl}`],
+    lang,
+  );
+  return sendEmail(
+    { to: data.clientEmail, subject: copy.title, html, text },
+    "direct_request_unavailable",
+  );
+}
+
+/** A direct request came back to the service-request queue. French-only team alert. */
+export async function sendAdminDirectRequestReturnedAlert(data: {
+  outcome: "declined" | "expired";
+  clientName: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  reason?: string | null;
+  note?: string | null;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminDirectRequestReturnedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/service-requests");
+  const title =
+    data.outcome === "declined" ? "Demande directe déclinée" : "Demande directe sans réponse";
+  const slot = formatShowcaseSlot(data.dayKey, data.time, "fr");
+  const intro = `La demande de ${data.clientName} auprès de ${data.professionalName} pour le ${slot} est revenue dans les demandes de service. La personne a reçu un courriel pour choisir un autre créneau ou être jumelée.`;
+  const details = [
+    { label: "Professionnel", value: data.professionalName },
+    { label: "Client", value: data.clientName },
+    { label: "Consultation", value: DIRECT_REQUEST_SERVICE_LABELS.fr[data.service] },
+    { label: "Créneau", value: slot },
+  ];
+  if (data.outcome === "declined" && data.reason) {
+    details.push({ label: "Motif", value: DIRECT_REQUEST_DECLINE_LABELS_FR[data.reason] ?? data.reason });
+  }
+  if (data.note) details.push({ label: "Note du professionnel", value: data.note });
+  const html = buildEmailHtml({
+    title,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro,
+    details,
+    button: { text: "Voir les demandes de service", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Demandes de service : ${url}`], "fr");
+  const subject = await getSubject("admin_direct_request_returned", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_direct_request_returned");
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* A professional's waitlist (spec 003 phase 4)                              */
+/* ------------------------------------------------------------------------ */
+
+/** The person joined a professional's waitlist from the showcase page. Carries the link to leave it. */
+export async function sendWaitlistJoinedEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  sms: boolean;
+  pageUrl: string;
+  leaveUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Vous êtes sur la liste d'attente",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: `Votre nom est sur la liste d'attente de ${data.professionalName}.`,
+      service: "Consultation",
+      boxTitle: "Et ensuite ?",
+      box: `Dès qu'un créneau qui vous convient se libère, nous vous l'écrivons${data.sms ? ", par courriel et par texto" : ""}. Il vous est alors réservé 15 minutes : il suffit de le confirmer, puis ${data.professionalName} confirme le rendez-vous. Votre inscription dure 90 jours.`,
+      cta: "Voir la page du professionnel",
+      preamble: "Vous n'attendez plus ?",
+      leave: "Quitter la liste d'attente",
+    },
+    en: {
+      title: "You are on the waitlist",
+      greeting: `Hello ${data.firstName},`,
+      intro: `Your name is on ${data.professionalName}'s waitlist.`,
+      service: "Consultation",
+      boxTitle: "What happens next?",
+      box: `As soon as a time that suits you opens up, we write to you${data.sms ? ", by email and text message" : ""}. It is then held for you for 15 minutes: you only need to confirm it, then ${data.professionalName} confirms the appointment. Your place lasts 90 days.`,
+      cta: "View the professional's page",
+      preamble: "No longer waiting?",
+      leave: "Leave the waitlist",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [{ label: copy.service, value: service }],
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.pageUrl },
+    secondaryButton: { preamble: copy.preamble, text: copy.leave, url: data.leaveUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.service} : ${service}`, copy.box, `${copy.cta} : ${data.pageUrl}`, `${copy.leave} : ${data.leaveUrl}`],
+    lang,
+  );
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_joined");
+}
+
+/** A time freed up and is held 15 minutes for the person. Confirming makes a request the professional answers. */
+export async function sendWaitlistOfferEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  durationMinutes: number;
+  expiresAt: Date;
+  claimUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const until = formatMontrealInstant(data.expiresAt, lang);
+  const service = DIRECT_REQUEST_SERVICE_LABELS[lang][data.service];
+  const copy = {
+    fr: {
+      title: "Un créneau s'est libéré",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: `Un créneau avec ${data.professionalName} vient de se libérer. Il vous est réservé jusqu'au ${until}.`,
+      labels: { service: "Consultation", slot: "Créneau", duration: "Durée" },
+      duration: `${data.durationMinutes} minutes`,
+      cta: "Réserver ce créneau",
+      boxTitle: "Bon à savoir",
+      box: `En le réservant, votre demande part à ${data.professionalName}, qui confirme le rendez-vous. Passé ce délai, le créneau est proposé à la personne suivante. S'il ne vous convient pas, ignorez ce courriel : vous restez sur la liste. Après trois créneaux restés sans réponse, l'inscription prend fin.`,
+    },
+    en: {
+      title: "A time opened up",
+      greeting: `Hello ${data.firstName},`,
+      intro: `A time with ${data.professionalName} just opened up. It is held for you until ${until}.`,
+      labels: { service: "Consultation", slot: "Time", duration: "Length" },
+      duration: `${data.durationMinutes} minutes`,
+      cta: "Book this time",
+      boxTitle: "Good to know",
+      box: `When you book it, your request goes to ${data.professionalName}, who confirms the appointment. After that, the time is offered to the next person. If it does not suit you, ignore this email: you stay on the list. After three times left unanswered, your place ends.`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.service, value: service },
+      { label: copy.labels.slot, value: slot },
+      { label: copy.labels.duration, value: copy.duration },
+    ],
+    button: { text: copy.cta, url: data.claimUrl },
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.intro,
+      `${copy.labels.service} : ${service}`,
+      `${copy.labels.slot} : ${slot}`,
+      `${copy.labels.duration} : ${copy.duration}`,
+      `${copy.cta} : ${data.claimUrl}`,
+      copy.box,
+    ],
+    lang,
+  );
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_offer");
+}
+
+/**
+ * The person's place on a waitlist ended: three offers left unanswered, 90
+ * days passed, or the professional or the team removed it. Not sent when the
+ * person leaves the list themselves.
+ */
+export async function sendWaitlistRemovedEmail(data: {
+  firstName: string;
+  email: string;
+  professionalName: string;
+  reason: "missed" | "expired" | "professional" | "admin";
+  pageUrl: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const name = data.professionalName;
+  const copy = {
+    fr: {
+      title: "Votre inscription à la liste d'attente a pris fin",
+      greeting: `Bonjour ${data.firstName},`,
+      intro: {
+        missed: `Trois créneaux avec ${name} vous ont été proposés sans réponse : votre inscription à sa liste d'attente a donc pris fin.`,
+        expired: `Votre inscription à la liste d'attente de ${name} a pris fin après 90 jours.`,
+        professional: `Votre inscription à la liste d'attente de ${name} a été retirée.`,
+        admin: `Votre inscription à la liste d'attente de ${name} a été retirée.`,
+      }[data.reason],
+      box: `Vous pouvez vous réinscrire depuis la page de ${name}, ou laisser Je chemine vous jumeler avec le professionnel qui vous convient.`,
+      cta: "Voir la page du professionnel",
+    },
+    en: {
+      title: "Your place on the waitlist ended",
+      greeting: `Hello ${data.firstName},`,
+      intro: {
+        missed: `Three times with ${name} were offered to you without an answer, so your place on their waitlist ended.`,
+        expired: `Your place on ${name}'s waitlist ended after 90 days.`,
+        professional: `Your place on ${name}'s waitlist was removed.`,
+        admin: `Your place on ${name}'s waitlist was removed.`,
+      }[data.reason],
+      box: `You can join again from ${name}'s page, or let Je chemine match you with the professional who suits you.`,
+      cta: "View the professional's page",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    infoBox: { title: lang === "en" ? "What now?" : "Et maintenant ?", content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.pageUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText([copy.title, copy.intro, copy.box, `${copy.cta} : ${data.pageUrl}`], lang);
+  return sendEmail({ to: data.email, subject: copy.title, html, text }, "waitlist_removed");
+}
+
+/* ------------------------------------------------------------------------ */
+/* Products professionals sell (spec 003 phase 5)                            */
+/* ------------------------------------------------------------------------ */
+
+const PRODUCTS_DASHBOARD_PATH = "/professional/dashboard/products";
+
+function formatCents(cents: number, lang: "fr" | "en"): string {
+  return new Intl.NumberFormat(lang === "en" ? "en-CA" : "fr-CA", { style: "currency", currency: "CAD" }).format(cents / 100);
+}
+
+/** A product sold. Never names the buyer. */
+export async function sendProductSoldEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  productTitle: string;
+  amountCents: number;
+  netCents: number;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const url = showcaseAppUrl(PRODUCTS_DASHBOARD_PATH);
+  const copy = {
+    fr: {
+      title: "Vous avez fait une vente",
+      greeting: `Bonjour ${data.professionalName},`,
+      intro: `Une personne vient d'acheter « ${data.productTitle} ».`,
+      labels: { price: "Prix payé", net: "Votre part" },
+      box: "Votre part est portée à votre solde et vous est versée avec vos séances. Si l'achat est remboursé ou contesté, elle en est retirée.",
+      cta: "Voir mes produits",
+    },
+    en: {
+      title: "You made a sale",
+      greeting: `Hello ${data.professionalName},`,
+      intro: `Someone just bought “${data.productTitle}”.`,
+      labels: { price: "Price paid", net: "Your share" },
+      box: "Your share is added to your balance and paid out with your sessions. If the purchase is refunded or disputed, it is taken back.",
+      cta: "View my products",
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "success",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [
+      { label: copy.labels.price, value: formatCents(data.amountCents, lang) },
+      { label: copy.labels.net, value: formatCents(data.netCents, lang) },
+    ],
+    infoBox: { title: lang === "en" ? "Payment" : "Versement", content: copy.box, theme: "info" },
+    button: { text: copy.cta, url },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, `${copy.labels.price} : ${formatCents(data.amountCents, lang)}`, `${copy.labels.net} : ${formatCents(data.netCents, lang)}`, copy.box, `${copy.cta} : ${url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "product_sold");
+}
+
+/** The team approved, rejected or took down a professional's product. */
+export async function sendProductModerationDecisionEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  productTitle: string;
+  decision: "approved" | "rejected" | "unpublished";
+  notes: string | null;
+  productUrl: string | null;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl(PRODUCTS_DASHBOARD_PATH);
+  const title = data.productTitle;
+  const copy = {
+    fr: {
+      title: {
+        approved: "Votre produit est en ligne",
+        rejected: "Quelques modifications à votre produit",
+        unpublished: "Votre produit est retiré",
+      }[data.decision],
+      intro: {
+        approved: `« ${title} » est approuvé et en vente.`,
+        rejected: `Notre équipe a relu « ${title} » et vous demande quelques modifications avant de le mettre en vente.`,
+        unpublished: `Notre équipe a retiré « ${title} » de la vente. Les personnes qui l'ont acheté y gardent accès.`,
+      }[data.decision],
+      notes: "Commentaires de l'équipe",
+      view: "Voir le produit",
+      dashboard: "Voir mes produits",
+    },
+    en: {
+      title: {
+        approved: "Your product is online",
+        rejected: "A few changes to your product",
+        unpublished: "Your product was taken down",
+      }[data.decision],
+      intro: {
+        approved: `“${title}” is approved and on sale.`,
+        rejected: `Our team reviewed “${title}” and asks for a few changes before putting it on sale.`,
+        unpublished: `Our team took “${title}” off sale. People who bought it keep their access.`,
+      }[data.decision],
+      notes: "Comments from the team",
+      view: "View the product",
+      dashboard: "View my products",
+    },
+  }[lang];
+  const button =
+    data.decision === "approved" && data.productUrl
+      ? { text: copy.view, url: data.productUrl }
+      : { text: copy.dashboard, url: dashboardUrl };
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: data.decision === "approved" ? "success" : "warning",
+    greeting: lang === "en" ? `Hello ${data.professionalName},` : `Bonjour ${data.professionalName},`,
+    intro: copy.intro,
+    ...(data.notes ? { infoBox: { title: copy.notes, content: data.notes, theme: "warning" as const } } : {}),
+    button,
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.notes ? `${copy.notes} :\n${data.notes}` : "", `${button.text} : ${button.url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "product_moderation_decision");
+}
+
+/** A professional sent a product for review. French-only team alert. */
+export async function sendAdminProductSubmittedAlert(data: {
+  professionalName: string;
+  productTitle: string;
+  slug: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminProductSubmittedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/products");
+  const title = "Produit à vérifier";
+  const intro = `${data.professionalName} a envoyé « ${data.productTitle} » pour vérification. Il n'est mis en vente qu'après votre approbation.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Produit", value: data.productTitle },
+    ],
+    button: { text: "Vérifier le produit", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Vérifier le produit : ${url}`], "fr");
+  const subject = await getSubject("admin_product_submitted", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_product_submitted");
+  }
+}
+
+/** The team's decision on one of a professional's articles (approved, sent back with notes, taken down). */
+export async function sendArticleModerationDecisionEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  articleTitle: string;
+  decision: "approved" | "rejected" | "unpublished";
+  notes: string | null;
+  articleUrl: string | null;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl("/professional/dashboard/articles");
+  const title = data.articleTitle;
+  const copy = {
+    fr: {
+      title: {
+        approved: "Votre article est en ligne",
+        rejected: "Quelques modifications à votre article",
+        unpublished: "Votre article est retiré",
+      }[data.decision],
+      intro: {
+        approved: `« ${title} » est approuvé et publié sur votre page.`,
+        rejected: `Notre équipe a relu « ${title} » et vous demande quelques modifications avant de le publier.`,
+        unpublished: `Notre équipe a retiré « ${title} » de votre page.`,
+      }[data.decision],
+      notes: "Commentaires de l'équipe",
+      view: "Voir l'article",
+      dashboard: "Voir mes articles",
+    },
+    en: {
+      title: {
+        approved: "Your article is online",
+        rejected: "A few changes to your article",
+        unpublished: "Your article was taken down",
+      }[data.decision],
+      intro: {
+        approved: `“${title}” is approved and published on your page.`,
+        rejected: `Our team reviewed “${title}” and asks for a few changes before publishing it.`,
+        unpublished: `Our team took “${title}” off your page.`,
+      }[data.decision],
+      notes: "Comments from the team",
+      view: "View the article",
+      dashboard: "View my articles",
+    },
+  }[lang];
+  const button =
+    data.decision === "approved" && data.articleUrl
+      ? { text: copy.view, url: data.articleUrl }
+      : { text: copy.dashboard, url: dashboardUrl };
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: data.decision === "approved" ? "success" : "warning",
+    greeting: lang === "en" ? `Hello ${data.professionalName},` : `Bonjour ${data.professionalName},`,
+    intro: copy.intro,
+    ...(data.notes ? { infoBox: { title: copy.notes, content: data.notes, theme: "warning" as const } } : {}),
+    button,
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.notes ? `${copy.notes} :\n${data.notes}` : "", `${button.text} : ${button.url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "article_moderation_decision");
+}
+
+/**
+ * The refund of a cancelled, card-paid session did not go through: Stripe refused it, or did not
+ * confirm it (lib/appointment-refund.ts). The cancellation stands; the client may still be owed the
+ * money. French-only team alert.
+ */
+export async function sendAdminAppointmentRefundProblemAlert(data: {
+  appointmentId: string;
+  clientName: string;
+  professionalName: string;
+  amountCents: number;
+  outcome: "refused" | "unconfirmed";
+  message: string | null;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminAppointmentRefundProblemAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const amount = new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(data.amountCents / 100);
+  const title = data.outcome === "refused" ? "Remboursement refusé par Stripe" : "Remboursement non confirmé par Stripe";
+  const intro =
+    data.outcome === "refused"
+      ? `Le remboursement de ${amount} pour la séance annulée de ${data.clientName} n'a pas été fait : Stripe l'a refusé. La séance reste annulée, mais le client n'a pas été remboursé.`
+      : `Stripe n'a pas confirmé le remboursement de ${amount} pour la séance annulée de ${data.clientName}. Vérifiez le paiement dans Stripe avant de faire quoi que ce soit : une nouvelle tentative vérifie d'abord Stripe et ne rembourse jamais deux fois.`;
+  const details = [
+    { label: "Client", value: data.clientName },
+    ...(data.professionalName ? [{ label: "Professionnel", value: data.professionalName }] : []),
+    { label: "Montant", value: amount },
+    { label: "Rendez-vous", value: data.appointmentId },
+    ...(data.message ? [{ label: "Réponse de Stripe", value: data.message }] : []),
+  ];
+  const url = "https://dashboard.stripe.com/payments";
+  const html = buildEmailHtml({
+    title,
+    theme: "warning",
+    greeting: "Bonjour,",
+    intro,
+    details,
+    button: { text: "Ouvrir Stripe", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, ...details.map((d) => `${d.label} : ${d.value}`), `Ouvrir Stripe : ${url}`], "fr");
+  const subject = await getSubject("admin_appointment_refund_problem", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_appointment_refund_problem");
+  }
+}
+
+/** A professional sent an article for review. French-only team alert. */
+export async function sendAdminArticleSubmittedAlert(data: {
+  professionalName: string;
+  articleTitle: string;
+  slug: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminArticleSubmittedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/articles");
+  const title = "Article à vérifier";
+  const intro = `${data.professionalName} a envoyé « ${data.articleTitle} » pour vérification. Il n'est publié qu'après votre approbation.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Article", value: data.articleTitle },
+    ],
+    button: { text: "Vérifier l'article", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Vérifier l'article : ${url}`], "fr");
+  const subject = await getSubject("admin_article_submitted", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_article_submitted");
+  }
+}
+
+/**
+ * A webinar someone bought starts within a day, or within the hour. Links to
+ * the webinar's page, where the room link is — never to the room itself — so
+ * a refund or a new room link is honoured. A guest's link carries their access
+ * token, like the purchase email.
+ */
+export async function sendProductWebinarReminderEmail(data: {
+  buyerEmail: string;
+  buyerName?: string;
+  productTitle: string;
+  professionalName: string;
+  startsAt: Date;
+  durationMinutes: number | null;
+  accessUrl: string;
+  /** The link carries a guest's access token. */
+  personalLink: boolean;
+  reminder: "day" | "hour";
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const when = formatMontrealInstant(data.startsAt, lang);
+  const name = data.buyerName?.trim();
+  const title = data.productTitle;
+  const pro = data.professionalName;
+  const copy = {
+    fr: {
+      title: data.reminder === "day" ? "Votre webinaire approche" : "Votre webinaire commence bientôt",
+      greeting: name ? `Bonjour ${name},` : "Bonjour,",
+      intro:
+        data.reminder === "day"
+          ? `Petit rappel : « ${title} », avec ${pro}, a lieu le ${when} (heure de Montréal).`
+          : `« ${title} », avec ${pro}, commence dans moins d'une heure : le ${when} (heure de Montréal).`,
+      labels: { webinar: "Webinaire", when: "Date et heure", length: "Durée", with: "Avec" },
+      whenValue: `${when} (heure de Montréal)`,
+      boxTitle: "Rejoindre la salle",
+      box: data.personalLink
+        ? "Le bouton ouvre la page du webinaire, où se trouve le lien de la salle. Ce lien vous est personnel : ne le transférez pas."
+        : "Le bouton ouvre la page du webinaire, où se trouve le lien de la salle. Connectez-vous avec cette adresse courriel si on vous le demande.",
+      cta: "Accéder au webinaire",
+    },
+    en: {
+      title: data.reminder === "day" ? "Your webinar is coming up" : "Your webinar starts soon",
+      greeting: name ? `Hello ${name},` : "Hello,",
+      intro:
+        data.reminder === "day"
+          ? `A quick reminder: “${title}”, with ${pro}, takes place on ${when} (Montréal time).`
+          : `“${title}”, with ${pro}, starts in less than an hour: ${when} (Montréal time).`,
+      labels: { webinar: "Webinar", when: "Date and time", length: "Length", with: "With" },
+      whenValue: `${when} (Montréal time)`,
+      boxTitle: "Joining the room",
+      box: data.personalLink
+        ? "The button opens the webinar's page, where the room link is. This link is personal: please don't forward it."
+        : "The button opens the webinar's page, where the room link is. Sign in with this email address if asked.",
+      cta: "Go to the webinar",
+    },
+  }[lang];
+  const details = [
+    { label: copy.labels.webinar, value: title },
+    { label: copy.labels.when, value: copy.whenValue },
+    ...(data.durationMinutes ? [{ label: copy.labels.length, value: `${data.durationMinutes} minutes` }] : []),
+    { label: copy.labels.with, value: pro },
+  ];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details,
+    infoBox: { title: copy.boxTitle, content: copy.box, theme: "info" },
+    button: { text: copy.cta, url: data.accessUrl },
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  // French puts a space before the colon; English does not.
+  const colon = lang === "en" ? ":" : " :";
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.greeting,
+      copy.intro,
+      ...details.map((detail) => `${detail.label}${colon} ${detail.value}`),
+      copy.box,
+      `${copy.cta}${colon} ${data.accessUrl}`,
+    ],
+    lang,
+  );
+  return sendEmail(
+    { to: data.buyerEmail, subject: `${copy.title} — ${title}`, html, text },
+    "product_webinar_reminder",
   );
 }

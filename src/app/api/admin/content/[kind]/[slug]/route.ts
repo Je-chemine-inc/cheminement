@@ -111,6 +111,11 @@ export async function PUT(
     if (docs.length === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    // A professional's product is theirs to edit; the team reviews it in
+    // « Produits » (spec 003 phase 5) and never rewrites it here.
+    if (docs.some((d) => d.ownerProfessionalId)) {
+      return NextResponse.json({ error: "PRO_OWNED" }, { status: 409 });
+    }
     const frDoc = docs.find((d) => d.locale === "fr");
     const enDoc = docs.find((d) => d.locale === "en");
     if (!frDoc || !enDoc) {
@@ -290,6 +295,10 @@ export async function DELETE(
     const { kind, slug } = await params;
     if (!isContentKind(kind)) {
       return NextResponse.json({ error: "Unknown kind" }, { status: 404 });
+    }
+    // A professional's product is deleted by its professional only (spec 003 phase 5).
+    if (await ContentEntry.exists({ kind, slug, ownerProfessionalId: { $exists: true } })) {
+      return NextResponse.json({ error: "PRO_OWNED" }, { status: 409 });
     }
     // Never delete something people have paid to read. Unpublishing keeps the
     // buyers' access intact; deleting would strand it.

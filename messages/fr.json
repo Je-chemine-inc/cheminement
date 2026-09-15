@@ -39,6 +39,71 @@
     "schoolManager": {
       "title": "Pour les établissements scolaires",
       "description": "Offrez à vos élèves et à votre personnel un accès encadré à des professionnels de la santé mentale, avec suivi et facturation centralisés."
+    },
+    "professionals": {
+      "title": "Nos professionnels",
+      "description": "Découvrez les psychologues, psychothérapeutes et autres professionnels de la santé mentale de Je chemine, partout au Québec."
+    }
+  },
+  "ProfessionalsDirectoryAdmin": {
+    "title": "Nos professionnels (site)",
+    "subtitle": "Choisissez qui paraît sur la page publique « Nos professionnels » et dans quel ordre. La page publique change dès l'enregistrement.",
+    "viewPublic": "Voir la page publique",
+    "refresh": "Actualiser",
+    "save": "Enregistrer",
+    "resetOrder": "Revenir à l'ordre alphabétique",
+    "unsaved": "Modifications non enregistrées",
+    "orderHint": "Enregistrer fixe l'ordre de toute la liste. Un nouveau professionnel paraît après les autres, par nom de famille, jusqu'à ce que vous le déplaciez.",
+    "done": "Enregistré. La page publique est à jour.",
+    "empty": "Aucun professionnel actif.",
+    "hasPage": "Page vitrine",
+    "columns": {
+      "position": "Ordre",
+      "professional": "Professionnel",
+      "status": "Sur le site",
+      "actions": "Actions"
+    },
+    "statuses": {
+      "listed": "Affiché",
+      "hiddenByTeam": "Masqué par l'équipe",
+      "hiddenByProfessional": "Masqué par le professionnel",
+      "incomplete": "Profil incomplet"
+    },
+    "notes": {
+      "hiddenByProfessional": "Le professionnel a décoché « Profil visible aux clients » : il ne paraît pas, quoi que l'équipe choisisse.",
+      "incomplete": "Paraîtra quand son profil sera complété ou sa page vitrine publiée."
+    },
+    "actions": {
+      "up": "Monter {name}",
+      "down": "Descendre {name}",
+      "hide": "Masquer",
+      "show": "Afficher"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "CHANGED": "Quelqu'un a modifié la liste entre-temps. Elle a été rechargée : refaites vos changements.",
+      "SETTINGS_MISSING": "Enregistrez d'abord les paramètres de la plateforme une fois.",
+      "INVALID": "La liste envoyée n'est pas valide. Actualisez la page."
+    },
+    "access": {
+      "title": "Accès réservé",
+      "body": "Il faut la permission de gérer les professionnels pour ouvrir cet écran."
+    }
+  },
+  "Professionals": {
+    "title": "Nos professionnels",
+    "intro": "Des psychologues, psychothérapeutes et autres professionnels de la santé mentale qui accompagnent les Québécois, en français et en anglais.",
+    "contactLine": "Pour plus d'informations sur notre équipe, <link>contactez-nous</link>.",
+    "readMore": "Lire plus",
+    "readMoreLabel": "Lire plus sur {name}",
+    "photoAlt": "Portrait de {name}",
+    "empty": "Nos professionnels seront bientôt présentés ici.",
+    "teaser": {
+      "badge": "Notre équipe",
+      "title": "Nos professionnels",
+      "text": "Découvrez les professionnels qui vous accompagnent : leur parcours, leur titre et leur approche.",
+      "button": "Découvrir nos professionnels"
     }
   },
   "Common": {
@@ -587,7 +652,23 @@
       "branding": "Image de marque",
       "companyName": "Nom de l'entreprise",
       "primaryColor": "Couleur Primaire",
-      "secondaryColor": "Couleur Secondaire"
+      "secondaryColor": "Couleur Secondaire",
+      "quickSession": "Consultation ponctuelle rapide",
+      "quickSessionHelp": "Prix par défaut d'une consultation ponctuelle rapide. Laissé vide : le prix d'une séance individuelle.",
+      "productCommission": "Commission sur les produits des professionnels (%)",
+      "productCommissionHelp": "Part de la plateforme sur chaque vente d'une formation ou d'un produit d'un professionnel ; elle couvre les frais Stripe. Chaque achat garde le taux en vigueur au moment du paiement.",
+      "salesTaxesTitle": "Taxes sur les ventes en ligne",
+      "salesTaxesHelp": "La TPS et la TVQ s'ajoutent au prix affiché, au paiement, sur les formations et produits des professionnels et sur les ressources premium de l'équipe. La commission des professionnels est calculée sur le prix avant taxes. Chaque achat garde les montants, les taux et les numéros en vigueur au moment du paiement.",
+      "salesTaxesEnabled": "Ajouter la TPS et la TVQ au paiement",
+      "salesTaxesOff": "Désactivées : les acheteurs paient le prix affiché, sans taxes ajoutées.",
+      "salesTaxesNumbersRequired": "Entrez les deux numéros d'inscription pour activer les taxes.",
+      "tpsRate": "Taux de TPS (%)",
+      "tvqRate": "Taux de TVQ (%)",
+      "salesTaxesRateHelp": "Entre 0 et 20 %, trois décimales au plus.",
+      "tpsNumber": "Numéro de TPS",
+      "tvqNumber": "Numéro de TVQ",
+      "taxNumberHelp": "Affiché sur le reçu de l'acheteur.",
+      "salesTaxesExample": "Exemple sur {price} : TPS {tps}, TVQ {tvq}, total payé {total}."
     },
     "admins": {
       "title": "Gestion des Administrateurs",
@@ -766,7 +847,12 @@
       "refresh": "Rafraîchir",
       "cancel": "Annuler",
       "save": "Enregistrer",
-      "saving": "Enregistrement…"
+      "saving": "Enregistrement…",
+      "showcaseLabel": "Offerte sur les pages vitrines",
+      "showcaseHint": "Les professionnels peuvent l'afficher sur leur page vitrine, et elle pourra avoir ses propres pages par ville.",
+      "slugLabel": "Segment d'adresse",
+      "slugHint": "Sert dans l'adresse des pages par ville, par exemple /specialite/anxiete. Laissez vide pour le créer à partir du libellé français.",
+      "showcaseBadge": "Pages vitrines"
     },
     "motifs": {
       "title": "Motifs de consultation",
@@ -1749,7 +1835,18 @@
     "notAcceptingMarker": "n'accepte pas de nouveaux clients",
     "notAcceptingWarning": "Ce professionnel a désactivé les nouvelles demandes de clients. Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de nouveaux clients.",
     "notAcceptingEmergencyMarker": "n'accepte pas les consultations rapides",
-    "notAcceptingEmergencyWarning": "Ce professionnel a désactivé les consultations ponctuelles rapides (urgentes). Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de demandes urgentes."
+    "notAcceptingEmergencyWarning": "Ce professionnel a désactivé les consultations ponctuelles rapides (urgentes). Vous pouvez quand même l'assigner, mais il a choisi de ne pas recevoir de demandes urgentes.",
+    "directPendingBadge": "Demande directe — attend {name}",
+    "directRespondBy": "réponse avant {deadline}",
+    "directPendingActionsHint": "Demande directe en attente de la réponse de {name} : jumelage, planification et liste générale sont indisponibles tant que le professionnel n'a pas répondu ou que le délai n'est pas écoulé.",
+    "directDeclinedBadge": "Demande directe déclinée",
+    "directExpiredBadge": "Demande directe sans réponse",
+    "directReasonSlotUnavailable": "Créneau ne lui convient pas",
+    "directReasonNotAFit": "Hors de sa pratique",
+    "directReasonNotAccepting": "N'accepte pas de nouveaux clients",
+    "directReasonOther": "Autre raison",
+    "directDeclineNote": "Note : {note}",
+    "directReroutedBadge": "Demande directe → jumelage"
   },
   "ClinicalAvailabilityGrid": {
     "ariaLabel": "Grille de disponibilités par période (matin, après-midi, soir) et type de semaine",
@@ -2010,7 +2107,8 @@
       "platform": "Espace",
       "contact": "Contact",
       "professional": "Je suis un professionnel",
-      "schoolServices": "Services scolaires"
+      "schoolServices": "Services scolaires",
+      "professionals": "Nos professionnels"
     },
     "menuSections": {
       "navigation": "Navigation",
@@ -2348,6 +2446,7 @@
     "paywallTitle": "Débloquez cette ressource",
     "paywallBody": "Accédez au contenu complet, aux vidéos et aux exercices. Paiement unique, accès à vie, sur tous vos appareils.",
     "priceAllInclusive": "Prix tout inclus, en dollars canadiens.",
+    "pricePlusTaxes": "En dollars canadiens, plus TPS et TVQ, ajoutées au paiement.",
     "perk1": "Accès à vie, sans abonnement",
     "perk2": "Lisez sur ordinateur, tablette ou mobile",
     "perk3": "Paiement sécurisé par Stripe",
@@ -2360,12 +2459,31 @@
     "ctaTitle": "Prêt à parler à un professionnel ?",
     "ctaButton": "Prendre rendez-vous",
     "ownedCtaTitle": "D'autres ressources vous attendent.",
-    "ownedCtaButton": "Toutes les ressources"
+    "ownedCtaButton": "Toutes les ressources",
+    "byline": "Par {name}",
+    "productType_video": "Vidéo",
+    "productType_audio": "Audio",
+    "productType_pdf": "Document PDF",
+    "productType_webinar": "Webinaire",
+    "productType_external": "Lien externe",
+    "productPreviewNotice": "Aperçu : ce produit n'est pas en vente en ce moment. Seuls son professionnel et l'équipe le voient.",
+    "productWithdrawnNotice": "Ce produit n'est plus en vente, mais vous l'avez acheté : il reste à vous.",
+    "productDownloadPdf": "Télécharger le document",
+    "productExternalCta": "Voir le produit",
+    "webinarWhen": "Le {date}",
+    "webinarDuration": "{minutes} minutes",
+    "webinarJoin": "Rejoindre le webinaire",
+    "webinarReplay": "Voir la reprise"
   },
   "ResourceCheckout": {
     "title": "Débloquer la ressource",
     "resourceLabel": "Ressource",
     "amountToPay": "Montant à payer",
+    "subtotal": "Prix",
+    "tps": "TPS ({rate} %)",
+    "tvq": "TVQ ({rate} %)",
+    "total": "Total",
+    "taxesEstimate": "Le total exact est confirmé à l'étape suivante.",
     "emailLabel": "Votre courriel",
     "emailPlaceholder": "vous@exemple.com",
     "emailWhy": "Nous enverrons votre lien d'accès personnel à cette adresse.",
@@ -3269,12 +3387,17 @@
       "types": {
         "individualSession": "Séance individuelle",
         "coupleSession": "Séance de couple",
-        "groupSession": "Séance de groupe"
+        "groupSession": "Séance de groupe",
+        "quickConsultation": "Consultation ponctuelle rapide"
       },
       "errors": {
         "RATE_EXCEEDS_CLIENT_PRICE": "Le tarif du professionnel ne peut pas dépasser le prix client.",
-        "CLIENT_PRICE_MUST_BE_POSITIVE": "Le prix client doit être supérieur à zéro."
-      }
+        "CLIENT_PRICE_MUST_BE_POSITIVE": "Le prix client doit être supérieur à zéro.",
+        "INVALID_QUICK_DURATION": "La durée doit être un nombre entier de minutes, de 15 à 90."
+      },
+      "quickDuration": "Durée (minutes)",
+      "quickDurationHelp": "Nombre entier de {min} à {max}. Laissée vide : {minutes} minutes.",
+      "quickHelp": "Sans tarif ici, le prix par défaut de la plateforme pour ce service s'applique, sinon celui de la séance individuelle."
     },
     "sidebar": {
       "logo": "Logo",
@@ -3322,7 +3445,16 @@
       "employees": "Employés",
       "administration": "Administration",
       "organizations": "Organismes payeurs",
-      "organizationInvoices": "Factures aux organismes"
+      "organizationInvoices": "Factures aux organismes",
+      "showcases": "Pages vitrines",
+      "professionalsDirectory": "Nos professionnels (site)",
+      "showcase": "Ma page vitrine",
+      "waitlist": "Liste d'attente",
+      "waitlists": "Listes d'attente",
+      "products": "Formations et produits",
+      "productsReview": "Produits à vérifier",
+      "articles": "Mes articles",
+      "articlesReview": "Articles à vérifier"
     },
     "overview": {
       "title": "Bienvenue",
@@ -3993,7 +4125,9 @@
         "addLinkFirst": "Veuillez ajouter un lien de réunion avant de commencer la séance.",
         "updateLinkFailed": "Échec de la mise à jour du lien de réunion. Veuillez réessayer.",
         "startFailed": "Échec du démarrage de la séance. Veuillez réessayer."
-      }
+      },
+      "directRequestPending": "Demande en attente",
+      "directRequestHint": "Répondre à cette demande dans Propositions"
     },
     "analytics": {
       "badge": "Analytics",
@@ -4117,7 +4251,7 @@
       "privacy": "Confidentialité",
       "privacyDesc": "Gérez vos paramètres de confidentialité et de visibilité.",
       "profileVisible": "Profil visible aux clients",
-      "profileVisibleDesc": "Permettre aux clients de vous trouver via la plateforme.",
+      "profileVisibleDesc": "Permettre aux clients de vous trouver via la plateforme, et apparaître dans « Nos professionnels » sur le site.",
       "showRating": "Afficher ma note",
       "showRatingDesc": "Afficher votre note moyenne sur votre profil public.",
       "visibleToPros": "Visible aux autres professionnels",
@@ -5517,7 +5651,20 @@
         "noReasonProvided": "Aucun motif fourni",
         "failedToCancel": "Impossible d'annuler le rendez-vous",
         "currencySuffix": "CAD"
-      }
+      },
+      "directRequestSentTo": "Demande envoyée à {name}",
+      "directRequestServiceStandard": "Consultation standard",
+      "directRequestServiceQuick": "Consultation ponctuelle rapide",
+      "directRequestRespondBy": "Réponse au plus tard le {deadline}",
+      "directRequestWithdraw": "Retirer ma demande",
+      "directRequestWithdrawTitle": "Retirer votre demande?",
+      "directRequestWithdrawMessage": "Le créneau sera libéré et le professionnel ne recevra plus votre demande. Aucun montant ne sera facturé.",
+      "directRequestKeep": "Conserver ma demande",
+      "directRequestWithdrawing": "Retrait en cours…",
+      "directRequestWithdrawn": "Votre demande a été retirée.",
+      "directRequestClosed": "Le professionnel a déjà répondu à votre demande.",
+      "directRequestWithdrawError": "Impossible de retirer la demande pour le moment. Veuillez réessayer.",
+      "directRequestUnavailable": "Ce créneau n'était pas disponible — consultez le courriel reçu pour choisir un autre créneau ou être jumelé."
     },
     "medicalProfile": {
       "loading": "Chargement...",
@@ -7059,7 +7206,7 @@
     "accessFree": "Accès libre",
     "accessPremium": "Premium (payant)",
     "fieldPrice": "Prix (CAD)",
-    "priceHint": "Prix tout inclus, aucune taxe n'est ajoutée. Le visiteur verra : {fr} / {en}.",
+    "priceHint": "Prix avant taxes. Quand la TPS et la TVQ sont activées dans les paramètres, elles s'ajoutent au paiement. Le visiteur verra : {fr} / {en}.",
     "errorPriceRequired": "Indiquez un prix supérieur à 0 pour une ressource premium.",
     "previewEditorLabel": "Aperçu gratuit",
     "previewEditorHint": "Visible par tout le monde avant l'achat. Donnez envie sans tout dévoiler.",
@@ -7198,7 +7345,10 @@
     "backToList": "Retour aux nouveautés",
     "emptyContent": "Le contenu de cette annonce sera publié prochainement.",
     "ctaTitle": "D'autres annonces vous attendent.",
-    "ctaButton": "Toutes les nouveautés"
+    "ctaButton": "Toutes les nouveautés",
+    "byline": "Par {name}",
+    "disclaimer": "Cet article informe, il ne remplace pas une consultation avec un professionnel de la santé mentale. En cas d'urgence, composez le 911.",
+    "previewNotice": "Aperçu : cet article n'est pas publié. Seuls son auteur et l'équipe le voient."
   },
   "Press": {
     "badge": "MÉDIATHÈQUE",
@@ -7283,5 +7433,1512 @@
     "verifyArrival": "Arrivée prévue vers le {date}.",
     "verifyLink": "Ouvrir la page de vérification",
     "methodUnavailable": "Ce mode de paiement n’est pas offert pour le moment. Payez par carte ou par un autre moyen indiqué ci-dessous."
+  },
+  "Showcase": {
+    "brand": "Je chemine",
+    "footer": {
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation",
+      "rights": "© {year} Je chemine. Tous droits réservés."
+    },
+    "profile": {
+      "previewBanner": "Aperçu : cette version n'est pas visible par le public.",
+      "photoAlt": "Photo de {name}",
+      "location": "{city} · {region}",
+      "memberOf": "{order}",
+      "permit": "Permis n° {number}",
+      "officeIn": "Bureau à {city}",
+      "experience": "{years, plural, =0 {Moins d'un an d'expérience} one {# an d'expérience} other {# ans d'expérience}}",
+      "bookCta": "Demander un rendez-vous",
+      "matchCta": "Être jumelé avec un professionnel",
+      "presentationTitle": "Présentation",
+      "approachTitle": "Mon approche",
+      "valuesTitle": "Valeurs",
+      "expertisesTitle": "Champs d'expertise",
+      "servicesTitle": "Services et tarifs",
+      "standardTitle": "Consultation standard",
+      "notAccepting": "{name} n'accepte pas de nouveaux clients pour le moment. Je chemine peut vous jumeler avec un autre professionnel.",
+      "pricesUnavailable": "Les tarifs vous sont confirmés avec votre demande.",
+      "duration": "{minutes} minutes",
+      "quickTitle": "Consultation ponctuelle rapide",
+      "quickOffered": "Pour un besoin précis et ponctuel.",
+      "receipt": "Un reçu est émis pour chaque séance payée.",
+      "cancellation": "Annulation sans frais jusqu'à {hours} heures avant le rendez-vous.",
+      "bookTitle": "Prendre rendez-vous",
+      "bookBody": "Faites votre demande en ligne en quelques minutes. Je chemine vous confirme le rendez-vous.",
+      "metaTitle": "{name}, {title} à {city}",
+      "metaTitleNoTitle": "{name}, santé mentale à {city}",
+      "metaDescription": "{name}, professionnel en santé mentale à {city} ({region}) : présentation, champs d'expertise, tarifs et demande de rendez-vous avec Je chemine.",
+      "productsTitle": "Formations et produits",
+      "productType_video": "Vidéo",
+      "productType_audio": "Audio",
+      "productType_pdf": "Document PDF",
+      "productType_webinar": "Webinaire",
+      "productType_external": "Lien externe",
+      "productFree": "Gratuit",
+      "productOpen": "Voir"
+    },
+    "vitrine": {
+      "verified": "Page vérifiée par Je chemine",
+      "others": "Autres professionnels à {city}",
+      "orderPermit": "{order} · permis n° {number}",
+      "placeBoth": "{city} et téléconsultation",
+      "placeVideo": "Téléconsultation",
+      "heroSecondary": "Voir les tarifs",
+      "nav": {
+        "label": "Sur cette page",
+        "about": "À propos",
+        "approach": "Approche",
+        "services": "Tarifs",
+        "slots": "Disponibilités",
+        "products": "Formations",
+        "articles": "Articles"
+      },
+      "chips": {
+        "inPerson": "En personne à {city}",
+        "video": "Téléconsultation vidéo",
+        "phone": "Consultation par téléphone",
+        "chat": "Consultation par clavardage"
+      },
+      "modesShort": {
+        "inPerson": "en personne",
+        "video": "en vidéo",
+        "phone": "par téléphone",
+        "chat": "par clavardage"
+      },
+      "trust": {
+        "receipt": "Un reçu pour chaque séance payée",
+        "cancellation": "Annulation sans frais jusqu'à {hours} h avant",
+        "answer": "Une réponse à votre demande en 24 heures au plus"
+      },
+      "about": {
+        "eyebrow": "À propos",
+        "heading": "{title} à {city}",
+        "headingYears": "{title} depuis {years, plural, one {# an} other {# ans}}, à {city}",
+        "headingNoTitle": "{name}, à {city}",
+        "factsTitle": "En bref",
+        "credentialsTitle": "Parcours",
+        "quoteBy": "— {name}",
+        "officePhotoAlt": "Le bureau de {name}"
+      },
+      "approach": {
+        "eyebrow": "Approche",
+        "title": "Mon approche",
+        "methodsTitle": "Les méthodes que j'utilise",
+        "stepsTitle": "Comment se déroule une demande",
+        "step": "Étape {number}",
+        "requestTitle": "Votre demande",
+        "requestBody": "Vous choisissez un moment dans les disponibilités et remplissez votre demande. Le créneau vous est réservé pendant que {name} l'étudie.",
+        "answerTitle": "La réponse",
+        "answerBody": "{name} confirme ou décline en 24 heures au plus. Vous recevez la réponse et les détails par courriel.",
+        "firstTitle": "La première rencontre",
+        "firstBody": "Vous faites le tour de votre situation et nommez ensemble des objectifs, selon la formule choisie.",
+        "nextTitle": "La suite",
+        "nextBody": "Les rencontres suivantes se planifient avec {name}. Un reçu est émis pour chaque séance payée.",
+        "stepLabel": "Étape {number}"
+      },
+      "values": {
+        "eyebrow": "Valeurs",
+        "title": "Ce qui guide ma pratique",
+        "intro": "Les principes qui orientent chaque rencontre, du premier échange jusqu’au suivi."
+      },
+      "services": {
+        "eyebrow": "Services et tarifs",
+        "title": "Des tarifs affichés, sans surprise",
+        "intro": "Tous les tarifs sont en dollars canadiens et affichés avant votre demande. Choisissez la consultation qui vous convient.",
+        "quickPoint": "Pour un besoin précis et ponctuel",
+        "priceLater": "Tarif confirmé avec votre demande",
+        "seeTimes": "Voir les disponibilités",
+        "seeQuick": "Voir les créneaux",
+        "standardPoint": "Un accompagnement suivi, séance après séance, à votre rythme.",
+        "perSession": "par séance",
+        "notesTitle": "Bon à savoir"
+      },
+      "dispos": {
+        "eyebrow": "Disponibilités",
+        "title": "Choisissez un moment qui vous convient",
+        "intro": "Sélectionnez une journée et une heure : {name} répond à votre demande en 24 heures au plus.",
+        "closedTitle": "Aucune consultation ouverte en ce moment",
+        "closedIntro": "Inscrivez-vous sur la liste d'attente de {name}, ou laissez Je chemine vous jumeler avec un autre professionnel."
+      },
+      "products": {
+        "eyebrow": "Formations et produits",
+        "title": "Apprendre à votre rythme, entre les séances"
+      },
+      "articles": {
+        "eyebrow": "Articles",
+        "title": "À lire",
+        "read": "Lire l'article"
+      },
+      "expertises": {
+        "eyebrow": "Champs d'expertise"
+      },
+      "cta": {
+        "title": "Le premier pas est souvent le plus difficile",
+        "body": "Choisissez un moment qui vous convient : votre demande est envoyée directement à {name}.",
+        "waitlist": "Liste d'attente"
+      },
+      "emergencyTitle": "Besoin d'aide rapidement ?",
+      "expertisesTitle": "Ce que j'accompagne",
+      "expertisesIntro": "Les difficultés et les situations de vie pour lesquelles {name} peut vous accompagner.",
+      "ctaEyebrow": "Premier pas",
+      "footer": {
+        "pageTitle": "Sur cette page",
+        "platformTitle": "Je chemine",
+        "match": "Être jumelé avec un professionnel",
+        "poweredTitle": "Propulsé par",
+        "poweredBody": "Page hébergée sur Je chemine, la plateforme québécoise de santé mentale.",
+        "site": "Découvrir Je chemine"
+      },
+      "sticky": {
+        "price": "{price} · {minutes} min",
+        "note": "Consultation standard",
+        "cta": "Prendre rendez-vous"
+      }
+    },
+    "titles": {
+      "psychologist": "Psychologue",
+      "psychotherapist": "Psychothérapeute",
+      "neuropsychologist": "Neuropsychologue",
+      "psychoeducator": "Psychoéducateur",
+      "occupationalTherapistMentalHealth": "Ergothérapeute en santé mentale",
+      "psychiatrist": "Psychiatre",
+      "otherProfessionals": "Autres professionnels"
+    },
+    "orders": {
+      "OPQ": "Ordre des psychologues du Québec",
+      "OPPQ": "Ordre des psychoéducateurs et psychoéducatrices du Québec",
+      "OTSTCFQ": "Ordre des travailleurs sociaux et des thérapeutes conjugaux et familiaux du Québec",
+      "OCCOQ": "Ordre des conseillers et conseillères d'orientation du Québec",
+      "OEQ": "Ordre des ergothérapeutes du Québec",
+      "CMQ": "Collège des médecins du Québec",
+      "OIIQ": "Ordre des infirmières et infirmiers du Québec",
+      "OPSQ": "Ordre professionnel des sexologues du Québec"
+    },
+    "modalities": {
+      "inPerson": "En personne",
+      "video": "Téléconsultation vidéo",
+      "phone": "Téléphone",
+      "chat": "Clavardage"
+    },
+    "languages": {
+      "french": "Français",
+      "english": "Anglais",
+      "arabic": "Arabe",
+      "spanish": "Espagnol",
+      "mandarin": "Mandarin"
+    },
+    "therapyTypes": {
+      "solo": "Séance individuelle",
+      "couple": "Séance de couple",
+      "group": "Séance de groupe"
+    }
+  },
+  "ShowcasePro": {
+    "title": "Ma page vitrine",
+    "subtitle": "Votre page publique sur Je chemine présente votre pratique aux personnes qui cherchent un professionnel dans votre ville. L'équipe la prépare et la publie avec votre accord ; vous la modifiez ensuite quand vous le voulez.",
+    "loadError": "Impossible de charger votre page vitrine. Réessayez dans un instant.",
+    "cancel": "Annuler",
+    "notInvited": {
+      "title": "Pas encore de page vitrine",
+      "body": "L'équipe Je chemine crée les pages vitrines avec les professionnels. Quand la vôtre sera publiée, vous pourrez la modifier ici."
+    },
+    "preparing": {
+      "title": "Votre page est en préparation",
+      "body": "L'équipe Je chemine prépare votre page vitrine. Vous recevrez un courriel dès sa publication, et vous pourrez alors la modifier ici."
+    },
+    "status": {
+      "label": "État de la page",
+      "invited": "En préparation",
+      "draft": "En préparation",
+      "published": "En ligne",
+      "approvedClosed": "Publiée",
+      "unpublished": "Retirée"
+    },
+    "statusText": {
+      "published": "Votre page est en ligne :",
+      "approvedClosed": "Votre page est publiée. Le public la verra dès l'ouverture des pages vitrines.",
+      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. L'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer. La ville de la page suit l'adresse du bureau de votre profil.",
+      "unpublishedByProfessional": "Vous avez retiré votre page. Vous pouvez la remettre en ligne en tout temps.",
+      "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus."
+    },
+    "stats": {
+      "line": "Ces {days} derniers jours : {views, plural, one {# visite} other {# visites}} et {clicks, plural, one {# clic} other {# clics}} sur « Demander un rendez-vous »."
+    },
+    "missingTitle": "Il reste à compléter :",
+    "missing": {
+      "photo": "Une photo",
+      "displayName": "Le nom affiché",
+      "headline": "La phrase d'accroche en français",
+      "bio": "Une présentation en français d'au moins 200 caractères",
+      "expertises": "Au moins 3 champs d'expertise",
+      "order": "L'ordre professionnel",
+      "title": "Le titre professionnel, dans le profil",
+      "license": "Le numéro de permis, dans le profil",
+      "modalities": "Les modes de consultation, dans le profil",
+      "city": "Une ville reconnue dans l'adresse du bureau, dans le profil"
+    },
+    "actions": {
+      "preview": "Aperçu",
+      "viewPublic": "Voir la page publique",
+      "unpublish": "Retirer ma page",
+      "republish": "Remettre en ligne"
+    },
+    "unpublishDialog": {
+      "title": "Retirer votre page ?",
+      "body": "Votre page ne sera plus visible par le public. Vous pourrez la remettre en ligne quand vous le voudrez.",
+      "confirm": "Retirer ma page"
+    },
+    "facts": {
+      "title": "Renseignements tirés du profil",
+      "hint": "Ils s'affichent tels quels sur la page. Pour les changer, modifiez le profil.",
+      "editProfile": "Modifier mon profil",
+      "none": "Non indiqué",
+      "titleLabel": "Titre professionnel",
+      "license": "Numéro de permis",
+      "modalities": "Modes de consultation",
+      "languages": "Langues",
+      "officeCity": "Ville du bureau",
+      "pageAddress": "Adresse de la page"
+    },
+    "photo": {
+      "title": "Photo",
+      "hint": "Une photo professionnelle récente, de face et bien éclairée. JPEG, PNG ou WebP, 5 Mo au plus, au moins 400 pixels de côté.",
+      "alt": "Photo de la page vitrine",
+      "upload": "Ajouter une photo",
+      "replace": "Remplacer la photo",
+      "remove": "Retirer la photo"
+    },
+    "officePhotos": {
+      "title": "Photos du cabinet",
+      "hint": "Jusqu'à 6 photos du bureau ou de la salle de consultation. Elles s'affichent en grand sur la page, à la place des photos d'ambiance, dans l'ordre choisi. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
+      "add": "Ajouter une photo du cabinet",
+      "remove": "Retirer",
+      "moveUp": "Placer plus tôt",
+      "moveDown": "Placer plus tard",
+      "alt": "Photo du cabinet {number}",
+      "full": "Le maximum de 6 photos est atteint. Retirez-en une pour en ajouter une autre."
+    },
+    "presentation": {
+      "title": "Présentation",
+      "language": "Langue du texte",
+      "french": "Français",
+      "english": "Anglais",
+      "englishHint": "L'anglais est facultatif. Sans traduction, les visiteurs anglophones voient le texte en français."
+    },
+    "fields": {
+      "displayName": "Nom affiché",
+      "displayNameHint": "Tel qu'il apparaît en haut de la page.",
+      "headline": "Phrase d'accroche",
+      "headlinePlaceholder": "Ex. : J'accompagne les adultes vers un mieux-être durable.",
+      "intro": "Introduction",
+      "introPlaceholder": "Quelques phrases pour vous présenter.",
+      "bio": "Présentation",
+      "bioPlaceholder": "Votre parcours, votre pratique et les personnes que vous accompagnez. Laissez une ligne vide entre les paragraphes.",
+      "approach": "Mon approche",
+      "approachPlaceholder": "Comment se déroulent vos rencontres et sur quoi repose votre approche.",
+      "values": "Valeurs",
+      "valuesHint": "Jusqu'à 5 mots ou courtes expressions, par exemple « Bienveillance ».",
+      "addValue": "Ajouter une valeur",
+      "removeValue": "Retirer cette valeur",
+      "insuranceNote": "Note sur les assurances",
+      "insuranceNotePlaceholder": "Ex. : Mes services sont admissibles au remboursement de la plupart des assurances collectives.",
+      "valueDescription": "Description (facultatif)",
+      "quote": "Citation",
+      "quotePlaceholder": "Une phrase qui résume la façon d'accompagner, signée du nom affiché.",
+      "highlights": "Points forts",
+      "highlightsHint": "Jusqu'à 4 courtes mentions affichées sous la présentation, par exemple « Reçus pour assurances collectives ».",
+      "highlightsAdd": "Ajouter un point fort",
+      "credentials": "Parcours",
+      "credentialsHint": "Jusqu'à 6 lignes : diplômes, formations et expériences marquantes.",
+      "credentialsAdd": "Ajouter une ligne",
+      "focusAreas": "Ce que j'accompagne",
+      "focusAreasHint": "Jusqu'à 4 cartes décrivant les situations accompagnées le plus souvent. Le titre en français est requis.",
+      "focusAreasAdd": "Ajouter une carte",
+      "focusAreasParts": {
+        "title": "Titre",
+        "body": "Description"
+      },
+      "methods": "Méthodes",
+      "methodsHint": "Jusqu'à 4 approches présentées en cartes, par exemple « TCC — Thérapie cognitive et comportementale ». Le nom court en français est requis.",
+      "methodsAdd": "Ajouter une méthode",
+      "methodsParts": {
+        "name": "Nom court",
+        "title": "Titre",
+        "body": "Description"
+      },
+      "removeItem": "Retirer",
+      "characters": "{count} / {max} caractères"
+    },
+    "expertises": {
+      "title": "Champs d'expertise",
+      "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à vous trouver selon leur ville et leur besoin.",
+      "count": "{count, plural, =0 {Aucun champ choisi} one {# champ choisi} other {# champs choisis}}",
+      "none": "L'équipe n'a pas encore ouvert de champs d'expertise pour les pages vitrines."
+    },
+    "order": {
+      "title": "Ordre professionnel",
+      "select": "Choisir l'ordre",
+      "other": "Autre ordre",
+      "otherLabel": "Nom de l'ordre"
+    },
+    "city": {
+      "title": "Ville de la page"
+    },
+    "identity": {
+      "title": "Ordre professionnel et ville de la page",
+      "hint": "L'ordre est géré par l'équipe Je chemine : écrivez-nous pour le changer. La ville suit l'adresse du bureau de votre profil."
+    },
+    "services": {
+      "title": "Services offerts sur la page",
+      "hint": "Ces choix s'appliquent tout de suite. Les tarifs viennent de la grille tarifaire.",
+      "standard": "Consultation standard",
+      "standardHint": "Les séances habituelles, aux tarifs de la grille.",
+      "quick": "Consultation ponctuelle rapide",
+      "quickHint": "Une rencontre ponctuelle pour un besoin précis.",
+      "notAcceptingClients": "Le profil indique que les nouveaux clients ne sont pas acceptés : ce service n'apparaît pas sur la page.",
+      "notAcceptingQuick": "Le profil indique que les consultations ponctuelles rapides ne sont pas acceptées : ce service n'apparaît pas sur la page."
+    },
+    "editor": {
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Modifications enregistrées.",
+      "savedLive": "Modifications enregistrées et en ligne.",
+      "unsaved": "Modifications non enregistrées"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "TOO_LONG": "Un champ dépasse la longueur permise.",
+      "INVALID_FIELD": "Un champ contient une valeur invalide.",
+      "UNKNOWN_EXPERTISE": "Un champ d'expertise choisi n'est plus offert. Rechargez la page.",
+      "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
+      "TOO_MANY_VALUES": "Indiquez au plus 5 valeurs.",
+      "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
+      "OFFICE_PHOTO_LIMIT": "Le maximum de 6 photos du cabinet est atteint.",
+      "OFFICE_PHOTO_NOT_FOUND": "Cette photo n'est plus sur la page. Rechargez-la.",
+      "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
+      "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",
+      "NOT_FOUND": "Page vitrine introuvable.",
+      "NO_FILE": "Choisissez un fichier.",
+      "PHOTO_TOO_LARGE": "La photo dépasse 5 Mo.",
+      "PHOTO_INVALID": "Format refusé. Utilisez une image JPEG, PNG ou WebP.",
+      "PHOTO_TOO_SMALL": "La photo est trop petite : il faut au moins 400 pixels de côté.",
+      "PHOTO_INFECTED": "Ce fichier a été refusé par l'analyse antivirus.",
+      "SCAN_UNAVAILABLE": "L'analyse antivirus est indisponible. Réessayez dans quelques minutes.",
+      "RATE_LIMITED": "Trop de tentatives. Réessayez plus tard.",
+      "CONSENT_REQUIRED": "Confirmez que le professionnel a accepté la publication de sa page.",
+      "INCOMPLETE": "La page n'est pas complète. Consultez la liste des éléments manquants.",
+      "IN_PREPARATION": "Votre page est en préparation par l'équipe : vous pourrez la modifier dès sa publication.",
+      "NOT_PUBLISHED": "La page n'est pas en ligne.",
+      "NOT_UNPUBLISHED": "La page n'est pas retirée.",
+      "FORBIDDEN": "Cette action n'est pas permise.",
+      "PROFESSIONAL_NOT_ACTIVE": "Le compte du professionnel n'est pas actif.",
+      "PROFESSIONAL_NOT_FOUND": "Professionnel introuvable.",
+      "WITHDRAWN_BY_PROFESSIONAL": "Le professionnel a retiré sa page : lui seul peut la remettre en ligne.",
+      "NOTHING_TO_PUBLISH": "Il n'y a rien de nouveau à publier.",
+      "REVISION_CHANGED": "La page a changé depuis votre lecture. Rechargez-la avant de continuer.",
+      "SLUG_TAKEN": "Cette adresse est déjà utilisée.",
+      "INVALID_SLUG": "Adresse invalide : lettres minuscules, chiffres et traits d'union seulement.",
+      "OFFICE_CITY_UNKNOWN": "L'adresse du bureau, dans le profil, n'indique pas une ville reconnue. Corrigez-la, puis réessayez.",
+      "ALREADY_INVITED": "Ce professionnel a déjà une page vitrine.",
+      "CONFLICT": "La page a été modifiée en même temps. Rechargez-la.",
+      "INVALID_ACTION": "Action inconnue.",
+      "ACCOUNT_NOT_ACTIVE": "Votre compte doit être actif pour modifier votre page."
+    },
+    "customize": {
+      "title": "Personnaliser la page",
+      "hint": "Votre couleur, l’ordre des sections, leurs titres et vos photos d’ambiance. Les changements sont en ligne dès l’enregistrement.",
+      "accentTitle": "Couleur de la page",
+      "accents": {
+        "teal": "Sarcelle",
+        "forest": "Forêt",
+        "ocean": "Océan",
+        "plum": "Prune",
+        "terracotta": "Terracotta"
+      },
+      "sectionsTitle": "Sections et ordre",
+      "sectionsHint": "Déplacez les sections et masquez celles que vous ne voulez pas afficher. Une section sans contenu reste masquée.",
+      "sections": {
+        "about": "À propos",
+        "approach": "Approche et déroulement d’une demande",
+        "values": "Valeurs",
+        "services": "Services et tarifs",
+        "slots": "Disponibilités",
+        "expertises": "Ce que j’accompagne",
+        "products": "Formations et produits",
+        "articles": "Articles",
+        "cta": "Bandeau final"
+      },
+      "show": "Afficher « {section} »",
+      "moveUp": "Monter « {section} »",
+      "moveDown": "Descendre « {section} »",
+      "required": "Services et tarifs et Disponibilités restent toujours affichés.",
+      "textsTitle": "Titres et textes des sections",
+      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Un texte remplace celui de la page seulement s’il est écrit en français.",
+      "texts": {
+        "aboutTitle": "Titre « À propos »",
+        "approachTitle": "Titre « Approche »",
+        "methodsTitle": "Titre des méthodes",
+        "stepsTitle": "Titre du déroulement d’une demande",
+        "valuesTitle": "Titre « Valeurs »",
+        "valuesIntro": "Texte sous « Valeurs »",
+        "servicesTitle": "Titre « Services et tarifs »",
+        "servicesIntro": "Texte sous « Services et tarifs »",
+        "standardPoint": "Description de la consultation standard",
+        "quickPoint": "Description de la consultation rapide",
+        "disposTitle": "Titre « Disponibilités »",
+        "disposIntro": "Texte sous « Disponibilités »",
+        "expertisesTitle": "Titre « Ce que j’accompagne »",
+        "expertisesIntro": "Texte sous « Ce que j’accompagne »",
+        "productsTitle": "Titre « Formations et produits »",
+        "articlesTitle": "Titre « Articles »",
+        "ctaTitle": "Titre du bandeau final",
+        "ctaBody": "Texte du bandeau final"
+      },
+      "photosTitle": "Photos d’ambiance",
+      "photosHint": "Choisissez vos photos dans la bibliothèque de Je chemine. Vos photos du cabinet passent toujours en premier.",
+      "photoSlots": {
+        "band": "Grande photo sous l’introduction",
+        "about": "Photo à côté de « À propos »",
+        "closing": "Photo du bandeau final"
+      },
+      "photoAuto": "Automatique",
+      "photoOption": "Photo {number}"
+    }
+  },
+  "ShowcaseAdmin": {
+    "editor": {
+      "fields": {
+        "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
+        "bioPlaceholder": "Son parcours, sa pratique et les personnes accompagnées. Laissez une ligne vide entre les paragraphes.",
+        "approachPlaceholder": "Comment se déroulent ses rencontres et sur quoi repose son approche."
+      },
+      "expertises": {
+        "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à trouver ce professionnel selon leur ville et leur besoin."
+      }
+    },
+    "title": "Pages vitrines",
+    "subtitle": "Activez la page d'un professionnel, remplissez-la, puis publiez-la avec son accord. Il peut ensuite la modifier lui-même.",
+    "cancel": "Annuler",
+    "access": {
+      "title": "Accès réservé",
+      "body": "Cet écran est réservé aux administrateurs qui gèrent les professionnels. Demandez cette permission à un super administrateur."
+    },
+    "badges": {
+      "notInvited": "Sans page",
+      "invited": "À préparer",
+      "draft": "En préparation",
+      "published": "En ligne",
+      "approvedClosed": "Publiée, pages fermées",
+      "unpublished": "Retirée"
+    },
+    "switch": {
+      "title": "Ouverture au public",
+      "on": "Ouvertes : les pages publiées sont visibles par le public.",
+      "off": "Fermées : les pages des professionnels, comme jechemine.ca/amel-sassi, affichent une page introuvable. Vous pouvez activer, préparer et publier des pages en attendant.",
+      "turnOn": "Ouvrir au public",
+      "turnOff": "Fermer au public",
+      "confirmOnTitle": "Ouvrir les pages vitrines au public ?",
+      "confirmOnBody": "Les pages publiées deviennent visibles à leur adresse sur www.jechemine.ca et peuvent être indexées par les moteurs de recherche.",
+      "confirmOffTitle": "Fermer les pages vitrines ?",
+      "confirmOffBody": "Les pages des professionnels ne seront plus visibles. Elles restent publiées et reviennent à la réouverture.",
+      "confirm": "Confirmer"
+    },
+    "list": {
+      "title": "Professionnels approuvés",
+      "refresh": "Rafraîchir",
+      "search": "Rechercher par nom ou courriel",
+      "filters": {
+        "all": "Tous",
+        "inProgress": "En préparation",
+        "published": "En ligne",
+        "unpublished": "Retirées",
+        "notInvited": "Sans page"
+      },
+      "empty": "Aucun professionnel ne correspond.",
+      "columns": {
+        "professional": "Professionnel",
+        "city": "Ville",
+        "page": "Page",
+        "stats": "Visites ({days} j)",
+        "actions": "Actions"
+      },
+      "stats": "{views, plural, one {# visite} other {# visites}} · {clicks, plural, one {# clic} other {# clics}}",
+      "accountInactive": "Compte inactif",
+      "changes": "Corrections non publiées",
+      "professionalEdit": "Modifiée par le professionnel le {date}",
+      "open": "Ouvrir",
+      "activate": "Activer la page"
+    },
+    "activate": {
+      "title": "Activer la page de {name}",
+      "body": "Une page vitrine est créée pour ce professionnel, préremplie avec son profil. Aucun courriel ne lui est envoyé : vous remplissez la page, puis vous la publiez avec son accord.",
+      "cityFromOffice": "Ville de la page : {city}, d'après l'adresse du bureau dans son profil.",
+      "noOfficeCity": "L'adresse du bureau, dans son profil, n'indique pas une ville reconnue. Corrigez-la dans sa fiche avant d'activer la page.",
+      "slug": "Adresse de la page (facultatif)",
+      "slugHint": "Laissez vide pour utiliser le prénom et le nom. Lettres minuscules, chiffres et traits d'union seulement.",
+      "preview": "Adresse : {url}",
+      "submit": "Activer et préparer la page"
+    },
+    "detail": {
+      "back": "Retour aux pages vitrines",
+      "notFound": "Ce professionnel n'a pas de page vitrine.",
+      "loadError": "Impossible de charger la page vitrine.",
+      "done": "C'est fait.",
+      "profileLink": "Fiche du professionnel",
+      "publicLink": "Voir la page publique",
+      "reviewTitle": "Publication",
+      "revision": "Révision {revision}",
+      "consentCurrent": "Le professionnel a accepté la publication le {date}.",
+      "consentAttested": "Accord du professionnel à la publication confirmé par l'équipe le {date}.",
+      "consentMissing": "Aucun accord enregistré : en publiant, vous confirmerez que le professionnel a accepté la publication de sa page.",
+      "lastProfessionalEdit": "Dernière modification par le professionnel le {date} : elle est déjà en ligne.",
+      "unpublishedCorrections": "Vos corrections ne sont pas encore publiées : le public voit la version précédente.",
+      "previewDraft": "Aperçu du brouillon",
+      "previewPublished": "Aperçu de la version en ligne",
+      "publish": "Publier la page",
+      "publishChanges": "Publier les corrections",
+      "publishTitle": "Publier la révision {revision} ?",
+      "publishBody": "Cette révision devient la page publique. Le professionnel reçoit un courriel et peut ensuite modifier sa page lui-même ; ses modifications sont en ligne dès qu'il les enregistre.",
+      "consentAttest": "Je confirme que le professionnel a accepté que Je chemine publie cette page (photo, nom, titre, ordre et permis, ville, présentation, champs d'expertise et tarifs), qu'il en a vérifié l'exactitude et qu'il sait qu'il peut la modifier ou la retirer en tout temps.",
+      "unpublish": "Retirer la page",
+      "unpublishTitle": "Retirer la page du public ?",
+      "unpublishBody": "La page n'est plus visible par le public. Le professionnel est avisé par courriel, avec la raison si vous l'indiquez.",
+      "reason": "Raison (facultatif)",
+      "republish": "Remettre en ligne",
+      "move": "Changer l'adresse",
+      "moveTitle": "Changer l'adresse de la page",
+      "moveBody": "Si la page a déjà été publiée, l'ancienne adresse redirige vers la nouvelle.",
+      "slug": "Adresse",
+      "save": "Enregistrer",
+      "editorTitle": "Contenu de la page",
+      "editorHint": "Vos modifications restent dans le brouillon jusqu'à ce que vous publiiez. Une fois la page publiée, les modifications du professionnel sont en ligne dès qu'il les enregistre. Les services offerts changent tout de suite.",
+      "historyTitle": "Historique",
+      "historyEmpty": "Aucun événement.",
+      "history": {
+        "activate": "Page activée",
+        "approve": "Publiée",
+        "edit": "Modifiée par le professionnel",
+        "unpublish": "Retirée",
+        "republish": "Remise en ligne",
+        "move": "Adresse changée",
+        "invite": "Invitation",
+        "submit": "Envoyée pour révision",
+        "request_changes": "Modifications demandées",
+        "remind": "Rappel envoyé"
+      },
+      "actors": {
+        "professional": "Professionnel",
+        "admin": "Administrateur",
+        "system": "Système"
+      }
+    }
+  },
+  "ShowcaseBooking": {
+    "title": "Disponibilités",
+    "servicesLabel": "Type de consultation",
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "durationOnly": "Séance de {minutes} minutes",
+    "durationAndPrice": "Séance de {minutes} minutes · {price}",
+    "loading": "Chargement des disponibilités…",
+    "error": "Les disponibilités n'ont pas pu être chargées. Réessayez dans un instant.",
+    "unavailable": "Ce professionnel ne prend pas de nouvelles demandes pour ce type de consultation en ce moment.",
+    "none": "Aucune disponibilité dans les semaines affichées.",
+    "daysLabel": "Jours disponibles",
+    "slotsLabel": "Heures disponibles le {day}",
+    "slotAction": "Demander un rendez-vous le {day} à {time}",
+    "more": "Voir les deux semaines suivantes",
+    "howItWorks": "Choisissez un créneau, puis faites votre demande : le créneau vous est réservé jusqu'à la réponse du professionnel.",
+    "matchInstead": "Être jumelé avec un autre professionnel",
+    "joinWaitlist": "M'inscrire sur la liste d'attente",
+    "noTimeSuits": "Aucun créneau ne vous convient ? Inscrivez-vous sur la liste d'attente.",
+    "modeNote": "{minutes} minutes · {modes} · {price}",
+    "modeNoteNoPrice": "{minutes} minutes · {modes}",
+    "prevDays": "Jours précédents",
+    "nextDays": "Jours suivants",
+    "timezone": "Les heures sont affichées à l'heure de Montréal.",
+    "slotChoose": "Choisir {time}, {day}",
+    "requestTitle": "Votre demande",
+    "noSlotTitle": "Aucun créneau sélectionné",
+    "noSlotBody": "Choisissez une journée puis une heure. Le créneau vous est réservé pendant que {name} étudie votre demande.",
+    "chosenMeta": "{service} · {minutes} min · {price}",
+    "chosenMetaNoPrice": "{service} · {minutes} min",
+    "requestCta": "Demander ce rendez-vous",
+    "stepService": "La consultation",
+    "stepTime": "Le moment",
+    "stepRequest": "Votre demande",
+    "optionMinutes": "{minutes} minutes",
+    "summaryService": "Consultation",
+    "summaryDuration": "Durée",
+    "summaryWhen": "Moment",
+    "summaryPrice": "Tarif",
+    "summaryPending": "À choisir",
+    "pickFirst": "Choisissez une heure pour continuer",
+    "morning": "Matin",
+    "afternoon": "Après-midi",
+    "evening": "Soir",
+    "slotCount": "{count, plural, one {# heure} other {# heures}}"
+  },
+  "DirectRequests": {
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "reasons": {
+      "slot_unavailable": "Le créneau ne me convient pas",
+      "not_a_fit": "La demande ne correspond pas à ma pratique",
+      "not_accepting": "Je n'accepte pas de nouveaux clients",
+      "other": "Autre raison"
+    },
+    "card": {
+      "title": "Demandes directes",
+      "description": "Ces personnes ont choisi un de vos créneaux sur votre page vitrine. Le créneau leur est réservé jusqu'à votre réponse.",
+      "slot": "Créneau",
+      "modality": "Modalité",
+      "reason": "Motif",
+      "for": "Pour",
+      "minutes": "{minutes} min",
+      "answerBy": "Répondre avant le {time}",
+      "view": "Voir la demande",
+      "accept": "Accepter",
+      "decline": "Décliner"
+    },
+    "answer": {
+      "acceptTitle": "Accepter la demande",
+      "acceptBody": "Le rendez-vous avec {name} sera confirmé pour le {slot}.",
+      "acceptWhatNext": "La personne reçoit aussitôt la confirmation du rendez-vous et les instructions de paiement.",
+      "declineTitle": "Décliner la demande",
+      "declineBody": "Un courriel informe {name} que le créneau du {slot} n'est pas disponible et lui propose un autre créneau ou le jumelage. Le motif ne lui est pas communiqué.",
+      "address": "Adresse de la séance",
+      "addressPlaceholder": "Adresse du bureau",
+      "saveOffice": "Enregistrer comme adresse de mon bureau",
+      "note": "Note pour l'équipe (facultatif)",
+      "noteHelp": "Visible seulement par l'équipe de Je chemine.",
+      "cancel": "Annuler",
+      "confirmAccept": "Confirmer le rendez-vous",
+      "confirmDecline": "Décliner"
+    },
+    "errors": {
+      "SLOT_CONFLICT": "Ce créneau chevauche maintenant une autre séance à votre horaire.",
+      "SLOT_HELD": "Ce créneau est réservé pour une autre demande.",
+      "DIRECT_REQUEST_CLOSED": "Cette demande n'attend plus de réponse.",
+      "DIRECT_REQUEST_EXPIRED": "Le délai pour répondre à cette demande est passé.",
+      "OFFICE_ADDRESS_REQUIRED": "Indiquez l'adresse de la séance en personne.",
+      "generic": "La réponse n'a pas pu être enregistrée. Réessayez."
+    },
+    "reroute": {
+      "title": "Être jumelé avec un professionnel",
+      "body": "Je chemine trouve pour vous le professionnel qui vous convient, à partir de la demande que vous avez déjà faite. Vous n'avez rien à remplir de nouveau.",
+      "cta": "Me jumeler avec un professionnel",
+      "working": "Envoi…",
+      "doneTitle": "C'est noté",
+      "doneBody": "Votre demande est transmise au jumelage. Vous recevrez un courriel dès qu'un professionnel l'accepte.",
+      "invalidTitle": "Ce lien n'est plus valide",
+      "invalidBody": "Il a déjà servi, il a expiré, ou notre équipe s'occupe déjà de votre demande. Pour toute question, écrivez-nous.",
+      "error": "Une erreur est survenue. Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    },
+    "funnel": {
+      "loading": "Vérification du créneau choisi…",
+      "unavailable": "Ce créneau ne peut plus être demandé en ligne. Votre demande sera transmise à notre jumelage, qui vous proposera un professionnel.",
+      "eyebrow": "Créneau choisi sur la page du professionnel",
+      "minutes": "{minutes} min",
+      "holdNote": "Le créneau vous est réservé dès l'envoi de votre demande, jusqu'à la réponse du professionnel.",
+      "changeSlot": "Choisir un autre créneau",
+      "reviewLabel": "Demande de rendez-vous",
+      "reviewValue": "{name}, {slot}",
+      "whatNextBody": "{name} reçoit votre demande et y répond rapidement. Dès sa confirmation, vous recevez les détails du rendez-vous et les instructions de paiement.",
+      "successBody": "Votre demande a été envoyée à {name} pour le {slot}. Le créneau vous est réservé jusqu'à sa réponse; un courriel de confirmation vous a été envoyé.",
+      "errors": {
+        "SLOT_TAKEN": "Ce créneau vient d'être réservé par une autre personne. Choisissez un autre créneau sur la page du professionnel.",
+        "SERVICE_UNAVAILABLE": "Ce professionnel ne prend plus ce type de demande pour le moment.",
+        "SHOWCASE_NOT_FOUND": "La page de ce professionnel n'est plus disponible."
+      }
+    }
+  },
+  "ShowcaseWaitlist": {
+    "title": "Liste d'attente",
+    "exclusiveTitle": "La liste d'attente de {name}",
+    "exclusiveBody": "Aucun créneau ne vous convient ? Laissez vos coordonnées : dès qu'un créneau qui vous convient se libère, il vous est proposé et réservé 15 minutes.",
+    "join": "M'inscrire sur la liste",
+    "generalTitle": "La liste d'attente générale de Je chemine",
+    "generalBody": "Vous préférez ne pas attendre ce professionnel en particulier ? Je chemine vous jumelle avec le professionnel qui vous convient.",
+    "generalCta": "Être jumelé avec un professionnel",
+    "fields": {
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Courriel",
+      "phone": "Téléphone (facultatif)",
+      "phoneHelp": "Pour recevoir un texto quand un créneau se libère.",
+      "service": "Type de consultation",
+      "modality": "Modalité",
+      "motifs": "Motif de consultation (jusqu'à {max}, facultatif)",
+      "periods": "Moments qui vous conviennent",
+      "days": "Jours qui vous conviennent",
+      "anyTimeHelp": "Sans choix, tous les moments et tous les jours vous conviennent."
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "days": {
+      "monday": "Lun.",
+      "tuesday": "Mar.",
+      "wednesday": "Mer.",
+      "thursday": "Jeu.",
+      "friday": "Ven.",
+      "saturday": "Sam.",
+      "sunday": "Dim."
+    },
+    "consent": "J'accepte que Je chemine conserve mes coordonnées pour me proposer un créneau avec {name}, pendant 90 jours au plus. Je peux quitter la liste à tout moment grâce au lien reçu par courriel.",
+    "smsConsent": "J'accepte aussi de recevoir un texto quand un créneau se libère.",
+    "submit": "M'inscrire",
+    "sending": "Inscription…",
+    "doneTitle": "C'est noté",
+    "doneBody": "Vous êtes sur la liste d'attente de {name}. Un courriel vient de vous être envoyé ; nous vous écrirons dès qu'un créneau qui vous convient se libère.",
+    "errors": {
+      "consent": "Cochez la case de consentement pour vous inscrire.",
+      "email": "Vérifiez l'adresse courriel.",
+      "phone": "Vérifiez le numéro de téléphone, ou laissez-le vide.",
+      "invalid": "Vérifiez les champs du formulaire.",
+      "full": "La liste d'attente de ce professionnel est complète pour le moment. Je chemine peut vous jumeler avec un autre professionnel.",
+      "rateLimited": "Trop de tentatives. Réessayez dans quelques minutes.",
+      "unavailable": "La liste d'attente de ce professionnel n'est pas disponible pour le moment.",
+      "generic": "L'inscription n'a pas pu être enregistrée. Réessayez dans un instant."
+    }
+  },
+  "Waitlist": {
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "claim": {
+      "loading": "Chargement…",
+      "title": "Un créneau vous attend",
+      "intro": "Un créneau avec {name} s'est libéré et vous est réservé.",
+      "service": "Consultation",
+      "when": "Créneau",
+      "duration": "Durée",
+      "minutes": "{minutes} minutes",
+      "price": "Tarif",
+      "slot": "{day} à {time}",
+      "heldFor": "Réservé pour vous encore {countdown}",
+      "whatNext": "En le réservant, votre demande part à {name}, qui confirme le rendez-vous. Les instructions de paiement suivent sa confirmation.",
+      "cta": "Réserver ce créneau",
+      "booking": "Réservation…",
+      "viewPage": "Voir la page du professionnel",
+      "error": "La réservation n'a pas pu être faite. Réessayez.",
+      "doneTitle": "Demande envoyée",
+      "doneBody": "{name} a reçu votre demande pour le {slot} et vous répondra au plus tard le {deadline}. Un courriel de confirmation vous a été envoyé.",
+      "expiredTitle": "Ce créneau n'est plus réservé",
+      "expiredBody": "Le délai de 15 minutes est passé et le créneau a été proposé à une autre personne. Vous gardez votre place sur la liste, sauf après trois créneaux restés sans réponse.",
+      "claimedTitle": "Ce créneau a déjà été réservé",
+      "claimedBody": "Ce lien a déjà servi. La confirmation de votre demande se trouve dans vos courriels.",
+      "invalidTitle": "Ce lien n'est pas valide",
+      "invalidBody": "Vérifiez que le lien est complet, ou ouvrez-le directement depuis le courriel ou le texto reçu.",
+      "unavailableTitle": "Ce créneau ne peut plus être demandé",
+      "unavailableBody": "Le professionnel a modifié ses disponibilités. Vous gardez votre place sur la liste d'attente, et ce créneau ne compte pas comme une absence de réponse.",
+      "offTitle": "Liste d'attente indisponible",
+      "offBody": "Les listes d'attente ne sont pas disponibles pour le moment.",
+      "errorTitle": "Une erreur est survenue",
+      "errorBody": "Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    },
+    "leave": {
+      "title": "Quitter la liste d'attente",
+      "body": "Vous ne recevrez plus de créneau de ce professionnel. Vous pourrez vous réinscrire depuis sa page.",
+      "cta": "Quitter la liste d'attente",
+      "working": "Envoi…",
+      "doneTitle": "Vous avez quitté la liste d'attente",
+      "doneBody": "Vos coordonnées ne serviront plus à vous proposer de créneau.",
+      "invalidTitle": "Ce lien n'est plus valide",
+      "invalidBody": "Vous avez peut-être déjà quitté la liste, ou votre inscription a pris fin.",
+      "error": "Une erreur est survenue. Réessayez dans un instant.",
+      "home": "Retour à l'accueil"
+    }
+  },
+  "WaitlistPro": {
+    "title": "Liste d'attente",
+    "subtitle": "Les personnes qui n'ont pas trouvé de moment qui leur convient sur votre page vitrine peuvent s'inscrire ici. Quand un créneau se libère, il est proposé à la première personne à qui il convient : elle le reçoit par courriel, et par texto si elle l'a accepté, et le créneau lui est réservé 15 minutes. Si elle confirme, vous recevez une demande à accepter ou à refuser dans « Demandes directes ». Après 3 offres sans réponse ou 90 jours, sa place sur la liste prend fin.",
+    "loadError": "Impossible de charger votre liste d'attente.",
+    "retry": "Réessayer",
+    "count": "{count, plural, one {# personne en attente} other {# personnes en attente}}",
+    "empty": {
+      "title": "Personne n'attend pour le moment",
+      "body": "Lorsqu'une personne s'inscrira à la liste d'attente depuis votre page vitrine, elle apparaîtra ici."
+    },
+    "card": {
+      "position": "Position {position}",
+      "offer": "Créneau proposé : {day} à {time} — réservé jusqu'à {until}",
+      "modality": "Modalité :",
+      "moments": "Disponibilités :",
+      "anyTime": "N'importe quand",
+      "anyMoment": "N'importe quel moment",
+      "anyDay": "N'importe quel jour",
+      "joined": "Inscription :",
+      "ends": "Fin de la place :",
+      "motifs": "Motifs de consultation",
+      "remove": "Retirer de la liste"
+    },
+    "remove": {
+      "title": "Retirer cette personne de la liste?",
+      "body": "{name} ne figurera plus sur votre liste d'attente. Un courriel l'en avisera. Tout créneau qui lui est proposé en ce moment sera libéré.",
+      "cancel": "Annuler",
+      "confirm": "Retirer de la liste",
+      "done": "Nous avons retiré {name} de votre liste d'attente.",
+      "gone": "Il n'est plus possible de retirer {name} de la liste : une réservation est peut-être en cours, ou sa place a déjà pris fin. La liste a été mise à jour.",
+      "error": "Le retrait n'a pas fonctionné. Veuillez réessayer."
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "periods": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir"
+    },
+    "days": {
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    }
+  },
+  "WaitlistAdmin": {
+    "title": "Listes d'attente",
+    "subtitle": "Les personnes qui n'ont pas trouvé de créneau libre sur la page d'un professionnel. Quand un créneau se libère, la première personne à qui il convient reçoit un courriel (et un texto si elle l'a accepté) et le créneau lui est réservé 15 minutes. Si elle confirme, une demande est envoyée au professionnel. Après 3 offres sans réponse ou 90 jours, la place prend fin.",
+    "contactNote": "Les coordonnées ne sont visibles qu'avec la permission de gérer les patients.",
+    "refresh": "Actualiser",
+    "search": "Rechercher un professionnel ou une personne",
+    "count": "{count, plural, =0 {Aucune inscription} one {# inscription} other {# inscriptions}}",
+    "empty": "Aucune inscription à afficher.",
+    "contactHidden": "Coordonnées masquées",
+    "endsOn": "Prend fin le {date}",
+    "closedOn": "Fermée le {date}",
+    "consent": "{date} (v. {version})",
+    "smsYes": "Texto : oui",
+    "smsNo": "Texto : non",
+    "cancel": "Annuler",
+    "access": {
+      "title": "Accès réservé",
+      "body": "Il faut la permission de gérer les professionnels pour voir les listes d'attente."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Impossible de joindre le serveur. Vérifiez votre connexion."
+    },
+    "scopes": {
+      "open": "En cours",
+      "closed": "Fermées",
+      "all": "Toutes"
+    },
+    "columns": {
+      "offers": "Offres",
+      "professional": "Professionnel",
+      "person": "Personne",
+      "contact": "Coordonnées",
+      "consultation": "Consultation",
+      "status": "Statut",
+      "position": "Rang",
+      "missed": "Offres manquées",
+      "joined": "Inscription",
+      "ends": "Fin de la place",
+      "consent": "Consentement",
+      "actions": "Actions"
+    },
+    "locales": {
+      "fr": "Français",
+      "en": "Anglais"
+    },
+    "services": {
+      "standard": "Consultation standard",
+      "quick": "Consultation ponctuelle rapide"
+    },
+    "modalities": {
+      "video": "Vidéo",
+      "in-person": "En personne",
+      "phone": "Téléphone",
+      "both": "Vidéo ou en personne"
+    },
+    "statuses": {
+      "active": "En attente",
+      "offered": "Offre envoyée",
+      "converted": "Demande créée",
+      "expired": "Terminée",
+      "left": "Partie",
+      "removed": "Retirée"
+    },
+    "reasons": {
+      "missed": "3 offres sans réponse",
+      "expired": "90 jours écoulés",
+      "professional": "Retirée par le professionnel",
+      "admin": "Retirée par l'équipe"
+    },
+    "outcomes": {
+      "pending": "Sans réponse pour l'instant",
+      "claiming": "Confirmation en cours",
+      "claimed": "Confirmée",
+      "expired": "Délai écoulé",
+      "slot_lost": "Créneau plus disponible",
+      "withdrawn": "Retirée"
+    },
+    "channels": {
+      "email": "Courriel",
+      "sms": "Texto"
+    },
+    "offers": {
+      "toggle": "Voir l'historique des offres ({count})",
+      "title": "Historique des offres",
+      "none": "Aucune offre envoyée.",
+      "time": "Créneau",
+      "sent": "Envoyée",
+      "heldUntil": "Réservée jusqu'à",
+      "outcome": "Résultat",
+      "channels": "Canaux",
+      "requestCreated": "Demande créée"
+    },
+    "remove": {
+      "action": "Retirer",
+      "title": "Retirer {name} de la liste d'attente?",
+      "body": "La personne ne recevra plus d'offres pour {professional} et sera avisée par courriel.",
+      "confirm": "Retirer",
+      "done": "La personne a été retirée de la liste d'attente.",
+      "gone": "Cette inscription ne peut plus être retirée : elle est déjà fermée ou la personne est en train de réserver. La liste a été actualisée."
+    }
+  },
+  "ProductsPro": {
+    "title": "Formations et produits",
+    "subtitle": "Publiez et vendez vos formations, vidéos, audios, PDF et webinaires sur Je chemine, ou faites connaître un lien vers votre propre site.",
+    "common": {
+      "cancel": "Annuler"
+    },
+    "howItWorks": {
+      "title": "Comment ça fonctionne",
+      "review": "Chaque produit est vérifié par l'équipe avant d'être mis en ligne. Vous le soumettez quand il est prêt; l'équipe l'approuve ou vous le renvoie avec ses commentaires.",
+      "commission": "La plateforme conserve une part de chaque vente, qui couvre les frais Stripe. Le reste est crédité au solde affiché dans « Facturation ».",
+      "access": "Les personnes qui ont acheté un produit y gardent accès, même si vous le retirez du site par la suite."
+    },
+    "list": {
+      "new": "Nouveau produit",
+      "loadError": "Impossible de charger vos produits.",
+      "retry": "Réessayer",
+      "emptyTitle": "Aucun produit pour l'instant",
+      "emptyBody": "Créez votre premier produit : choisissez son type, donnez-lui un titre, puis complétez-le avant de le soumettre à l'équipe.",
+      "price": "Prix",
+      "free": "Gratuit",
+      "noPrice": "À définir",
+      "sales": "Ventes",
+      "updated": "Modifié le",
+      "viewPublic": "Voir la page publique",
+      "edit": "Modifier"
+    },
+    "create": {
+      "title": "Nouveau produit",
+      "description": "Choisissez le type de produit et son titre en français. Vous pourrez compléter le reste ensuite.",
+      "type": "Type de produit",
+      "titleFr": "Titre en français",
+      "titleHint": "Le titre sert aussi à créer l'adresse de la page, qui ne change plus par la suite.",
+      "submit": "Créer le brouillon"
+    },
+    "types": {
+      "video": "Vidéo",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinaire",
+      "external": "Lien externe"
+    },
+    "typeHints": {
+      "video": "Une vidéo hébergée sur YouTube, Vimeo, Dailymotion ou Loom, visible après l'achat.",
+      "audio": "Un audio hébergé sur Spotify, Apple Podcasts ou SoundCloud, à écouter après l'achat.",
+      "pdf": "Un document PDF que vous téléversez, téléchargeable après l'achat.",
+      "webinar": "Une séance en direct à une date précise, avec le lien de la salle et, au besoin, la rediffusion.",
+      "external": "Un lien gratuit vers votre propre site, pour faire connaître une offre vendue ailleurs."
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "En vérification",
+      "approved": "Approuvé",
+      "rejected": "Refusé",
+      "unpublished": "Retiré"
+    },
+    "badges": {
+      "live": "En ligne",
+      "changesPending": "Modifications à vérifier"
+    },
+    "banner": {
+      "draft": "Ce produit n'est pas encore visible. Complétez-le, puis soumettez-le à l'équipe.",
+      "submitted": "L'équipe vérifie ce produit. Vous recevrez un courriel dès qu'une décision sera prise.",
+      "approved": "Ce produit a été approuvé. Il est vendu sur le site tant que votre compte est actif.",
+      "rejected": "L'équipe vous a renvoyé ce produit. Apportez les changements demandés, puis soumettez-le de nouveau.",
+      "unpublishedByProfessional": "Vous avez retiré ce produit du site. Soumettez-le de nouveau pour le remettre en ligne.",
+      "unpublishedByAdmin": "L'équipe a retiré ce produit du site. Soumettez-le de nouveau pour le remettre en ligne.",
+      "notes": "Commentaires de l'équipe",
+      "changesPending": "Vos dernières modifications sont déjà en ligne et l'équipe va les vérifier."
+    },
+    "editor": {
+      "back": "Formations et produits",
+      "loadError": "Impossible de charger ce produit.",
+      "retry": "Réessayer",
+      "sales": "{count, plural, =0 {aucune vente} one {# vente} other {# ventes}}",
+      "lockedNotice": "Ce produit est en vérification et ne peut pas être modifié. Retirez la soumission pour le modifier.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Vous avez des modifications non enregistrées."
+    },
+    "fields": {
+      "sectionFrench": "Présentation",
+      "titleFr": "Titre",
+      "summaryFr": "Résumé",
+      "summaryHint": "{count} / {max} caractères. Affiché dans les listes et sous le titre.",
+      "sectionPrice": "Prix et visibilité",
+      "price": "Prix (avant taxes)",
+      "priceHint": "Entre 5 $ et 1 000 $. La TPS et la TVQ s'ajoutent au paiement, s'il y a lieu ; votre part est calculée sur ce prix.",
+      "externalFree": "Un lien externe est toujours gratuit sur Je chemine.",
+      "listInLibrary": "Aussi lister dans la bibliothèque du site",
+      "listInLibraryHint": "Le produit apparaît aussi dans la bibliothèque de ressources, en plus de votre page.",
+      "sectionCover": "Image de couverture",
+      "coverHint": "PNG, JPEG ou WebP, 2 Mo au maximum. Format paysage conseillé.",
+      "coverAlt": "Aperçu de l'image de couverture",
+      "uploadCover": "Ajouter une image",
+      "replaceCover": "Remplacer l'image",
+      "removeCover": "Retirer l'image",
+      "sectionDelivery": "Ce que la personne reçoit",
+      "mediaUrlFr": "Lien de la vidéo ou de l'audio",
+      "mediaUrlEn": "Lien de la version anglaise (facultatif)",
+      "mediaHintVideo": "Un lien YouTube, Vimeo, Dailymotion ou Loom (https).",
+      "mediaHintAudio": "Un lien Spotify, Apple Podcasts ou SoundCloud (https).",
+      "fileFr": "Fichier PDF",
+      "fileEn": "Fichier PDF en anglais (facultatif)",
+      "fileHint": "PDF, 10 Mo au maximum. Le fichier est téléversé tout de suite, sans attendre l'enregistrement.",
+      "fileEnHint": "Sans fichier anglais, le PDF français est offert.",
+      "fileUploaded": "Fichier téléversé.",
+      "noFile": "Aucun fichier",
+      "uploadFile": "Téléverser un PDF",
+      "replaceFile": "Remplacer le PDF",
+      "webinarStartsAt": "Date et heure",
+      "webinarTimezone": "Heure de Montréal.",
+      "webinarDuration": "Durée (minutes)",
+      "webinarDurationHint": "Entre 15 et {max} minutes.",
+      "webinarJoinUrl": "Lien de la salle",
+      "webinarJoinHint": "Zoom, Teams, Google Meet ou autre (https). Communiqué seulement aux personnes inscrites.",
+      "webinarReplayUrl": "Lien de la rediffusion (facultatif)",
+      "webinarReplayHint": "Ajoutez-le après la séance pour les personnes inscrites.",
+      "externalUrl": "Lien vers votre site",
+      "externalHint": "L'adresse (https) de la page où l'offre est présentée.",
+      "sectionBody": "Contenu",
+      "previewFr": "Aperçu (facultatif)",
+      "previewHint": "Affiché à tout le monde, au-dessus du prix. Sans aperçu, le résumé est utilisé.",
+      "contentFr": "Contenu",
+      "contentHint": "Réservé aux personnes qui ont acheté le produit.",
+      "contentHintExternal": "La description affichée sur la page du lien.",
+      "sectionEnglish": "Version anglaise (facultatif)",
+      "englishHint": "Tout champ laissé vide en anglais reprend le texte français.",
+      "titleEn": "Titre en anglais",
+      "summaryEn": "Résumé en anglais",
+      "previewEn": "Aperçu en anglais",
+      "contentEn": "Contenu en anglais",
+      "webinarRemindersHint": "Les personnes inscrites reçoivent un rappel par courriel la veille et une heure avant le début."
+    },
+    "missing": {
+      "title": "Ce qui manque",
+      "none": "Tout est prêt pour la soumission.",
+      "afterSave": "La liste se met à jour après l'enregistrement."
+    },
+    "requirements": {
+      "title": "Un titre en français",
+      "summary": "Un résumé en français",
+      "content": "Une description ou un résumé",
+      "price": "Un prix entre 5 $ et 1 000 $",
+      "media": "Le lien de la vidéo ou de l'audio",
+      "file": "Le fichier PDF",
+      "link": "Le lien vers votre site",
+      "webinar": "La date et le lien de la salle du webinaire",
+      "attestation": "L'attestation des droits sur le contenu"
+    },
+    "actions": {
+      "submit": "Soumettre à l'équipe",
+      "withdraw": "Retirer la soumission",
+      "unpublish": "Retirer du site",
+      "delete": "Supprimer",
+      "preview": "Aperçu de la page"
+    },
+    "submit": {
+      "title": "Soumettre ce produit",
+      "body": "L'équipe vérifiera le produit avant sa mise en ligne. Vous ne pourrez pas le modifier pendant la vérification.",
+      "stillMissing": "Il manque encore :",
+      "attest": "J'atteste détenir les droits sur ce contenu et accepter les conditions de vente des professionnels",
+      "confirm": "Soumettre",
+      "done": "Produit soumis. L'équipe vous écrira dès qu'une décision sera prise.",
+      "saveFirst": "Vos modifications n'ont pas pu être enregistrées. Corrigez-les avant de soumettre."
+    },
+    "withdraw": {
+      "done": "Soumission retirée. Le produit est de nouveau un brouillon."
+    },
+    "unpublish": {
+      "title": "Retirer ce produit du site?",
+      "body": "Il ne sera plus vendu. Les personnes qui l'ont déjà acheté y gardent accès. Pour le remettre en ligne, il faudra le soumettre de nouveau.",
+      "confirm": "Retirer du site",
+      "done": "Le produit a été retiré du site."
+    },
+    "delete": {
+      "title": "Supprimer ce produit?",
+      "body": "Le produit et ses fichiers seront supprimés définitivement.",
+      "confirm": "Supprimer",
+      "hasSales": "Ce produit a déjà été acheté : il ne peut pas être supprimé, puisque les personnes qui l'ont acheté y gardent accès. Vous pouvez plutôt le retirer du site."
+    },
+    "errors": {
+      "INVALID_TITLE": "Le titre est obligatoire et ne doit pas dépasser 120 caractères.",
+      "INVALID_SUMMARY": "Le résumé ne doit pas dépasser 400 caractères.",
+      "INVALID_HTML": "Le contenu n'a pas pu être lu.",
+      "HTML_TOO_LARGE": "Le contenu est trop long. Raccourcissez-le ou retirez des images.",
+      "INVALID_PRICE": "Le prix doit se situer entre 5 $ et 1 000 $.",
+      "INVALID_MEDIA_URL": "Ce lien n'est pas accepté. Utilisez un lien https d'un des services indiqués.",
+      "INVALID_LINK": "Ce lien n'est pas valide. Il doit commencer par https://.",
+      "INVALID_WEBINAR": "La date ou la durée du webinaire n'est pas valide.",
+      "INVALID_IMAGE": "Cette image n'est pas valide. Téléversez-la de nouveau.",
+      "INVALID_TYPE": "Ce type de produit n'est pas offert.",
+      "UNDER_REVIEW": "Ce produit est en vérification. Retirez la soumission pour le modifier.",
+      "TRANSITION_NOT_ALLOWED": "Cette action n'est plus possible dans l'état actuel du produit.",
+      "INCOMPLETE": "Le produit n'est pas encore complet :",
+      "HAS_SALES": "Ce produit a déjà été acheté et ne peut pas être supprimé. Vous pouvez le retirer du site.",
+      "NOT_FOUND": "Ce produit est introuvable.",
+      "SCAN_UNAVAILABLE": "La vérification antivirus est indisponible pour le moment. Réessayez dans quelques minutes.",
+      "ACCOUNT_NOT_ACTIVE": "Cette section est réservée aux professionnels dont le compte est actif et approuvé.",
+      "FILE_TOO_LARGE": "Ce fichier est trop volumineux.",
+      "FILE_REJECTED": "Ce fichier n'est pas accepté. Vérifiez son format et sa taille.",
+      "generic": "Une erreur est survenue. Réessayez."
+    }
+  },
+  "ProductsAdmin": {
+    "title": "Produits",
+    "subtitle": "Les formations et produits numériques que les professionnel·les vendent sur Je chemine. Approuvez pour mettre en vente, refusez avec des notes ou retirez un produit en ligne.",
+    "previewNote": "L'équipe ne modifie jamais le texte d'un·e professionnel·le : ouvrez l'aperçu pour voir le produit tel qu'il sera affiché.",
+    "refresh": "Actualiser",
+    "scopes": {
+      "review": "À vérifier",
+      "all": "Tous"
+    },
+    "search": "Rechercher par titre ou professionnel·le",
+    "count": "{count, plural, =0 {Aucun produit} one {# produit} other {# produits}}",
+    "empty": "Aucun produit ne correspond.",
+    "emptyReview": "Rien à vérifier pour le moment.",
+    "columns": {
+      "title": "Titre",
+      "professional": "Professionnel·le",
+      "type": "Type",
+      "price": "Prix",
+      "status": "Statut",
+      "submitted": "Soumis le",
+      "sales": "Ventes",
+      "actions": "Actions"
+    },
+    "preview": "Aperçu",
+    "free": "Gratuit",
+    "changesPending": "Modifications à vérifier",
+    "live": "En ligne",
+    "lastNotes": "Dernières notes : {notes}",
+    "types": {
+      "video": "Vidéo",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "webinar": "Webinaire",
+      "external": "Lien externe"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "Soumis",
+      "approved": "Approuvé",
+      "rejected": "Refusé",
+      "unpublished": "Retiré"
+    },
+    "actions": {
+      "approve": "Approuver",
+      "approveChanges": "Approuver les modifications",
+      "reject": "Refuser",
+      "unpublish": "Retirer"
+    },
+    "rejectDialog": {
+      "title": "Refuser « {title} »",
+      "body": "Vos notes seront envoyées à la personne professionnelle pour l'aider à corriger son produit.",
+      "notesLabel": "Notes (obligatoires)",
+      "notesPlaceholder": "Expliquez ce qui doit être corrigé…",
+      "confirm": "Refuser le produit"
+    },
+    "unpublishDialog": {
+      "title": "Retirer « {title} »",
+      "body": "Le produit ne sera plus en vente. Les personnes qui l'ont déjà acheté y gardent l'accès.",
+      "confirm": "Retirer le produit"
+    },
+    "cancel": "Annuler",
+    "done": {
+      "approve": "« {title} » est approuvé et mis en vente.",
+      "approveChanges": "Les modifications de « {title} » sont approuvées.",
+      "reject": "« {title} » est refusé; les notes ont été envoyées.",
+      "unpublish": "« {title} » est retiré de la vente."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "NOTES_REQUIRED": "Ajoutez des notes pour expliquer le refus.",
+      "TRANSITION_NOT_ALLOWED": "Ce produit a changé entre-temps. La liste a été mise à jour.",
+      "NOT_FOUND": "Ce produit n'existe plus. La liste a été mise à jour.",
+      "INVALID_ACTION": "Action non reconnue."
+    },
+    "access": {
+      "title": "Accès requis",
+      "body": "La gestion du contenu est nécessaire pour vérifier les produits. Demandez l'accès à un·e super-administrateur·trice."
+    }
+  },
+  "ArticlesPro": {
+    "title": "Mes articles",
+    "subtitle": "Écrivez des articles pour votre page. L'équipe les relit avant leur publication.",
+    "common": { "cancel": "Annuler" },
+    "howItWorks": {
+      "title": "Comment ça fonctionne",
+      "review": "Chaque article est relu par l'équipe avant d'être publié sur votre page. Vos modifications d'un article en ligne sont aussi relues.",
+      "rules": "Pas de témoignages ni de promesses de résultats. Une note rappelle au lecteur qu'un article ne remplace pas une consultation.",
+      "news": "L'équipe peut aussi afficher un article dans les Nouveautés du site."
+    },
+    "list": {
+      "new": "Nouvel article",
+      "loadError": "Impossible de charger vos articles.",
+      "emptyTitle": "Aucun article pour l'instant",
+      "emptyBody": "Donnez un titre à votre premier article, écrivez-le, puis envoyez-le à l'équipe.",
+      "updated": "Modifié le",
+      "viewPublic": "Voir l'article",
+      "edit": "Modifier"
+    },
+    "create": {
+      "title": "Nouvel article",
+      "description": "Donnez un titre en français. Vous écrirez le reste ensuite.",
+      "titleFr": "Titre en français",
+      "titleHint": "Le titre sert aussi à créer l'adresse de l'article, qui ne change plus par la suite.",
+      "submit": "Créer le brouillon"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "En vérification",
+      "approved": "Publié",
+      "rejected": "Renvoyé",
+      "unpublished": "Retiré"
+    },
+    "badges": {
+      "live": "En ligne",
+      "changesPending": "Modifications à relire",
+      "inNews": "Dans les Nouveautés"
+    },
+    "banner": {
+      "draft": "Cet article n'est pas encore visible. Écrivez-le, puis envoyez-le à l'équipe.",
+      "submitted": "L'équipe relit cet article. Vous recevrez un courriel dès qu'une décision sera prise.",
+      "approved": "Cet article est publié sur votre page tant que votre compte est actif.",
+      "rejected": "L'équipe vous a renvoyé cet article. Apportez les changements demandés, puis envoyez-le de nouveau.",
+      "unpublishedByProfessional": "Vous avez retiré cet article. Envoyez-le de nouveau pour le remettre en ligne.",
+      "unpublishedByAdmin": "L'équipe a retiré cet article. Envoyez-le de nouveau pour le remettre en ligne.",
+      "notes": "Commentaires de l'équipe",
+      "changesPending": "Vos dernières modifications sont déjà en ligne et l'équipe va les relire."
+    },
+    "editor": {
+      "back": "Mes articles",
+      "loadError": "Impossible de charger cet article.",
+      "lockedNotice": "Cet article est en vérification et ne peut pas être modifié. Retirez l'envoi pour le modifier.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Vous avez des modifications non enregistrées."
+    },
+    "fields": {
+      "sectionFrench": "Présentation",
+      "titleFr": "Titre",
+      "summaryFr": "Résumé",
+      "summaryHint": "{count} / {max} caractères. Affiché sur votre page et sous le titre.",
+      "sectionCover": "Image de couverture",
+      "coverHint": "PNG, JPEG ou WebP, 2 Mo au maximum. Format paysage conseillé. Aucune personne reconnaissable.",
+      "coverAlt": "Aperçu de l'image de couverture",
+      "uploadCover": "Ajouter une image",
+      "replaceCover": "Remplacer l'image",
+      "removeCover": "Retirer l'image",
+      "contentFr": "Texte de l'article",
+      "contentHint": "Titres, listes, citations et images sont permis. Pas de témoignages ni de promesses de résultats.",
+      "sectionEnglish": "Version anglaise (facultatif)",
+      "englishHint": "Tout champ laissé vide en anglais reprend le texte français.",
+      "titleEn": "Titre en anglais",
+      "summaryEn": "Résumé en anglais",
+      "contentEn": "Texte en anglais"
+    },
+    "missing": {
+      "title": "Ce qui manque",
+      "none": "Tout est prêt pour l'envoi.",
+      "afterSave": "La liste se met à jour après l'enregistrement."
+    },
+    "requirements": {
+      "title": "Un titre en français",
+      "summary": "Un résumé en français",
+      "content": "Le texte de l'article",
+      "attestation": "La confirmation : ni témoignage ni promesse de résultat"
+    },
+    "actions": {
+      "submit": "Envoyer à l'équipe",
+      "withdraw": "Retirer l'envoi",
+      "unpublish": "Retirer de ma page",
+      "delete": "Supprimer",
+      "view": "Voir l'article"
+    },
+    "submit": {
+      "title": "Envoyer cet article",
+      "body": "L'équipe relira l'article avant sa publication. Vous ne pourrez pas le modifier pendant la vérification.",
+      "attest": "Je confirme que cet article ne contient ni témoignage ni promesse de résultat, et que j'en détiens les droits.",
+      "confirm": "Envoyer",
+      "done": "Article envoyé. L'équipe vous écrira dès qu'une décision sera prise.",
+      "saveFirst": "Vos modifications n'ont pas pu être enregistrées. Corrigez-les avant d'envoyer."
+    },
+    "withdraw": { "done": "Envoi retiré. L'article est de nouveau un brouillon." },
+    "unpublish": {
+      "title": "Retirer cet article de votre page?",
+      "body": "Il ne sera plus visible. Pour le remettre en ligne, il faudra l'envoyer de nouveau à l'équipe.",
+      "confirm": "Retirer de ma page",
+      "done": "L'article a été retiré de votre page."
+    },
+    "delete": {
+      "title": "Supprimer cet article?",
+      "body": "L'article sera supprimé définitivement.",
+      "confirm": "Supprimer"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "INVALID_TITLE": "Le titre est obligatoire et ne doit pas dépasser 120 caractères.",
+      "INVALID_SUMMARY": "Le résumé ne doit pas dépasser 400 caractères.",
+      "INVALID_HTML": "Le texte n'a pas pu être lu.",
+      "HTML_TOO_LARGE": "Le texte est trop long. Raccourcissez-le ou retirez des images.",
+      "INVALID_IMAGE": "Cette image n'est pas valide. Téléversez-la de nouveau.",
+      "UNDER_REVIEW": "Cet article est en vérification. Retirez l'envoi pour le modifier.",
+      "TRANSITION_NOT_ALLOWED": "Cette action n'est plus possible dans l'état actuel de l'article.",
+      "INCOMPLETE": "L'article n'est pas encore complet :",
+      "NOT_FOUND": "Cet article est introuvable.",
+      "ACCOUNT_NOT_ACTIVE": "Cette section est réservée aux professionnels dont le compte est actif et approuvé.",
+      "FILE_TOO_LARGE": "Ce fichier est trop volumineux.",
+      "FILE_REJECTED": "Ce fichier n'est pas accepté. Vérifiez son format et sa taille."
+    }
+  },
+  "ArticlesAdmin": {
+    "title": "Articles à vérifier",
+    "subtitle": "Les articles que les professionnel·les écrivent pour leur page. Approuvez pour publier, renvoyez avec des notes, retirez, ou affichez un article dans les Nouveautés du site.",
+    "refresh": "Actualiser",
+    "scopes": { "review": "À vérifier", "all": "Tous" },
+    "empty": "Aucun article.",
+    "emptyReview": "Rien à vérifier pour le moment.",
+    "columns": {
+      "title": "Titre",
+      "professional": "Professionnel·le",
+      "status": "Statut",
+      "submitted": "Envoyé le",
+      "news": "Nouveautés",
+      "actions": "Actions"
+    },
+    "preview": "Lire l'article",
+    "changesPending": "Modifications à relire",
+    "live": "En ligne",
+    "lastNotes": "Dernières notes : {notes}",
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "Envoyé",
+      "approved": "Publié",
+      "rejected": "Renvoyé",
+      "unpublished": "Retiré"
+    },
+    "actions": {
+      "approve": "Approuver",
+      "approveChanges": "Approuver les modifications",
+      "reject": "Renvoyer",
+      "unpublish": "Retirer",
+      "feature": "Afficher dans les Nouveautés",
+      "unfeature": "Retirer des Nouveautés"
+    },
+    "rejectDialog": {
+      "title": "Renvoyer « {title} »",
+      "body": "Vos notes seront envoyées à la personne professionnelle pour l'aider à corriger son article.",
+      "notesLabel": "Notes (obligatoires)",
+      "notesPlaceholder": "Expliquez ce qui doit être corrigé…",
+      "confirm": "Renvoyer l'article"
+    },
+    "unpublishDialog": {
+      "title": "Retirer « {title} »",
+      "body": "L'article ne sera plus visible, ni sur la page du professionnel ni dans les Nouveautés.",
+      "confirm": "Retirer l'article"
+    },
+    "cancel": "Annuler",
+    "done": {
+      "approve": "« {title} » est approuvé et publié.",
+      "approveChanges": "Les modifications de « {title} » sont approuvées.",
+      "reject": "« {title} » est renvoyé; les notes ont été envoyées.",
+      "unpublish": "« {title} » est retiré.",
+      "feature": "« {title} » est affiché dans les Nouveautés.",
+      "unfeature": "« {title} » est retiré des Nouveautés."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "NOTES_REQUIRED": "Ajoutez des notes pour expliquer le renvoi.",
+      "TRANSITION_NOT_ALLOWED": "Cet article a changé entre-temps. La liste a été mise à jour.",
+      "NOT_FOUND": "Cet article n'existe plus. La liste a été mise à jour.",
+      "INVALID_ACTION": "Action non reconnue."
+    },
+    "access": {
+      "title": "Accès réservé",
+      "body": "Cet écran est réservé aux administrateurs qui gèrent le contenu. Demandez cette permission à un super administrateur."
+    }
+  },
+  "ContentEditor": {
+    "toolbar": "Mise en forme",
+    "bold": "Gras",
+    "italic": "Italique",
+    "underline": "Souligné",
+    "paragraph": "Paragraphe",
+    "heading2": "Titre de section (H2)",
+    "heading3": "Sous-titre (H3)",
+    "bulletList": "Liste à puces",
+    "orderedList": "Liste numérotée",
+    "blockquote": "Encadré (citation)",
+    "link": "Insérer un lien",
+    "image": "Insérer une image",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "linkPrompt": "Adresse du lien (laissez vide pour retirer le lien)",
+    "uploadTooLarge": "Cette image est trop lourde.",
+    "uploadType": "Ce format d'image n'est pas accepté.",
+    "uploadInfected": "L'antivirus a refusé ce fichier.",
+    "uploadScanUnavailable": "L'antivirus ne répond pas pour le moment. Réessayez dans quelques minutes.",
+    "uploadFailed": "L'image n'a pas pu être téléversée. Réessayez."
   }
 }

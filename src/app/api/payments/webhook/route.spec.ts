@@ -41,6 +41,7 @@ const h = vi.hoisted(() => ({
   orgDebitFailure: vi.fn(),
   orgDebitClear: vi.fn(),
   chargeRetrieve: vi.fn(),
+  settleProduct: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
@@ -104,6 +105,7 @@ vi.mock("@/lib/notifications", () => ({
 vi.mock("@/models/ContentEntry", () => ({
   default: { findOne: h.entryFindOne },
 }));
+vi.mock("@/lib/products", () => ({ settleProductPurchase: h.settleProduct }));
 vi.mock("@/lib/guardian-utils", () => ({ resolveAppointmentRecipient: vi.fn() }));
 vi.mock("@/lib/payment-settlement", () => ({
   voidReceiptForRefund: vi.fn(),
@@ -158,10 +160,59 @@ beforeEach(() => {
   h.orgDebitFailure.mockResolvedValue("ignored");
   h.orgDebitClear.mockResolvedValue(undefined);
   h.chargeRetrieve.mockResolvedValue({ id: "ch_org", amount_refunded: 0 });
+  h.settleProduct.mockReset();
+  h.settleProduct.mockResolvedValue(undefined);
   process.env.NEXTAUTH_URL = "https://www.jechemine.ca";
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
+describe("a professional's product (spec 003 phase 5)", () => {
+  const owned = { _id: "ent1", ownerProfessionalId: "pro1" };
+
+  it("settles the professional's share on a grant, and when the checkout confirmation granted first", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({ outcome: "granted", entitlement: owned });
+    await POST(req());
+    expect(h.settleProduct).toHaveBeenCalledWith("ent1");
+
+    h.settleProduct.mockClear();
+    h.grant.mockResolvedValue({ outcome: "already-paid", entitlement: owned });
+    await POST(req());
+    expect(h.settleProduct).toHaveBeenCalledWith("ent1");
+  });
+
+  it("settles nothing for the team's own resources, an underpaid intent or a missing row", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({ outcome: "granted", entitlement: { _id: "ent1" } });
+    await POST(req());
+    h.grant.mockResolvedValue({ outcome: "underpaid", entitlement: owned });
+    await POST(req());
+    h.grant.mockResolvedValue({ outcome: "not-found", entitlement: null });
+    await POST(req());
+    expect(h.settleProduct).not.toHaveBeenCalled();
+  });
+
+  it("settles again after a refund, a dispute and a refund that failed", async () => {
+    h.entFindOne.mockResolvedValue(owned);
+    h.constructEvent.mockReturnValue(event("charge.refunded", { id: "ch_1", amount: 1900, amount_refunded: 1900, payment_intent: PI_ID }));
+    await POST(req());
+    h.constructEvent.mockReturnValue(event("charge.dispute.created", { id: "dp_1", payment_intent: PI_ID }));
+    await POST(req());
+    h.constructEvent.mockReturnValue(event("charge.refund.updated", { id: "re_1", status: "failed", payment_intent: PI_ID, metadata: {} }));
+    await POST(req());
+    expect(h.settleProduct.mock.calls).toEqual([["ent1"], ["ent1"], ["ent1"]]);
+  });
+
+  it("releases the claim and 500s when the ledger cannot be written, so Stripe retries", async () => {
+    h.constructEvent.mockReturnValue(event("payment_intent.succeeded", resourcePi()));
+    h.grant.mockResolvedValue({ outcome: "granted", entitlement: owned });
+    h.settleProduct.mockRejectedValue(new Error("mongo down"));
+    const res = await POST(req());
+    expect(res.status).toBe(500);
+    expect(h.webhookEventDeleteOne).toHaveBeenCalledWith({ eventId: EVENT_ID });
+  });
 });
 
 describe("signature and idempotency", () => {

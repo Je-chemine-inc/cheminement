@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  parseDirectIntent,
   pickAppointmentPatch,
   pickBookingIntake,
   toWriterRole,
@@ -82,19 +83,42 @@ describe("pickBookingIntake", () => {
     expect(manual.dropped).toContain("paymentMethod");
   });
 
-  it("keeps the direct-booking fields the guest route validates itself", () => {
-    const { data } = pickBookingIntake({
+  it("drops a professional, a date and a time sent straight in", () => {
+    // Through the guest route this attached any professional to a request as
+    // already accepted, with nothing holding the time (spec 003 phase 3).
+    const { data, dropped } = pickBookingIntake({
       professionalId: "p1",
       date: "2026-10-01",
       time: "10:00",
       duration: 50,
     });
-    expect(data).toEqual({
-      professionalId: "p1",
-      date: "2026-10-01",
-      time: "10:00",
-      duration: 50,
+    expect(data).toEqual({});
+    expect([...dropped].sort()).toEqual(["date", "duration", "professionalId", "time"]);
+  });
+
+  it("leaves a showcase slot request to parseDirectIntent, without logging it as dropped", () => {
+    const { data, dropped } = pickBookingIntake({
+      ...funnelBody,
+      direct: { slug: "sassi", service: "standard", date: "2026-10-01", time: "10:00" },
     });
+    expect(data).not.toHaveProperty("direct");
+    expect(dropped).toEqual([]);
+  });
+
+  it("reads a showcase slot request's shape, and refuses a malformed one", () => {
+    const direct = { slug: "dre-sassi", service: "quick", date: "2026-10-01", time: "10:15" };
+    expect(parseDirectIntent(direct)).toEqual({ ok: true, intent: direct });
+    expect(parseDirectIntent(undefined)).toEqual({ ok: true, intent: null });
+    for (const bad of [
+      "sassi",
+      { ...direct, slug: "../x" },
+      { ...direct, service: "couple" },
+      { ...direct, date: "2026-02-30" },
+      { ...direct, time: "9:00" },
+      { ...direct, date: { $gt: "" } },
+    ]) {
+      expect(parseDirectIntent(bad)).toEqual({ ok: false });
+    }
   });
 
   it("returns nothing for a non-object body", () => {

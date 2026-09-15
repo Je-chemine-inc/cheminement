@@ -1,6 +1,5 @@
 import { getPlatformContactInfo, getSocialLinks } from "@/lib/platform-contact";
-
-const SITE_URL = "https://www.jechemine.ca";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Organization structured data, emitted once on every page.

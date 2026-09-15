@@ -3,10 +3,13 @@ import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { authOptions } from "@/lib/auth";
+import { redactPaymentForProfessionalAll } from "@/lib/redact-payment";
 import {
   triggerDueCascadeCron,
+  triggerDueWaitlistOffers,
   triggerDuePaymentReminders,
   triggerDueAppointmentReminders,
+  triggerDueProductJobs,
 } from "@/lib/lazy-cron";
 
 /**
@@ -35,12 +38,17 @@ export async function GET(req: NextRequest) {
     // general pool without an external scheduler. Throttled + idempotent (see
     // lazy-cron.ts); after() runs it post-response.
     after(() => triggerDueCascadeCron());
+    // Waitlist offers and direct request deadlines (spec 003 phase 4).
+    after(() => triggerDueWaitlistOffers());
     // Same opportunistic trigger for the post-session invoice dunning
     // (H+12/H+36 reminders, H+48 overdue). Separately throttled (30 min).
     after(() => triggerDuePaymentReminders());
     // And the pre-appointment H-72 (cancel/reschedule) / H-48 reminders, which
     // the system cron may be down. Throttled (30 min).
     after(() => triggerDueAppointmentReminders());
+    // Webinar reminders and product status upkeep (spec 003 phase 5).
+    // Throttled (10 min).
+    after(() => triggerDueProductJobs());
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status"); // Optional filter
@@ -67,7 +75,12 @@ export async function GET(req: NextRequest) {
     // for the same defense against orphan records.
     const safe = appointments.filter((apt) => apt.clientId != null);
 
-    return NextResponse.json(safe);
+    // A professional never sees what the client pays nor the platform's margin
+    // (they used to, here only). A request from a showcase page carries its
+    // price from the start.
+    return NextResponse.json(
+      redactPaymentForProfessionalAll(safe.map((apt) => apt.toObject())),
+    );
   } catch (error) {
     console.error("Get proposed appointments error:", error);
     return NextResponse.json(

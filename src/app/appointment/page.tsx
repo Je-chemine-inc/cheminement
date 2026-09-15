@@ -63,6 +63,8 @@ import {
 import { cn } from "@/lib/utils";
 import AppointmentForm from "@/components/appointments/AppointmentForm";
 import ProfileSelectionCard from "@/components/appointments/ProfileSelectionCard";
+import { DirectRequestBanner } from "@/components/appointments/DirectRequestBanner";
+import { useShowcaseDirectRequest } from "@/components/appointments/useShowcaseDirectRequest";
 import { useTranslations, useLocale } from "next-intl";
 
 interface GuestInfo {
@@ -302,6 +304,34 @@ export default function BookAppointmentPage() {
   // request at reception (alert email + "Urgence" badge in the admin queue).
   const emergency = searchParams.get("emergency") === "true";
 
+  // A time chosen on a professional's showcase page (spec 003): ?pro=&service=
+  // &date=&time=. Once the page confirms the consultation is still offered, the
+  // request is sent for that time — no availability grid — and the server holds
+  // the slot until the professional answers. Otherwise it is an ordinary request.
+  const directRequest = useShowcaseDirectRequest(searchParams);
+  const direct = directRequest.status === "ready" ? directRequest.intent : null;
+  const directLoading = directRequest.status === "loading";
+  const tDirect = useTranslations("DirectRequests.funnel");
+  /** A quick consultation is always an individual session. */
+  const requestTherapyType = direct?.service === "quick" ? "solo" : therapyType;
+  const directErrorMessage = (err: unknown): string | null => {
+    const code = err instanceof ApiClientError ? err.code : undefined;
+    return code === "SLOT_TAKEN" || code === "SERVICE_UNAVAILABLE" || code === "SHOWCASE_NOT_FOUND"
+      ? tDirect(`errors.${code}`)
+      : null;
+  };
+  /** A slot's Montréal day and time, formatted in UTC so the viewer's zone never shifts it. */
+  const formatDirectSlot = (dayKey: string, time: string) => {
+    const at = new Date(`${dayKey}T${time}:00Z`);
+    return `${at.toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}, ${at.toLocaleTimeString(dateLocale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" })}`;
+  };
+  /** The "who is it for" cards keep the other parameters, a chosen slot among them. */
+  const withFor = (who: "self" | "loved-one" | "patient") => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.set("for", who);
+    return `/appointment?${query.toString()}`;
+  };
+
   // Fetch medical profile for defaults (authenticated users only)
   useEffect(() => {
     const fetchMedicalProfile = async () => {
@@ -418,7 +448,11 @@ export default function BookAppointmentPage() {
   };
 
   const handleSignIn = () => {
-    router.push("/login?returnUrl=/appointment");
+    // Keep the funnel's parameters (who it is for, a chosen showcase slot).
+    const query = searchParams.toString();
+    router.push(
+      `/login?returnUrl=${encodeURIComponent(query ? `/appointment?${query}` : "/appointment")}`,
+    );
   };
 
   const handleWhoChoice = (who: "self" | "patient" | "loved-one") => {
@@ -578,7 +612,7 @@ export default function BookAppointmentPage() {
       setError(tB("errors.motifMax"));
       return false;
     }
-    if (preferredAvailability.length === 0) {
+    if (!direct && preferredAvailability.length === 0) {
       setError(tB("errors.availabilityRequired"));
       return false;
     }
@@ -736,7 +770,7 @@ export default function BookAppointmentPage() {
       setLoading(true);
       setError("");
 
-      if (preferredAvailability.length === 0) {
+      if (!direct && preferredAvailability.length === 0) {
         setError(tB("errors.availabilityRequired"));
         setLoading(false);
         return;
@@ -758,7 +792,13 @@ export default function BookAppointmentPage() {
         preferredPaymentMethod: paymentMethod,
       };
 
-      if (emergency) appointmentData.emergency = true;
+      if (direct) {
+        // The chosen slot decides; the server re-checks and holds it.
+        appointmentData.direct = direct;
+        appointmentData.therapyType = requestTherapyType;
+      } else if (emergency) {
+        appointmentData.emergency = true;
+      }
       const declaredPayer = toThirdPartyPayerPayload(thirdPartyPayer);
       if (declaredPayer && bookingFor !== "patient") {
         appointmentData.thirdPartyPayer = declaredPayer;
@@ -818,13 +858,18 @@ export default function BookAppointmentPage() {
       setCurrentStep(5); // Success step
     } catch (err: unknown) {
       console.error("Error booking appointment:", err);
-      setError(err instanceof Error ? err.message : tB("errors.submitFailed"));
+      setError(
+        directErrorMessage(err) ??
+          (err instanceof Error ? err.message : tB("errors.submitFailed")),
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleSubmit = async () => {
+    // The chosen showcase slot is still being checked.
+    if (directLoading) return;
     const issueTypeMissing =
       !issueType || !Array.isArray(issueType) || issueType.length === 0;
     if (!selectedType || (issueTypeMissing && bookingFor !== "patient")) {
@@ -835,7 +880,7 @@ export default function BookAppointmentPage() {
       setError(tB("errors.motifMax"));
       return;
     }
-    if (preferredAvailability.length === 0) {
+    if (!direct && preferredAvailability.length === 0) {
       setError(tB("errors.availabilityRequired"));
       return;
     }
@@ -871,11 +916,16 @@ export default function BookAppointmentPage() {
         preferredPaymentMethod: paymentMethod,
       };
 
-      if (changeProfessional) {
-        appointmentData.changeProfessional = true;
+      if (direct) {
+        // The chosen slot decides; the server re-checks and holds it.
+        appointmentData.direct = direct;
+        appointmentData.therapyType = requestTherapyType;
+      } else {
+        if (changeProfessional) {
+          appointmentData.changeProfessional = true;
+        }
+        if (emergency) appointmentData.emergency = true;
       }
-
-      if (emergency) appointmentData.emergency = true;
       const declaredPayer = toThirdPartyPayerPayload(thirdPartyPayer);
       if (declaredPayer && bookingFor !== "patient") {
         appointmentData.thirdPartyPayer = declaredPayer;
@@ -909,7 +959,10 @@ export default function BookAppointmentPage() {
         return;
       }
       console.error("Error submitting request:", err);
-      setError(err instanceof Error ? err.message : tB("errors.submitFailed"));
+      setError(
+        directErrorMessage(err) ??
+          (err instanceof Error ? err.message : tB("errors.submitFailed")),
+      );
     } finally {
       setLoading(false);
     }
@@ -1094,21 +1147,21 @@ export default function BookAppointmentPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <ProfileSelectionCard
-              href="/appointment?for=self"
+              href={withFor("self")}
               icon={User}
               title={tHero("forSelf")}
               description={tHero("forSelfDesc")}
               cta={tHero("bookNow")}
             />
             <ProfileSelectionCard
-              href="/appointment?for=loved-one"
+              href={withFor("loved-one")}
               icon={Users}
               title={tHero("forLovedOne")}
               description={tHero("forLovedOneDesc")}
               cta={tHero("bookNow")}
             />
             <ProfileSelectionCard
-              href="/appointment?for=patient"
+              href={withFor("patient")}
               icon={Stethoscope}
               title={tHero("forPatient")}
               description={tHero("forPatientDesc")}
@@ -1162,8 +1215,11 @@ export default function BookAppointmentPage() {
 
           {/* Main Content */}
           <div className="lg:col-span-8 xl:col-span-9">
-            {/* Error Display */}
-            {error && currentStep < 4 && (
+            {/* A time chosen on a showcase page (spec 003) */}
+            {currentStep !== 5 ? <DirectRequestBanner state={directRequest} /> : null}
+
+            {/* Error Display — step 4 submits too, so its errors show here */}
+            {error && currentStep <= 4 && (
               <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 p-4">
                 <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                   <AlertCircle className="h-5 w-5" />
@@ -1909,7 +1965,8 @@ export default function BookAppointmentPage() {
                         />
                       </div>
 
-                      {/* Preferred availability grid (required for this step) */}
+                      {/* Preferred availability grid (required for this step, unless a showcase slot was chosen) */}
+                      {!direct && (
                       <div className="space-y-2">
                         <Label>
                           {tB("preferredAvailability")}
@@ -1928,6 +1985,7 @@ export default function BookAppointmentPage() {
                           onChange={setPreferredAvailability}
                         />
                       </div>
+                      )}
 
                       {/* Account Manager / Guardian Section for Minors */}
                       {lovedOneInfo.dateOfBirth && (
@@ -2576,7 +2634,8 @@ export default function BookAppointmentPage() {
                       </div>
                     </>
                   )}
-                  {/* Session Type */}
+                  {/* Session Type — a quick consultation is always individual */}
+                  {direct?.service !== "quick" && (
                   <div className="space-y-2">
                     <Label>{tB("sessionType")}</Label>
                     <Select
@@ -2610,6 +2669,7 @@ export default function BookAppointmentPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  )}
 
                   {/* Consultation / appointment modality */}
                   {bookingFor === "self" ? (
@@ -2721,8 +2781,8 @@ export default function BookAppointmentPage() {
                     </div>
                   )}
 
-                  {/* Preferred availability (clinical grid for all booking types) */}
-                  {bookingFor !== "loved-one" && (
+                  {/* Preferred availability (clinical grid for all booking types, unless a showcase slot was chosen) */}
+                  {bookingFor !== "loved-one" && !direct && (
                     <div className="space-y-2">
                       <Label>
                         {tB("preferredAvailability")}
@@ -2819,7 +2879,7 @@ export default function BookAppointmentPage() {
                             return;
                           }
                         }
-                        if (preferredAvailability.length === 0) {
+                        if (!direct && preferredAvailability.length === 0) {
                           setError(tB("errors.availabilityRequired"));
                           return;
                         }
@@ -2827,7 +2887,7 @@ export default function BookAppointmentPage() {
                         setCurrentStep(4);
                       }}
                       disabled={
-                        preferredAvailability.length === 0 ||
+                        (!direct && preferredAvailability.length === 0) ||
                         (((bookingFor ?? "") !== "patient") &&
                           (!issueType ||
                             !Array.isArray(issueType) ||
@@ -2935,7 +2995,20 @@ export default function BookAppointmentPage() {
                             : String(issueType)}
                         </p>
                       </div>
-                      {preferredAvailability.length > 0 && (
+                      {direct && directRequest.status === "ready" ? (
+                        <div className="md:col-span-2">
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {tDirect("reviewLabel")}
+                          </p>
+                          <p className="font-medium">
+                            {tDirect("reviewValue", {
+                              name: directRequest.summary.displayName,
+                              slot: formatDirectSlot(direct.date, direct.time),
+                            })}
+                          </p>
+                        </div>
+                      ) : null}
+                      {!direct && preferredAvailability.length > 0 && (
                         <div className="md:col-span-2">
                           <p className="text-xs text-muted-foreground mb-1">
                             {tB("preferredAvailabilityLabel")}
@@ -2984,11 +3057,15 @@ export default function BookAppointmentPage() {
                           {tB("whatNext")}
                         </p>
                         <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                          {tB("whatNextBody", {
-                            channel: isGuest
-                              ? tB("channelGuest")
-                              : tB("channelAccount"),
-                          })}
+                          {directRequest.status === "ready"
+                            ? tDirect("whatNextBody", {
+                                name: directRequest.summary.displayName,
+                              })
+                            : tB("whatNextBody", {
+                                channel: isGuest
+                                  ? tB("channelGuest")
+                                  : tB("channelAccount"),
+                              })}
                         </p>
                       </div>
                     </div>
@@ -2998,7 +3075,7 @@ export default function BookAppointmentPage() {
                     <Button variant="outline" onClick={() => setCurrentStep(bookingFor === "loved-one" ? 2.5 : 3)}>
                       {tB("back")}
                     </Button>
-                    <Button onClick={handleSubmit} disabled={loading}>
+                    <Button onClick={handleSubmit} disabled={loading || directLoading}>
                       {loading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -3024,7 +3101,12 @@ export default function BookAppointmentPage() {
                     {tB("requestSubmitted")}
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    {tB("requestSuccessBody")}
+                    {direct && directRequest.status === "ready"
+                      ? tDirect("successBody", {
+                          name: directRequest.summary.displayName,
+                          slot: formatDirectSlot(direct.date, direct.time),
+                        })
+                      : tB("requestSuccessBody")}
                   </p>
 
                   <div className="space-y-4 text-left bg-muted/30 rounded-lg p-6 mb-6">

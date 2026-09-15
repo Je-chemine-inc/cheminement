@@ -47,6 +47,7 @@ import { AvailabilitySlots } from "@/components/appointments/AvailabilitySlots";
 import { apiClient } from "@/lib/api-client";
 import { useMotifs, buildMotifLabelResolver } from "@/hooks/useMotifs";
 import { useLocale, useTranslations } from "next-intl";
+import { DirectRequestsPanel } from "@/components/appointments/DirectRequestsPanel";
 
 interface ClientInfo {
   _id: string;
@@ -101,7 +102,20 @@ interface ProposedAppointment {
   proposedAt?: string;
   /** Acceptance timestamp — take-charge-SLA deadline = matchedAt + 12h. */
   matchedAt?: string;
+  duration?: number;
+  /** A request a client made for one of the pro's slots on their showcase page (spec 003). */
+  directRequest?: {
+    state: string;
+    service: "standard" | "quick";
+    dayKey: string;
+    time: string;
+    respondBy: string;
+  };
 }
+
+/** Answered from its own card, never through /accept or /refuse. */
+const isPendingDirectRequest = (appointment: ProposedAppointment) =>
+  appointment.directRequest?.state === "pending";
 
 interface AvailableSlot {
   time: string;
@@ -909,11 +923,22 @@ export default function ProposalsPage() {
         </div>
 
         <TabsContent value="proposed" className="mt-0">
+          {/* Requests for one of the pro's slots from their showcase page (spec
+              003): answered from their own cards, never from the table. */}
+          {!loading ? (
+            <DirectRequestsPanel
+              requests={filteredAppointments.filter(isPendingDirectRequest)}
+              issueOf={resolveRequestIssue}
+              onView={handleViewAppointment}
+              onChanged={fetchAllAppointments}
+            />
+          ) : null}
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : filteredAppointments.length === 0 ? (
+          ) : filteredAppointments.some(isPendingDirectRequest) &&
+            filteredAppointments.every(isPendingDirectRequest) ? null : filteredAppointments.length === 0 ? (
             <div className="rounded-xl bg-card p-12 text-center">
               <Star className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-muted-foreground">
@@ -949,7 +974,9 @@ export default function ProposalsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.map((appointment) => (
+                  {filteredAppointments
+                    .filter((appointment) => !isPendingDirectRequest(appointment))
+                    .map((appointment) => (
                     <TableRow key={appointment._id} className="group">
                       <TableCell>
                         <div>

@@ -21,6 +21,7 @@
 import Stripe from "stripe";
 import mongoose from "mongoose";
 import { stripe } from "@/lib/stripe";
+import { isDefinitiveStripeError } from "@/lib/stripe-errors";
 import connectToDatabase from "@/lib/mongodb";
 import Organization from "@/models/Organization";
 import OrganizationInvoice, { type IOrganizationInvoice } from "@/models/OrganizationInvoice";
@@ -77,12 +78,7 @@ function rowStatusOf(refund: Stripe.Refund): "pending" | "succeeded" | "failed" 
 }
 
 /** A refusal Stripe will give again, as opposed to an outcome we do not know. */
-function isDefinitive(e: unknown): boolean {
-  if (!(e instanceof Stripe.errors.StripeError)) return false;
-  if (e.type === "StripeIdempotencyError") return false;
-  const code = e.statusCode ?? 0;
-  return code >= 400 && code < 500 && code !== 409 && code !== 429;
-}
+const isDefinitive = isDefinitiveStripeError;
 
 /** After Stripe answered: record it through the webhook's own path, then settle the money. */
 async function adoptStripeRefund(invoiceId: unknown, refundId: unknown, refund: Stripe.Refund, now: Date) {

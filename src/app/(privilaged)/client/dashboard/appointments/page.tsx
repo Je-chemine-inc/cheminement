@@ -17,16 +17,26 @@ import {
   Lock,
   RefreshCw,
   Mail,
+  Send,
+  Info,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { appointmentsAPI, apiClient } from "@/lib/api-client";
+import { appointmentsAPI, apiClient, ApiClientError } from "@/lib/api-client";
 import {
   CancelAppointmentDialog,
   ReviewDialog,
@@ -35,9 +45,27 @@ import {
 import Link from "next/link";
 import type { AppointmentResponse } from "@/types/api";
 
+/**
+ * A request for one professional's slot sent from their showcase page
+ * (spec 003 phase 3). GET /api/appointments returns it on the full document.
+ */
+interface DirectRequestSummary {
+  state: "pending" | "accepted" | "declined" | "expired" | "withdrawn" | "rerouted";
+  service: "standard" | "quick";
+  /** Montréal calendar day (YYYY-MM-DD) and wall-clock start (HH:mm). */
+  dayKey: string;
+  time: string;
+  respondBy: string;
+  professionalName: string;
+}
+
+type ClientAppointment = AppointmentResponse & {
+  directRequest?: DirectRequestSummary | null;
+};
+
 export default function ClientAppointmentsPage() {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -49,6 +77,13 @@ export default function ClientAppointmentsPage() {
   const [managedAccountName, setManagedAccountName] = useState<string | null>(null);
   const [rescheduleInfoId, setRescheduleInfoId] = useState<string | null>(null);
   const [showRequestNextModal, setShowRequestNextModal] = useState(false);
+  const [requestToWithdraw, setRequestToWithdraw] =
+    useState<ClientAppointment | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [directRequestNotice, setDirectRequestNotice] = useState<
+    "withdrawn" | "closed" | null
+  >(null);
   const t = useTranslations("Client.appointments");
   const tManaged = useTranslations("managedAccounts");
   const locale = useLocale();
@@ -139,6 +174,85 @@ export default function ClientAppointmentsPage() {
   const handleCancelSuccess = () => {
     fetchAppointments();
     closeCancelDialog();
+  };
+
+  const isPendingDirectRequest = (appointment: ClientAppointment): boolean =>
+    appointment.directRequest?.state === "pending";
+
+  // The slot came back to Je chemine's queue: the client got an email with
+  // the next steps, and the row has no date any more.
+  const isUnavailableDirectRequest = (appointment: ClientAppointment): boolean =>
+    appointment.status === "pending" &&
+    (appointment.directRequest?.state === "declined" ||
+      appointment.directRequest?.state === "expired");
+
+  // dayKey/time are already Montréal wall clock: format them as UTC so the
+  // viewer's own time zone never shifts them.
+  const formatDirectRequestSlot = (request: DirectRequestSummary): string => {
+    const slot = new Date(`${request.dayKey}T${request.time}:00Z`);
+    if (Number.isNaN(slot.getTime())) return `${request.dayKey} ${request.time}`;
+    return new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
+    }).format(slot);
+  };
+
+  const formatDirectRequestDeadline = (respondBy: string): string => {
+    const deadline = new Date(respondBy);
+    if (Number.isNaN(deadline.getTime())) return respondBy;
+    return new Intl.DateTimeFormat(locale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "America/Toronto",
+    }).format(deadline);
+  };
+
+  const openWithdrawDialog = (appointment: ClientAppointment) => {
+    setWithdrawError(null);
+    setDirectRequestNotice(null);
+    setRequestToWithdraw(appointment);
+  };
+
+  const closeWithdrawDialog = () => {
+    if (withdrawing) return;
+    setRequestToWithdraw(null);
+    setWithdrawError(null);
+  };
+
+  const handleWithdrawDirectRequest = async () => {
+    if (!requestToWithdraw) return;
+    setWithdrawing(true);
+    setWithdrawError(null);
+    try {
+      await appointmentsAPI.update(requestToWithdraw._id, {
+        status: "cancelled",
+      });
+      setRequestToWithdraw(null);
+      setDirectRequestNotice("withdrawn");
+      fetchAppointments();
+    } catch (err) {
+      if (
+        err instanceof ApiClientError &&
+        err.status === 409 &&
+        err.code === "DIRECT_REQUEST_CLOSED"
+      ) {
+        setRequestToWithdraw(null);
+        setDirectRequestNotice("closed");
+        fetchAppointments();
+      } else {
+        console.error("Withdraw direct request error:", err);
+        setWithdrawError(t("directRequestWithdrawError"));
+      }
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   // Join when meeting link exists and either session is paid OR a payment method
@@ -332,6 +446,22 @@ export default function ClientAppointmentsPage() {
         </div>
       )}
 
+      {/* Direct request withdrawal outcome */}
+      {directRequestNotice === "withdrawn" && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 dark:border-green-800/40 dark:bg-green-950/20">
+          <p className="text-sm font-medium text-green-800 dark:text-green-200">
+            {t("directRequestWithdrawn")}
+          </p>
+        </div>
+      )}
+      {directRequestNotice === "closed" && (
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-800/40 dark:bg-orange-950/20">
+          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+            {t("directRequestClosed")}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
@@ -501,6 +631,46 @@ export default function ClientAppointmentsPage() {
                     </div>
                   )}
 
+                  {/* Direct request sent from a showcase page, awaiting the professional */}
+                  {appointment.directRequest &&
+                    isPendingDirectRequest(appointment) && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                        <Send className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {t("directRequestSentTo", {
+                              name: appointment.directRequest.professionalName,
+                            })}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDirectRequestSlot(appointment.directRequest)}
+                            {" · "}
+                            {appointment.directRequest.service === "quick"
+                              ? t("directRequestServiceQuick")
+                              : t("directRequestServiceStandard")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("directRequestRespondBy", {
+                              deadline: formatDirectRequestDeadline(
+                                appointment.directRequest.respondBy,
+                              ),
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Direct request not accepted: back in Je chemine's queue */}
+                  {activeTab === "upcoming" &&
+                    isUnavailableDirectRequest(appointment) && (
+                      <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/40 dark:bg-blue-950/20">
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          {t("directRequestUnavailable")}
+                        </p>
+                      </div>
+                    )}
+
                   {/* Details Grid */}
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -530,6 +700,17 @@ export default function ClientAppointmentsPage() {
                   {/* Actions */}
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-wrap gap-2">
+                      {activeTab === "upcoming" &&
+                        appointment.status === "pending" &&
+                        isPendingDirectRequest(appointment) && (
+                          <Button
+                            variant="outline"
+                            onClick={() => openWithdrawDialog(appointment)}
+                            className="gap-2 rounded-full text-red-600 hover:text-red-700"
+                          >
+                            {t("directRequestWithdraw")}
+                          </Button>
+                        )}
                       {activeTab === "upcoming" &&
                         appointment.status === "scheduled" &&
                         canModifyAppointment(appointment) && (
@@ -710,6 +891,73 @@ export default function ClientAppointmentsPage() {
           onSuccess={handleCancelSuccess}
         />
       )}
+
+      {/* Withdraw Direct Request Dialog */}
+      <Dialog
+        open={requestToWithdraw !== null}
+        onOpenChange={(open) => {
+          if (!open) closeWithdrawDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif font-light">
+              {t("directRequestWithdrawTitle")}
+            </DialogTitle>
+            {requestToWithdraw?.directRequest && (
+              <DialogDescription>
+                {t("directRequestSentTo", {
+                  name: requestToWithdraw.directRequest.professionalName,
+                })}
+                {" · "}
+                {formatDirectRequestSlot(requestToWithdraw.directRequest)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  {t("directRequestWithdrawMessage")}
+                </p>
+              </div>
+            </div>
+
+            {withdrawError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {withdrawError}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={closeWithdrawDialog}
+              disabled={withdrawing}
+            >
+              {t("directRequestKeep")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleWithdrawDirectRequest}
+              disabled={withdrawing}
+            >
+              {withdrawing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {withdrawing
+                ? t("directRequestWithdrawing")
+                : t("directRequestWithdraw")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Review Dialog */}
       {appointmentToReview && (

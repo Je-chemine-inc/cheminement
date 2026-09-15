@@ -14,7 +14,8 @@ import {
   CalendarPlus,
   Link as LinkIcon,
 } from "lucide-react";
-import { appointmentsAPI, clientsAPI } from "@/lib/api-client";
+import Link from "next/link";
+import { apiClient, appointmentsAPI, clientsAPI } from "@/lib/api-client";
 import { clientDisplayName } from "@/lib/appointment-client-name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,22 @@ import { appointmentStatusColor } from "@/lib/appointment-colors";
 import { AppointmentResponse } from "@/types/api";
 import { formatCalendarDate } from "@/lib/format-calendar-date";
 
+// A request a client sent from the professional's showcase page: no
+// professionalId yet, so it only comes back from /appointments/proposed. The
+// slot is held for the client until the professional answers.
+type PendingDirectRequest = {
+  _id: string;
+  duration?: number;
+  clientId?: { firstName?: string } | string | null;
+  directRequest?: {
+    state: string;
+    dayKey: string; // "YYYY-MM-DD", Montréal calendar day
+    time: string; // "HH:mm", Montréal wall-clock start
+  };
+};
+
+const PROPOSALS_HREF = "/professional/dashboard/proposals";
+
 export default function SchedulePage() {
   const t = useTranslations("Dashboard.scheduleCalendar");
   const locale = useLocale();
@@ -44,6 +61,9 @@ export default function SchedulePage() {
   const [view, setView] = useState<"day" | "week" | "month">("week");
   const [showRequests, setShowRequests] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [directRequests, setDirectRequests] = useState<PendingDirectRequest[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] =
     useState<AppointmentResponse | null>(null);
@@ -90,11 +110,28 @@ export default function SchedulePage() {
         endDate.setUTCDate(startDate.getUTCDate() + 1);
       }
 
-      const appointmentsData = await appointmentsAPI.list({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
+      // Pending direct requests load alongside; their failure must never break
+      // the calendar, so it resolves to an empty list.
+      const [appointmentsData, proposedData] = await Promise.all([
+        appointmentsAPI.list({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        }),
+        apiClient
+          .get<PendingDirectRequest[]>("/appointments/proposed")
+          .catch((err: unknown) => {
+            console.error("Error fetching direct requests:", err);
+            return [] as PendingDirectRequest[];
+          }),
+      ]);
       setAppointments(appointmentsData);
+      setDirectRequests(
+        Array.isArray(proposedData)
+          ? proposedData.filter(
+              (apt) => apt.directRequest?.state === "pending",
+            )
+          : [],
+      );
     } catch (err: unknown) {
       console.error("Error fetching schedule data:", err);
     } finally {
@@ -222,6 +259,27 @@ export default function SchedulePage() {
       return aptDate === dateStr && aptHour === hour;
     });
   };
+
+  // Pending direct requests on a grid day (optionally at a start hour). dayKey
+  // is already a calendar-day string, compared as-is — never through new Date.
+  const getDirectRequestsForDay = (date: Date, hour?: number) => {
+    const dateStr = localDateKey(date);
+    return directRequests.filter((req) => {
+      const dr = req.directRequest;
+      if (!dr || dr.dayKey !== dateStr) return false;
+      return (
+        typeof hour !== "number" || parseInt(dr.time.split(":")[0], 10) === hour
+      );
+    });
+  };
+
+  const directRequestFirstName = (req: PendingDirectRequest) =>
+    req.clientId && typeof req.clientId === "object"
+      ? (req.clientId.firstName ?? "")
+      : "";
+
+  const directRequestChipClass =
+    "border border-dashed border-amber-500 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-100 transition-colors cursor-pointer";
 
   // Get appointments scheduled on the day currently being viewed
   const getDayAppointments = (date: Date) => {
@@ -498,6 +556,17 @@ export default function SchedulePage() {
                           day,
                           hour,
                         );
+                        const slotDirectRequests = getDirectRequestsForDay(
+                          day,
+                          hour,
+                        );
+                        // Appointments and held direct requests share the
+                        // side-by-side split so neither covers the other.
+                        const shownAppointments = showRequests
+                          ? 0
+                          : dayAppointments.length;
+                        const slotCount =
+                          shownAppointments + slotDirectRequests.length;
                         return (
                           <div
                             key={`day-${day}-${hour}-${idx}`}
@@ -530,7 +599,7 @@ export default function SchedulePage() {
                                 );
                                 // Side-by-side split if two RDV share a start hour
                                 // (rare double-booking) so neither is hidden.
-                                const count = dayAppointments.length;
+                                const count = slotCount;
                                 const multi = count > 1;
                                 return (
                                   <button
@@ -567,6 +636,41 @@ export default function SchedulePage() {
                                   </button>
                                 );
                               })}
+                            {slotDirectRequests.map((req, reqIdx) => {
+                              const spanHeight = Math.max(
+                                24,
+                                Math.round(((req.duration ?? 60) / 60) * 61) -
+                                  4,
+                              );
+                              const multi = slotCount > 1;
+                              const idxInSlot = shownAppointments + reqIdx;
+                              return (
+                                <Link
+                                  key={`direct-${req._id}`}
+                                  href={PROPOSALS_HREF}
+                                  draggable={false}
+                                  title={t("directRequestHint")}
+                                  style={{
+                                    height: `${spanHeight}px`,
+                                    left: multi
+                                      ? `calc(${(100 / slotCount) * idxInSlot}% + 2px)`
+                                      : undefined,
+                                    width: multi
+                                      ? `calc(${100 / slotCount}% - 3px)`
+                                      : undefined,
+                                  }}
+                                  className={`absolute top-1 z-20 overflow-hidden text-left rounded p-2 ${multi ? "" : "left-1 right-1"} ${directRequestChipClass}`}
+                                >
+                                  <div className="text-xs font-medium truncate">
+                                    {t("directRequestPending")}
+                                  </div>
+                                  <div className="text-xs font-light mt-1 truncate">
+                                    {directRequestFirstName(req)}{" "}
+                                    {req.directRequest?.time}
+                                  </div>
+                                </Link>
+                              );
+                            })}
                           </div>
                         );
                       })}
@@ -630,6 +734,18 @@ export default function SchedulePage() {
                             {appointment.time} {clientDisplayName(appointment.clientId, t("deletedClient"))}
                           </button>
                         ))}
+                    {getDirectRequestsForDay(day).map((req) => (
+                      <Link
+                        key={`direct-${req._id}`}
+                        href={PROPOSALS_HREF}
+                        draggable={false}
+                        title={t("directRequestHint")}
+                        className={`block w-full text-left rounded px-2 py-1 text-xs font-light truncate ${directRequestChipClass}`}
+                      >
+                        {req.directRequest?.time} {t("directRequestPending")}{" "}
+                        {directRequestFirstName(req)}
+                      </Link>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -741,6 +857,25 @@ export default function SchedulePage() {
                             </div>
                           </button>
                         ))}
+                      {getDirectRequestsForDay(currentDate, hour).map((req) => (
+                        <Link
+                          key={`direct-${req._id}`}
+                          href={PROPOSALS_HREF}
+                          draggable={false}
+                          title={t("directRequestHint")}
+                          className={`block w-full text-left rounded-lg p-3 ${directRequestChipClass}`}
+                        >
+                          <div className="font-medium">
+                            {t("directRequestPending")}
+                            {directRequestFirstName(req) &&
+                              ` · ${directRequestFirstName(req)}`}
+                          </div>
+                          <div className="text-sm font-light">
+                            {req.directRequest?.time}
+                            {req.duration ? ` - ${req.duration} minutes` : ""}
+                          </div>
+                        </Link>
+                      ))}
                     </div>
                   </div>
                 );

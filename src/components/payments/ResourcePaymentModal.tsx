@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import CheckoutForm from "@/components/payments/CheckoutForm";
 import { formatCad } from "@/lib/format-currency";
+import { taxOnCents, type CheckoutTaxRates } from "@/lib/sales-taxes";
 
 /**
  * Buying a premium resource.
@@ -57,8 +58,19 @@ interface Props {
   slug: string;
   title: string;
   priceCents: number;
+  /** TPS and TVQ rates added at checkout, or null when none are. */
+  taxRates: CheckoutTaxRates | null;
   isSignedIn: boolean;
   signedInEmail?: string;
+}
+
+/** What the buyer pays, as the purchase-intent route answered it. */
+interface Charge {
+  subtotalCents: number;
+  tpsCents: number;
+  tvqCents: number;
+  totalCents: number;
+  taxes: CheckoutTaxRates | null;
 }
 
 export default function ResourcePaymentModal({
@@ -67,6 +79,7 @@ export default function ResourcePaymentModal({
   slug,
   title,
   priceCents,
+  taxRates,
   isSignedIn,
   signedInEmail,
 }: Props) {
@@ -80,8 +93,21 @@ export default function ResourcePaymentModal({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  // The server's figures once the intent exists; before that, the same
+  // arithmetic on the rates the page was rendered with.
+  const [serverCharge, setServerCharge] = useState<Charge | null>(null);
 
-  const price = formatCad(priceCents, locale);
+  const estimate: Charge = (() => {
+    if (!taxRates) {
+      return { subtotalCents: priceCents, tpsCents: 0, tvqCents: 0, totalCents: priceCents, taxes: null };
+    }
+    const tpsCents = taxOnCents(priceCents, taxRates.tpsRatePercent);
+    const tvqCents = taxOnCents(priceCents, taxRates.tvqRatePercent);
+    return { subtotalCents: priceCents, tpsCents, tvqCents, totalCents: priceCents + tpsCents + tvqCents, taxes: taxRates };
+  })();
+  const charge = serverCharge ?? estimate;
+  const rate = (value: number) =>
+    value.toLocaleString(locale === "fr" ? "fr-CA" : "en-CA", { maximumFractionDigits: 3 });
 
   const startIntent = useCallback(
     async (buyerEmail?: string) => {
@@ -107,6 +133,16 @@ export default function ResourcePaymentModal({
 
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
+        // The server computed what is charged; show exactly that from here on.
+        if (typeof data.amountCents === "number") {
+          setServerCharge({
+            subtotalCents: typeof data.subtotalCents === "number" ? data.subtotalCents : data.amountCents,
+            tpsCents: typeof data.tpsCents === "number" ? data.tpsCents : 0,
+            tvqCents: typeof data.tvqCents === "number" ? data.tvqCents : 0,
+            totalCents: data.amountCents,
+            taxes: data.taxes ?? null,
+          });
+        }
         setStep("pay");
       } catch {
         setError(t("errorTitle"));
@@ -158,9 +194,30 @@ export default function ResourcePaymentModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/30 p-4">
-          <span className="text-sm text-muted-foreground">{t("amountToPay")}</span>
-          <span className="font-serif text-xl font-light text-foreground">{price}</span>
+        <div className="mb-4 rounded-lg border border-border/40 bg-muted/30 p-4" data-testid="resource-charge">
+          {charge.taxes ? (
+            <dl className="mb-2 space-y-1 text-sm text-muted-foreground">
+              <div className="flex justify-between gap-4">
+                <dt>{t("subtotal")}</dt>
+                <dd>{formatCad(charge.subtotalCents, locale)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>{t("tps", { rate: rate(charge.taxes.tpsRatePercent) })}</dt>
+                <dd>{formatCad(charge.tpsCents, locale)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>{t("tvq", { rate: rate(charge.taxes.tvqRatePercent) })}</dt>
+                <dd>{formatCad(charge.tvqCents, locale)}</dd>
+              </div>
+            </dl>
+          ) : null}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{charge.taxes ? t("total") : t("amountToPay")}</span>
+            <span className="font-serif text-xl font-light text-foreground">{formatCad(charge.totalCents, locale)}</span>
+          </div>
+          {charge.taxes && !serverCharge ? (
+            <p className="mt-2 text-xs text-muted-foreground">{t("taxesEstimate")}</p>
+          ) : null}
         </div>
 
         {step === "review" ? (
@@ -230,7 +287,7 @@ export default function ResourcePaymentModal({
               }}
             >
               <CheckoutForm
-                amount={priceCents / 100}
+                amount={charge.totalCents / 100}
                 clientSecret={clientSecret}
                 currency="CAD"
                 paymentMethod="card"

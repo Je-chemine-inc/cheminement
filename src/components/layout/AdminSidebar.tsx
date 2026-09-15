@@ -30,6 +30,10 @@ import {
   Layers,
   Building2,
   Receipt,
+  Store,
+  ListOrdered,
+  GraduationCap,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -97,6 +101,34 @@ export function AdminSidebar() {
           title: t("professionals"),
           url: "/admin/dashboard/professionals",
           icon: Users,
+        },
+        {
+          title: t("showcases"),
+          url: "/admin/dashboard/showcases",
+          icon: Store,
+          requires: "manageProfessionals",
+        },
+        {
+          title: t("professionalsDirectory"),
+          url: "/admin/dashboard/professionals-directory",
+          icon: UsersRound,
+          requires: "manageProfessionals",
+        },
+        {
+          title: t("waitlists"),
+          url: "/admin/dashboard/waitlist",
+          icon: ListOrdered,
+          requires: "manageProfessionals",
+        },
+        {
+          title: t("productsReview"),
+          url: "/admin/dashboard/products",
+          icon: GraduationCap,
+        },
+        {
+          title: t("articlesReview"),
+          url: "/admin/dashboard/articles",
+          icon: Newspaper,
         },
         {
           title: t("patients"),

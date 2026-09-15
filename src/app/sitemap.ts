@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { listPublishedContent } from "@/lib/content-entry";
 import { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE } from "@/lib/content-kind";
-
-const SITE_URL = "https://www.jechemine.ca";
+import { loadShowcaseDirectory } from "@/lib/showcase-queries";
+import { isShowcaseEnabled } from "@/lib/showcase-settings";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Served at /sitemap.xml.
@@ -26,6 +27,7 @@ const STATIC_ROUTES: Array<{ path: string; priority: number; changeFrequency: Me
   { path: "/services", priority: 0.8, changeFrequency: "monthly" },
   { path: "/why-us", priority: 0.7, changeFrequency: "monthly" },
   { path: "/who-we-are", priority: 0.7, changeFrequency: "monthly" },
+  { path: "/professionnels", priority: 0.8, changeFrequency: "weekly" },
   { path: "/nouveautes", priority: 0.7, changeFrequency: "weekly" },
   { path: "/medias", priority: 0.6, changeFrequency: "weekly" },
   { path: "/contact", priority: 0.6, changeFrequency: "yearly" },
@@ -67,6 +69,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // One unreadable kind must not produce an empty sitemap for all of them.
       console.error(`[sitemap] failed to list ${kind}:`, error);
     }
+  }
+
+  // Spec 003: each professional's page (www.jechemine.ca/<slug>), once the pages are on.
+  try {
+    if (await isShowcaseEnabled()) {
+      for (const page of await loadShowcaseDirectory()) {
+        entries.push({
+          url: `${SITE_URL}/${page.slug}`,
+          lastModified: page.lastModified ?? now,
+          changeFrequency: "monthly",
+          priority: 0.8,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[sitemap] failed to list the professionals' pages:", error);
   }
 
   return entries;

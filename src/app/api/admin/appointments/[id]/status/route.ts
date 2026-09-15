@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import Admin from "@/models/Admin";
 import { authOptions } from "@/lib/auth";
+import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 
 const ALLOWED_STATUSES = ["scheduled", "completed", "cancelled", "no-show", "pending", "ongoing"];
 
@@ -53,6 +54,13 @@ export async function PUT(
     );
     if (!appointment) {
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+    }
+
+    // A cancelled session's time goes to the professional's waitlist (spec 003
+    // phase 4); the offer engine only offers times that are really free.
+    if (status === "cancelled" && appointment.professionalId) {
+      const freedFor = appointment.professionalId;
+      after(() => afterSlotFreed(freedFor));
     }
 
     return NextResponse.json({ success: true, status: appointment.status });

@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL = "https://www.jechemine.ca";
+import { SITE_URL } from "@/lib/site-url";
 
 /**
  * Served at /robots.txt.

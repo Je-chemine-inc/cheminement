@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd";
+import { clientMessagesFor } from "@/lib/client-messages";
+import { SHOWCASE_PAGE_HEADER } from "@/lib/showcase-hosts";
+import { SITE_URL } from "@/lib/site-url";
 
-const SITE_URL = "https://www.jechemine.ca";
 const SITE_TITLE = "Je chemine - Soins en santé mentale";
 const SITE_DESCRIPTION =
   "Plateforme de santé mentale du Québec : jumelage avec des professionnels qualifiés, prise de rendez-vous et accompagnement bilingue, en personne ou en ligne.";
@@ -54,6 +57,9 @@ export default async function RootLayout({
 }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  // A professional's page gets only the messages its client components read
+  // (the middleware sets this header; see src/lib/client-messages.ts).
+  const onShowcasePage = Boolean((await headers()).get(SHOWCASE_PAGE_HEADER));
 
   return (
     <html lang={locale}>
@@ -62,7 +68,7 @@ export default async function RootLayout({
             admin-configured contact settings, so it cannot drift from what the
             site actually says. */}
         <OrganizationJsonLd />
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider messages={clientMessagesFor(messages, onShowcasePage)}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>

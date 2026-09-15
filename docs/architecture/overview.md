@@ -6,9 +6,9 @@ This describes **Je chemine** as it actually runs today, not as it was originall
 
 - **Next.js 16 App Router**, React 19.2 with the **React Compiler** enabled (`next.config.ts: reactCompiler: true`). TypeScript strict.
 - The UI is **heavily client-side**: ~192 files carry `"use client"`. Server components are essentially the route-group `layout.tsx` files, which call `getServerSession`/`auth()` to gate by role. Dashboards self-fetch their data in `useEffect` (raw `fetch()` or a thin `apiClient` singleton) — there is **no RSC data-loading layer, no SWR/React Query, and no global store**. "Real-time" is 30–60s polling.
-- **Locale** is cookie-driven (`NEXT_LOCALE`), **not** a URL segment. `src/i18n/request.ts` defaults to **French** unless the cookie is exactly `en` (French-first by design). Copy lives in `messages/en.json` + `messages/fr.json` (lockstep). There is no `sitemap.ts`/`robots.ts`/`hreflang`.
+- **Locale** is cookie-driven (`NEXT_LOCALE`), **not** a URL segment. `src/i18n/request.ts` defaults to **French** unless the cookie is exactly `en` (French-first by design). Copy lives in `messages/en.json` + `messages/fr.json` (lockstep). `src/app/sitemap.ts` and `robots.ts` serve www, the professionals' showcase pages included (spec 003). There is no `hreflang`: one URL per page, French canonical.
 - **Auth**: NextAuth v4 Credentials (bcrypt) + `@auth/mongodb-adapter`, **JWT sessions, 30-min maxAge**. Role/status/license are copied onto the token at login — so admin changes to a logged-in user are invisible until re-login (the pro dashboard works around this by re-fetching `/api/users/me`).
-- **No edge auth**: `src/middleware.ts` only injects an `x-pathname` header for `/professional/*`. All access control lives inside route handlers and server layouts.
+- **No edge auth**: `src/middleware.ts` routes by host — the bare domain to www, any other subdomain (the retired showcase city hosts included) to the same path on www (rules and tests in `src/lib/showcase-hosts.ts`) — marks a path that can only be a professional's page (`x-showcase-page`), and injects an `x-pathname` header. All access control lives inside route handlers and server layouts.
 - **Persistence**: MongoDB via a cached Mongoose singleton (`src/lib/mongodb.ts`, retrying transient errors) + a separate `clientPromise` for the NextAuth adapter. **No multi-document transactions** anywhere — consistency relies on single-document atomic `findOneAndUpdate` "claims".
 
 ## Directory layout (role of each top-level folder)
@@ -24,10 +24,11 @@ src/
     pay/             Token-based guest payment + payment-method setup (Stripe Elements)
     api/             ~154 route.ts handlers (see below)
     actions/         server actions (locale.ts)
-    layout.tsx · loading.tsx · not-found.tsx · error.tsx
+    [proSlug]/       a professional's showcase page, www.jechemine.ca/<slug> (spec 003)
+    layout.tsx · not-found.tsx · error.tsx (no root loading.tsx: it turned every notFound() into an HTTP 200 — debt-map 2026-09-07)
   components/        ~141 .tsx, by domain: admin, appointments, auth, billing, dashboard, inbox, layout, legal, media, payments, sections, ui (shadcn)
   lib/              ~71 business-logic/service modules (the "brain") — see below
-  models/           25 Mongoose models
+  models/           36 Mongoose models
   hooks/            use-mobile, useInactivityLogout, useMotifs, useMotifSearch
   config/           clinical-availability-grid, motifSearch, colors
   data/             static FR-first taxonomies (problematics, diagnostics, approaches, motifs, professionalTitles)
@@ -67,11 +68,11 @@ A service request **is** an `Appointment` document (it may have no `professional
 - **Stripe 19** (`apiVersion 2025-10-29.clover`) — **separate charges & transfers** model: PaymentIntents carry no `application_fee`/`transfer_data`; the platform collects the full charge then pays pros later via admin-triggered `transfers.create` to Express Connect accounts (the platform holds the float). The **webhook** (`api/payments/webhook`, raw body, signature-verified, idempotent via `StripeWebhookEvent`) handles 7 event types (payment success/fail/cancel, full/partial refund with receipt void/restore, dispute, `setup_intent.succeeded`).
 - **SMTP email** via Nodemailer (`lib/email-transport.ts`), **fail-soft** (skips silently if unconfigured). `MAIL_FROM` must equal `SMTP_USER` or be a verified Gmail alias.
 - **Twilio** SMS via raw REST (`lib/sms.ts`), best-effort; `SMS_DRY_RUN` for local.
-- **Crons**: 7 routes scheduled **hourly** from `/etc/cron.d/jechemine` on the VPS (via `run-cron.sh`, which curls `127.0.0.1:3000`), guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent.
+- **Crons**: 7 routes scheduled **hourly** from `/etc/cron.d/jechemine` on the VPS (via `run-cron.sh`, which curls `127.0.0.1:3000`), guarded by a shared `Bearer CRON_SECRET`. The time-sensitive **matching cascade** (24h/12h proposal timeouts) no longer depends on a scheduler — an **in-app "lazy cron"** (`lib/lazy-cron.ts`, throttled via a `CronRun` DB heartbeat) advances it off the admin-queue / pro-proposals polls. An external pinger (e.g. cron-job.org) hitting the same `CRON_SECRET`-guarded endpoints is the optional 24/7 backstop. All runners are idempotent. The showcase waitlist job (`api/cron/waitlist-offers`, spec 003) is the exception to hourly: its offers last 15 minutes, so it runs every two minutes, with its own lazy trigger off the proposals poll, the admin queue and the public slots route.
 
 ## Entry points
 
-- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`.
+- **Web**: `src/app/layout.tsx` (root) → route groups. Public booking entry is `/appointment`; guest payment is `/pay?token=`. A professional's showcase page is the top-level segment `src/app/[proSlug]` (`www.jechemine.ca/amel-sassi`); Next serves the site's own routes first, and `src/lib/showcase-slug.ts` reserves every top-level route name (its spec reads `src/app` and `public/`). The page is a `ShowcasePage` with a draft and a published copy; public pages read only the published copy, and only through `src/lib/showcase-public.ts`, which builds what the public may see key by key. It receives only the translation messages its client components use (`src/lib/client-messages.ts`, keyed on the `x-showcase-page` header the middleware sets). The per-city hosts, city pages, expertise pages and the `/psy` directory were removed on 2026-09-15 ([ADR-0003 amendment](decisions/0003-per-city-showcase-hosts.md#amendment--2026-09-15-one-address-on-www)).
 - **API**: each `src/app/api/**/route.ts` exporting `GET/POST/PATCH/PUT/DELETE`. Stripe → `api/payments/webhook`. Crons → `api/cron/*`.
 - **Background**: the 5 cron runners in `lib/*-reminders.ts` / `lib/proposal-timeout.ts`.
 

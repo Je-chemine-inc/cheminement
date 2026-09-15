@@ -114,14 +114,28 @@ function normalizePhysicalAddress(
   };
 }
 
+import { SalesTaxesSettings } from "@/components/admin/SalesTaxesSettings";
+
 interface PlatformSettings {
   _id: string;
   defaultPricing: {
     solo: number;
     couple: number;
     group: number;
+    /** Optional (spec 003); empty means the individual session's price. */
+    quick?: number | "" | null;
   };
   platformFeePercentage: number;
+  /** The platform's share of a professional's product sale (spec 003 phase 5). */
+  productCommissionPercentage?: number;
+  /** TPS and TVQ added at checkout on online sales (lib/sales-taxes.ts). */
+  salesTaxes?: {
+    enabled: boolean;
+    tpsRatePercent: number;
+    tvqRatePercent: number;
+    tpsNumber: string;
+    tvqNumber: string;
+  };
   currency: string;
   cancellationPolicy: {
     clientCancellationHours: number;
@@ -208,6 +222,131 @@ const EMAIL_TEMPLATE_INFO: Record<
     description:
       "Envoyé à l’adresse de facturation d’un organisme quand un administrateur le rembourse depuis « Factures aux organismes » (case cochée par défaut). Montant, façon dont il est rendu et solde restant, avec le lien de paiement s’il reste un montant dû. Jamais la raison, aucun nom de client.",
     category: "Paiements",
+  },
+  showcase_invitation: {
+    name: "Invitation à préparer sa page vitrine (plus envoyé)",
+    description:
+      "N'est plus envoyé depuis septembre 2026 : l'équipe active et prépare maintenant la page vitrine elle-même, sans inviter le professionnel.",
+    category: "Pages vitrines",
+  },
+  showcase_reminder: {
+    name: "Rappel — page vitrine à terminer (plus envoyé)",
+    description:
+      "N'est plus envoyé depuis septembre 2026 : le professionnel n'a plus de page à envoyer pour révision.",
+    category: "Pages vitrines",
+  },
+  showcase_published: {
+    name: "Page vitrine publiée",
+    description:
+      "Envoyé au professionnel quand un administrateur publie sa page ou des corrections, avec l'adresse publique si les pages vitrines sont ouvertes et le lien pour modifier sa page lui-même.",
+    category: "Pages vitrines",
+  },
+  showcase_changes_requested: {
+    name: "Modifications demandées (plus envoyé)",
+    description:
+      "N'est plus envoyé depuis septembre 2026 : l'équipe corrige la page elle-même avant de la publier.",
+    category: "Pages vitrines",
+  },
+  showcase_unpublished: {
+    name: "Page vitrine retirée",
+    description:
+      "Envoyé au professionnel quand un administrateur retire sa page du site. Pas envoyé quand le professionnel la retire lui-même.",
+    category: "Pages vitrines",
+  },
+  admin_showcase_submitted: {
+    name: "Alerte équipe — page vitrine à vérifier (plus envoyé)",
+    description:
+      "N'est plus envoyé depuis septembre 2026 : les professionnels modifient leur page publiée directement (voir « page vitrine modifiée »).",
+    category: "Alertes administratives",
+  },
+  admin_showcase_updated: {
+    name: "Alerte équipe — page vitrine modifiée",
+    description:
+      "Envoyé à l'équipe quand un professionnel modifie sa page vitrine publiée (texte, photo ou champs d'expertise). Les modifications sont déjà en ligne. Au plus un courriel par page par heure ; l'historique de la page détaille chaque modification.",
+    category: "Alertes administratives",
+  },
+  direct_request_received: {
+    name: "Demande directe reçue (professionnel)",
+    description:
+      "Envoyé au professionnel quand un client choisit un de ses créneaux sur sa page vitrine. Le créneau est réservé jusqu'à sa réponse (24 h, 12 h pour une consultation rapide).",
+    category: "Pages vitrines",
+  },
+  direct_request_confirmation: {
+    name: "Demande directe envoyée (client)",
+    description:
+      "Envoyé au client après sa demande depuis une page vitrine : à qui elle est partie, le créneau réservé et l'heure limite de réponse.",
+    category: "Pages vitrines",
+  },
+  direct_request_unavailable: {
+    name: "Créneau non disponible (client)",
+    description:
+      "Envoyé au client quand le professionnel décline sa demande ou n'y répond pas à temps, avec deux choix : un autre créneau ou le jumelage par Je chemine.",
+    category: "Pages vitrines",
+  },
+  admin_direct_request_returned: {
+    name: "Alerte équipe — demande directe revenue",
+    description:
+      "Envoyé à l'équipe quand une demande faite depuis une page vitrine est déclinée ou reste sans réponse et revient dans les demandes de service.",
+    category: "Alertes administratives",
+  },
+  waitlist_joined: {
+    name: "Inscription à la liste d'attente",
+    description:
+      "Envoyé à la personne qui s'inscrit sur la liste d'attente d'un professionnel depuis sa page vitrine. Explique la suite et contient le lien pour quitter la liste.",
+    category: "Pages vitrines",
+  },
+  waitlist_offer: {
+    name: "Créneau libéré (liste d'attente)",
+    description:
+      "Envoyé à la première personne de la liste à qui convient un créneau qui se libère. Le créneau lui est réservé 15 minutes ; un texto part aussi si elle y a consenti.",
+    category: "Pages vitrines",
+  },
+  product_sold: {
+    name: "Vente d'un produit (professionnel)",
+    description:
+      "Envoyé au professionnel quand une personne achète une de ses formations ou un de ses produits : le prix payé et sa part. Ne nomme jamais l'acheteur.",
+    category: "Pages vitrines",
+  },
+  product_moderation_decision: {
+    name: "Décision sur un produit (professionnel)",
+    description:
+      "Envoyé au professionnel quand l'équipe approuve, refuse (avec ses commentaires) ou retire un de ses produits.",
+    category: "Pages vitrines",
+  },
+  product_webinar_reminder: {
+    name: "Rappel de webinaire (acheteur)",
+    description:
+      "Envoyé aux personnes qui ont acheté le webinaire d'un professionnel, la veille puis une heure avant le début, avec le lien vers la page du webinaire où se trouve la salle.",
+    category: "Ressources",
+  },
+  article_moderation_decision: {
+    name: "Décision sur un article (professionnel)",
+    description:
+      "Envoyé au professionnel quand l'équipe approuve, refuse (avec ses commentaires) ou retire un de ses articles.",
+    category: "Pages vitrines",
+  },
+  admin_article_submitted: {
+    name: "Alerte équipe — article à vérifier",
+    description: "Envoyé à l'équipe quand un professionnel envoie un article pour vérification.",
+    category: "Alertes administratives",
+  },
+  admin_appointment_refund_problem: {
+    name: "Alerte équipe — remboursement à vérifier",
+    description:
+      "Envoyé à l'équipe quand le remboursement d'une séance annulée n'a pas pu être fait : Stripe l'a refusé ou ne l'a pas confirmé. Le client n'a peut-être pas été remboursé.",
+    category: "Alertes administratives",
+  },
+  admin_product_submitted: {
+    name: "Alerte équipe — produit à vérifier",
+    description:
+      "Envoyé à l'équipe quand un professionnel envoie une formation ou un produit pour vérification.",
+    category: "Alertes administratives",
+  },
+  waitlist_removed: {
+    name: "Fin d'inscription à la liste d'attente",
+    description:
+      "Envoyé quand une inscription prend fin : trois créneaux restés sans réponse, 90 jours écoulés, ou retrait par le professionnel ou l'équipe. Pas envoyé quand la personne quitte la liste elle-même.",
+    category: "Pages vitrines",
   },
   admin_organization_invoice_overdue: {
     name: "Alerte équipe — factures aux organismes en retard",
@@ -347,6 +486,7 @@ const TEMPLATE_CATEGORIES = [
   "Professionnels",
   "Ressources",
   "Alertes administratives",
+  "Pages vitrines",
 ];
 
 export default function SettingsPage() {
@@ -401,6 +541,11 @@ export default function SettingsPage() {
         body: JSON.stringify({
           defaultPricing: settings.defaultPricing,
           platformFeePercentage: settings.platformFeePercentage,
+          ...(typeof settings.productCommissionPercentage === "number" &&
+          Number.isFinite(settings.productCommissionPercentage)
+            ? { productCommissionPercentage: settings.productCommissionPercentage }
+            : {}),
+          ...(settings.salesTaxes ? { salesTaxes: settings.salesTaxes } : {}),
           currency: settings.currency,
           cancellationPolicy: settings.cancellationPolicy,
           emailSettings: settings.emailSettings,
@@ -1239,6 +1384,29 @@ export default function SettingsPage() {
                 Default price per person in group sessions
               </p>
             </div>
+
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("quickSession")} ({settings.currency})
+              </label>
+              <input
+                type="number"
+                value={settings.defaultPricing.quick ?? ""}
+                onChange={(e) =>
+                  updateSettings(
+                    "quick",
+                    e.target.value === "" ? "" : parseFloat(e.target.value),
+                    "defaultPricing",
+                  )
+                }
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("quickSessionHelp")}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1274,6 +1442,28 @@ export default function SettingsPage() {
                 Percentage of session fee taken by platform (0-100%)
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-light text-muted-foreground mb-2">
+                {t("productCommission")}
+              </label>
+              <input
+                type="number"
+                value={settings.productCommissionPercentage ?? 20}
+                onChange={(e) =>
+                  updateSettings(
+                    "productCommissionPercentage",
+                    parseFloat(e.target.value),
+                  )
+                }
+                min="0"
+                max="100"
+                step="0.5"
+                className="w-full px-4 py-2 rounded-lg border border-border/40 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("productCommissionHelp")}
+              </p>
+            </div>
 
             <div>
               <label className="block text-sm font-light text-muted-foreground mb-2">
@@ -1292,6 +1482,11 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        <SalesTaxesSettings
+          value={settings.salesTaxes}
+          onChange={(next) => setSettings((current) => (current ? { ...current, salesTaxes: next } : current))}
+        />
 
         {/* Cancellation Policy Section */}
         <div className="rounded-xl bg-card p-6 border border-border/40">

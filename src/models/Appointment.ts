@@ -1,4 +1,12 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
+import {
+  DIRECT_REQUEST_DECLINE_REASONS,
+  DIRECT_REQUEST_SERVICES,
+  DIRECT_REQUEST_STATES,
+  type DirectRequestDeclineReason,
+  type DirectRequestService,
+  type DirectRequestState,
+} from "@/lib/direct-request-rules";
 import { attachAppointmentContactEncryption } from "@/lib/mongoose-contact-encryption";
 
 export interface IPayment {
@@ -27,6 +35,20 @@ export interface IPayment {
   refundedAt?: Date;
   /** Amount actually refunded (CAD). Set for partial refunds; full refund == price. */
   refundedAmount?: number;
+  /**
+   * The refund this platform asked Stripe for (a cancellation or an admin), claimed before the call
+   * so a retry or a double request never refunds twice (lib/appointment-refund.ts).
+   */
+  refundRequest?: {
+    status: "requested" | "succeeded" | "failed";
+    attempt: number;
+    amountCents: number;
+    by: "admin" | "cancellation";
+    byUserId?: mongoose.Types.ObjectId;
+    requestedAt: Date;
+    stripeRefundId?: string;
+    failureReason?: string;
+  };
   /** A Stripe dispute/chargeback is open on this payment (blocks the receipt). */
   disputed?: boolean;
   payoutTransferId?: string;
@@ -344,8 +366,43 @@ export interface IAppointment extends Document {
   /** Relance facture impayée H+36 (carte ou Interac), depuis sessionCompletedAt. */
   paymentReminder36hSent?: boolean;
 
+  /**
+   * A request for one professional's slot, sent from their showcase page
+   * (spec 003 phase 3). While `state` is "pending" it is proposed to that
+   * professional only, the slot is held, the matcher never touches it and the
+   * professional answers through accept-direct / decline-direct. See
+   * lib/direct-request.ts.
+   */
+  directRequest?: IDirectRequest;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface IDirectRequest {
+  showcaseSlug: string;
+  cityKey: string;
+  service: DirectRequestService;
+  source: "showcase" | "waitlist";
+  /** Montréal calendar day and wall-clock start of the requested slot. */
+  dayKey: string;
+  time: string;
+  startsAt: Date;
+  /** The professional asked — kept after `proposedTo` is cleared. */
+  professionalId: mongoose.Types.ObjectId;
+  professionalName: string;
+  holdId?: mongoose.Types.ObjectId;
+  /** The professional answers before this, or the request expires. */
+  respondBy: Date;
+  state: DirectRequestState;
+  answeredAt?: Date;
+  declineReason?: DirectRequestDeclineReason;
+  declineNote?: string;
+  /** sha256 of the client's "let Je chemine match me" link token. */
+  rerouteTokenHash?: string;
+  rerouteTokenExpiresAt?: Date;
+  /** The waitlist entry whose offer became this request (phase 4). */
+  waitlistEntryId?: mongoose.Types.ObjectId;
 }
 
 const PayerDeclarationSchema = new Schema<IPayerDeclaration>(
@@ -474,6 +531,22 @@ const PaymentSchema = new Schema<IPayment>(
     paidAt: Date,
     refundedAt: Date,
     refundedAmount: Number,
+    refundRequest: {
+      type: new Schema(
+        {
+          status: { type: String, enum: ["requested", "succeeded", "failed"], required: true },
+          attempt: { type: Number, required: true },
+          amountCents: { type: Number, required: true },
+          by: { type: String, enum: ["admin", "cancellation"], required: true },
+          byUserId: { type: Schema.Types.ObjectId, ref: "User" },
+          requestedAt: { type: Date, required: true },
+          stripeRefundId: String,
+          failureReason: String,
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
     disputed: { type: Boolean, default: false },
     payoutTransferId: String,
     payoutDate: Date,
@@ -711,6 +784,33 @@ const AppointmentSchema = new Schema<IAppointment>(
     sessionCompletedAt: { type: Date, required: false },
     fiscalReceiptIssuedAt: { type: Date, required: false },
     invoiceNumber: { type: String, required: false, index: true },
+    // A request for one professional's slot from their showcase page (spec 003).
+    directRequest: {
+      type: new Schema<IDirectRequest>(
+        {
+          showcaseSlug: { type: String, required: true },
+          cityKey: { type: String, required: true },
+          service: { type: String, enum: DIRECT_REQUEST_SERVICES, required: true },
+          source: { type: String, enum: ["showcase", "waitlist"], required: true },
+          dayKey: { type: String, required: true },
+          time: { type: String, required: true },
+          startsAt: { type: Date, required: true },
+          professionalId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+          professionalName: { type: String, required: true },
+          holdId: { type: Schema.Types.ObjectId },
+          respondBy: { type: Date, required: true },
+          state: { type: String, enum: DIRECT_REQUEST_STATES, required: true },
+          answeredAt: Date,
+          declineReason: { type: String, enum: DIRECT_REQUEST_DECLINE_REASONS },
+          declineNote: { type: String, maxlength: 500 },
+          rerouteTokenHash: { type: String },
+          rerouteTokenExpiresAt: Date,
+          waitlistEntryId: { type: Schema.Types.ObjectId },
+        },
+        { _id: false },
+      ),
+      required: false,
+    },
   },
   {
     timestamps: true,
@@ -730,6 +830,9 @@ AppointmentSchema.index({ professionalId: 1, date: 1 });
 AppointmentSchema.index({ status: 1, date: 1 });
 AppointmentSchema.index({ routingStatus: 1 });
 AppointmentSchema.index({ proposedTo: 1, routingStatus: 1 });
+// Spec 003: pending direct requests past their deadline, and the client's reroute link.
+AppointmentSchema.index({ "directRequest.state": 1, "directRequest.respondBy": 1 }, { sparse: true });
+AppointmentSchema.index({ "directRequest.rerouteTokenHash": 1 }, { sparse: true });
 
 attachAppointmentContactEncryption(AppointmentSchema);
 

@@ -13,6 +13,14 @@ import { roundMoney } from "@/lib/session-closure";
 export const THERAPY_TYPES = ["solo", "couple", "group"] as const;
 export type TherapyType = (typeof THERAPY_TYPES)[number];
 
+/**
+ * What an admin prices per professional: each therapy type, and the quick
+ * one-time consultation (spec 003). A quick consultation is booked as a solo
+ * session, so it is a rate key and never a therapy type.
+ */
+export const RATE_KEYS = [...THERAPY_TYPES, "quick"] as const;
+export type RateKey = (typeof RATE_KEYS)[number];
+
 export interface RateInput {
   /** What the client pays. `null` clears it (fall back to the platform default). */
   clientPrice?: number | null;
@@ -20,7 +28,7 @@ export interface RateInput {
   professionalRate?: number | null;
 }
 
-export type RatesInput = Partial<Record<TherapyType, RateInput>>;
+export type RatesInput = Partial<Record<RateKey, RateInput>>;
 
 export interface Spread {
   /** clientPrice − professionalRate, in dollars. */
@@ -35,8 +43,43 @@ export type ValidationResult =
 
 const MAX_PRICE = 100_000;
 
-function isTherapyType(value: string): value is TherapyType {
-  return (THERAPY_TYPES as readonly string[]).includes(value);
+function isRateKey(value: string): value is RateKey {
+  return (RATE_KEYS as readonly string[]).includes(value);
+}
+
+/** A quick one-time consultation's length in minutes (spec 003), set per professional by an admin. */
+export const QUICK_CONSULTATION_MINUTES = { min: 15, max: 90, default: 30 } as const;
+
+/** The stored quick consultation length when it is usable, the default otherwise. */
+export function quickConsultationMinutes(stored: unknown): number {
+  return typeof stored === "number" &&
+    Number.isInteger(stored) &&
+    stored >= QUICK_CONSULTATION_MINUTES.min &&
+    stored <= QUICK_CONSULTATION_MINUTES.max
+    ? stored
+    : QUICK_CONSULTATION_MINUTES.default;
+}
+
+/**
+ * Parse an admin's quick consultation length: `undefined` leaves it alone,
+ * `null` or `""` clears it (back to the default), whole minutes within bounds
+ * otherwise.
+ */
+export function parseQuickConsultationMinutes(
+  value: unknown,
+): { ok: true; value: number | null | undefined } | { ok: false } {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === "") return { ok: true, value: null };
+  const n = typeof value === "string" ? Number(value) : value;
+  if (
+    typeof n !== "number" ||
+    !Number.isInteger(n) ||
+    n < QUICK_CONSULTATION_MINUTES.min ||
+    n > QUICK_CONSULTATION_MINUTES.max
+  ) {
+    return { ok: false };
+  }
+  return { ok: true, value: n };
 }
 
 /**
@@ -78,7 +121,7 @@ export function validateRatesInput(
   const out: RatesInput = {};
 
   for (const [key, raw] of Object.entries(input as Record<string, unknown>)) {
-    if (!isTherapyType(key)) {
+    if (!isRateKey(key)) {
       return { ok: false, error: "UNKNOWN_THERAPY_TYPE", field: key };
     }
     if (typeof raw !== "object" || raw === null) {
@@ -157,7 +200,7 @@ export function rateFromSpreadPercentage(
 /** Build the mongoose `$set` paths for a validated payload. */
 export function ratesToSetPaths(rates: RatesInput): Record<string, number> {
   const $set: Record<string, number> = {};
-  for (const type of THERAPY_TYPES) {
+  for (const type of RATE_KEYS) {
     const entry = rates[type];
     if (!entry) continue;
     if (typeof entry.clientPrice === "number") {
@@ -173,7 +216,7 @@ export function ratesToSetPaths(rates: RatesInput): Record<string, number> {
 /** Build the mongoose `$unset` paths for fields the admin explicitly cleared. */
 export function ratesToUnsetPaths(rates: RatesInput): Record<string, ""> {
   const $unset: Record<string, ""> = {};
-  for (const type of THERAPY_TYPES) {
+  for (const type of RATE_KEYS) {
     const entry = rates[type];
     if (!entry) continue;
     if (entry.clientPrice === null) $unset[`rates.${type}.clientPrice`] = "";

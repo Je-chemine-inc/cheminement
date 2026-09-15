@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
 import { sendRefundConfirmation } from "@/lib/notifications";
 import { resolveAppointmentRecipient } from "@/lib/guardian-utils";
-import { voidReceiptForRefund } from "@/lib/payment-settlement";
+import { refundAppointmentPayment } from "@/lib/appointment-refund";
 
+/**
+ * POST /api/payments/refund `{ appointmentId, reason? }` — an admin refunds a card-paid appointment in
+ * full. The refund goes through lib/appointment-refund.ts: claimed on the appointment, sent with an
+ * idempotency key, so a double click or a retry never refunds twice.
+ */
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -29,7 +33,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { appointmentId, reason } = await req.json();
+    const body = (await req.json().catch(() => null)) as { appointmentId?: unknown; reason?: unknown } | null;
+    const appointmentId = typeof body?.appointmentId === "string" ? body.appointmentId : "";
 
     if (!appointmentId) {
       return NextResponse.json(
@@ -40,7 +45,6 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Get appointment details
     const appointment = await Appointment.findById(appointmentId)
       .populate("clientId", "email firstName lastName language")
       .populate("professionalId", "firstName lastName");
@@ -52,7 +56,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if payment exists and was paid
     if (!appointment.payment.stripePaymentIntentId) {
       return NextResponse.json(
         { error: "No payment found for this appointment" },
@@ -60,8 +63,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if already refunded
-    if (appointment.payment.status === "refunded") {
+    if (appointment.payment.status === "refunded" || appointment.payment.status === "partially_refunded") {
       return NextResponse.json(
         { error: "This appointment has already been refunded" },
         { status: 400 },
@@ -77,27 +79,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process refund through Stripe
-    const refund = await stripe.refunds.create({
-      payment_intent: appointment.payment.stripePaymentIntentId,
-      reason: "requested_by_customer",
-      metadata: {
-        appointmentId: appointmentId,
-        refundedBy: session.user.id,
-        refundReason: reason || "Appointment cancelled",
-      },
+    const reason = typeof body?.reason === "string" && body.reason.trim() ? body.reason.trim() : "Appointment cancelled";
+    const result = await refundAppointmentPayment({
+      appointmentId,
+      amountCents: Math.round((appointment.payment.price ?? 0) * 100),
+      by: "admin",
+      byUserId: session.user.id,
+      reason,
     });
 
-    // Update appointment payment status
-    appointment.payment.status = "refunded";
-    appointment.payment.refundedAt = new Date();
-    await appointment.save();
+    switch (result.outcome) {
+      case "not_refundable":
+        return NextResponse.json(
+          { error: "This appointment cannot be refunded (already refunded, or nothing was paid)", code: "NOT_REFUNDABLE" },
+          { status: 409 },
+        );
+      case "in_progress":
+        return NextResponse.json(
+          { error: "A refund for this appointment is already in progress", code: "REFUND_IN_PROGRESS" },
+          { status: 409 },
+        );
+      case "refused":
+        return NextResponse.json(
+          { error: "Stripe refused the refund", code: "STRIPE_REFUSED", details: result.message },
+          { status: 400 },
+        );
+      case "unconfirmed":
+        return NextResponse.json(
+          {
+            error:
+              "Stripe did not confirm the refund. Check the payment in Stripe before trying again: a new attempt checks Stripe first and never refunds twice.",
+            code: "REFUND_UNCONFIRMED",
+          },
+          { status: 502 },
+        );
+    }
 
-    // Void the client's fiscal receipt so a refunded payment no longer shows a
-    // valid paid receipt (and the on-demand PDF, gated on status "paid", 403s).
-    await voidReceiptForRefund(appointmentId);
-
-    // Send refund confirmation email — LSSSS art. 14 routing.
+    const refundedAt = new Date();
+    // Refund confirmation email — LSSSS art. 14 routing.
     const clientInfo = appointment.clientId as unknown as {
       firstName: string;
       lastName: string;
@@ -114,7 +133,7 @@ export async function POST(req: NextRequest) {
     sendRefundConfirmation({
       name: refundRecipient.name,
       email: refundRecipient.email,
-      amount: refund.amount / 100,
+      amount: result.amountCents / 100,
       appointmentDate: appointment.date?.toISOString(),
       locale: refundRecipient.language,
     }).catch((err) => console.error("Error sending refund confirmation:", err));
@@ -122,14 +141,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: "Refund processed successfully",
       refund: {
-        id: refund.id,
-        amount: refund.amount / 100, // Convert from cents to dollars
-        status: refund.status,
-        refundedAt: appointment.payment.refundedAt,
+        id: result.stripeRefundId,
+        amount: result.amountCents / 100,
+        status: result.pending ? "pending" : "succeeded",
+        refundedAt,
       },
       appointment: {
         id: appointment._id,
-        paymentStatus: appointment.payment.status,
+        paymentStatus: result.full ? "refunded" : "partially_refunded",
       },
     });
   } catch (error: unknown) {
@@ -137,23 +156,6 @@ export async function POST(req: NextRequest) {
       "Refund error:",
       error instanceof Error ? error.message : error,
     );
-
-    // Handle specific Stripe errors
-    if (
-      error &&
-      typeof error === "object" &&
-      "type" in error &&
-      error.type === "StripeInvalidRequestError"
-    ) {
-      return NextResponse.json(
-        {
-          error: "Invalid refund request",
-          details: error instanceof Error ? error.message : error,
-        },
-        { status: 400 },
-      );
-    }
-
     return NextResponse.json(
       {
         error: "Failed to process refund",

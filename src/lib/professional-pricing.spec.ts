@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  THERAPY_TYPES,
+  parseQuickConsultationMinutes,
+  quickConsultationMinutes,
   rateFromSpreadPercentage,
   ratesToSetPaths,
   ratesToUnsetPaths,
@@ -230,5 +233,40 @@ describe("ratesToSetPaths / ratesToUnsetPaths", () => {
     for (const key of Object.keys(set)) {
       expect(unset).not.toHaveProperty(key);
     }
+  });
+});
+
+describe("the quick one-time consultation (spec 003)", () => {
+  it("is priced like a therapy type without becoming one", () => {
+    expect(
+      validateRatesInput({ quick: { clientPrice: 80, professionalRate: 60 } }),
+    ).toEqual({ ok: true, rates: { quick: { clientPrice: 80, professionalRate: 60 } } });
+    expect(
+      validateRatesInput({ quick: { clientPrice: 80, professionalRate: 90 } }),
+    ).toEqual({ ok: false, error: "RATE_EXCEEDS_CLIENT_PRICE", field: "quick" });
+    expect(THERAPY_TYPES).not.toContain("quick");
+    expect(ratesToSetPaths({ quick: { clientPrice: 80 } })).toEqual({
+      "rates.quick.clientPrice": 80,
+    });
+    expect(ratesToUnsetPaths({ quick: { professionalRate: null } })).toEqual({
+      "rates.quick.professionalRate": "",
+    });
+  });
+
+  it("lasts the stored whole minutes between 15 and 90, 30 otherwise", () => {
+    expect(quickConsultationMinutes(45)).toBe(45);
+    expect(
+      [undefined, null, 10, 120, 22.5, "45"].map(quickConsultationMinutes),
+    ).toEqual([30, 30, 30, 30, 30, 30]);
+  });
+
+  it("parses an admin's length: absent leaves it, empty clears it, out of bounds is refused", () => {
+    expect(parseQuickConsultationMinutes(undefined)).toEqual({ ok: true, value: undefined });
+    expect(parseQuickConsultationMinutes("")).toEqual({ ok: true, value: null });
+    expect(parseQuickConsultationMinutes(null)).toEqual({ ok: true, value: null });
+    expect(parseQuickConsultationMinutes("20")).toEqual({ ok: true, value: 20 });
+    expect(parseQuickConsultationMinutes(14).ok).toBe(false);
+    expect(parseQuickConsultationMinutes(91).ok).toBe(false);
+    expect(parseQuickConsultationMinutes(20.5).ok).toBe(false);
   });
 });

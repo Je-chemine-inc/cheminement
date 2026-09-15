@@ -3,7 +3,8 @@
  * sessions and receipts. For a client, that left each professional's ledger
  * line for sessions that no longer exist: ten such lines were still owed to
  * professionals, eight counted as revenue in the sales journal (2026-09-11).
- * Someone with billing history is now deactivated, not deleted.
+ * Someone with billing history is now deactivated, not deleted. A deleted
+ * professional's products leave the site (spec 003 phase 5).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -22,6 +23,8 @@ const h = vi.hoisted(() => {
     counts: { billedSessions: 0, receipts: 0, ledgerLines: 0 },
     appointmentFilter: { value: null as unknown },
     deletes,
+    deletesAtSync: [] as string[],
+    syncProfessionalProducts: vi.fn(),
     del,
   };
 });
@@ -38,6 +41,7 @@ vi.mock("next-auth", () => ({ getServerSession: h.getServerSession }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/lib/mongodb", () => ({ default: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/intake-rematch", () => ({ rematchWaitingDemandesForReenabledPro: vi.fn() }));
+vi.mock("@/lib/products", () => ({ syncProfessionalProducts: h.syncProfessionalProducts }));
 vi.mock("@/models/User", () => ({
   default: { findById: async () => h.user, deleteOne: h.del("User") },
 }));
@@ -84,9 +88,14 @@ const remove = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   h.deletes.length = 0;
+  h.deletesAtSync.length = 0;
   h.counts = { billedSessions: 0, receipts: 0, ledgerLines: 0 };
   h.appointmentFilter.value = null;
   h.user = { _id: USER_ID, role: "client" };
+  h.syncProfessionalProducts.mockImplementation(async () => {
+    h.deletesAtSync.push(...h.deletes);
+    return 0;
+  });
 });
 
 describe("DELETE /api/admin/users/[id] — never erases billing records", () => {
@@ -130,5 +139,23 @@ describe("DELETE /api/admin/users/[id] — never erases billing records", () => 
     const res = await remove();
     expect(res.status).toBe(200);
     expect(h.deletes).toEqual(expect.arrayContaining(["User", "Appointment", "ClientReceipt", "ProfessionalLedgerEntry"]));
+  });
+
+  it("takes a deleted professional's products off sale, once the account is gone", async () => {
+    h.user = { _id: USER_ID, role: "professional" };
+    const res = await remove();
+    expect(res.status).toBe(200);
+    expect(h.syncProfessionalProducts).toHaveBeenCalledWith(USER_ID);
+    expect(h.deletesAtSync).toContain("User");
+  });
+
+  it("leaves products alone when the delete is refused, and for a client", async () => {
+    h.user = { _id: USER_ID, role: "professional" };
+    h.counts.ledgerLines = 1;
+    expect((await remove()).status).toBe(409);
+    h.user = { _id: USER_ID, role: "client" };
+    h.counts.ledgerLines = 0;
+    expect((await remove()).status).toBe(200);
+    expect(h.syncProfessionalProducts).not.toHaveBeenCalled();
   });
 });
