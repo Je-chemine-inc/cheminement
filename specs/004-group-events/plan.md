@@ -1,6 +1,8 @@
 # 004 — Group sessions and events: plan
 
-Status: plan, not built. Owner's rules approved 2026-09-15 (« go ahead with ur recommendation »).
+Status: **parked by the owner on 2026-09-15** (« we do not do these events and groups for now, maybe in the
+future; the products on sale are good for now »). Not built. Kept as the starting point if it comes back.
+Owner's rules approved 2026-09-15 (« go ahead with ur recommendation »).
 Money zone (AGENTS.md §7): every payment, refund and ledger step gets a test before it ships.
 
 ## What the owner decided
