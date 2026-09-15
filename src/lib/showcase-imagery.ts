@@ -10,18 +10,21 @@
 
 /**
  * Je chemine's ambience photos, self-hosted (public/showcase/ambiance, sources
- * and licences in LICENSES.md there). Decorative: no people, shown with an empty alt.
+ * and licences in LICENSES.md there): the calm of a consultation — armchairs by
+ * a window, a notebook, hands around a cup. Decorative: never a face (a stranger
+ * on a professional's page could pass for the professional or a client), shown
+ * with an empty alt.
  */
 export const WIDE_AMBIENCE_IMAGES = [
-  "/showcase/ambiance/ambiance-1.jpg",
-  "/showcase/ambiance/ambiance-6.jpg",
+  "/showcase/ambiance/psy-1.jpg",
+  "/showcase/ambiance/psy-2.jpg",
+  "/showcase/ambiance/psy-3.jpg",
 ] as const;
 
 export const TALL_AMBIENCE_IMAGES = [
-  "/showcase/ambiance/ambiance-2.jpg",
-  "/showcase/ambiance/ambiance-3.jpg",
-  "/showcase/ambiance/ambiance-4.jpg",
-  "/showcase/ambiance/ambiance-5.jpg",
+  "/showcase/ambiance/psy-4.jpg",
+  "/showcase/ambiance/psy-5.jpg",
+  "/showcase/ambiance/psy-6.jpg",
 ] as const;
 
 export const AMBIENCE_IMAGES = [...WIDE_AMBIENCE_IMAGES, ...TALL_AMBIENCE_IMAGES] as const;
