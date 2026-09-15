@@ -247,6 +247,17 @@ export interface IPlatformSettings extends Document {
    */
   showcaseEnabled?: boolean;
   /**
+   * « Nos professionnels » (www /professionnels): the team's order and who it hides, replaced whole
+   * on each save (Admin → « Nos professionnels (site) »). Absent: nobody hidden, everyone by last name.
+   * `updatedAt` is the version a save must be made on. See lib/professionals-directory.ts.
+   */
+  professionalsDirectory?: {
+    order: mongoose.Types.ObjectId[];
+    hidden: mongoose.Types.ObjectId[];
+    updatedAt?: Date;
+    updatedBy?: mongoose.Types.ObjectId;
+  };
+  /**
    * The platform's share of a professional's product sale, in percent (spec
    * 003 phase 5). It absorbs Stripe's fees. Snapshotted on each purchase.
    */
@@ -640,6 +651,19 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     organizationBillingEnabled: { type: Boolean, default: false },
     organizationPadEnabled: { type: Boolean, default: false },
     showcaseEnabled: { type: Boolean, default: false },
+    // « Nos professionnels »: the team's order and hidden list. Absent until the team first saves.
+    professionalsDirectory: {
+      type: new mongoose.Schema(
+        {
+          order: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+          hidden: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+          updatedAt: Date,
+          updatedBy: mongoose.Schema.Types.ObjectId,
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
     productCommissionPercentage: { type: Number, default: 20, min: 0, max: 100 },
     salesTaxes: {
       enabled: { type: Boolean, default: false },

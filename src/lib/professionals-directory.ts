@@ -8,6 +8,9 @@ import { showcaseTitleOf, type ShowcaseTitleKey } from "@/lib/showcase-title";
  * field by field.
  *
  *  - A professional who unticked « Profil visible aux clients » (Profile.profileVisible) is never listed.
+ *  - The team can hide anyone and set the order (PlatformSettings.professionalsDirectory, Admin →
+ *    « Nos professionnels (site) »). Placed professionals come first, in the team's order; everyone
+ *    else follows by last name, so a new professional shows without the team doing anything.
  *  - With a published page (and the pages switched on): the page's name, portrait and text, reviewed
  *    by the team, and the link.
  *  - Without one: the profile's title and bio, no photo (a profile has none that may be public), no
@@ -45,6 +48,12 @@ export interface DirectoryPageSource {
   } | null;
 }
 
+/** The team's choices, as stored. Absent: nobody hidden, everyone by last name. */
+export interface DirectoryCurationSource {
+  order?: readonly unknown[] | null;
+  hidden?: readonly unknown[] | null;
+}
+
 export interface DirectoryProfessional {
   id: string;
   displayName: string;
@@ -68,7 +77,24 @@ export const DIRECTORY_PROFESSIONAL_KEYS = [
   "title",
 ] as const;
 
+/** Why a professional is not on the public list. The professional's own choice wins over the team's. */
+export type DirectoryExclusion = "hiddenByProfessional" | "hiddenByTeam" | "incomplete";
+
+/** One row of the team's screen: every active professional, in the public order. */
+export interface DirectoryAdminRow {
+  id: string;
+  displayName: string;
+  title: { key: ShowcaseTitleKey | null; label: string | null };
+  showcasePath: string | null;
+  excludedBy: DirectoryExclusion | null;
+  hiddenByTeam: boolean;
+  /** In the team's order (otherwise placed after, by last name). */
+  placed: boolean;
+}
+
 export const DIRECTORY_SUMMARY_MAX = 420;
+/** More than the platform will have; bounds what one save may carry. */
+export const DIRECTORY_CURATION_MAX_IDS = 2000;
 const DEGREE_MAX = 16;
 const NAME_MAX = 80;
 const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
@@ -102,13 +128,24 @@ function degreeOf(profile: DirectoryProfileSource): string | null {
   return degree && degree.length <= DEGREE_MAX ? degree : null;
 }
 
-export function buildProfessionalsDirectory(input: {
+interface DirectoryInput {
   locale: DirectoryLocale;
   users: readonly DirectoryUserSource[];
   profiles: readonly DirectoryProfileSource[];
   pages: readonly DirectoryPageSource[];
   showcaseOn: boolean;
-}): DirectoryProfessional[] {
+  curation?: DirectoryCurationSource | null;
+}
+
+interface Candidate {
+  entry: DirectoryProfessional;
+  excludedBy: DirectoryExclusion | null;
+  hiddenByTeam: boolean;
+  position: number | null;
+}
+
+/** Every active professional with a name, in the public order, and why each one is or is not listed. */
+function candidatesOf(input: DirectoryInput): Candidate[] {
   const { locale } = input;
   const profiles = new Map(input.profiles.map((profile) => [String(profile.userId), profile]));
   const pages = new Map(
@@ -118,31 +155,48 @@ export function buildProfessionalsDirectory(input: {
           .map((page) => [String(page.userId), page] as const)
       : [],
   );
+  const positions = new Map<string, number>();
+  for (const id of input.curation?.order ?? []) {
+    const key = String(id);
+    if (!positions.has(key)) positions.set(key, positions.size);
+  }
+  const hidden = new Set((input.curation?.hidden ?? []).map(String));
 
-  const rows: { sortKey: string; entry: DirectoryProfessional }[] = [];
+  const rows: (Candidate & { sortKey: string })[] = [];
   for (const user of input.users) {
     const id = String(user._id);
     const profile = profiles.get(id);
-    if (!profile || profile.profileVisible === false) continue;
     const page = pages.get(id);
     const content = page?.published ?? null;
-    if (!content && profile.profileCompleted !== true) continue;
 
     const ownName = `${clean(user.firstName)} ${clean(user.lastName)}`.trim();
     const displayName = (clean(content?.displayName) || ownName).slice(0, NAME_MAX);
     if (!displayName) continue;
 
+    const hiddenByTeam = hidden.has(id);
+    const excludedBy: DirectoryExclusion | null =
+      profile?.profileVisible === false
+        ? "hiddenByProfessional"
+        : hiddenByTeam
+          ? "hiddenByTeam"
+          : !profile || (!content && profile.profileCompleted !== true)
+            ? "incomplete"
+            : null;
+
     const summary = shortenSummary(
       (content && (pick(content.intro, locale) || pick(content.bio, locale) || pick(content.headline, locale))) ||
-        clean(profile.bio),
+        clean(profile?.bio),
     );
     rows.push({
       sortKey: `${clean(user.lastName)} ${clean(user.firstName)}`.trim() || displayName,
+      excludedBy,
+      hiddenByTeam,
+      position: positions.get(id) ?? null,
       entry: {
         id,
         displayName,
-        title: showcaseTitleOf(profile.specialty),
-        degree: degreeOf(profile),
+        title: showcaseTitleOf(profile?.specialty),
+        degree: profile ? degreeOf(profile) : null,
         summary,
         photoUrl: content ? photoUrlOf(content.photoFileId) : null,
         showcasePath: page ? `/${page.slug}` : null,
@@ -151,7 +205,57 @@ export function buildProfessionalsDirectory(input: {
   }
 
   const collator = new Intl.Collator(locale === "en" ? "en-CA" : "fr-CA", { sensitivity: "base" });
-  return rows
-    .sort((a, b) => collator.compare(a.sortKey, b.sortKey) || a.entry.id.localeCompare(b.entry.id))
-    .map((row) => row.entry);
+  return rows.sort((a, b) => {
+    if (a.position !== null || b.position !== null) {
+      if (a.position === null) return 1;
+      if (b.position === null) return -1;
+      return a.position - b.position;
+    }
+    return collator.compare(a.sortKey, b.sortKey) || a.entry.id.localeCompare(b.entry.id);
+  });
+}
+
+export function buildProfessionalsDirectory(input: DirectoryInput): DirectoryProfessional[] {
+  return candidatesOf(input)
+    .filter((candidate) => candidate.excludedBy === null)
+    .map((candidate) => candidate.entry);
+}
+
+export function buildProfessionalsDirectoryAdminRows(input: DirectoryInput): DirectoryAdminRow[] {
+  return candidatesOf(input).map(({ entry, excludedBy, hiddenByTeam, position }) => ({
+    id: entry.id,
+    displayName: entry.displayName,
+    title: entry.title,
+    showcasePath: entry.showcasePath,
+    excludedBy,
+    hiddenByTeam,
+    placed: position !== null,
+  }));
+}
+
+export interface DirectoryCurationInput {
+  order: string[];
+  hidden: string[];
+  /** The `updatedAt` the screen loaded (null when the team never saved): a save over someone else's is refused. */
+  expectedUpdatedAt: string | null;
+}
+
+function idListOf(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length > DIRECTORY_CURATION_MAX_IDS) return null;
+  if (!value.every((id) => typeof id === "string" && OBJECT_ID_RE.test(id))) return null;
+  const ids = (value as string[]).map((id) => id.toLowerCase());
+  return new Set(ids).size === ids.length ? ids : null;
+}
+
+/** What a save may carry: two lists of distinct ids and the version it was made on. Anything else is refused whole. */
+export function parseDirectoryCuration(body: unknown): DirectoryCurationInput | null {
+  if (!body || typeof body !== "object") return null;
+  const { order, hidden, expectedUpdatedAt } = body as Record<string, unknown>;
+  const orderIds = idListOf(order);
+  const hiddenIds = idListOf(hidden);
+  if (!orderIds || !hiddenIds) return null;
+  if (expectedUpdatedAt !== null && (typeof expectedUpdatedAt !== "string" || Number.isNaN(Date.parse(expectedUpdatedAt)))) {
+    return null;
+  }
+  return { order: orderIds, hidden: hiddenIds, expectedUpdatedAt };
 }

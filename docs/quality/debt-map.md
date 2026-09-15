@@ -181,3 +181,21 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
     - The team cannot hide a professional or pick the order.
     - The profile bio is not reviewed before it shows.
     - `profileVisible` still hides nothing else anywhere public (as before).
+- **2026-09-15** — **[feature, live on merge] The team hides professionals from « Nos professionnels » and sets the order (owner's « lets do this »).**
+  - **Screen.** Admin → « Nos professionnels (site) » (`/admin/dashboard/professionals-directory`, `manageProfessionals`, under « Pages vitrines ») lists every active professional in the public order, with a status for each:
+    - « Affiché »;
+    - « Masqué par l'équipe »;
+    - « Masqué par le professionnel »: unticked « Profil visible aux clients », and it wins over the team;
+    - « Profil incomplet ».
+  - **Actions.** Move up and down, « Masquer » / « Afficher », « Enregistrer », and « Revenir à l'ordre alphabétique ».
+  - **Stored in `PlatformSettings.professionalsDirectory`.** It holds `{order, hidden, updatedAt, updatedBy}`, absent until the first save.
+    - A save replaces both lists whole and drops ids that are not active professionals.
+    - It must carry the `updatedAt` the screen loaded. Otherwise it changes nothing and answers 409 `CHANGED`, so two admins never overwrite each other silently. A missing settings document answers 409 `SETTINGS_MISSING`.
+  - **Order rule** (`src/lib/professionals-directory.ts`). Placed professionals come first in the team's order; everyone else follows by last name. Saving fixes the whole list, so a new professional shows at the end until moved.
+  - **Route.** `GET/PUT /api/admin/professionals-directory`. Validation is `parseDirectoryCuration`: two lists of distinct ObjectIds (at most 2000 each) and the version, refused whole otherwise.
+  - **Tests.**
+    - Rules and validation: `professionals-directory.spec.ts`.
+    - Route: `route.spec.ts`.
+    - `showcases-guard.spec.ts` now also walks this route (401/403, nothing touched).
+    - Local end to end: hide + reorder show on the public page at once; a stale save gets 409; professionals and visitors are refused.
+  - **Not done.** No history of who changed what beyond `updatedBy` and a server log line. The profile bio is still shown unreviewed.

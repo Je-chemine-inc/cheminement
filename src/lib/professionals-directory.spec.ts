@@ -1,12 +1,15 @@
 /**
- * « Nos professionnels »: who is listed, what text and photo they get, and when « Lire plus » links
- * to their page. Pure.
+ * « Nos professionnels »: who is listed, what text and photo they get, when « Lire plus » links to
+ * their page, and what the team's hiding and order do. Pure.
  */
 import { describe, it, expect } from "vitest";
 import {
+  DIRECTORY_CURATION_MAX_IDS,
   DIRECTORY_PROFESSIONAL_KEYS,
   DIRECTORY_SUMMARY_MAX,
   buildProfessionalsDirectory,
+  buildProfessionalsDirectoryAdminRows,
+  parseDirectoryCuration,
   shortenSummary,
   type DirectoryPageSource,
   type DirectoryProfileSource,
@@ -43,15 +46,15 @@ const page = (userId: string, over: Partial<DirectoryPageSource> = {}): Director
   },
   ...over,
 });
-const build = (over: Partial<Parameters<typeof buildProfessionalsDirectory>[0]> = {}) =>
-  buildProfessionalsDirectory({
-    locale: "fr",
-    users,
-    profiles: [profile(A), profile(B), profile(C, { specialty: "psychotherapist", education: [{ degree: "M.A." }] })],
-    pages: [page(A)],
-    showcaseOn: true,
-    ...over,
-  });
+const input = (over: Partial<Parameters<typeof buildProfessionalsDirectory>[0]> = {}) => ({
+  locale: "fr" as const,
+  users,
+  profiles: [profile(A), profile(B), profile(C, { specialty: "psychotherapist", education: [{ degree: "M.A." }] })],
+  pages: [page(A)],
+  showcaseOn: true,
+  ...over,
+});
+const build = (over: Partial<Parameters<typeof buildProfessionalsDirectory>[0]> = {}) => buildProfessionalsDirectory(input(over));
 
 describe("buildProfessionalsDirectory", () => {
   it("lists every visible professional by last name, and links only those with a published page", () => {
@@ -111,6 +114,66 @@ describe("buildProfessionalsDirectory", () => {
 
   it("carries only the allowed keys", () => {
     for (const pro of build()) expect(Object.keys(pro).sort()).toEqual([...DIRECTORY_PROFESSIONAL_KEYS]);
+  });
+});
+
+describe("the team's hiding and order", () => {
+  it("never lists a professional the team hid", () => {
+    expect(build({ curation: { hidden: [C] } }).map((pro) => pro.id)).toEqual([B, A]);
+  });
+
+  it("puts placed professionals first in the team's order, and everyone else after by last name", () => {
+    expect(build({ curation: { order: [A, C] } }).map((pro) => pro.id)).toEqual([A, C, B]);
+    expect(build({ curation: { order: [C] } }).map((pro) => pro.id)).toEqual([C, B, A]);
+  });
+
+  it("ignores ids that are not active professionals and repeats in the order", () => {
+    const gone = "0123456789abcdef0123eeee";
+    expect(build({ curation: { order: [gone, A, A, B], hidden: [gone] } }).map((pro) => pro.id)).toEqual([A, B, C]);
+  });
+
+  it("shows the team every active professional in the public order, with why each is or is not listed", () => {
+    const rows = buildProfessionalsDirectoryAdminRows(
+      input({
+        profiles: [profile(A, { profileVisible: false }), profile(B), profile(C, { profileCompleted: false })],
+        curation: { order: [C, A], hidden: [A, B] },
+      }),
+    );
+    expect(rows).toEqual([
+      { id: C, displayName: "Amélie Desbiens", title: { key: "psychologist", label: null }, showcasePath: null, excludedBy: "incomplete", hiddenByTeam: false, placed: true },
+      { id: A, displayName: "Dre Leanna Zozula", title: { key: "psychologist", label: null }, showcasePath: "/leanna-zozula", excludedBy: "hiddenByProfessional", hiddenByTeam: true, placed: true },
+      { id: B, displayName: "Jean-Marc Assaad", title: { key: "psychologist", label: null }, showcasePath: null, excludedBy: "hiddenByTeam", hiddenByTeam: true, placed: false },
+    ]);
+  });
+});
+
+describe("parseDirectoryCuration", () => {
+  it("accepts two lists of distinct ids and the version the screen loaded", () => {
+    expect(parseDirectoryCuration({ order: [A, B.toUpperCase()], hidden: [], expectedUpdatedAt: null })).toEqual({
+      order: [A, B],
+      hidden: [],
+      expectedUpdatedAt: null,
+    });
+    expect(parseDirectoryCuration({ order: [], hidden: [C], expectedUpdatedAt: "2026-09-15T20:00:00.000Z" })?.expectedUpdatedAt).toBe(
+      "2026-09-15T20:00:00.000Z",
+    );
+  });
+
+  it("refuses anything else whole", () => {
+    const tooMany = Array.from({ length: DIRECTORY_CURATION_MAX_IDS + 1 }, (_, i) => i.toString(16).padStart(24, "0"));
+    for (const body of [
+      null,
+      "x",
+      { order: [A], hidden: [] },
+      { order: [A, A], hidden: [], expectedUpdatedAt: null },
+      { order: ["../x"], hidden: [], expectedUpdatedAt: null },
+      { order: [A], hidden: "B", expectedUpdatedAt: null },
+      { order: [A], hidden: [{ $ne: null }], expectedUpdatedAt: null },
+      { order: [], hidden: [], expectedUpdatedAt: "yesterday" },
+      { order: tooMany, hidden: [], expectedUpdatedAt: null },
+    ]) {
+      expect(parseDirectoryCuration(body)).toBeNull();
+    }
   });
 });
 

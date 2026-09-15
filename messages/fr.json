@@ -45,6 +45,52 @@
       "description": "Découvrez les psychologues, psychothérapeutes et autres professionnels de la santé mentale de Je chemine, partout au Québec."
     }
   },
+  "ProfessionalsDirectoryAdmin": {
+    "title": "Nos professionnels (site)",
+    "subtitle": "Choisissez qui paraît sur la page publique « Nos professionnels » et dans quel ordre. La page publique change dès l'enregistrement.",
+    "viewPublic": "Voir la page publique",
+    "refresh": "Actualiser",
+    "save": "Enregistrer",
+    "resetOrder": "Revenir à l'ordre alphabétique",
+    "unsaved": "Modifications non enregistrées",
+    "orderHint": "Enregistrer fixe l'ordre de toute la liste. Un nouveau professionnel paraît après les autres, par nom de famille, jusqu'à ce que vous le déplaciez.",
+    "done": "Enregistré. La page publique est à jour.",
+    "empty": "Aucun professionnel actif.",
+    "hasPage": "Page vitrine",
+    "columns": {
+      "position": "Ordre",
+      "professional": "Professionnel",
+      "status": "Sur le site",
+      "actions": "Actions"
+    },
+    "statuses": {
+      "listed": "Affiché",
+      "hiddenByTeam": "Masqué par l'équipe",
+      "hiddenByProfessional": "Masqué par le professionnel",
+      "incomplete": "Profil incomplet"
+    },
+    "notes": {
+      "hiddenByProfessional": "Le professionnel a décoché « Profil visible aux clients » : il ne paraît pas, quoi que l'équipe choisisse.",
+      "incomplete": "Paraîtra quand son profil sera complété ou sa page vitrine publiée."
+    },
+    "actions": {
+      "up": "Monter {name}",
+      "down": "Descendre {name}",
+      "hide": "Masquer",
+      "show": "Afficher"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "CHANGED": "Quelqu'un a modifié la liste entre-temps. Elle a été rechargée : refaites vos changements.",
+      "SETTINGS_MISSING": "Enregistrez d'abord les paramètres de la plateforme une fois.",
+      "INVALID": "La liste envoyée n'est pas valide. Actualisez la page."
+    },
+    "access": {
+      "title": "Accès réservé",
+      "body": "Il faut la permission de gérer les professionnels pour ouvrir cet écran."
+    }
+  },
   "Professionals": {
     "title": "Nos professionnels",
     "intro": "Des psychologues, psychothérapeutes et autres professionnels de la santé mentale qui accompagnent les Québécois, en français et en anglais.",
@@ -3401,6 +3447,7 @@
       "organizations": "Organismes payeurs",
       "organizationInvoices": "Factures aux organismes",
       "showcases": "Pages vitrines",
+      "professionalsDirectory": "Nos professionnels (site)",
       "showcase": "Ma page vitrine",
       "waitlist": "Liste d'attente",
       "waitlists": "Listes d'attente",

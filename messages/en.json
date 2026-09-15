@@ -45,6 +45,52 @@
       "description": "Meet Je chemine's psychologists, psychotherapists and other mental health professionals across Quebec."
     }
   },
+  "ProfessionalsDirectoryAdmin": {
+    "title": "Our professionals (website)",
+    "subtitle": "Choose who appears on the public « Our professionals » page and in what order. The public page changes as soon as you save.",
+    "viewPublic": "View the public page",
+    "refresh": "Refresh",
+    "save": "Save",
+    "resetOrder": "Back to alphabetical order",
+    "unsaved": "Unsaved changes",
+    "orderHint": "Saving fixes the order of the whole list. A new professional appears after the others, by last name, until you move them.",
+    "done": "Saved. The public page is up to date.",
+    "empty": "No active professionals.",
+    "hasPage": "Showcase page",
+    "columns": {
+      "position": "Order",
+      "professional": "Professional",
+      "status": "On the website",
+      "actions": "Actions"
+    },
+    "statuses": {
+      "listed": "Shown",
+      "hiddenByTeam": "Hidden by the team",
+      "hiddenByProfessional": "Hidden by the professional",
+      "incomplete": "Incomplete profile"
+    },
+    "notes": {
+      "hiddenByProfessional": "The professional unticked « Profile visible to clients »: they do not appear, whatever the team chooses.",
+      "incomplete": "Will appear once their profile is completed or their showcase page published."
+    },
+    "actions": {
+      "up": "Move {name} up",
+      "down": "Move {name} down",
+      "hide": "Hide",
+      "show": "Show"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "Could not connect. Check your network and try again.",
+      "CHANGED": "Someone changed the list in the meantime. It was reloaded: make your changes again.",
+      "SETTINGS_MISSING": "Save the platform settings once first.",
+      "INVALID": "The list sent is not valid. Refresh the page."
+    },
+    "access": {
+      "title": "Restricted access",
+      "body": "You need the permission to manage professionals to open this screen."
+    }
+  },
   "Professionals": {
     "title": "Our professionals",
     "intro": "Psychologists, psychotherapists and other mental health professionals who support Quebecers, in French and English.",
@@ -3400,6 +3446,7 @@
       "organizations": "Paying organizations",
       "organizationInvoices": "Organization invoices",
       "showcases": "Showcase pages",
+      "professionalsDirectory": "Our professionals (website)",
       "showcase": "My showcase page",
       "waitlist": "Waitlist",
       "waitlists": "Waitlists",
