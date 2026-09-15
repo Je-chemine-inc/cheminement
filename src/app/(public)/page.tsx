@@ -3,6 +3,7 @@ import ColorTransition from "@/components/ui/ColorTransition";
 import ValueSection from "@/components/sections/ValueSection";
 import ClientAdvantagesSection from "@/components/sections/ClientAdvantagesSection";
 import HowItWorksSection from "@/components/sections/HowItWorksSection";
+import ProfessionalsTeaser from "@/components/sections/ProfessionalsTeaser";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -28,6 +29,7 @@ export default function Home() {
       <ClientAdvantagesSection />
       <ColorTransition fromColor="muted" toColor="background" />
       <HowItWorksSection />
+      <ProfessionalsTeaser />
     </main>
   );
 }

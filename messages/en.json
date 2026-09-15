@@ -39,6 +39,25 @@
     "schoolManager": {
       "title": "For schools and institutions",
       "description": "Give your students and staff supervised access to mental health professionals, with centralized follow-up and billing."
+    },
+    "professionals": {
+      "title": "Our professionals",
+      "description": "Meet Je chemine's psychologists, psychotherapists and other mental health professionals across Quebec."
+    }
+  },
+  "Professionals": {
+    "title": "Our professionals",
+    "intro": "Psychologists, psychotherapists and other mental health professionals who support Quebecers, in French and English.",
+    "contactLine": "For more information about our team, <link>contact us</link>.",
+    "readMore": "Read more",
+    "readMoreLabel": "Read more about {name}",
+    "photoAlt": "Portrait of {name}",
+    "empty": "Our professionals will be introduced here soon.",
+    "teaser": {
+      "badge": "Our team",
+      "title": "Our professionals",
+      "text": "Meet the professionals who support you: their background, their title and their approach.",
+      "button": "Meet our professionals"
     }
   },
   "Common": {
@@ -2042,7 +2061,8 @@
       "schoolServices": "School Services",
       "platform": "Space",
       "contact": "Contact",
-      "professional": "I am a Professional"
+      "professional": "I am a Professional",
+      "professionals": "Our professionals"
     },
     "menuSections": {
       "navigation": "Navigation",
@@ -4184,7 +4204,7 @@
       "privacy": "Privacy",
       "privacyDesc": "Manage your privacy and visibility settings.",
       "profileVisible": "Profile visible to clients",
-      "profileVisibleDesc": "Allow clients to find you through the platform.",
+      "profileVisibleDesc": "Allow clients to find you through the platform, and appear in « Our professionals » on the website.",
       "showRating": "Show my rating",
       "showRatingDesc": "Display your average rating on your public profile.",
       "visibleToPros": "Visible to other professionals",

@@ -164,3 +164,20 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
     - The refund route spec.
     - A « refund on cancellation (money) » block in `route.auth.spec.ts`.
   - **Not changed.** An appointment refunded before this fix has no `refundRequest`; it is recognised by `payment.status` alone.
+- **2026-09-15** — **[feature, live on merge] « Nos professionnels » at www /professionnels (owner's request, inspired by a clinic's team page).**
+  - **The page.** Every active professional is listed with a round portrait, their name, degree and title, and a short text. « Lire plus » links to the professional's page when they have a published one (owner's choice: every professional, not only those with a page).
+  - **Where it is linked.** In the header (desktop and the « Découvrir » mobile section), the footer's Espace column, a band on the home page and « Qui sommes-nous », and the sitemap.
+  - **Who is listed.** Rules live in `src/lib/professionals-directory.ts` (pure, spec'd); the loader is `professionals-directory-queries.ts`.
+    - Professionals with `role: "professional"` and `status: "active"`.
+    - A professional who unticked « Profil visible aux clients » (`Profile.profileVisible`) is never listed, even with a page.
+    - A professional without a published page is listed only once their profile is completed.
+  - **What each row shows.**
+    - With a published page (switch on, a usable slug and a registry city): the page's reviewed name, portrait and text (intro, else bio, else headline, in the visitor's language), plus the link.
+    - Without one: the profile's `bio` (French only, never reviewed by the team), the title and a short degree from `education`, initials instead of a photo (no profile photo may be public), and no link.
+    - Texts are cut at 420 characters. Rows are sorted by last name. The row shape is pinned by `DIRECTORY_PROFESSIONAL_KEYS`.
+  - **⚠ Visible in production on merge, whatever `showcaseEnabled` says.** Every completed, visible professional's name and profile bio become public. The only opt-out is the professional's own setting. Its wording now says so (« … et apparaître dans « Nos professionnels » sur le site »), but no professional has been told.
+  - **Slugs.** `professionnels` moved from the reserved « pages to come » group to Routes.
+  - **Not done.**
+    - The team cannot hide a professional or pick the order.
+    - The profile bio is not reviewed before it shows.
+    - `profileVisible` still hides nothing else anywhere public (as before).

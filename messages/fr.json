@@ -39,6 +39,25 @@
     "schoolManager": {
       "title": "Pour les établissements scolaires",
       "description": "Offrez à vos élèves et à votre personnel un accès encadré à des professionnels de la santé mentale, avec suivi et facturation centralisés."
+    },
+    "professionals": {
+      "title": "Nos professionnels",
+      "description": "Découvrez les psychologues, psychothérapeutes et autres professionnels de la santé mentale de Je chemine, partout au Québec."
+    }
+  },
+  "Professionals": {
+    "title": "Nos professionnels",
+    "intro": "Des psychologues, psychothérapeutes et autres professionnels de la santé mentale qui accompagnent les Québécois, en français et en anglais.",
+    "contactLine": "Pour plus d'informations sur notre équipe, <link>contactez-nous</link>.",
+    "readMore": "Lire plus",
+    "readMoreLabel": "Lire plus sur {name}",
+    "photoAlt": "Portrait de {name}",
+    "empty": "Nos professionnels seront bientôt présentés ici.",
+    "teaser": {
+      "badge": "Notre équipe",
+      "title": "Nos professionnels",
+      "text": "Découvrez les professionnels qui vous accompagnent : leur parcours, leur titre et leur approche.",
+      "button": "Découvrir nos professionnels"
     }
   },
   "Common": {
@@ -2042,7 +2061,8 @@
       "platform": "Espace",
       "contact": "Contact",
       "professional": "Je suis un professionnel",
-      "schoolServices": "Services scolaires"
+      "schoolServices": "Services scolaires",
+      "professionals": "Nos professionnels"
     },
     "menuSections": {
       "navigation": "Navigation",
@@ -4184,7 +4204,7 @@
       "privacy": "Confidentialité",
       "privacyDesc": "Gérez vos paramètres de confidentialité et de visibilité.",
       "profileVisible": "Profil visible aux clients",
-      "profileVisibleDesc": "Permettre aux clients de vous trouver via la plateforme.",
+      "profileVisibleDesc": "Permettre aux clients de vous trouver via la plateforme, et apparaître dans « Nos professionnels » sur le site.",
       "showRating": "Afficher ma note",
       "showRatingDesc": "Afficher votre note moyenne sur votre profil public.",
       "visibleToPros": "Visible aux autres professionnels",
