@@ -31,9 +31,10 @@ export const VITRINE_ANCHORS = {
   slots: SHOWCASE_SLOTS_ANCHOR,
   waitlist: SHOWCASE_WAITLIST_ANCHOR,
   products: "formations",
+  articles: "articles",
 } as const;
 
-export type VitrineSection = "about" | "approach" | "services" | "slots" | "products";
+export type VitrineSection = "about" | "approach" | "services" | "slots" | "products" | "articles";
 
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
@@ -48,6 +49,8 @@ export function vitrineSections(input: {
   hasAbout: boolean;
   showSlots: boolean;
   hasProducts: boolean;
+  /** The professional's live articles. */
+  hasArticles?: boolean;
   /** The sections the page draws, in the professional's order: the links follow it and skip what is not drawn. */
   order?: readonly string[];
 }): VitrineSection[] {
@@ -57,6 +60,7 @@ export function vitrineSections(input: {
     "services",
     ...(input.showSlots ? (["slots"] as const) : []),
     ...(input.hasProducts ? (["products"] as const) : []),
+    ...(input.hasArticles ? (["articles"] as const) : []),
   ];
   const order = input.order;
   if (!order) return sections;

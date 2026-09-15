@@ -24,6 +24,7 @@ describe("section order and visibility", () => {
       "services",
       "slots",
       "expertises",
+      "articles",
       "cta",
     ]);
     expect(resolveSectionOrder(undefined)).toEqual([...SHOWCASE_SECTION_KEYS]);
@@ -37,6 +38,7 @@ describe("section order and visibility", () => {
       "services",
       "slots",
       "expertises",
+      "articles",
     ]);
   });
 });

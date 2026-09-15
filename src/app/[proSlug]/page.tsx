@@ -11,6 +11,7 @@ import { ShowcaseProfileView } from "@/components/showcase/ShowcaseProfileView";
 import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
 import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
 import { listShowcaseProducts } from "@/lib/products";
+import { listShowcaseArticles } from "@/lib/articles";
 
 /**
  * www.jechemine.ca/<slug> — a professional's published page (spec 003).
@@ -83,17 +84,24 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
   if (result.kind === "moved") permanentRedirect(`/${result.slug}`);
   if (result.kind === "missing") notFound();
 
-  // Trainings and products the professional sells (spec 003 phase 5).
-  const products = await listShowcaseProducts(result.profile.slug, await currentLocale()).catch((error) => {
-    console.error("[showcase] products could not be listed:", error);
-    return [];
-  });
+  // Trainings and products the professional sells (spec 003 phase 5), and the articles they wrote.
+  const locale = await currentLocale();
+  const [products, articles] = await Promise.all([
+    listShowcaseProducts(result.profile.slug, locale).catch((error) => {
+      console.error("[showcase] products could not be listed:", error);
+      return [];
+    }),
+    listShowcaseArticles(result.profile.slug, locale).catch((error) => {
+      console.error("[showcase] articles could not be listed:", error);
+      return [];
+    }),
+  ]);
 
   return (
     <>
       <ShowcaseProfileJsonLd profile={result.profile} />
       <ShowcaseBeacon city={result.profile.city.key} slug={result.profile.slug} />
-      <ShowcaseProfileView profile={result.profile} products={products} />
+      <ShowcaseProfileView profile={result.profile} products={products} articles={articles} />
     </>
   );
 }

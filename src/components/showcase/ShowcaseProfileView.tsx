@@ -50,6 +50,7 @@ import {
   type ShowcaseTextKey,
 } from "@/lib/showcase-customization";
 import type { ShowcaseProductCard } from "@/lib/products";
+import type { ShowcaseArticleCard } from "@/lib/articles";
 import { ShowcaseWaitlistForm } from "@/components/showcase/ShowcaseWaitlistForm";
 import { VitrineBooking, type VitrineBookingOption } from "@/components/showcase/vitrine/VitrineBooking";
 import { VitrineHeader } from "@/components/showcase/vitrine/VitrineHeader";
@@ -163,11 +164,14 @@ export async function ShowcaseProfileView({
   profile,
   preview = false,
   products = [],
+  articles = [],
 }: {
   profile: ShowcasePublicProfile;
   preview?: boolean;
   /** The professional's live trainings and products (spec 003 phase 5), sold on www. */
   products?: ShowcaseProductCard[];
+  /** The professional's live articles, read at /nouveautes/<slug>. */
+  articles?: ShowcaseArticleCard[];
 }) {
   const t = await getTranslations("Showcase");
   const localeTag = (await getLocale()) === "en" ? "en-CA" : "fr-CA";
@@ -219,9 +223,16 @@ export async function ShowcaseProfileView({
     slots: !preview,
     expertises: profile.expertises.length > 0 || profile.focusAreas.length > 0,
     products: products.length > 0,
+    articles: articles.length > 0,
     cta: true,
   });
-  const sections = vitrineSections({ hasAbout, showSlots, hasProducts: products.length > 0, order: shownSections });
+  const sections = vitrineSections({
+    hasAbout,
+    showSlots,
+    hasProducts: products.length > 0,
+    hasArticles: articles.length > 0,
+    order: shownSections,
+  });
   const navLinks = sections.map((section: VitrineSection) => ({
     href: `#${VITRINE_ANCHORS[section]}`,
     label: t(`vitrine.nav.${section}`),
@@ -797,6 +808,60 @@ export async function ShowcaseProfileView({
                       </span>
                       <a href={product.url} className={`${BUTTON_OUTLINE} py-3`}>
                         {t("profile.productOpen")}
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+      </>
+    ),
+    articles: (
+      <>
+      {/* Articles, reviewed by the team and read on www */}
+      {articles.length > 0 ? (
+        <section id={VITRINE_ANCHORS.articles} className={SECTION} data-articles="">
+          <div className={WRAP}>
+            <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
+            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
+            <ul className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${articles.length >= 3 ? "xl:grid-cols-3" : ""}`}>
+              {articles.map((article, index) => (
+                <li
+                  key={article.slug}
+                  data-reveal={index}
+                  className="group flex min-w-0 flex-col overflow-hidden rounded-[36px] border border-[#ECE8E1] bg-white p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_70px_-50px_rgba(31,42,46,0.55)] motion-reduce:hover:translate-y-0"
+                >
+                  {article.iconUrl ? (
+                    <a href={article.url} className="relative block aspect-[16/10] w-full overflow-hidden rounded-[28px] bg-[#F6F3EE]">
+                      <Image
+                        src={article.iconUrl}
+                        alt=""
+                        fill
+                        sizes="(min-width: 1280px) 30vw, (min-width: 768px) 45vw, 100vw"
+                        className="object-cover transition-transform duration-700 group-hover:scale-[1.04] motion-reduce:transition-none"
+                        unoptimized={preview}
+                      />
+                    </a>
+                  ) : null}
+                  <div className="flex flex-1 flex-col px-[clamp(10px,1.2vw,18px)] pb-3 pt-6">
+                    {article.publishedAt ? (
+                      <p className="vt-xs font-semibold uppercase tracking-[0.18em] text-[#5B6566]">
+                        {new Intl.DateTimeFormat(localeTag, { dateStyle: "long", timeZone: "America/Toronto" }).format(new Date(article.publishedAt))}
+                      </p>
+                    ) : null}
+                    <h3 className={`${SERIF} mt-3 break-words text-[clamp(24px,2vw,30px)] leading-tight text-[#1F2A2E]`}>
+                      <a href={article.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
+                        {article.title}
+                      </a>
+                    </h3>
+                    {article.summary ? <p className="mt-3 line-clamp-3 vt-md leading-[1.7] text-[#5B6566]">{article.summary}</p> : null}
+                    <div className="mt-auto pt-6">
+                      <a href={article.url} className={`${BUTTON_OUTLINE} py-3`}>
+                        {t("vitrine.articles.read")}
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </a>
                     </div>

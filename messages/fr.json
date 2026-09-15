@@ -3385,7 +3385,9 @@
       "waitlist": "Liste d'attente",
       "waitlists": "Listes d'attente",
       "products": "Formations et produits",
-      "productsReview": "Produits à vérifier"
+      "productsReview": "Produits à vérifier",
+      "articles": "Mes articles",
+      "articlesReview": "Articles à vérifier"
     },
     "overview": {
       "title": "Bienvenue",
@@ -7276,7 +7278,10 @@
     "backToList": "Retour aux nouveautés",
     "emptyContent": "Le contenu de cette annonce sera publié prochainement.",
     "ctaTitle": "D'autres annonces vous attendent.",
-    "ctaButton": "Toutes les nouveautés"
+    "ctaButton": "Toutes les nouveautés",
+    "byline": "Par {name}",
+    "disclaimer": "Cet article informe, il ne remplace pas une consultation avec un professionnel de la santé mentale. En cas d'urgence, composez le 911.",
+    "previewNotice": "Aperçu : cet article n'est pas publié. Seuls son auteur et l'équipe le voient."
   },
   "Press": {
     "badge": "MÉDIATHÈQUE",
@@ -7419,7 +7424,8 @@
         "approach": "Approche",
         "services": "Tarifs",
         "slots": "Disponibilités",
-        "products": "Formations"
+        "products": "Formations",
+        "articles": "Articles"
       },
       "chips": {
         "inPerson": "En personne à {city}",
@@ -7491,6 +7497,11 @@
       "products": {
         "eyebrow": "Formations et produits",
         "title": "Apprendre à votre rythme, entre les séances"
+      },
+      "articles": {
+        "eyebrow": "Articles",
+        "title": "À lire",
+        "read": "Lire l'article"
       },
       "expertises": {
         "eyebrow": "Champs d'expertise"
@@ -7789,6 +7800,7 @@
         "slots": "Disponibilités",
         "expertises": "Ce que j’accompagne",
         "products": "Formations et produits",
+        "articles": "Articles",
         "cta": "Bandeau final"
       },
       "show": "Afficher « {section} »",
@@ -7813,6 +7825,7 @@
         "expertisesTitle": "Titre « Ce que j’accompagne »",
         "expertisesIntro": "Texte sous « Ce que j’accompagne »",
         "productsTitle": "Titre « Formations et produits »",
+        "articlesTitle": "Titre « Articles »",
         "ctaTitle": "Titre du bandeau final",
         "ctaBody": "Texte du bandeau final"
       },
@@ -8639,6 +8652,204 @@
     "access": {
       "title": "Accès requis",
       "body": "La gestion du contenu est nécessaire pour vérifier les produits. Demandez l'accès à un·e super-administrateur·trice."
+    }
+  },
+  "ArticlesPro": {
+    "title": "Mes articles",
+    "subtitle": "Écrivez des articles pour votre page. L'équipe les relit avant leur publication.",
+    "common": { "cancel": "Annuler" },
+    "howItWorks": {
+      "title": "Comment ça fonctionne",
+      "review": "Chaque article est relu par l'équipe avant d'être publié sur votre page. Vos modifications d'un article en ligne sont aussi relues.",
+      "rules": "Pas de témoignages ni de promesses de résultats. Une note rappelle au lecteur qu'un article ne remplace pas une consultation.",
+      "news": "L'équipe peut aussi afficher un article dans les Nouveautés du site."
+    },
+    "list": {
+      "new": "Nouvel article",
+      "loadError": "Impossible de charger vos articles.",
+      "emptyTitle": "Aucun article pour l'instant",
+      "emptyBody": "Donnez un titre à votre premier article, écrivez-le, puis envoyez-le à l'équipe.",
+      "updated": "Modifié le",
+      "viewPublic": "Voir l'article",
+      "edit": "Modifier"
+    },
+    "create": {
+      "title": "Nouvel article",
+      "description": "Donnez un titre en français. Vous écrirez le reste ensuite.",
+      "titleFr": "Titre en français",
+      "titleHint": "Le titre sert aussi à créer l'adresse de l'article, qui ne change plus par la suite.",
+      "submit": "Créer le brouillon"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "En vérification",
+      "approved": "Publié",
+      "rejected": "Renvoyé",
+      "unpublished": "Retiré"
+    },
+    "badges": {
+      "live": "En ligne",
+      "changesPending": "Modifications à relire",
+      "inNews": "Dans les Nouveautés"
+    },
+    "banner": {
+      "draft": "Cet article n'est pas encore visible. Écrivez-le, puis envoyez-le à l'équipe.",
+      "submitted": "L'équipe relit cet article. Vous recevrez un courriel dès qu'une décision sera prise.",
+      "approved": "Cet article est publié sur votre page tant que votre compte est actif.",
+      "rejected": "L'équipe vous a renvoyé cet article. Apportez les changements demandés, puis envoyez-le de nouveau.",
+      "unpublishedByProfessional": "Vous avez retiré cet article. Envoyez-le de nouveau pour le remettre en ligne.",
+      "unpublishedByAdmin": "L'équipe a retiré cet article. Envoyez-le de nouveau pour le remettre en ligne.",
+      "notes": "Commentaires de l'équipe",
+      "changesPending": "Vos dernières modifications sont déjà en ligne et l'équipe va les relire."
+    },
+    "editor": {
+      "back": "Mes articles",
+      "loadError": "Impossible de charger cet article.",
+      "lockedNotice": "Cet article est en vérification et ne peut pas être modifié. Retirez l'envoi pour le modifier.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Modifications enregistrées.",
+      "unsaved": "Vous avez des modifications non enregistrées."
+    },
+    "fields": {
+      "sectionFrench": "Présentation",
+      "titleFr": "Titre",
+      "summaryFr": "Résumé",
+      "summaryHint": "{count} / {max} caractères. Affiché sur votre page et sous le titre.",
+      "sectionCover": "Image de couverture",
+      "coverHint": "PNG, JPEG ou WebP, 2 Mo au maximum. Format paysage conseillé. Aucune personne reconnaissable.",
+      "coverAlt": "Aperçu de l'image de couverture",
+      "uploadCover": "Ajouter une image",
+      "replaceCover": "Remplacer l'image",
+      "removeCover": "Retirer l'image",
+      "contentFr": "Texte de l'article",
+      "contentHint": "Titres, listes, citations et images sont permis. Pas de témoignages ni de promesses de résultats.",
+      "sectionEnglish": "Version anglaise (facultatif)",
+      "englishHint": "Tout champ laissé vide en anglais reprend le texte français.",
+      "titleEn": "Titre en anglais",
+      "summaryEn": "Résumé en anglais",
+      "contentEn": "Texte en anglais"
+    },
+    "missing": {
+      "title": "Ce qui manque",
+      "none": "Tout est prêt pour l'envoi.",
+      "afterSave": "La liste se met à jour après l'enregistrement."
+    },
+    "requirements": {
+      "title": "Un titre en français",
+      "summary": "Un résumé en français",
+      "content": "Le texte de l'article",
+      "attestation": "La confirmation : ni témoignage ni promesse de résultat"
+    },
+    "actions": {
+      "submit": "Envoyer à l'équipe",
+      "withdraw": "Retirer l'envoi",
+      "unpublish": "Retirer de ma page",
+      "delete": "Supprimer",
+      "view": "Voir l'article"
+    },
+    "submit": {
+      "title": "Envoyer cet article",
+      "body": "L'équipe relira l'article avant sa publication. Vous ne pourrez pas le modifier pendant la vérification.",
+      "attest": "Je confirme que cet article ne contient ni témoignage ni promesse de résultat, et que j'en détiens les droits.",
+      "confirm": "Envoyer",
+      "done": "Article envoyé. L'équipe vous écrira dès qu'une décision sera prise.",
+      "saveFirst": "Vos modifications n'ont pas pu être enregistrées. Corrigez-les avant d'envoyer."
+    },
+    "withdraw": { "done": "Envoi retiré. L'article est de nouveau un brouillon." },
+    "unpublish": {
+      "title": "Retirer cet article de votre page?",
+      "body": "Il ne sera plus visible. Pour le remettre en ligne, il faudra l'envoyer de nouveau à l'équipe.",
+      "confirm": "Retirer de ma page",
+      "done": "L'article a été retiré de votre page."
+    },
+    "delete": {
+      "title": "Supprimer cet article?",
+      "body": "L'article sera supprimé définitivement.",
+      "confirm": "Supprimer"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "INVALID_TITLE": "Le titre est obligatoire et ne doit pas dépasser 120 caractères.",
+      "INVALID_SUMMARY": "Le résumé ne doit pas dépasser 400 caractères.",
+      "INVALID_HTML": "Le texte n'a pas pu être lu.",
+      "HTML_TOO_LARGE": "Le texte est trop long. Raccourcissez-le ou retirez des images.",
+      "INVALID_IMAGE": "Cette image n'est pas valide. Téléversez-la de nouveau.",
+      "UNDER_REVIEW": "Cet article est en vérification. Retirez l'envoi pour le modifier.",
+      "TRANSITION_NOT_ALLOWED": "Cette action n'est plus possible dans l'état actuel de l'article.",
+      "INCOMPLETE": "L'article n'est pas encore complet :",
+      "NOT_FOUND": "Cet article est introuvable.",
+      "ACCOUNT_NOT_ACTIVE": "Cette section est réservée aux professionnels dont le compte est actif et approuvé.",
+      "FILE_TOO_LARGE": "Ce fichier est trop volumineux.",
+      "FILE_REJECTED": "Ce fichier n'est pas accepté. Vérifiez son format et sa taille."
+    }
+  },
+  "ArticlesAdmin": {
+    "title": "Articles à vérifier",
+    "subtitle": "Les articles que les professionnel·les écrivent pour leur page. Approuvez pour publier, renvoyez avec des notes, retirez, ou affichez un article dans les Nouveautés du site.",
+    "refresh": "Actualiser",
+    "scopes": { "review": "À vérifier", "all": "Tous" },
+    "empty": "Aucun article.",
+    "emptyReview": "Rien à vérifier pour le moment.",
+    "columns": {
+      "title": "Titre",
+      "professional": "Professionnel·le",
+      "status": "Statut",
+      "submitted": "Envoyé le",
+      "news": "Nouveautés",
+      "actions": "Actions"
+    },
+    "preview": "Lire l'article",
+    "changesPending": "Modifications à relire",
+    "live": "En ligne",
+    "lastNotes": "Dernières notes : {notes}",
+    "statuses": {
+      "draft": "Brouillon",
+      "submitted": "Envoyé",
+      "approved": "Publié",
+      "rejected": "Renvoyé",
+      "unpublished": "Retiré"
+    },
+    "actions": {
+      "approve": "Approuver",
+      "approveChanges": "Approuver les modifications",
+      "reject": "Renvoyer",
+      "unpublish": "Retirer",
+      "feature": "Afficher dans les Nouveautés",
+      "unfeature": "Retirer des Nouveautés"
+    },
+    "rejectDialog": {
+      "title": "Renvoyer « {title} »",
+      "body": "Vos notes seront envoyées à la personne professionnelle pour l'aider à corriger son article.",
+      "notesLabel": "Notes (obligatoires)",
+      "notesPlaceholder": "Expliquez ce qui doit être corrigé…",
+      "confirm": "Renvoyer l'article"
+    },
+    "unpublishDialog": {
+      "title": "Retirer « {title} »",
+      "body": "L'article ne sera plus visible, ni sur la page du professionnel ni dans les Nouveautés.",
+      "confirm": "Retirer l'article"
+    },
+    "cancel": "Annuler",
+    "done": {
+      "approve": "« {title} » est approuvé et publié.",
+      "approveChanges": "Les modifications de « {title} » sont approuvées.",
+      "reject": "« {title} » est renvoyé; les notes ont été envoyées.",
+      "unpublish": "« {title} » est retiré.",
+      "feature": "« {title} » est affiché dans les Nouveautés.",
+      "unfeature": "« {title} » est retiré des Nouveautés."
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      "NOTES_REQUIRED": "Ajoutez des notes pour expliquer le renvoi.",
+      "TRANSITION_NOT_ALLOWED": "Cet article a changé entre-temps. La liste a été mise à jour.",
+      "NOT_FOUND": "Cet article n'existe plus. La liste a été mise à jour.",
+      "INVALID_ACTION": "Action non reconnue."
+    },
+    "access": {
+      "title": "Accès réservé",
+      "body": "Cet écran est réservé aux administrateurs qui gèrent le contenu. Demandez cette permission à un super administrateur."
     }
   },
   "ContentEditor": {

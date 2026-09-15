@@ -22,6 +22,18 @@ describe("formatShowcasePrice", () => {
   });
 });
 
+describe("vitrineSections with articles", () => {
+  it("links the articles after the products, and not without any", () => {
+    expect(vitrineSections({ hasAbout: false, showSlots: false, hasProducts: true, hasArticles: true })).toEqual([
+      "approach",
+      "services",
+      "products",
+      "articles",
+    ]);
+    expect(vitrineSections({ hasAbout: false, showSlots: false, hasProducts: false, hasArticles: false })).toEqual(["approach", "services"]);
+  });
+});
+
 describe("vitrineSections", () => {
   it("lists every section of a complete, bookable page in the design's order", () => {
     expect(vitrineSections({ hasAbout: true, showSlots: true, hasProducts: true })).toEqual([

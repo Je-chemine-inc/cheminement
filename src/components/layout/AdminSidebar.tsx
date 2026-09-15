@@ -119,6 +119,11 @@ export function AdminSidebar() {
           icon: GraduationCap,
         },
         {
+          title: t("articlesReview"),
+          url: "/admin/dashboard/articles",
+          icon: Newspaper,
+        },
+        {
           title: t("patients"),
           url: "/admin/dashboard/patients",
           icon: User,

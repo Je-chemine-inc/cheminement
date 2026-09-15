@@ -3384,7 +3384,9 @@
       "waitlist": "Waitlist",
       "waitlists": "Waitlists",
       "products": "Trainings and products",
-      "productsReview": "Products to review"
+      "productsReview": "Products to review",
+      "articles": "My articles",
+      "articlesReview": "Articles to review"
     },
     "overview": {
       "title": "Welcome Back",
@@ -7277,7 +7279,10 @@
     "backToList": "Back to news",
     "emptyContent": "Content for this post will be published soon.",
     "ctaTitle": "More announcements are waiting.",
-    "ctaButton": "All news"
+    "ctaButton": "All news",
+    "byline": "By {name}",
+    "disclaimer": "This article informs; it does not replace a consultation with a mental health professional. In an emergency, call 911.",
+    "previewNotice": "Preview: this article is not published. Only its author and the team see it."
   },
   "Press": {
     "badge": "MEDIA LIBRARY",
@@ -7420,7 +7425,8 @@
         "approach": "Approach",
         "services": "Fees",
         "slots": "Availability",
-        "products": "Trainings"
+        "products": "Trainings",
+        "articles": "Articles"
       },
       "chips": {
         "inPerson": "In person in {city}",
@@ -7492,6 +7498,11 @@
       "products": {
         "eyebrow": "Trainings and products",
         "title": "Learn at your own pace, between sessions"
+      },
+      "articles": {
+        "eyebrow": "Articles",
+        "title": "Worth reading",
+        "read": "Read the article"
       },
       "expertises": {
         "eyebrow": "Areas of expertise"
@@ -7790,6 +7801,7 @@
         "slots": "Availability",
         "expertises": "What I help with",
         "products": "Trainings and products",
+        "articles": "Articles",
         "cta": "Closing band"
       },
       "show": "Show “{section}”",
@@ -7814,6 +7826,7 @@
         "expertisesTitle": "“What I help with” title",
         "expertisesIntro": "Text under “What I help with”",
         "productsTitle": "“Trainings and products” title",
+        "articlesTitle": "“Articles” title",
         "ctaTitle": "Closing band title",
         "ctaBody": "Closing band text"
       },
@@ -8640,6 +8653,204 @@
     "access": {
       "title": "Access required",
       "body": "Content management rights are needed to review products. Ask a super admin for access."
+    }
+  },
+  "ArticlesPro": {
+    "title": "My articles",
+    "subtitle": "Write articles for your page. The team reads them before they are published.",
+    "common": { "cancel": "Cancel" },
+    "howItWorks": {
+      "title": "How it works",
+      "review": "Every article is read by the team before it is published on your page. Your changes to a live article are read too.",
+      "rules": "No testimonials and no promises of results. A note reminds readers that an article does not replace a consultation.",
+      "news": "The team can also show an article in the site's News."
+    },
+    "list": {
+      "new": "New article",
+      "loadError": "Your articles could not be loaded.",
+      "emptyTitle": "No articles yet",
+      "emptyBody": "Give your first article a title, write it, then send it to the team.",
+      "updated": "Edited on",
+      "viewPublic": "View the article",
+      "edit": "Edit"
+    },
+    "create": {
+      "title": "New article",
+      "description": "Give a French title. You will write the rest next.",
+      "titleFr": "French title",
+      "titleHint": "The title also makes the article's address, which does not change afterwards.",
+      "submit": "Create the draft"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Under review",
+      "approved": "Published",
+      "rejected": "Sent back",
+      "unpublished": "Taken down"
+    },
+    "badges": {
+      "live": "Live",
+      "changesPending": "Changes to review",
+      "inNews": "In News"
+    },
+    "banner": {
+      "draft": "This article is not visible yet. Write it, then send it to the team.",
+      "submitted": "The team is reading this article. You will get an email as soon as a decision is made.",
+      "approved": "This article is published on your page while your account is active.",
+      "rejected": "The team sent this article back. Make the requested changes, then send it again.",
+      "unpublishedByProfessional": "You took this article down. Send it again to put it back online.",
+      "unpublishedByAdmin": "The team took this article down. Send it again to put it back online.",
+      "notes": "Comments from the team",
+      "changesPending": "Your latest changes are already live and the team will read them."
+    },
+    "editor": {
+      "back": "My articles",
+      "loadError": "This article could not be loaded.",
+      "lockedNotice": "This article is under review and cannot be edited. Withdraw it to edit it.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Changes saved.",
+      "unsaved": "You have unsaved changes."
+    },
+    "fields": {
+      "sectionFrench": "Presentation",
+      "titleFr": "Title",
+      "summaryFr": "Summary",
+      "summaryHint": "{count} / {max} characters. Shown on your page and under the title.",
+      "sectionCover": "Cover image",
+      "coverHint": "PNG, JPEG or WebP, 2 MB at most. Landscape recommended. No recognisable person.",
+      "coverAlt": "Cover image preview",
+      "uploadCover": "Add an image",
+      "replaceCover": "Replace the image",
+      "removeCover": "Remove the image",
+      "contentFr": "Article text",
+      "contentHint": "Headings, lists, quotes and images are allowed. No testimonials and no promises of results.",
+      "sectionEnglish": "English version (optional)",
+      "englishHint": "Any field left empty in English uses the French text.",
+      "titleEn": "English title",
+      "summaryEn": "English summary",
+      "contentEn": "English text"
+    },
+    "missing": {
+      "title": "What is missing",
+      "none": "Everything is ready to send.",
+      "afterSave": "The list updates after saving."
+    },
+    "requirements": {
+      "title": "A French title",
+      "summary": "A French summary",
+      "content": "The article's text",
+      "attestation": "The confirmation: no testimonial and no promise of results"
+    },
+    "actions": {
+      "submit": "Send to the team",
+      "withdraw": "Withdraw",
+      "unpublish": "Take off my page",
+      "delete": "Delete",
+      "view": "View the article"
+    },
+    "submit": {
+      "title": "Send this article",
+      "body": "The team will read the article before it is published. You cannot edit it during the review.",
+      "attest": "I confirm this article contains no testimonial and no promise of results, and that I hold its rights.",
+      "confirm": "Send",
+      "done": "Article sent. The team will write to you as soon as a decision is made.",
+      "saveFirst": "Your changes could not be saved. Fix them before sending."
+    },
+    "withdraw": { "done": "Withdrawn. The article is a draft again." },
+    "unpublish": {
+      "title": "Take this article off your page?",
+      "body": "It will no longer be visible. To put it back online, send it to the team again.",
+      "confirm": "Take off my page",
+      "done": "The article was taken off your page."
+    },
+    "delete": {
+      "title": "Delete this article?",
+      "body": "The article will be deleted for good.",
+      "confirm": "Delete"
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "INVALID_TITLE": "The title is required and must be 120 characters at most.",
+      "INVALID_SUMMARY": "The summary must be 400 characters at most.",
+      "INVALID_HTML": "The text could not be read.",
+      "HTML_TOO_LARGE": "The text is too long. Shorten it or remove images.",
+      "INVALID_IMAGE": "This image is not valid. Upload it again.",
+      "UNDER_REVIEW": "This article is under review. Withdraw it to edit it.",
+      "TRANSITION_NOT_ALLOWED": "This action is no longer possible in the article's current state.",
+      "INCOMPLETE": "The article is not complete yet:",
+      "NOT_FOUND": "This article was not found.",
+      "ACCOUNT_NOT_ACTIVE": "This section is for professionals whose account is active and approved.",
+      "FILE_TOO_LARGE": "This file is too large.",
+      "FILE_REJECTED": "This file is not accepted. Check its format and size."
+    }
+  },
+  "ArticlesAdmin": {
+    "title": "Articles to review",
+    "subtitle": "The articles professionals write for their page. Approve to publish, send back with notes, take down, or show an article in the site's News.",
+    "refresh": "Refresh",
+    "scopes": { "review": "To review", "all": "All" },
+    "empty": "No articles.",
+    "emptyReview": "Nothing to review right now.",
+    "columns": {
+      "title": "Title",
+      "professional": "Professional",
+      "status": "Status",
+      "submitted": "Sent on",
+      "news": "News",
+      "actions": "Actions"
+    },
+    "preview": "Read the article",
+    "changesPending": "Changes to review",
+    "live": "Live",
+    "lastNotes": "Latest notes: {notes}",
+    "statuses": {
+      "draft": "Draft",
+      "submitted": "Sent",
+      "approved": "Published",
+      "rejected": "Sent back",
+      "unpublished": "Taken down"
+    },
+    "actions": {
+      "approve": "Approve",
+      "approveChanges": "Approve the changes",
+      "reject": "Send back",
+      "unpublish": "Take down",
+      "feature": "Show in News",
+      "unfeature": "Remove from News"
+    },
+    "rejectDialog": {
+      "title": "Send back “{title}”",
+      "body": "Your notes are sent to the professional to help them fix their article.",
+      "notesLabel": "Notes (required)",
+      "notesPlaceholder": "Explain what needs fixing…",
+      "confirm": "Send the article back"
+    },
+    "unpublishDialog": {
+      "title": "Take down “{title}”",
+      "body": "The article will no longer be visible, on the professional's page or in News.",
+      "confirm": "Take the article down"
+    },
+    "cancel": "Cancel",
+    "done": {
+      "approve": "“{title}” is approved and published.",
+      "approveChanges": "The changes to “{title}” are approved.",
+      "reject": "“{title}” was sent back; the notes were sent.",
+      "unpublish": "“{title}” was taken down.",
+      "feature": "“{title}” is shown in News.",
+      "unfeature": "“{title}” was removed from News."
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "network": "No connection. Check your network and try again.",
+      "NOTES_REQUIRED": "Add notes to explain why it is sent back.",
+      "TRANSITION_NOT_ALLOWED": "This article changed meanwhile. The list was updated.",
+      "NOT_FOUND": "This article no longer exists. The list was updated.",
+      "INVALID_ACTION": "Unknown action."
+    },
+    "access": {
+      "title": "Restricted access",
+      "body": "This screen is for admins who manage content. Ask a super admin for this permission."
     }
   },
   "ContentEditor": {

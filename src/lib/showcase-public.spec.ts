@@ -87,7 +87,7 @@ describe("buildShowcasePublicProfile", () => {
       credentials: ["D. Psy., Université de Montréal"],
       customization: {
         texts: {},
-        sectionOrder: ["about", "approach", "values", "services", "slots", "expertises", "products", "cta"],
+        sectionOrder: ["about", "approach", "values", "services", "slots", "expertises", "products", "articles", "cta"],
         hiddenSections: [],
         accent: "teal",
         ambience: {},

@@ -23,6 +23,7 @@ import {
   Store,
   ListOrdered,
   GraduationCap,
+  Newspaper,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useTranslations } from "next-intl";
@@ -137,6 +138,11 @@ export function ProfessionalSidebar() {
           title: t("products"),
           url: "/professional/dashboard/products",
           icon: GraduationCap,
+        },
+        {
+          title: t("articles"),
+          url: "/professional/dashboard/articles",
+          icon: Newspaper,
         },
       ],
     },

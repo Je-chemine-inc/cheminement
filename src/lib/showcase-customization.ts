@@ -27,6 +27,7 @@ export const SHOWCASE_TEXT_KEYS = [
   "expertisesTitle",
   "expertisesIntro",
   "productsTitle",
+  "articlesTitle",
   "ctaTitle",
   "ctaBody",
 ] as const;
@@ -53,6 +54,7 @@ export const SHOWCASE_TEXT_LIMITS: Readonly<Record<ShowcaseTextKey, number>> = {
   expertisesTitle: TITLE,
   expertisesIntro: INTRO,
   productsTitle: TITLE,
+  articlesTitle: TITLE,
   ctaTitle: TITLE,
   ctaBody: INTRO,
 };
@@ -74,6 +76,7 @@ export const SHOWCASE_TEXT_DEFAULTS: Readonly<Record<ShowcaseTextKey, string>> =
   expertisesTitle: "vitrine.expertisesTitle",
   expertisesIntro: "vitrine.expertisesIntro",
   productsTitle: "vitrine.products.title",
+  articlesTitle: "vitrine.articles.title",
   ctaTitle: "vitrine.cta.title",
   ctaBody: "vitrine.cta.body",
 };
@@ -89,6 +92,7 @@ export const SHOWCASE_SECTION_KEYS = [
   "slots",
   "expertises",
   "products",
+  "articles",
   "cta",
 ] as const;
 export type ShowcaseSectionKey = (typeof SHOWCASE_SECTION_KEYS)[number];
