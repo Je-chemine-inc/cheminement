@@ -215,16 +215,6 @@ export async function ShowcaseProfileView({
     { title: t("vitrine.approach.firstTitle"), body: t("vitrine.approach.firstBody") },
     { title: t("vitrine.approach.nextTitle"), body: t("vitrine.approach.nextBody", { name }) },
   ];
-  const faq = [
-    { q: t("vitrine.faq.bookingQ"), a: t("vitrine.faq.bookingA", { name }) },
-    ...(modes ? [{ q: t("vitrine.faq.modesQ"), a: t("vitrine.faq.modesA", { name, modes }) }] : []),
-    { q: t("vitrine.faq.insuranceQ"), a: t("vitrine.faq.insuranceA") },
-    { q: t("vitrine.faq.privacyQ"), a: t("vitrine.faq.privacyA") },
-    { q: t("vitrine.faq.cancelQ"), a: t("vitrine.faq.cancelA", { hours: profile.freeCancellationHours }) },
-    ...(preview ? [] : [{ q: t("vitrine.faq.waitQ"), a: t("vitrine.faq.waitA", { name }) }]),
-  ];
-  // Two columns of questions, filled in reading order, so opening one never moves the other column.
-  const faqColumns = [faq.filter((_, index) => index % 2 === 0), faq.filter((_, index) => index % 2 === 1)];
 
   const waitlist = preview ? null : (
     <ShowcaseWaitlistForm
@@ -727,48 +717,8 @@ export async function ShowcaseProfileView({
         </section>
       ) : null}
 
-      {/* Questions */}
-      <section id={VITRINE_ANCHORS.faq} className={SECTION}>
-        <div className={WRAP}>
-          <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-            <div className="min-w-0">
-              <p className={LABEL}>{t("vitrine.faq.eyebrow")}</p>
-              <h2 className={`${H2} mt-5`}>{t("vitrine.faq.title")}</h2>
-            </div>
-            <div className="lg:pt-12">
-              <p className={`${BODY} max-w-[60ch]`}>{t("vitrine.faq.intro")}</p>
-              <a href={canonicalSiteUrl("/contact")} className={`${BUTTON_OUTLINE} mt-5 py-3`}>
-                {t("vitrine.faq.contact")}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </div>
-          </div>
-          <div className="mt-[clamp(40px,4.5vw,64px)] grid items-start gap-3 lg:grid-cols-2 lg:gap-x-5">
-            {faqColumns.map((column, columnIndex) => (
-              <div key={columnIndex} className="flex min-w-0 flex-col gap-3">
-                {column.map((item) => (
-                  <details
-                    key={item.q}
-                    className="group rounded-[28px] border border-transparent bg-[#F6F3EE] px-[clamp(20px,2vw,30px)] transition-colors duration-300 open:border-[#ECE8E1] open:bg-white open:shadow-[0_24px_60px_-48px_rgba(31,42,46,0.5)]"
-                  >
-                    <summary className="flex cursor-pointer list-none items-center gap-5 py-5 [&::-webkit-details-marker]:hidden">
-                      <span className={`${SERIF} min-w-0 flex-1 text-[clamp(19px,1.6vw,23px)] leading-snug text-[#1F2A2E]`}>{item.q}</span>
-                      <span aria-hidden="true" className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#17505F] transition-colors group-open:bg-[#17505F] group-open:text-white">
-                        <span className="absolute h-[1.5px] w-3.5 rounded-full bg-current" />
-                        <span className="absolute h-3.5 w-[1.5px] rounded-full bg-current transition-transform duration-300 group-open:scale-y-0" />
-                      </span>
-                    </summary>
-                    <p className="max-w-[64ch] pb-6 vt-md leading-[1.75] text-[#5B6566] text-pretty">{item.a}</p>
-                  </details>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Closing band */}
-      <section className={`${WRAP} pb-[clamp(40px,5vw,72px)]`}>
+      <section className={`${WRAP} py-[clamp(40px,5vw,72px)]`}>
         <div className="relative isolate overflow-hidden rounded-[44px]">
           <Image src={images.closing.src} alt="" fill sizes="100vw" className="-z-20 object-cover" unoptimized={preview && images.closing.office} />
           <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-[#0E3A46]/90 via-[#0E3A46]/75 to-[#0E3A46]/40" />

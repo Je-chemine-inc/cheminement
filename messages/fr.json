@@ -7419,8 +7419,7 @@
         "approach": "Approche",
         "services": "Tarifs",
         "slots": "Disponibilités",
-        "products": "Formations",
-        "faq": "Questions"
+        "products": "Formations"
       },
       "chips": {
         "inPerson": "En personne à {city}",
@@ -7493,24 +7492,6 @@
       },
       "expertises": {
         "eyebrow": "Champs d'expertise"
-      },
-      "faq": {
-        "eyebrow": "Questions fréquentes",
-        "title": "Avant de faire une demande",
-        "intro": "Une autre question ? L'équipe de Je chemine vous répond.",
-        "contact": "Écrire à Je chemine",
-        "bookingQ": "Comment se passe une demande de rendez-vous ?",
-        "bookingA": "Choisissez une journée et une heure dans les disponibilités, puis remplissez votre demande. Le créneau vous est réservé pendant que {name} l'étudie, et vous recevez la réponse par courriel en 24 heures au plus.",
-        "modesQ": "En personne ou à distance ?",
-        "modesA": "{name} offre les consultations {modes}. Vous indiquez votre préférence dans votre demande.",
-        "insuranceQ": "Les séances sont-elles remboursées ?",
-        "insuranceA": "Plusieurs assurances collectives remboursent en tout ou en partie les services des professionnels membres d'un ordre. Un reçu est émis pour chaque séance payée ; vérifiez votre couverture auprès de votre assureur.",
-        "privacyQ": "Ce que je raconte reste-t-il confidentiel ?",
-        "privacyA": "Oui. Le secret professionnel s'applique à ce que vous confiez, sauf dans les exceptions prévues par la loi.",
-        "cancelQ": "Que se passe-t-il si je dois annuler ?",
-        "cancelA": "Vous pouvez annuler sans frais jusqu'à {hours} heures avant le rendez-vous.",
-        "waitQ": "Et si aucun moment ne me convient ?",
-        "waitA": "Inscrivez-vous sur la liste d'attente de {name} : un créneau qui vous convient vous est proposé dès qu'il se libère. Vous pouvez aussi demander à Je chemine de vous jumeler avec un autre professionnel."
       },
       "cta": {
         "title": "Le premier pas est souvent le plus difficile",

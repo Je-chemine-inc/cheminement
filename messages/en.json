@@ -7420,8 +7420,7 @@
         "approach": "Approach",
         "services": "Fees",
         "slots": "Availability",
-        "products": "Trainings",
-        "faq": "Questions"
+        "products": "Trainings"
       },
       "chips": {
         "inPerson": "In person in {city}",
@@ -7494,24 +7493,6 @@
       },
       "expertises": {
         "eyebrow": "Areas of expertise"
-      },
-      "faq": {
-        "eyebrow": "Frequent questions",
-        "title": "Before you send a request",
-        "intro": "Another question? The Je chemine team will answer.",
-        "contact": "Write to Je chemine",
-        "bookingQ": "How does an appointment request work?",
-        "bookingA": "Pick a day and a time in the availability, then fill in your request. The time is held for you while {name} reviews it, and you receive the answer by email within 24 hours at most.",
-        "modesQ": "In person or remotely?",
-        "modesA": "{name} offers consultations {modes}. You state your preference in your request.",
-        "insuranceQ": "Are sessions reimbursed?",
-        "insuranceA": "Many group insurance plans reimburse, in full or in part, the services of professionals who belong to a professional order. A receipt is issued for every paid session; check your coverage with your insurer.",
-        "privacyQ": "Does what I share stay confidential?",
-        "privacyA": "Yes. Professional secrecy covers what you share, except in the cases the law provides for.",
-        "cancelQ": "What if I need to cancel?",
-        "cancelA": "You can cancel free of charge up to {hours} hours before the appointment.",
-        "waitQ": "What if no time works for me?",
-        "waitA": "Join the waitlist for {name}: a time that works for you is offered to you as soon as one opens. You can also ask Je chemine to match you with another professional."
       },
       "cta": {
         "title": "The first step is often the hardest",

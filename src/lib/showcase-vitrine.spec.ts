@@ -18,12 +18,11 @@ describe("vitrineSections", () => {
       "services",
       "slots",
       "products",
-      "faq",
     ]);
   });
 
-  it("drops what a page has nothing for, never the approach, prices or questions", () => {
-    expect(vitrineSections({ hasAbout: false, showSlots: false, hasProducts: false })).toEqual(["approach", "services", "faq"]);
+  it("drops what a page has nothing for, never the approach or prices", () => {
+    expect(vitrineSections({ hasAbout: false, showSlots: false, hasProducts: false })).toEqual(["approach", "services"]);
   });
 
   it("keeps the anchors the booking links and the waitlist already use", () => {

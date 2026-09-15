@@ -17,10 +17,9 @@ export const VITRINE_ANCHORS = {
   slots: SHOWCASE_SLOTS_ANCHOR,
   waitlist: SHOWCASE_WAITLIST_ANCHOR,
   products: "formations",
-  faq: "questions",
 } as const;
 
-export type VitrineSection = "about" | "approach" | "services" | "slots" | "products" | "faq";
+export type VitrineSection = "about" | "approach" | "services" | "slots" | "products";
 
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
@@ -42,7 +41,6 @@ export function vitrineSections(input: {
     "services",
     ...(input.showSlots ? (["slots"] as const) : []),
     ...(input.hasProducts ? (["products"] as const) : []),
-    "faq",
   ];
 }
 
