@@ -7,8 +7,6 @@ import {
   isValidShowcaseSlug,
   missingShowcaseRequirements,
   normalizeShowcaseDraft,
-  requestedShowcaseCityKey,
-  showcaseCityKeyOf,
   paragraphsOf,
   pickShowcaseSlug,
   showcaseSlugCandidates,
@@ -218,16 +216,9 @@ describe("normalizeShowcaseDraft", () => {
     expect(normalizeShowcaseDraft({ orderCode: "ABC" }, allowed)).toMatchObject({ code: "INVALID_ORDER" });
   });
 
-  it("sets, clears and refuses the page's city", () => {
-    expect(normalizeShowcaseDraft({ cityKey: "berthierville" }, allowed)).toEqual({
-      ok: true,
-      set: { "draft.cityKey": "berthierville" },
-      unset: [],
-    });
-    expect(normalizeShowcaseDraft({ cityKey: "" }, allowed)).toMatchObject({ unset: ["draft.cityKey"] });
-    expect(normalizeShowcaseDraft({ cityKey: null }, allowed)).toMatchObject({ unset: ["draft.cityKey"] });
-    for (const bad of ["atlantis", "verdun", "Mascouche", 42, ["mascouche"]]) {
-      expect(normalizeShowcaseDraft({ cityKey: bad }, allowed)).toEqual({ ok: false, code: "INVALID_CITY", field: "cityKey" });
+  it("never takes a city from anyone: the page's city follows the profile's office address", () => {
+    for (const cityKey of ["berthierville", "", null, "atlantis", 42]) {
+      expect(normalizeShowcaseDraft({ cityKey }, allowed)).toEqual({ ok: true, set: {}, unset: [] });
     }
   });
 
@@ -249,23 +240,6 @@ describe("normalizeShowcaseDraft", () => {
   it("refuses a body that is not an object", () => {
     expect(normalizeShowcaseDraft(null, allowed)).toMatchObject({ ok: false, field: "body" });
     expect(normalizeShowcaseDraft([], allowed)).toMatchObject({ ok: false, field: "body" });
-  });
-});
-
-describe("the page's city", () => {
-  it("is the one the draft asks for when it is a listed city, else the page's own", () => {
-    expect(showcaseCityKeyOf({ cityKey: "mascouche", draft: { cityKey: "terrebonne" } })).toBe("terrebonne");
-    expect(showcaseCityKeyOf({ cityKey: "mascouche", draft: {} })).toBe("mascouche");
-    expect(showcaseCityKeyOf({ cityKey: "mascouche" })).toBe("mascouche");
-    // A city removed from the list since the draft was saved does not move the page anywhere.
-    expect(showcaseCityKeyOf({ cityKey: "mascouche", draft: { cityKey: "atlantis" } })).toBe("mascouche");
-  });
-
-  it("asks for a move only when the draft names another listed city", () => {
-    expect(requestedShowcaseCityKey({ cityKey: "mascouche", draft: { cityKey: "terrebonne" } })).toBe("terrebonne");
-    expect(requestedShowcaseCityKey({ cityKey: "mascouche", draft: { cityKey: "mascouche" } })).toBeNull();
-    expect(requestedShowcaseCityKey({ cityKey: "mascouche", draft: { cityKey: null } })).toBeNull();
-    expect(requestedShowcaseCityKey({ cityKey: "mascouche", draft: { cityKey: "verdun" } })).toBeNull();
   });
 });
 

@@ -18,12 +18,10 @@ export async function POST(req: NextRequest) {
   if (gate.error) return gate.error;
   const body = (await req.json().catch(() => null)) as {
     userId?: unknown;
-    cityKey?: unknown;
     slug?: unknown;
   } | null;
   const result = await activateShowcase({
     userId: typeof body?.userId === "string" ? body.userId : "",
-    cityKey: body?.cityKey,
     slug: body?.slug,
     adminId: gate.session.user.id,
   });

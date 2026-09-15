@@ -23,7 +23,6 @@ import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
-import { SHOWCASE_REGIONS } from "@/lib/showcase-cities";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { SHOWCASE_HISTORY_ACTIONS, SHOWCASE_LIMITS } from "@/lib/showcase-constants";
 import { showcaseErrorKey, type ShowcaseAdminJson } from "@/lib/showcase-editor-types";
@@ -47,7 +46,6 @@ export default function AdminShowcaseDetailPage() {
   const [reason, setReason] = useState("");
   const [attested, setAttested] = useState(false);
   const [moveSlug, setMoveSlug] = useState("");
-  const [moveCity, setMoveCity] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -120,10 +118,7 @@ export default function AdminShowcaseDetailPage() {
     setError(null);
     setReason("");
     setAttested(false);
-    if (kind === "move" && view) {
-      setMoveSlug(view.page.slug);
-      setMoveCity(view.page.cityKey);
-    }
+    if (kind === "move" && view) setMoveSlug(view.page.slug);
     setDialog(kind);
   };
 
@@ -198,15 +193,6 @@ export default function AdminShowcaseDetailPage() {
 
         <div className="space-y-2 text-sm">
           <p className="break-all text-foreground">{page.publicUrl}</p>
-          {page.requestedCity ? (
-            <p className="break-all rounded-lg bg-amber-50 p-3 text-amber-900">
-              {t("detail.cityChange", {
-                from: page.cityName,
-                to: page.requestedCity.name,
-                url: page.requestedCity.publicUrl,
-              })}
-            </p>
-          ) : null}
           <p className={page.consent.current ? "text-muted-foreground" : "text-amber-700"}>
             {!page.consent.current
               ? t("detail.consentMissing")
@@ -410,25 +396,6 @@ export default function AdminShowcaseDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="move-city">{t("detail.city")}</Label>
-              <select
-                id="move-city"
-                value={moveCity}
-                onChange={(event) => setMoveCity(event.target.value)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {SHOWCASE_REGIONS.map((region) => (
-                  <optgroup key={region.key} label={region.name}>
-                    {region.cities.map((city) => (
-                      <option key={city.key} value={city.key}>
-                        {city.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="move-slug">{t("detail.slug")}</Label>
               <Input id="move-slug" value={moveSlug} onChange={(event) => setMoveSlug(event.target.value.toLowerCase())} />
               <p className="break-all text-xs text-muted-foreground">
@@ -445,7 +412,7 @@ export default function AdminShowcaseDetailPage() {
               type="button"
               disabled={busy || !moveSlug.trim()}
               onClick={async () => {
-                if (await act("move", { slug: moveSlug, cityKey: moveCity })) setDialog(null);
+                if (await act("move", { slug: moveSlug })) setDialog(null);
               }}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

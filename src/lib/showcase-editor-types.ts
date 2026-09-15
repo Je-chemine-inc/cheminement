@@ -37,8 +37,6 @@ export interface ShowcaseContentJson {
   photoUrl: string | null;
   /** Office photos in display order. */
   officePhotos: { id: string; url: string }[];
-  /** The city this copy asks for; null on pages saved before the choice existed. */
-  cityKey: string | null;
   /** Every section text, empty where the page keeps its own wording. */
   texts: Record<ShowcaseTextKey, LocalizedTextJson>;
   /** Every section, in the page's order. */
@@ -55,8 +53,6 @@ export interface ShowcaseEditorJson {
     cityKey: string;
     cityName: string;
     publicUrl: string;
-    /** A published page's move the draft asks for, applied when an admin publishes. */
-    requestedCity: { key: string; name: string; publicUrl: string } | null;
     status: ShowcaseStatus;
     draft: ShowcaseContentJson;
     draftRevision: number;
@@ -107,9 +103,6 @@ export interface ShowcaseAdminJson extends ShowcaseEditorJson {
  * instead, worded about the professional; every other text is shared.
  */
 export const SHOWCASE_ADMIN_WORDED_KEYS = [
-  "city.hint",
-  "city.officeCity",
-  "city.afterApproval",
   "fields.introPlaceholder",
   "fields.bioPlaceholder",
   "fields.approachPlaceholder",
@@ -149,7 +142,7 @@ export const SHOWCASE_ERROR_CODES = [
   "REVISION_CHANGED",
   "SLUG_TAKEN",
   "INVALID_SLUG",
-  "INVALID_CITY",
+  "OFFICE_CITY_UNKNOWN",
   "ALREADY_INVITED",
   "CONFLICT",
   "INVALID_ACTION",

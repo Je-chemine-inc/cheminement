@@ -13,8 +13,6 @@ import {
   SHOWCASE_PHOTO,
   type ProfessionalOrderCode,
 } from "@/lib/showcase-constants";
-import { SHOWCASE_REGIONS, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
-import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   SHOWCASE_ADMIN_WORDED_KEYS,
   showcaseErrorKey,
@@ -71,7 +69,6 @@ interface DraftState {
   expertiseIds: string[];
   orderCode: ProfessionalOrderCode | "";
   orderLabel: string;
-  cityKey: string;
   texts: Record<ShowcaseTextKey, Localized>;
   sectionOrder: ShowcaseSectionKey[];
   hiddenSections: ShowcaseSectionKey[];
@@ -117,7 +114,6 @@ const filled = (value: Localized | undefined) => Boolean(value && (value.fr.trim
 function toDraftState(
   content: ShowcaseContentJson,
   offered: readonly { id: string }[],
-  pageCityKey: string,
 ): DraftState {
   const offeredIds = new Set(offered.map((option) => option.id));
   const copy = (value: Localized) => ({ fr: value.fr, en: value.en });
@@ -138,7 +134,6 @@ function toDraftState(
     expertiseIds: content.expertiseIds.filter((id) => offeredIds.has(id)),
     orderCode: content.orderCode ?? "",
     orderLabel: content.orderLabel,
-    cityKey: content.cityKey ?? pageCityKey,
     texts: Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, copy(content.texts[key])])) as Record<ShowcaseTextKey, Localized>,
     sectionOrder: [...content.sectionOrder],
     hiddenSections: [...content.hiddenSections],
@@ -168,8 +163,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   const tAdmin = useTranslations("ShowcaseAdmin");
   const worded = (key: ShowcaseAdminWordedKey, values?: Record<string, string>) =>
     audience === "admin" ? tAdmin(`editor.${key}`, values) : t(key, values);
-  const tCity = (key: "hint" | "officeCity" | "afterApproval", values?: Record<string, string>) =>
-    worded(`city.${key}`, values);
   // Headline and insurance examples are sample page text, the same for both; the others address the reader.
   const placeholderOf = (field: LocalizedField) => {
     const key = `fields.${field}Placeholder`;
@@ -179,7 +172,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   };
   const tLabels = useTranslations("Showcase");
   const [draft, setDraft] = useState<DraftState>(() =>
-    toDraftState(view.page.draft, view.expertiseOptions, view.page.cityKey),
+    toDraftState(view.page.draft, view.expertiseOptions),
   );
   const [lang, setLang] = useState<Lang>("fr");
   const [dirty, setDirty] = useState(false);
@@ -235,7 +228,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             ? {
                 orderCode: draft.orderCode || null,
                 orderLabel: draft.orderCode === "other" ? draft.orderLabel : "",
-                cityKey: draft.cityKey,
               }
             : {}),
         }),
@@ -247,7 +239,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
       }
       const next = body as V;
       onView(next);
-      setDraft(toDraftState(next.page.draft, next.expertiseOptions, next.page.cityKey));
+      setDraft(toDraftState(next.page.draft, next.expertiseOptions));
       setDirty(false);
       setNotice({ kind: "ok", text: audience === "admin" ? t("editor.saved") : t("editor.savedLive") });
     } catch {
@@ -566,8 +558,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   );
 
   const expertiseCount = draft.expertiseIds.length;
-  // The listed city the profile's office address names, offered as a one-click choice.
-  const officeCity = matchShowcaseCity(view.profileFacts.officeCity);
   const cardClass = "rounded-xl bg-card p-6";
   const switchClass = (on: boolean) =>
     `relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${on ? "bg-primary" : "bg-muted"}`;
@@ -1028,50 +1018,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
               onChange={(event) => update({ orderLabel: event.target.value })}
             />
           </div>
-        ) : null}
-      </section>
-      ) : null}
-
-      {audience === "admin" ? (
-      <section className={`${cardClass} space-y-3`} aria-labelledby="showcase-city-title">
-        <h2 id="showcase-city-title" className="font-serif text-xl font-light text-foreground">
-          {t("city.title")}
-        </h2>
-        <p className="text-sm text-muted-foreground">{tCity("hint")}</p>
-        <select
-          aria-label={t("city.title")}
-          value={draft.cityKey}
-          onChange={(event) => update({ cityKey: event.target.value })}
-          className="h-10 w-full max-w-xl rounded-md border border-input bg-background px-3 text-sm"
-        >
-          {findShowcaseCity(draft.cityKey) ? null : <option value="">{t("city.select")}</option>}
-          {SHOWCASE_REGIONS.map((region) => (
-            <optgroup key={region.key} label={region.name}>
-              {region.cities.map((city) => (
-                <option key={city.key} value={city.key}>
-                  {city.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        {officeCity ? (
-          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {tCity("officeCity", { city: view.profileFacts.officeCity ?? officeCity.name })}
-            {officeCity.key !== draft.cityKey ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => update({ cityKey: officeCity.key })}>
-                {t("city.useOfficeCity", { city: officeCity.name })}
-              </Button>
-            ) : null}
-          </p>
-        ) : null}
-        {findShowcaseCity(draft.cityKey) ? (
-          <p className="break-all text-xs text-muted-foreground">
-            {t("city.address", { url: showcasePageUrl(view.page.slug) })}
-          </p>
-        ) : null}
-        {view.page.published && draft.cityKey !== view.page.cityKey ? (
-          <p className="text-xs text-amber-700">{tCity("afterApproval")}</p>
         ) : null}
       </section>
       ) : null}

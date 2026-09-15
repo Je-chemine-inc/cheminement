@@ -7580,7 +7580,7 @@
     "statusText": {
       "published": "Votre page est en ligne :",
       "approvedClosed": "Votre page est publiée. Le public la verra dès l'ouverture des pages vitrines.",
-      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. La ville, l'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer.",
+      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. L'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer. La ville de la page suit l'adresse du bureau de votre profil.",
       "unpublishedByProfessional": "Vous avez retiré votre page. Vous pouvez la remettre en ligne en tout temps.",
       "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus."
     },
@@ -7598,7 +7598,7 @@
       "title": "Le titre professionnel, dans le profil",
       "license": "Le numéro de permis, dans le profil",
       "modalities": "Les modes de consultation, dans le profil",
-      "city": "La ville de la page, choisie dans la liste"
+      "city": "Une ville reconnue dans l'adresse du bureau, dans le profil"
     },
     "actions": {
       "preview": "Aperçu",
@@ -7705,18 +7705,11 @@
       "otherLabel": "Nom de l'ordre"
     },
     "city": {
-      "title": "Ville de la page",
-      "hint": "La ville où vous recevez vos clients. Elle apparaît sur votre page. Si votre ville n'est pas dans la liste, choisissez la plus proche.",
-      "select": "Choisir une ville",
-      "officeCity": "Ville du bureau dans votre profil : {city}",
-      "useOfficeCity": "Utiliser {city}",
-      "address": "Adresse de la page : {url}",
-      "afterApproval": "Votre page est en ligne : la nouvelle ville s'applique quand l'équipe publie la modification. L'ancienne adresse redirigera alors vers la nouvelle.",
-      "pending": "Changement de ville en attente de publication par l'équipe : {city}"
+      "title": "Ville de la page"
     },
     "identity": {
       "title": "Ordre professionnel et ville de la page",
-      "hint": "Gérés par l'équipe Je chemine. Écrivez-nous pour les changer."
+      "hint": "L'ordre est géré par l'équipe Je chemine : écrivez-nous pour le changer. La ville suit l'adresse du bureau de votre profil."
     },
     "services": {
       "title": "Services offerts sur la page",
@@ -7769,7 +7762,7 @@
       "REVISION_CHANGED": "La page a changé depuis votre lecture. Rechargez-la avant de continuer.",
       "SLUG_TAKEN": "Cette adresse est déjà utilisée.",
       "INVALID_SLUG": "Adresse invalide : lettres minuscules, chiffres et traits d'union seulement.",
-      "INVALID_CITY": "Choisissez une ville dans la liste.",
+      "OFFICE_CITY_UNKNOWN": "L'adresse du bureau, dans le profil, n'indique pas une ville reconnue. Corrigez-la, puis réessayez.",
       "ALREADY_INVITED": "Ce professionnel a déjà une page vitrine.",
       "CONFLICT": "La page a été modifiée en même temps. Rechargez-la.",
       "INVALID_ACTION": "Action inconnue.",
@@ -7836,11 +7829,6 @@
   },
   "ShowcaseAdmin": {
     "editor": {
-      "city": {
-        "hint": "La ville où le professionnel reçoit ses clients. Elle apparaît sur sa page. Si sa ville n'est pas dans la liste, choisissez la plus proche.",
-        "officeCity": "Ville du bureau dans son profil : {city}",
-        "afterApproval": "La page est en ligne : la nouvelle ville s'applique quand vous publiez cette révision. L'ancienne adresse redirigera alors vers la nouvelle."
-      },
       "fields": {
         "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
         "bioPlaceholder": "Son parcours, sa pratique et les personnes accompagnées. Laissez une ligne vide entre les paragraphes.",
@@ -7872,15 +7860,10 @@
       "turnOn": "Ouvrir au public",
       "turnOff": "Fermer au public",
       "confirmOnTitle": "Ouvrir les pages vitrines au public ?",
-      "confirmOnBody": "Les pages publiées deviennent visibles aux adresses des villes et peuvent être indexées par les moteurs de recherche. Vérifiez d'abord que le certificat et le DNS des adresses des villes sont en place.",
+      "confirmOnBody": "Les pages publiées deviennent visibles à leur adresse sur www.jechemine.ca et peuvent être indexées par les moteurs de recherche.",
       "confirmOffTitle": "Fermer les pages vitrines ?",
       "confirmOffBody": "Les pages des professionnels ne seront plus visibles. Elles restent publiées et reviennent à la réouverture.",
       "confirm": "Confirmer"
-    },
-    "cities": {
-      "title": "Villes en ligne",
-      "none": "Aucune page publiée pour l'instant.",
-      "count": "{count, plural, one {# page publiée} other {# pages publiées}}"
     },
     "list": {
       "title": "Professionnels approuvés",
@@ -7911,11 +7894,10 @@
     "activate": {
       "title": "Activer la page de {name}",
       "body": "Une page vitrine est créée pour ce professionnel, préremplie avec son profil. Aucun courriel ne lui est envoyé : vous remplissez la page, puis vous la publiez avec son accord.",
-      "city": "Ville de la page",
-      "chooseCity": "Choisir une ville",
-      "citySuggested": "Ville suggérée d'après l'adresse du bureau : {city}",
+      "cityFromOffice": "Ville de la page : {city}, d'après l'adresse du bureau dans son profil.",
+      "noOfficeCity": "L'adresse du bureau, dans son profil, n'indique pas une ville reconnue. Corrigez-la dans sa fiche avant d'activer la page.",
       "slug": "Adresse de la page (facultatif)",
-      "slugHint": "Laissez vide pour utiliser le nom de famille. Lettres minuscules, chiffres et traits d'union seulement.",
+      "slugHint": "Laissez vide pour utiliser le prénom et le nom. Lettres minuscules, chiffres et traits d'union seulement.",
       "preview": "Adresse : {url}",
       "submit": "Activer et préparer la page"
     },
@@ -7946,10 +7928,8 @@
       "reason": "Raison (facultatif)",
       "republish": "Remettre en ligne",
       "move": "Changer l'adresse",
-      "moveTitle": "Changer la ville ou l'adresse",
+      "moveTitle": "Changer l'adresse de la page",
       "moveBody": "Si la page a déjà été publiée, l'ancienne adresse redirige vers la nouvelle.",
-      "cityChange": "Le brouillon demande de passer de {from} à {to}. La ville change à la publication.",
-      "city": "Ville",
       "slug": "Adresse",
       "save": "Enregistrer",
       "editorTitle": "Contenu de la page",

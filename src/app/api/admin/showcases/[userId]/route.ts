@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     case "move":
       return respondShowcase(
-        await moveShowcase({ userId, slug: body.slug, cityKey: body.cityKey, adminId }),
+        await moveShowcase({ userId, slug: body.slug, adminId }),
         view,
       );
     default:

@@ -47,14 +47,13 @@ interface Row {
   accountStatus: string;
   title: string | null;
   officeCity: string | null;
-  suggestedCityKey: string | null;
+  /** The listed city the office address names: the page's city, or null when it names none. */
+  officeCityName: string | null;
   page: PageSummary | null;
 }
 
 interface ListJson {
   rows: Row[];
-  cities: { key: string; name: string; host: string; region: string; published: number }[];
-  cityOptions: { key: string; name: string; region: string }[];
   showcaseEnabled: boolean;
   statsDays: number;
 }
@@ -93,7 +92,6 @@ export default function AdminShowcasesPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [activating, setActivating] = useState<Row | null>(null);
-  const [activateCity, setActivateCity] = useState("");
   const [activateSlug, setActivateSlug] = useState("");
   const [switchOpen, setSwitchOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -133,16 +131,6 @@ export default function AdminShowcasesPage() {
     );
   }, [data, filter, search]);
 
-  const regions = useMemo(() => {
-    const groups = new Map<string, { key: string; name: string }[]>();
-    for (const city of data?.cityOptions ?? []) {
-      const list = groups.get(city.region) ?? [];
-      list.push({ key: city.key, name: city.name });
-      groups.set(city.region, list);
-    }
-    return [...groups.entries()];
-  }, [data]);
-
   if (!manageProfessionals || denied) {
     return <AdminAccessRequired title={t("access.title")} body={t("access.body")} />;
   }
@@ -152,7 +140,6 @@ export default function AdminShowcasesPage() {
 
   const openActivate = (row: Row) => {
     setActivating(row);
-    setActivateCity(row.suggestedCityKey ?? "");
     setActivateSlug("");
     setDialogError(null);
   };
@@ -168,7 +155,6 @@ export default function AdminShowcasesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: activating.userId,
-          cityKey: activateCity,
           slug: activateSlug.trim() || undefined,
         }),
       });
@@ -209,8 +195,6 @@ export default function AdminShowcasesPage() {
     }
   };
 
-  const suggestedCityName = data?.cityOptions.find((city) => city.key === activating?.suggestedCityKey)?.name;
-
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -236,44 +220,26 @@ export default function AdminShowcasesPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-border/60 bg-card p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-serif text-xl font-light text-foreground">{t("switch.title")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {data.showcaseEnabled ? t("switch.on") : t("switch.off")}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant={data.showcaseEnabled ? "outline" : "default"}
-                  onClick={() => {
-                    setDialogError(null);
-                    setSwitchOpen(true);
-                  }}
-                >
-                  {data.showcaseEnabled ? t("switch.turnOff") : t("switch.turnOn")}
-                </Button>
+          <section className="rounded-xl border border-border/60 bg-card p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-serif text-xl font-light text-foreground">{t("switch.title")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.showcaseEnabled ? t("switch.on") : t("switch.off")}
+                </p>
               </div>
-            </section>
-
-            <section className="rounded-xl border border-border/60 bg-card p-6">
-              <h2 className="font-serif text-xl font-light text-foreground">{t("cities.title")}</h2>
-              {data.cities.length === 0 ? (
-                <p className="mt-1 text-sm text-muted-foreground">{t("cities.none")}</p>
-              ) : (
-                <ul className="mt-3 space-y-1 text-sm">
-                  {data.cities.map((city) => (
-                    <li key={city.key} className="flex items-center justify-between gap-3">
-                      <span className="break-all text-foreground">{city.host}</span>
-                      <span className="text-muted-foreground">{t("cities.count", { count: city.published })}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
+              <Button
+                type="button"
+                variant={data.showcaseEnabled ? "outline" : "default"}
+                onClick={() => {
+                  setDialogError(null);
+                  setSwitchOpen(true);
+                }}
+              >
+                {data.showcaseEnabled ? t("switch.turnOff") : t("switch.turnOn")}
+              </Button>
+            </div>
+          </section>
 
           <section className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -389,39 +355,25 @@ export default function AdminShowcasesPage() {
             <DialogDescription>{t("activate.body")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="activate-city">{t("activate.city")}</Label>
-              <select
-                id="activate-city"
-                value={activateCity}
-                onChange={(event) => setActivateCity(event.target.value)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="">{t("activate.chooseCity")}</option>
-                {regions.map(([region, cities]) => (
-                  <optgroup key={region} label={region}>
-                    {cities.map((city) => (
-                      <option key={city.key} value={city.key}>
-                        {city.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              {suggestedCityName ? (
-                <p className="text-xs text-muted-foreground">{t("activate.citySuggested", { city: suggestedCityName })}</p>
-              ) : null}
-            </div>
+            {/* The page's city comes from the office address; with none recognised, the profile is corrected first. */}
+            <p
+              data-activate-city=""
+              className={`text-sm ${activating?.officeCityName ? "text-muted-foreground" : "text-destructive"}`}
+            >
+              {activating?.officeCityName
+                ? t("activate.cityFromOffice", { city: activating.officeCityName })
+                : t("activate.noOfficeCity")}
+            </p>
             <div className="space-y-2">
               <Label htmlFor="activate-slug">{t("activate.slug")}</Label>
               <Input
                 id="activate-slug"
                 value={activateSlug}
                 onChange={(event) => setActivateSlug(event.target.value.toLowerCase())}
-                placeholder="sassi"
+                placeholder="amel-sassi"
               />
               <p className="text-xs text-muted-foreground">{t("activate.slugHint")}</p>
-              {activateCity && isValidShowcaseSlug(activateSlug.trim()) ? (
+              {isValidShowcaseSlug(activateSlug.trim()) ? (
                 <p className="break-all text-xs text-muted-foreground">
                   {t("activate.preview", { url: showcasePageUrl(activateSlug.trim()) })}
                 </p>
@@ -433,7 +385,7 @@ export default function AdminShowcasesPage() {
             <Button type="button" variant="outline" onClick={() => setActivating(null)} disabled={busy}>
               {t("cancel")}
             </Button>
-            <Button type="button" onClick={() => void activate()} disabled={busy || !activateCity}>
+            <Button type="button" onClick={() => void activate()} disabled={busy || !activating?.officeCityName}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("activate.submit")}
             </Button>

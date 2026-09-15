@@ -68,11 +68,6 @@ export function ShowcaseFactsCard({
         <div className="sm:col-span-2">
           <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("facts.pageAddress")}</dt>
           <dd className="break-all text-sm text-foreground">{view.page.publicUrl}</dd>
-          {view.page.requestedCity ? (
-            <dd className="mt-1 break-all text-xs text-amber-700">
-              {t("city.pending", { city: view.page.requestedCity.name, url: view.page.requestedCity.publicUrl })}
-            </dd>
-          ) : null}
         </div>
       </dl>
     </section>

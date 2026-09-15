@@ -7,7 +7,7 @@ import Profile from "@/models/Profile";
 import ProCatalogItem from "@/models/ProCatalogItem";
 import StoredFile from "@/models/StoredFile";
 import { slugify } from "@/lib/content-kind";
-import { SHOWCASE_CITIES, findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
+import { findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   SHOWCASE_AMBIENCE_SLOTS,
@@ -31,8 +31,6 @@ import {
   missingShowcaseRequirements,
   normalizeShowcaseDraft,
   pickShowcaseSlug,
-  requestedShowcaseCityKey,
-  showcaseCityKeyOf,
   showcaseSlugCandidates,
   type ShowcaseEditableField,
   type ShowcaseRequirement,
@@ -170,6 +168,11 @@ async function profileFacts(userId: string) {
   return Profile.findOne({ userId }).select(PROFILE_FACTS_SELECT).lean();
 }
 
+/** The page's city: the listed city the profile's office address names, null when it names none. */
+function officeCityKey(profile: { officeAddress?: { city?: string | null } | null } | null | undefined): string | null {
+  return matchShowcaseCity(profile?.officeAddress?.city)?.key ?? null;
+}
+
 async function showcaseExpertiseOptions() {
   return ProCatalogItem.find({ category: "expertise", showcase: true, active: true })
     .sort({ labelFr: 1 })
@@ -245,7 +248,6 @@ function contentView(content: ContentLean | undefined) {
     orderLabel: content?.orderLabel ?? "",
     photoUrl: photoUrl(content?.photoFileId),
     officePhotos: (content?.officePhotoFileIds ?? []).map((id) => ({ id: String(id), url: photoUrl(id) as string })),
-    cityKey: content?.cityKey ?? null,
   };
 }
 
@@ -262,22 +264,20 @@ export async function loadShowcaseEditor(userId: string) {
     isShowcaseEnabled(),
     loadShowcaseStats("page", [String(page._id)]),
   ]);
-  const city = findShowcaseCity(page.cityKey);
+  // The page's city is the office address's: what the next publication will use.
+  const officeKey = officeCityKey(profile);
+  const city = findShowcaseCity(officeKey ?? page.cityKey);
   const missing: ShowcaseRequirement[] = missingShowcaseRequirements({
     draft: page.draft ?? {},
     profile,
-    cityKey: showcaseCityKeyOf(page),
+    cityKey: officeKey,
   });
-  const requested = findShowcaseCity(requestedShowcaseCityKey(page));
   return {
     page: {
       slug: page.slug,
-      cityKey: page.cityKey,
+      cityKey: city?.key ?? page.cityKey,
       cityName: city?.name ?? page.cityKey,
       publicUrl: showcasePageUrl(page.slug),
-      requestedCity: requested
-        ? { key: requested.key, name: requested.name, publicUrl: showcasePageUrl(page.slug) }
-        : null,
       status: page.status,
       draft: contentView(page.draft),
       draftRevision: page.draftRevision ?? 0,
@@ -388,7 +388,7 @@ export async function listShowcasesForAdmin() {
       accountStatus: pro.status,
       title: profile?.specialty ?? null,
       officeCity: profile?.officeAddress?.city ?? null,
-      suggestedCityKey: matchShowcaseCity(profile?.officeAddress?.city)?.key ?? null,
+      officeCityName: matchShowcaseCity(profile?.officeAddress?.city)?.name ?? null,
       page: page
         ? {
             slug: page.slug,
@@ -408,24 +408,8 @@ export async function listShowcasesForAdmin() {
     };
   });
 
-  const activeIds = new Set(professionals.filter((pro) => pro.status === "active").map((pro) => String(pro._id)));
-  const liveByCity = new Map<string, number>();
-  for (const page of pages) {
-    if (page.status !== "published" || !activeIds.has(String(page.userId))) continue;
-    liveByCity.set(page.cityKey, (liveByCity.get(page.cityKey) ?? 0) + 1);
-  }
-  const cities = SHOWCASE_CITIES.filter((city) => liveByCity.has(city.key)).map((city) => ({
-    key: city.key,
-    name: city.name,
-    host: city.host,
-    region: city.region,
-    published: liveByCity.get(city.key) ?? 0,
-  }));
-
   return {
     rows,
-    cities,
-    cityOptions: SHOWCASE_CITIES.map((city) => ({ key: city.key, name: city.name, region: city.region })),
     showcaseEnabled,
     statsDays: SHOWCASE_STATS_DAYS,
   };
@@ -455,7 +439,6 @@ function suggestExpertiseIds(
  */
 export async function activateShowcase(input: {
   userId: string;
-  cityKey?: unknown;
   slug?: unknown;
   adminId: string;
 }): Promise<ServiceResult<{ slug: string; cityKey: string }>> {
@@ -471,11 +454,9 @@ export async function activateShowcase(input: {
   const profile = await Profile.findOne({ userId: input.userId })
     .select("specialty problematics bio officeAddress.city")
     .lean();
-  const city =
-    typeof input.cityKey === "string" && input.cityKey
-      ? findShowcaseCity(input.cityKey)
-      : matchShowcaseCity(profile?.officeAddress?.city);
-  if (!city) return fail(400, "INVALID_CITY");
+  // The page's city is the one the office address names: when it names none, the team corrects the profile.
+  const city = matchShowcaseCity(profile?.officeAddress?.city);
+  if (!city) return fail(409, "OFFICE_CITY_UNKNOWN");
   if (await ShowcasePage.exists({ userId: input.userId })) return fail(409, "ALREADY_INVITED");
 
   let slug: string | null;
@@ -507,7 +488,6 @@ export async function activateShowcase(input: {
         bio: { fr: bio.ok ? bio.value : "", en: "" },
         expertiseIds: suggestExpertiseIds(profile?.problematics ?? [], options),
         ...(orderCode ? { orderCode } : {}),
-        cityKey: city.key,
       },
       history: [{ at: now, actor: "admin", by: input.adminId, action: "activate", note: `${city.key}/${slug}` }],
     });
@@ -552,23 +532,15 @@ export async function saveShowcaseDraft(input: {
     return saveLiveEdit(page, fields);
   }
 
-  // A page never published has no public address to protect: the city it asks for applies at once.
-  // Once it has been public, the move waits for an admin to publish the revision (publishShowcase).
-  const askedCity = normalized.set["draft.cityKey"];
-  const moveNow = typeof askedCity === "string" && !page.publishedAt && askedCity !== page.cityKey;
   const update: Record<string, unknown> = {
     $set: {
       ...normalized.set,
-      ...(moveNow ? { cityKey: askedCity } : {}),
       draftUpdatedAt: new Date(),
       draftUpdatedBy: input.actor,
       ...(page.status === "invited" ? { status: "draft" } : {}),
     },
     $inc: { draftRevision: 1 },
   };
-  if (moveNow) {
-    update.$push = historyEntry(input.actor, undefined, "move", `${page.cityKey} > ${askedCity}`);
-  }
   if (normalized.unset.length > 0) {
     update.$unset = Object.fromEntries(normalized.unset.map((path) => [path, ""]));
   }
@@ -885,13 +857,12 @@ export async function publishShowcase(input: {
     .lean();
   if (!user || user.status !== "active") return fail(409, "PROFESSIONAL_NOT_ACTIVE");
   const profile = await profileFacts(input.userId);
-  const cityKey = showcaseCityKeyOf(page);
+  const cityKey = officeCityKey(profile);
   const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey });
-  if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
+  if (missing.length > 0 || !cityKey) return fail(422, "INCOMPLETE", { missing });
 
-  // Publishing the revision publishes the city it asks for: the page moves, and
-  // its old address redirects (the page route sends a slug on the wrong host to its city).
-  const moving = requestedShowcaseCityKey(page);
+  // The page follows the profile's office address: publishing takes the city it names now.
+  const moving = cityKey !== page.cityKey ? cityKey : null;
   const consentOnRecord = page.consent?.version === SHOWCASE_CONSENT_VERSION;
   const now = new Date();
   const note = [
@@ -1005,15 +976,17 @@ export async function republishShowcase(input: {
   const user = await User.findOne({ _id: input.userId, role: "professional" }).select("status").lean();
   if (!user || user.status !== "active") return fail(409, "PROFESSIONAL_NOT_ACTIVE");
   const profile = await profileFacts(input.userId);
-  const missing = missingShowcaseRequirements({ draft: page.published ?? {}, profile, cityKey: page.cityKey });
-  if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
+  const cityKey = officeCityKey(profile);
+  const missing = missingShowcaseRequirements({ draft: page.published ?? {}, profile, cityKey });
+  if (missing.length > 0 || !cityKey) return fail(422, "INCOMPLETE", { missing });
 
   const filter: Record<string, unknown> = { _id: page._id, status: "unpublished" };
   if (page.unpublishedBy) filter.unpublishedBy = page.unpublishedBy;
   const updated = await ShowcasePage.findOneAndUpdate(
     filter,
     {
-      $set: { status: "published" },
+      // Back online in the city the office address names now.
+      $set: { status: "published", ...(cityKey !== page.cityKey ? { cityKey } : {}) },
       $unset: { unpublishedAt: "", unpublishedBy: "" },
       $push: historyEntry(input.actor, input.byUserId, "republish"),
     },
@@ -1025,44 +998,31 @@ export async function republishShowcase(input: {
   return success(null);
 }
 
-/** Moves a page to another slug or city. A page that was ever public keeps its old slug answering. */
+/**
+ * Changes a page's address (www.jechemine.ca/<slug>). A page that was ever public keeps its old
+ * slug answering. The city is never set here: it follows the profile's office address.
+ */
 export async function moveShowcase(input: {
   userId: string;
   slug?: unknown;
-  cityKey?: unknown;
   adminId: string;
-}): Promise<ServiceResult<{ slug: string; cityKey: string }>> {
+}): Promise<ServiceResult<{ slug: string }>> {
   const page = await loadPage(input.userId);
   if (!page) return fail(404, "NOT_FOUND");
   const nextSlug = typeof input.slug === "string" && input.slug.trim() ? input.slug.trim().toLowerCase() : page.slug;
-  const nextCity = typeof input.cityKey === "string" && input.cityKey ? input.cityKey : page.cityKey;
-  if (nextSlug === page.slug && nextCity === page.cityKey) {
-    return success({ slug: page.slug, cityKey: page.cityKey });
-  }
-  if (!findShowcaseCity(nextCity)) return fail(400, "INVALID_CITY");
-
-  const set: Record<string, unknown> = { cityKey: nextCity };
-  if (nextCity !== page.cityKey) {
-    // The copies name the city too: left behind, a publication would move the page back.
-    set["draft.cityKey"] = nextCity;
-    if (page.published) set["published.cityKey"] = nextCity;
-  }
-  if (nextSlug !== page.slug) {
-    if (!isValidShowcaseSlug(nextSlug)) return fail(400, "INVALID_SLUG");
-    if ((await takenSlugs([nextSlug], page._id)).has(nextSlug)) return fail(409, "SLUG_TAKEN");
-    const previous = new Set(page.previousSlugs ?? []);
-    previous.delete(nextSlug);
-    if (page.publishedAt) previous.add(page.slug);
-    set.slug = nextSlug;
-    set.previousSlugs = [...previous];
-  }
+  if (nextSlug === page.slug) return success({ slug: page.slug });
+  if (!isValidShowcaseSlug(nextSlug)) return fail(400, "INVALID_SLUG");
+  if ((await takenSlugs([nextSlug], page._id)).has(nextSlug)) return fail(409, "SLUG_TAKEN");
+  const previous = new Set(page.previousSlugs ?? []);
+  previous.delete(nextSlug);
+  if (page.publishedAt) previous.add(page.slug);
 
   try {
     const updated = await ShowcasePage.findOneAndUpdate(
-      { _id: page._id, slug: page.slug, cityKey: page.cityKey },
+      { _id: page._id, slug: page.slug },
       {
-        $set: set,
-        $push: historyEntry("admin", input.adminId, "move", `${page.cityKey}/${page.slug} > ${nextCity}/${nextSlug}`),
+        $set: { slug: nextSlug, previousSlugs: [...previous] },
+        $push: historyEntry("admin", input.adminId, "move", `${page.slug} > ${nextSlug}`),
       },
       { new: true },
     )
@@ -1073,5 +1033,5 @@ export async function moveShowcase(input: {
     if (isDuplicateKey(error)) return fail(409, "SLUG_TAKEN");
     throw error;
   }
-  return success({ slug: nextSlug, cityKey: nextCity });
+  return success({ slug: nextSlug });
 }
