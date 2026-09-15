@@ -81,6 +81,9 @@ describe("buildProfessionalsDirectory", () => {
       summary: "Bio du profil.",
       photoUrl: null,
       showcasePath: null,
+      languages: [],
+      modalities: [],
+      yearsOfExperience: null,
     });
   });
 
@@ -170,6 +173,29 @@ describe("what professionals typed, as the page shows it", () => {
     const list = build({ profiles: [profile(B, { bio: "Psychologue Psychologue scolaire" }), profile(C, { bio: "Travailleur social depuis 2009." })] });
     expect(list.find((pro) => pro.id === B)!.summary).toBe("");
     expect(list.find((pro) => pro.id === C)!.summary).toBe("Travailleur social depuis 2009.");
+  });
+});
+
+describe("languages, ways of consulting and experience", () => {
+  it("reads the profile's words in either language, in a fixed order, and a plausible number of years", () => {
+    const list = build({
+      profiles: [
+        profile(B, {
+          languages: ["english", "Français", "klingon", 3, "french"],
+          modalities: ["Video Call", "En personne", "Phone Call", "Chat/Messaging", "carrier pigeon"],
+          yearsOfExperience: 26,
+        }),
+        profile(C, { yearsOfExperience: 99 }),
+        profile(A, { yearsOfExperience: "12" }),
+      ],
+    });
+    expect(list.find((pro) => pro.id === B)).toMatchObject({
+      languages: ["french", "english"],
+      modalities: ["inPerson", "video", "phone", "chat"],
+      yearsOfExperience: 26,
+    });
+    expect(list.find((pro) => pro.id === C)!.yearsOfExperience).toBeNull();
+    expect(list.find((pro) => pro.id === A)!.yearsOfExperience).toBeNull();
   });
 });
 

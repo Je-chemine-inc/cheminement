@@ -92,6 +92,40 @@
     }
   },
   "Professionals": {
+    "eyebrow": "Notre équipe",
+    "stats": {
+      "professionals": "{count, plural, one {# professionnel} other {# professionnels}}",
+      "languages": "{count, plural, one {# langue parlée} other {# langues parlées}}",
+      "years": "{count, plural, one {# an d'expérience cumulée} other {# ans d'expérience cumulée}}"
+    },
+    "cta": {
+      "match": "Trouver mon professionnel",
+      "contact": "Nous contacter"
+    },
+    "filters": {
+      "label": "Filtrer par profession",
+      "all": "Tous"
+    },
+    "groups": {
+      "psychologist": "Psychologues",
+      "psychotherapist": "Psychothérapeutes",
+      "neuropsychologist": "Neuropsychologues",
+      "psychoeducator": "Psychoéducateurs",
+      "occupationalTherapistMentalHealth": "Ergothérapeutes",
+      "psychiatrist": "Psychiatres",
+      "other": "Autres professionnels"
+    },
+    "experience": "{count, plural, one {# an d'expérience} other {# ans d'expérience}}",
+    "languagesLabel": "Langues",
+    "modalitiesLabel": "Consultations",
+    "viewProfile": "Voir le profil",
+    "noResults": "Aucun professionnel dans cette catégorie pour le moment.",
+    "closing": {
+      "title": "Vous ne savez pas vers qui vous tourner ?",
+      "text": "Répondez à quelques questions : notre jumelage vous propose le professionnel qui correspond à vos besoins.",
+      "cta": "Commencer le jumelage",
+      "contact": "Nous écrire"
+    },
     "title": "Nos professionnels",
     "intro": "Des psychologues, psychothérapeutes et autres professionnels de la santé mentale qui accompagnent les Québécois, en français et en anglais.",
     "contactLine": "Pour plus d'informations sur notre équipe, <link>contactez-nous</link>.",

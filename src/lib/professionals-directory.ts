@@ -1,5 +1,13 @@
 import { isValidShowcaseSlug } from "@/lib/showcase-slug";
 import { showcaseTitleOf, type ShowcaseTitleKey } from "@/lib/showcase-title";
+import {
+  SHOWCASE_LANGUAGE_KEYS,
+  SHOWCASE_MODALITY_KEYS,
+  showcaseLanguageKey,
+  showcaseModalityKey,
+  type ShowcaseLanguageKey,
+  type ShowcaseModalityKey,
+} from "@/lib/showcase-public";
 
 /**
  * « Nos professionnels » (www /professionnels): every active professional who has not hidden their
@@ -34,6 +42,9 @@ export interface DirectoryProfileSource {
   education?: readonly ({ degree?: string | null } | null | undefined)[] | null;
   profileVisible?: boolean | null;
   profileCompleted?: boolean | null;
+  languages?: readonly unknown[] | null;
+  modalities?: readonly unknown[] | null;
+  yearsOfExperience?: unknown;
 }
 
 export interface DirectoryPageSource {
@@ -64,6 +75,11 @@ export interface DirectoryProfessional {
   photoUrl: string | null;
   /** `/<slug>` when the professional has a published page. */
   showcasePath: string | null;
+  /** From the profile, whichever words it uses, in a fixed order. */
+  languages: ShowcaseLanguageKey[];
+  modalities: ShowcaseModalityKey[];
+  /** Whole years, 0 to 70, as the profile says. */
+  yearsOfExperience: number | null;
 }
 
 /** Every key a listed professional carries; nothing else reaches the page. */
@@ -71,10 +87,13 @@ export const DIRECTORY_PROFESSIONAL_KEYS = [
   "degree",
   "displayName",
   "id",
+  "languages",
+  "modalities",
   "photoUrl",
   "showcasePath",
   "summary",
   "title",
+  "yearsOfExperience",
 ] as const;
 
 /** Why a professional is not on the public list. The professional's own choice wins over the team's. */
@@ -164,6 +183,23 @@ export function isTitlesOnly(text: string): boolean {
   return words.length > 0 && words.every((word) => TITLE_WORDS.has(word));
 }
 
+function keysOf<K extends string>(
+  values: readonly unknown[] | null | undefined,
+  toKey: (raw: string) => K | null,
+  order: readonly K[],
+): K[] {
+  const found = new Set<K>();
+  for (const raw of values ?? []) {
+    const key = typeof raw === "string" ? toKey(raw) : null;
+    if (key) found.add(key);
+  }
+  return order.filter((key) => found.has(key));
+}
+
+function yearsOf(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 70 ? value : null;
+}
+
 interface DirectoryInput {
   locale: DirectoryLocale;
   users: readonly DirectoryUserSource[];
@@ -237,6 +273,9 @@ function candidatesOf(input: DirectoryInput): Candidate[] {
         summary,
         photoUrl: content ? photoUrlOf(content.photoFileId) : null,
         showcasePath: page ? `/${page.slug}` : null,
+        languages: keysOf(profile?.languages, showcaseLanguageKey, SHOWCASE_LANGUAGE_KEYS),
+        modalities: keysOf(profile?.modalities, showcaseModalityKey, SHOWCASE_MODALITY_KEYS),
+        yearsOfExperience: yearsOf(profile?.yearsOfExperience),
       },
     });
   }

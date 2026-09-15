@@ -92,6 +92,40 @@
     }
   },
   "Professionals": {
+    "eyebrow": "Our team",
+    "stats": {
+      "professionals": "{count, plural, one {# professional} other {# professionals}}",
+      "languages": "{count, plural, one {# language spoken} other {# languages spoken}}",
+      "years": "{count, plural, one {# year of combined experience} other {# years of combined experience}}"
+    },
+    "cta": {
+      "match": "Find my professional",
+      "contact": "Contact us"
+    },
+    "filters": {
+      "label": "Filter by profession",
+      "all": "All"
+    },
+    "groups": {
+      "psychologist": "Psychologists",
+      "psychotherapist": "Psychotherapists",
+      "neuropsychologist": "Neuropsychologists",
+      "psychoeducator": "Psychoeducators",
+      "occupationalTherapistMentalHealth": "Occupational therapists",
+      "psychiatrist": "Psychiatrists",
+      "other": "Other professionals"
+    },
+    "experience": "{count, plural, one {# year of experience} other {# years of experience}}",
+    "languagesLabel": "Languages",
+    "modalitiesLabel": "Consultations",
+    "viewProfile": "View profile",
+    "noResults": "No professionals in this category yet.",
+    "closing": {
+      "title": "Not sure who to turn to?",
+      "text": "Answer a few questions: our matching suggests the professional who fits your needs.",
+      "cta": "Start matching",
+      "contact": "Write to us"
+    },
     "title": "Our professionals",
     "intro": "Psychologists, psychotherapists and other mental health professionals who support Quebecers, in French and English.",
     "contactLine": "For more information about our team, <link>contact us</link>.",
