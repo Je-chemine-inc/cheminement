@@ -1,16 +1,20 @@
 import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
+  Anchor,
   ArrowRight,
   Award,
   CalendarDays,
   Check,
   Clock,
+  Compass,
   Feather,
   Flower2,
   Globe,
   Heart,
+  HeartHandshake,
   Leaf,
+  Lightbulb,
   MapPin,
   MessageSquare,
   Phone,
@@ -20,6 +24,7 @@ import {
   Sparkles,
   Sprout,
   Sun,
+  Users,
   Video,
   Waves,
   Zap,
@@ -70,6 +75,24 @@ const EXPERTISE_THEMES: { icon: LucideIcon; tint: string }[] = [
   { icon: Flower2, tint: "bg-[#F3EEE6]" },
   { icon: Sparkles, tint: "bg-[#E9F1EE]" },
 ];
+
+/** Icon and soft colour for each value card, in turn — distinct from the expertise cards further down. */
+const VALUE_THEMES: { icon: LucideIcon; tint: string }[] = [
+  { icon: Compass, tint: "bg-[#EAF2EE]" },
+  { icon: Lightbulb, tint: "bg-[#F7F0E2]" },
+  { icon: HeartHandshake, tint: "bg-[#EDF0F7]" },
+  { icon: Anchor, tint: "bg-[#F6ECE9]" },
+  { icon: Users, tint: "bg-[#EFF2E4]" },
+];
+
+/** The value cards' grid for 1 to 5 values: every row filled, never a lone narrow card. */
+const VALUE_GRIDS: Record<number, string> = {
+  1: "mx-auto max-w-[760px]",
+  2: "mx-auto max-w-[1500px] sm:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "sm:grid-cols-2 xl:grid-cols-4",
+  5: "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5",
+};
 
 const ROOT_ID = "vitrine";
 const SERIF = "font-[family-name:var(--font-vitrine-serif)]";
@@ -504,36 +527,54 @@ export async function ShowcaseProfileView({
         </div>
       </section>
 
-      {/* Valeurs, when at least one is described: a numbered list beside the title, so a value without a description leaves no gap */}
+      {/* Valeurs, when at least one is described: one tinted card per value, each with its own icon */}
       {profile.valueCards.some((card) => card.description) ? (
         <section className={SECTION}>
-          <div className={`${WRAP} grid gap-x-[clamp(40px,6vw,120px)] gap-y-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]`}>
-            <div className="min-w-0 lg:sticky lg:top-28 lg:self-start" data-reveal="0">
+          <div className={WRAP}>
+            <div className="mx-auto max-w-[62ch] text-center" data-reveal="0">
               <p className={LABEL}>{t("vitrine.values.eyebrow")}</p>
-              <h2 className={`${H2} mt-5 max-w-[16ch]`}>{t("vitrine.values.title")}</h2>
-              <p className={`${BODY} mt-6 max-w-[44ch]`}>{t("vitrine.values.intro")}</p>
+              <h2 className={`${H2} mt-5 text-balance`}>{t("vitrine.values.title")}</h2>
+              <p className={`${BODY} mx-auto mt-5 max-w-[52ch]`}>{t("vitrine.values.intro")}</p>
             </div>
-            <ol className={`min-w-0 border-t ${RULE}`} data-values="">
-              {profile.valueCards.map((card, index) => (
-                <li
-                  key={card.label}
-                  data-reveal={index % 4}
-                  className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-[clamp(18px,2vw,36px)] border-b ${RULE} py-[clamp(24px,2.6vw,44px)]`}
-                >
-                  <span
-                    className={`flex h-[clamp(48px,3.4vw,64px)] w-[clamp(48px,3.4vw,64px)] items-center justify-center rounded-full bg-[#E6EFEA] ${SERIF} text-[clamp(17px,1.3vw,22px)] text-[#17505F]`}
+            <ul
+              className={`mt-[clamp(40px,5vw,88px)] grid gap-[clamp(14px,1.4vw,26px)] ${VALUE_GRIDS[Math.min(profile.valueCards.length, 5)]}`}
+              data-values=""
+            >
+              {profile.valueCards.map((card, index) => {
+                const theme = VALUE_THEMES[index % VALUE_THEMES.length];
+                return (
+                  <li
+                    key={card.label}
+                    data-reveal={index % 4}
+                    className={`group relative isolate flex min-h-[200px] min-w-0 sm:min-h-[clamp(280px,22vw,430px)] flex-col overflow-hidden rounded-[40px] p-[clamp(26px,2.6vw,48px)] transition-shadow duration-500 hover:shadow-[0_40px_80px_-56px_rgba(31,42,46,0.55)] ${theme.tint}`}
                   >
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div className="min-w-0 self-center">
-                    <p className={`${SERIF} text-[clamp(26px,2.3vw,42px)] leading-[1.12] text-[#1F2A2E] text-balance`}>{card.label}</p>
-                    {card.description ? (
-                      <p className="mt-2.5 max-w-[56ch] vt-md leading-[1.7] text-[#5B6566] text-pretty">{card.description}</p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
+                    <theme.icon
+                      aria-hidden="true"
+                      strokeWidth={1.1}
+                      className="pointer-events-none absolute -bottom-12 -right-12 -z-10 h-[clamp(170px,13vw,250px)] w-[clamp(170px,13vw,250px)] text-[#17505F] opacity-[0.07] transition-transform duration-700 group-hover:-rotate-6 group-hover:scale-105 motion-reduce:transition-none"
+                    />
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="flex h-[clamp(52px,3.6vw,68px)] w-[clamp(52px,3.6vw,68px)] items-center justify-center rounded-full bg-white text-[#17505F] shadow-[0_14px_30px_-20px_rgba(31,42,46,0.5)]">
+                        <theme.icon className="h-[42%] w-[42%]" aria-hidden="true" />
+                      </span>
+                      <span className={`${SERIF} vt-md text-[#1F2A2E]/35`}>{String(index + 1).padStart(2, "0")}</span>
+                    </div>
+                    <div className="mt-auto pt-8 sm:pt-[clamp(40px,4vw,72px)]">
+                      <p className={`${SERIF} text-[clamp(30px,2.6vw,52px)] leading-[1.05] tracking-[-0.01em] text-[#1F2A2E] text-balance`}>
+                        {card.label}
+                      </p>
+                      <span
+                        aria-hidden="true"
+                        className="mt-5 block h-[3px] w-12 rounded-full bg-[#17505F]/55 transition-all duration-500 group-hover:w-20 motion-reduce:transition-none"
+                      />
+                      {card.description ? (
+                        <p className="mt-5 max-w-[40ch] vt-md leading-[1.7] text-[#3E494B] text-pretty">{card.description}</p>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </section>
       ) : null}
