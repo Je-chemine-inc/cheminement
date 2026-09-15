@@ -8,6 +8,20 @@ import { SHOWCASE_WAITLIST_ANCHOR } from "@/lib/waitlist-rules";
  * from the public data. Pure and client-safe.
  */
 
+/**
+ * A price as the page shows it: whole dollars without decimals (« 120 $ »), otherwise always two
+ * (« 24,50 $ », never « 24,5 $ »).
+ */
+export function formatShowcasePrice(amount: number, localeTag: string): string {
+  const whole = Number.isInteger(Math.round(amount * 100) / 100);
+  return new Intl.NumberFormat(localeTag, {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 /** Section anchors, also the targets of the header's links. */
 export const VITRINE_ANCHORS = {
   top: "haut",

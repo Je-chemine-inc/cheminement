@@ -3,12 +3,24 @@ import {
   VITRINE_ANCHORS,
   canShowNextDays,
   daysInView,
+  formatShowcasePrice,
   groupSlotsByPeriod,
   headlinePrice,
   slotPeriod,
   initialsOf,
   vitrineSections,
 } from "@/lib/showcase-vitrine";
+
+describe("formatShowcasePrice", () => {
+  it("shows whole prices without decimals and every other price with two (a product at 24,50 $ read « 24,5 $ »)", () => {
+    expect(formatShowcasePrice(120, "fr-CA")).toMatch(/^120\s\$$/);
+    expect(formatShowcasePrice(24.5, "fr-CA")).toMatch(/^24,50\s\$$/);
+    expect(formatShowcasePrice(19.99, "fr-CA")).toMatch(/^19,99\s\$$/);
+    expect(formatShowcasePrice(19.999, "fr-CA")).toMatch(/^20\s\$$/);
+    expect(formatShowcasePrice(24.5, "en-CA")).toBe("$24.50");
+    expect(formatShowcasePrice(45, "en-CA")).toBe("$45");
+  });
+});
 
 describe("vitrineSections", () => {
   it("lists every section of a complete, bookable page in the design's order", () => {

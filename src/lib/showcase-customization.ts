@@ -134,6 +134,28 @@ export function approachHeadings(input: { hasApproachText: boolean; customApproa
   return { title: titled ? "approach" : "steps", stepsSubheading: titled };
 }
 
+export type AboutHeadingMessage =
+  | { key: "vitrine.about.headingYears"; values: { title: string; years: number; city: string } }
+  | { key: "vitrine.about.heading"; values: { title: string; city: string } }
+  | { key: "vitrine.about.headingNoTitle"; values: { name: string; city: string } };
+
+/**
+ * The « À propos » title a page shows when the professional wrote none (Showcase messages). One rule
+ * for the page and for the editor's grey hint, so the hint never promises another wording.
+ */
+export function aboutHeadingMessage(input: {
+  title: string | null;
+  years: number | null;
+  name: string;
+  city: string;
+}): AboutHeadingMessage {
+  if (!input.title) return { key: "vitrine.about.headingNoTitle", values: { name: input.name, city: input.city } };
+  if (input.years !== null && input.years > 0) {
+    return { key: "vitrine.about.headingYears", values: { title: input.title, years: input.years, city: input.city } };
+  }
+  return { key: "vitrine.about.heading", values: { title: input.title, city: input.city } };
+}
+
 // ------------------------------------------------------------------ colour
 
 /** The approved accents: each dark enough for white text, with a darker hover and a soft tint. */

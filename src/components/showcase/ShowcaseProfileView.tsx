@@ -39,10 +39,11 @@ import type { DirectRequestService } from "@/lib/direct-request-rules";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import type { WaitlistModality } from "@/lib/waitlist-rules";
-import { VITRINE_ANCHORS, headlinePrice, initialsOf, vitrineSections, type VitrineSection } from "@/lib/showcase-vitrine";
+import { VITRINE_ANCHORS, formatShowcasePrice, headlinePrice, initialsOf, vitrineSections, type VitrineSection } from "@/lib/showcase-vitrine";
 import { pageImages, pickAmbience } from "@/lib/showcase-imagery";
 import {
   SHOWCASE_ACCENTS,
+  aboutHeadingMessage,
   approachHeadings,
   visibleSections,
   type ShowcaseSectionKey,
@@ -170,12 +171,7 @@ export async function ShowcaseProfileView({
 }) {
   const t = await getTranslations("Showcase");
   const localeTag = (await getLocale()) === "en" ? "en-CA" : "fr-CA";
-  const money = new Intl.NumberFormat(localeTag, {
-    style: "currency",
-    currency: "CAD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
+  const money = { format: (amount: number) => formatShowcasePrice(amount, localeTag) };
   const orList = new Intl.ListFormat(localeTag, { type: "disjunction" });
 
   const name = profile.displayName;
@@ -248,11 +244,8 @@ export async function ShowcaseProfileView({
     ...(quick.offered ? [{ service: "quick" as const, minutes: quick.durationMinutes, price: quick.price }] : []),
   ];
   const years = profile.yearsOfExperience;
-  const aboutHeading = title
-    ? years !== null && years > 0
-      ? t("vitrine.about.headingYears", { title, years, city: officeCity })
-      : t("vitrine.about.heading", { title, city: officeCity })
-    : t("vitrine.about.headingNoTitle", { name, city: officeCity });
+  const aboutDefault = aboutHeadingMessage({ title, years, name, city: officeCity });
+  const aboutHeading = t(aboutDefault.key, aboutDefault.values);
 
   // « En bref », beside the portrait: the order and permit already sit under the name.
   const briefFacts: { icon: LucideIcon; text: string }[] = [

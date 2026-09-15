@@ -8,6 +8,7 @@ import ProCatalogItem from "@/models/ProCatalogItem";
 import StoredFile from "@/models/StoredFile";
 import { slugify } from "@/lib/content-kind";
 import { findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
+import { showcaseTitleOf } from "@/lib/showcase-title";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   SHOWCASE_AMBIENCE_SLOTS,
@@ -124,7 +125,7 @@ type PageLean = {
 };
 
 const PROFILE_FACTS_SELECT =
-  "specialty license modalities languages officeAddress.city acceptingNewClients acceptingEmergencyConsultations";
+  "specialty license modalities languages officeAddress.city yearsOfExperience acceptingNewClients acceptingEmergencyConsultations";
 
 function isDuplicateKey(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
@@ -307,6 +308,13 @@ export async function loadShowcaseEditor(userId: string) {
       modalities: uniqueKeys(profile?.modalities, showcaseModalityKey, SHOWCASE_MODALITY_KEYS),
       languages: uniqueKeys(profile?.languages, showcaseLanguageKey, SHOWCASE_LANGUAGE_KEYS),
       officeCity: profile?.officeAddress?.city ?? null,
+      // What the page's « À propos » title is built from when none is written (see aboutHeadingMessage).
+      titleKey: showcaseTitleOf(profile?.specialty).key,
+      titleLabel: showcaseTitleOf(profile?.specialty).label,
+      yearsOfExperience:
+        typeof profile?.yearsOfExperience === "number" && Number.isInteger(profile.yearsOfExperience) && profile.yearsOfExperience >= 0 && profile.yearsOfExperience <= 70
+          ? profile.yearsOfExperience
+          : null,
       acceptingNewClients: profile?.acceptingNewClients !== false,
       acceptingEmergencyConsultations: profile?.acceptingEmergencyConsultations !== false,
     },

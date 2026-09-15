@@ -13,6 +13,7 @@ import {
   SHOWCASE_PHOTO,
   type ProfessionalOrderCode,
 } from "@/lib/showcase-constants";
+import { aboutHeadingMessage } from "@/lib/showcase-customization";
 import {
   SHOWCASE_ADMIN_WORDED_KEYS,
   showcaseErrorKey,
@@ -535,8 +536,15 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
     });
   const setAmbience = (slot: ShowcaseAmbienceSlot, src: string) => update({ ambience: { ...draft.ambience, [slot]: src } });
   // The wording a blank text keeps, as the page would show it.
-  const defaultText = (key: ShowcaseTextKey) =>
-    tLabels(SHOWCASE_TEXT_DEFAULTS[key], { name: draft.displayName || "…", city: view.page.cityName });
+  // The « À propos » title follows the page's rule (title, years, office city), the others take the name and city.
+  const officeCityName = view.profileFacts.officeCity?.trim().slice(0, 80) || view.page.cityName;
+  const defaultText = (key: ShowcaseTextKey) => {
+    if (key !== "aboutTitle") return tLabels(SHOWCASE_TEXT_DEFAULTS[key], { name: draft.displayName || "…", city: view.page.cityName });
+    const { titleKey, titleLabel, yearsOfExperience } = view.profileFacts;
+    const title = titleKey ? tLabels(`titles.${titleKey}`) : titleLabel;
+    const about = aboutHeadingMessage({ title, years: yearsOfExperience, name: draft.displayName || "…", city: officeCityName });
+    return tLabels(about.key, about.values);
+  };
 
   const languageTabs = (
     <div role="tablist" aria-label={t("presentation.language")} className="flex rounded-full bg-muted p-1">

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SHOWCASE_SECTION_KEYS,
   SHOWCASE_TEXT_LIMITS,
+  aboutHeadingMessage,
   approachHeadings,
   layoutChoicesOf,
   resolveSectionOrder,
@@ -55,6 +56,28 @@ describe("approachHeadings", () => {
       stepsSubheading: true,
     });
     expect(approachHeadings({ hasApproachText: false, customApproachTitle: "   " })).toEqual({ title: "steps", stepsSubheading: false });
+  });
+});
+
+describe("aboutHeadingMessage", () => {
+  it("names the title and the years when the profile has both, the title alone without years", () => {
+    expect(aboutHeadingMessage({ title: "Psychologue", years: 12, name: "Léo Barnabé", city: "Laval" })).toEqual({
+      key: "vitrine.about.headingYears",
+      values: { title: "Psychologue", years: 12, city: "Laval" },
+    });
+    for (const years of [null, 0]) {
+      expect(aboutHeadingMessage({ title: "Psychologue", years, name: "Léo Barnabé", city: "Laval" })).toEqual({
+        key: "vitrine.about.heading",
+        values: { title: "Psychologue", city: "Laval" },
+      });
+    }
+  });
+
+  it("uses the name only without a title (the editor's hint once promised the name with a title on the page)", () => {
+    expect(aboutHeadingMessage({ title: null, years: 12, name: "Léo Barnabé", city: "Laval" })).toEqual({
+      key: "vitrine.about.headingNoTitle",
+      values: { name: "Léo Barnabé", city: "Laval" },
+    });
   });
 });
 

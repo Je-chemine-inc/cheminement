@@ -77,6 +77,10 @@ export interface ShowcaseEditorJson {
     modalities: ShowcaseModalityKey[];
     languages: ShowcaseLanguageKey[];
     officeCity: string | null;
+    /** A known title key (Showcase `titles.<key>`), else the profile's own title words. */
+    titleKey: string | null;
+    titleLabel: string | null;
+    yearsOfExperience: number | null;
     acceptingNewClients: boolean;
     acceptingEmergencyConsultations: boolean;
   };

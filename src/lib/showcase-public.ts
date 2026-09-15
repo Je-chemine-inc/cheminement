@@ -1,4 +1,4 @@
-import { PROFESSIONAL_TITLES } from "@/data/professionalTitles";
+import { showcaseTitleOf, type ShowcaseTitleKey } from "@/lib/showcase-title";
 import { slotGridOf } from "@/lib/available-slots";
 import { FREE_CANCELLATION_HOURS } from "@/lib/cancellation-policy";
 import { quickConsultationMinutes } from "@/lib/professional-pricing";
@@ -39,7 +39,7 @@ export type ShowcaseModalityKey = (typeof SHOWCASE_MODALITY_KEYS)[number];
 export const SHOWCASE_THERAPY_TYPES = ["solo", "couple", "group"] as const;
 export type ShowcaseTherapyType = (typeof SHOWCASE_THERAPY_TYPES)[number];
 
-export type ShowcaseTitleKey = Exclude<(typeof PROFESSIONAL_TITLES)[number]["value"], "otherProfessionals">;
+export type { ShowcaseTitleKey };
 
 type LocalizedSource = { fr?: string | null; en?: string | null } | null | undefined;
 
@@ -273,14 +273,7 @@ function uniqueKeys<K extends string>(values: readonly string[] | null | undefin
   return order.filter((key) => found.has(key));
 }
 
-const TITLE_KEYS = new Set<string>(PROFESSIONAL_TITLES.map((title) => title.value));
-
-function titleOf(specialty: string | null | undefined): ShowcasePublicProfile["title"] {
-  const raw = specialty?.trim() ?? "";
-  if (!raw || raw === "otherProfessionals") return { key: null, label: null };
-  if (TITLE_KEYS.has(raw)) return { key: raw as ShowcaseTitleKey, label: null };
-  return { key: null, label: raw.slice(0, 80) };
-}
+const titleOf = (specialty: string | null | undefined): ShowcasePublicProfile["title"] => showcaseTitleOf(specialty);
 
 function orderOf(code: string | null | undefined, label: string | null | undefined): ShowcasePublicProfile["order"] {
   if (!code || !(PROFESSIONAL_ORDER_CODES as readonly string[]).includes(code)) return null;

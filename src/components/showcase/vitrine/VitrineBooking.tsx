@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
 import type { DirectRequestService } from "@/lib/direct-request-rules";
 import type { ShowcaseSlotsResponse } from "@/lib/showcase-booking-types";
-import { VITRINE_DAYS_PER_VIEW, canShowNextDays, daysInView, groupSlotsByPeriod } from "@/lib/showcase-vitrine";
+import { VITRINE_DAYS_PER_VIEW, canShowNextDays, daysInView, formatShowcasePrice, groupSlotsByPeriod } from "@/lib/showcase-vitrine";
 
 export type VitrineBookingOption = {
   service: DirectRequestService;
@@ -148,7 +148,7 @@ export function VitrineBooking({
     new Intl.DateTimeFormat(localeTag, { month: "short", timeZone: "UTC" }).format(new Date(`${day}T12:00:00Z`));
   const timeLabel = (day: string, time: string) =>
     new Intl.DateTimeFormat(localeTag, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(`${day}T${time}:00Z`));
-  const money = new Intl.NumberFormat(localeTag, { style: "currency", currency: "CAD", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const money = { format: (amount: number) => formatShowcasePrice(amount, localeTag) };
   const requestUrl = (day: string, time: string) => {
     const url = new URL(bookingBaseUrl);
     url.searchParams.set("service", service);
