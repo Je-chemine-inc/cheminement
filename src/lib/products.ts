@@ -9,6 +9,7 @@ import ShowcasePage from "@/models/ShowcasePage";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import { sanitizeProductHtml } from "@/lib/product-html";
 import { syncProductLedger } from "@/lib/product-ledger";
+import { syncProfessionalArticles } from "@/lib/articles";
 import {
   parseProductWrite,
   productIsLive,
@@ -120,6 +121,8 @@ export async function syncProfessionalProducts(professionalId: string): Promise<
     ownerProfessionalId: professionalId,
   })) as string[];
   for (const slug of slugs) await syncProductLiveStatus(slug);
+  // The professional's articles follow their account the same way (every caller of this sync).
+  await syncProfessionalArticles(professionalId);
   return slugs.length;
 }
 

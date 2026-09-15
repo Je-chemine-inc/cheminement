@@ -82,7 +82,10 @@ export type EmailNotificationType =
   | "product_sold"
   | "product_moderation_decision"
   | "admin_product_submitted"
-  | "product_webinar_reminder";
+  | "product_webinar_reminder"
+  // Articles professionals write for their page (2026-09-15).
+  | "article_moderation_decision"
+  | "admin_article_submitted";
 
 export interface IEmailTemplateConfig {
   enabled: boolean;
@@ -520,6 +523,14 @@ const defaultEmailTemplates: Record<
   product_webinar_reminder: {
     enabled: true,
     subject: "Rappel : votre webinaire — Je chemine",
+  },
+  article_moderation_decision: {
+    enabled: true,
+    subject: "Votre article — Je chemine",
+  },
+  admin_article_submitted: {
+    enabled: true,
+    subject: "Article à vérifier — Je chemine",
   },
 };
 

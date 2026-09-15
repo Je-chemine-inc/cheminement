@@ -319,6 +319,17 @@ const EMAIL_TEMPLATE_INFO: Record<
       "Envoyé aux personnes qui ont acheté le webinaire d'un professionnel, la veille puis une heure avant le début, avec le lien vers la page du webinaire où se trouve la salle.",
     category: "Ressources",
   },
+  article_moderation_decision: {
+    name: "Décision sur un article (professionnel)",
+    description:
+      "Envoyé au professionnel quand l'équipe approuve, refuse (avec ses commentaires) ou retire un de ses articles.",
+    category: "Pages vitrines",
+  },
+  admin_article_submitted: {
+    name: "Alerte équipe — article à vérifier",
+    description: "Envoyé à l'équipe quand un professionnel envoie un article pour vérification.",
+    category: "Alertes administratives",
+  },
   admin_product_submitted: {
     name: "Alerte équipe — produit à vérifier",
     description:

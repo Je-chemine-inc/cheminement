@@ -3,6 +3,7 @@ import connectToDatabase from "@/lib/mongodb";
 import ContentEntry from "@/models/ContentEntry";
 import ResourceEntitlement from "@/models/ResourceEntitlement";
 import { productByline, reconcileProductLiveStatus } from "@/lib/products";
+import { reconcileArticleLiveStatus } from "@/lib/articles";
 import { WEBINAR_REMINDERS, webinarReminderDue, webinarReminderKey } from "@/lib/product-rules";
 import { sendProductWebinarReminderEmail } from "@/lib/notifications";
 
@@ -132,6 +133,7 @@ export async function sendDueWebinarReminders(now: Date = new Date()): Promise<W
 export async function runProductJobs(
   now: Date = new Date(),
 ): Promise<{ statusCorrected: number } & WebinarReminderReport> {
-  const statusCorrected = await reconcileProductLiveStatus();
+  // Professionals' articles follow their account the same way as their products.
+  const statusCorrected = (await reconcileProductLiveStatus()) + (await reconcileArticleLiveStatus());
   return { statusCorrected, ...(await sendDueWebinarReminders(now)) };
 }

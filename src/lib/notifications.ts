@@ -9365,6 +9365,110 @@ export async function sendAdminProductSubmittedAlert(data: {
   }
 }
 
+/** The team's decision on one of a professional's articles (approved, sent back with notes, taken down). */
+export async function sendArticleModerationDecisionEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  articleTitle: string;
+  decision: "approved" | "rejected" | "unpublished";
+  notes: string | null;
+  articleUrl: string | null;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const dashboardUrl = showcaseAppUrl("/professional/dashboard/articles");
+  const title = data.articleTitle;
+  const copy = {
+    fr: {
+      title: {
+        approved: "Votre article est en ligne",
+        rejected: "Quelques modifications à votre article",
+        unpublished: "Votre article est retiré",
+      }[data.decision],
+      intro: {
+        approved: `« ${title} » est approuvé et publié sur votre page.`,
+        rejected: `Notre équipe a relu « ${title} » et vous demande quelques modifications avant de le publier.`,
+        unpublished: `Notre équipe a retiré « ${title} » de votre page.`,
+      }[data.decision],
+      notes: "Commentaires de l'équipe",
+      view: "Voir l'article",
+      dashboard: "Voir mes articles",
+    },
+    en: {
+      title: {
+        approved: "Your article is online",
+        rejected: "A few changes to your article",
+        unpublished: "Your article was taken down",
+      }[data.decision],
+      intro: {
+        approved: `“${title}” is approved and published on your page.`,
+        rejected: `Our team reviewed “${title}” and asks for a few changes before publishing it.`,
+        unpublished: `Our team took “${title}” off your page.`,
+      }[data.decision],
+      notes: "Comments from the team",
+      view: "View the article",
+      dashboard: "View my articles",
+    },
+  }[lang];
+  const button =
+    data.decision === "approved" && data.articleUrl
+      ? { text: copy.view, url: data.articleUrl }
+      : { text: copy.dashboard, url: dashboardUrl };
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: data.decision === "approved" ? "success" : "warning",
+    greeting: lang === "en" ? `Hello ${data.professionalName},` : `Bonjour ${data.professionalName},`,
+    intro: copy.intro,
+    ...(data.notes ? { infoBox: { title: copy.notes, content: data.notes, theme: "warning" as const } } : {}),
+    button,
+    outro: SHOWCASE_SIGNATURE[lang],
+    branding,
+    lang,
+  });
+  const text = buildEmailText(
+    [copy.title, copy.intro, data.notes ? `${copy.notes} :\n${data.notes}` : "", `${button.text} : ${button.url}`],
+    lang,
+  );
+  return sendEmail({ to: data.professionalEmail, subject: copy.title, html, text }, "article_moderation_decision");
+}
+
+/** A professional sent an article for review. French-only team alert. */
+export async function sendAdminArticleSubmittedAlert(data: {
+  professionalName: string;
+  articleTitle: string;
+  slug: string;
+}): Promise<void> {
+  await connectToDatabase();
+  const recipients = await getAdminAlertRecipients();
+  if (recipients.length === 0) {
+    console.warn("[sendAdminArticleSubmittedAlert] no admin recipients");
+    return;
+  }
+  const branding = await getBranding();
+  const url = showcaseAppUrl("/admin/dashboard/articles");
+  const title = "Article à vérifier";
+  const intro = `${data.professionalName} a envoyé « ${data.articleTitle} » pour vérification. Il n'est publié qu'après votre approbation.`;
+  const html = buildEmailHtml({
+    title,
+    theme: "info",
+    greeting: "Bonjour,",
+    intro,
+    details: [
+      { label: "Professionnel", value: data.professionalName },
+      { label: "Article", value: data.articleTitle },
+    ],
+    button: { text: "Vérifier l'article", url },
+    branding,
+    lang: "fr",
+  });
+  const text = buildEmailText([title, intro, `Vérifier l'article : ${url}`], "fr");
+  const subject = await getSubject("admin_article_submitted", title);
+  for (const to of recipients) {
+    await sendEmail({ to, subject, html, text }, "admin_article_submitted");
+  }
+}
+
 /**
  * A webinar someone bought starts within a day, or within the hour. Links to
  * the webinar's page, where the room link is — never to the room itself — so

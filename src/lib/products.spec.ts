@@ -102,6 +102,8 @@ vi.mock("@/lib/showcase-hosts", () => ({
   showcasePageUrl: (slug: string) => `https://www.jechemine.ca/${slug}`,
 }));
 vi.mock("@/lib/product-ledger", () => ({ syncProductLedger: h.syncProductLedger }));
+// Articles have their own spec; here only that the account sync reaches them.
+vi.mock("@/lib/articles", () => ({ syncProfessionalArticles: vi.fn(async () => 0) }));
 vi.mock("@/lib/notifications", () => ({
   sendAdminProductSubmittedAlert: h.sendAdminProductSubmittedAlert,
   sendProductModerationDecisionEmail: h.sendProductModerationDecisionEmail,

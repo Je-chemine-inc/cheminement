@@ -34,6 +34,7 @@ vi.mock("@/lib/mongodb", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("@/models/ContentEntry", () => ({ default: { find: h.entryFind } }));
 vi.mock("@/models/ResourceEntitlement", () => ({ default: { find: h.entFind, updateOne: h.entUpdateOne } }));
 vi.mock("@/lib/products", () => ({ productByline: h.productByline, reconcileProductLiveStatus: h.reconcile }));
+vi.mock("@/lib/articles", () => ({ reconcileArticleLiveStatus: vi.fn(async () => 0) }));
 vi.mock("@/lib/notifications", () => ({ sendProductWebinarReminderEmail: h.send }));
 
 import { MAX_WEBINAR_REMINDERS_PER_RUN, runProductJobs, sendDueWebinarReminders } from "@/lib/product-jobs";
