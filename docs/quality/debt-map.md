@@ -166,7 +166,7 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
   - **Not changed.** An appointment refunded before this fix has no `refundRequest`; it is recognised by `payment.status` alone.
 - **2026-09-15** — **[feature, live on merge] « Nos professionnels » at www /professionnels (owner's request, inspired by a clinic's team page).**
   - **The page.** Every active professional is listed with a round portrait, their name, degree and title, and a short text. « Lire plus » links to the professional's page when they have a published one (owner's choice: every professional, not only those with a page).
-  - **Where it is linked.** In the header (desktop and the « Découvrir » mobile section), the footer's Espace column, a band on the home page and « Qui sommes-nous », and the sitemap.
+  - **Where it is linked.** In the header, inside the « À propos » menu (desktop and mobile), the footer's Espace column, a band on the home page and « Qui sommes-nous », and the sitemap.
   - **Who is listed.** Rules live in `src/lib/professionals-directory.ts` (pure, spec'd); the loader is `professionals-directory-queries.ts`.
     - Professionals with `role: "professional"` and `status: "active"`.
     - A professional who unticked « Profil visible aux clients » (`Profile.profileVisible`) is never listed, even with a page.
