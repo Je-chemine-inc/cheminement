@@ -7465,19 +7465,20 @@
       },
       "values": {
         "eyebrow": "Valeurs",
-        "title": "Ce qui guide ma pratique"
+        "title": "Ce qui guide ma pratique",
+        "intro": "Les principes qui orientent chaque rencontre, du premier échange jusqu’au suivi."
       },
       "services": {
         "eyebrow": "Services et tarifs",
         "title": "Des tarifs affichés, sans surprise",
-        "intro": "Tarifs en dollars canadiens. Un reçu est émis pour chaque séance payée, pour vos assurances.",
-        "standardMeta": "{minutes} minutes · {modes}",
-        "quickMeta": "{minutes} minutes",
+        "intro": "Tous les tarifs sont en dollars canadiens et affichés avant votre demande. Choisissez la consultation qui vous convient.",
         "quickPoint": "Pour un besoin précis et ponctuel",
-        "therapyPrice": "{type} : {price}",
         "priceLater": "Tarif confirmé avec votre demande",
         "seeTimes": "Voir les disponibilités",
-        "seeQuick": "Voir les créneaux"
+        "seeQuick": "Voir les créneaux",
+        "standardPoint": "Un accompagnement suivi, séance après séance, à votre rythme.",
+        "perSession": "par séance",
+        "notesTitle": "Bon à savoir"
       },
       "dispos": {
         "eyebrow": "Disponibilités",
@@ -7499,7 +7500,6 @@
         "waitlist": "Liste d'attente"
       },
       "emergencyTitle": "Besoin d'aide rapidement ?",
-      "choose": "Choisir",
       "expertisesTitle": "Ce que j'accompagne",
       "expertisesIntro": "Les situations pour lesquelles {name} accompagne ses clients. Chaque thème mène aussi aux autres professionnels de {city} qui le travaillent.",
       "ctaEyebrow": "Premier pas",

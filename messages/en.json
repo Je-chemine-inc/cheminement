@@ -7466,19 +7466,20 @@
       },
       "values": {
         "eyebrow": "Values",
-        "title": "What guides my practice"
+        "title": "What guides my practice",
+        "intro": "The principles behind every meeting, from the first conversation to follow-up."
       },
       "services": {
         "eyebrow": "Services and fees",
         "title": "Fees shown up front, no surprises",
-        "intro": "Fees in Canadian dollars. A receipt is issued for every paid session, for your insurance.",
-        "standardMeta": "{minutes} minutes · {modes}",
-        "quickMeta": "{minutes} minutes",
+        "intro": "All fees are in Canadian dollars and shown before you make a request. Choose the consultation that suits you.",
         "quickPoint": "For a specific, one-time need",
-        "therapyPrice": "{type}: {price}",
         "priceLater": "Fee confirmed with your request",
         "seeTimes": "See availability",
-        "seeQuick": "See times"
+        "seeQuick": "See times",
+        "standardPoint": "Ongoing support, session after session, at your own pace.",
+        "perSession": "per session",
+        "notesTitle": "Good to know"
       },
       "dispos": {
         "eyebrow": "Availability",
@@ -7500,7 +7501,6 @@
         "waitlist": "Waitlist"
       },
       "emergencyTitle": "Need help quickly?",
-      "choose": "Choose",
       "expertisesTitle": "What I help with",
       "expertisesIntro": "The situations {name} helps clients with. Each topic also leads to other professionals in {city} who work with it.",
       "ctaEyebrow": "First step",

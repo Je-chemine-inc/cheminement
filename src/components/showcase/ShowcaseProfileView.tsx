@@ -5,23 +5,24 @@ import {
   Award,
   CalendarDays,
   Check,
+  Clock,
   Feather,
   Flower2,
   Globe,
   Heart,
-  Info,
   Leaf,
   MapPin,
   MessageSquare,
   Phone,
   Quote,
+  Receipt,
   ShieldCheck,
   Sparkles,
   Sprout,
   Sun,
-  Tag,
   Video,
   Waves,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { DirectRequestService } from "@/lib/direct-request-rules";
@@ -227,29 +228,52 @@ export async function ShowcaseProfileView({
     />
   );
 
-  const priceRows = [
+  // The consultations as cards: the standard one first and featured, the quick one beside it when open.
+  const priceRows: {
+    key: "standard" | "quick";
+    icon: LucideIcon;
+    title: string;
+    point: string;
+    chips: { icon: LucideIcon; text: string }[];
+    offered: boolean;
+    price: number | null;
+    details: { type: string; price: string }[];
+  }[] = [
     {
       key: "standard",
+      icon: MessageSquare,
       title: t("profile.standardTitle"),
-      meta: modes ? t("vitrine.services.standardMeta", { minutes: standard.durationMinutes, modes }) : t("profile.duration", { minutes: standard.durationMinutes }),
+      point: t("vitrine.services.standardPoint"),
+      chips: [
+        { icon: Clock, text: t("profile.duration", { minutes: standard.durationMinutes }) },
+        ...(modes ? [{ icon: hasInPerson ? MapPin : Video, text: modes.charAt(0).toLocaleUpperCase(localeTag) + modes.slice(1) }] : []),
+      ],
       offered: standard.offered,
       price: standardPrice,
-      details: standard.prices.length > 1
-        ? standard.prices.map((price) => t("vitrine.services.therapyPrice", { type: t(`therapyTypes.${price.therapyType}`), price: money.format(price.price) }))
-        : [],
+      details:
+        standard.prices.length > 1
+          ? standard.prices.map((price) => ({ type: t(`therapyTypes.${price.therapyType}`), price: money.format(price.price) }))
+          : [],
     },
     ...(quick.offered
       ? [
           {
-            key: "quick",
+            key: "quick" as const,
+            icon: Zap,
             title: t("profile.quickTitle"),
-            meta: `${t("vitrine.services.quickMeta", { minutes: quick.durationMinutes })} · ${t("vitrine.services.quickPoint")}`,
+            point: t("vitrine.services.quickPoint"),
+            chips: [{ icon: Clock, text: t("profile.duration", { minutes: quick.durationMinutes }) }],
             offered: true,
             price: quick.price,
-            details: [] as string[],
+            details: [],
           },
         ]
       : []),
+  ];
+  const serviceNotes: { icon: LucideIcon; text: string }[] = [
+    ...(profile.insuranceNote.length > 0 ? [{ icon: ShieldCheck, text: profile.insuranceNote.join("\n") }] : []),
+    { icon: CalendarDays, text: t("profile.cancellation", { hours: profile.freeCancellationHours }) },
+    { icon: Receipt, text: t("profile.receipt") },
   ];
 
   return (
@@ -480,21 +504,36 @@ export async function ShowcaseProfileView({
         </div>
       </section>
 
-      {/* Valeurs, when at least one is described */}
+      {/* Valeurs, when at least one is described: a numbered list beside the title, so a value without a description leaves no gap */}
       {profile.valueCards.some((card) => card.description) ? (
         <section className={SECTION}>
-          <div className={WRAP}>
-            <p className={LABEL}>{t("vitrine.values.eyebrow")}</p>
-            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{t("vitrine.values.title")}</h2>
-            <ul className="mt-[clamp(32px,4vw,56px)] grid gap-4 sm:grid-cols-2 lg:[grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+          <div className={`${WRAP} grid gap-x-[clamp(40px,6vw,120px)] gap-y-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]`}>
+            <div className="min-w-0 lg:sticky lg:top-28 lg:self-start" data-reveal="0">
+              <p className={LABEL}>{t("vitrine.values.eyebrow")}</p>
+              <h2 className={`${H2} mt-5 max-w-[16ch]`}>{t("vitrine.values.title")}</h2>
+              <p className={`${BODY} mt-6 max-w-[44ch]`}>{t("vitrine.values.intro")}</p>
+            </div>
+            <ol className={`min-w-0 border-t ${RULE}`} data-values="">
               {profile.valueCards.map((card, index) => (
-                <li key={card.label} data-reveal={index % 4} className="min-w-0 rounded-[32px] border border-[#ECE8E1] bg-white p-[clamp(22px,2vw,30px)]">
-                  <span className={`${SERIF} vt-md text-[#17505F]/50`}>{String(index + 1).padStart(2, "0")}</span>
-                  <p className={`mt-4 ${SERIF} text-[clamp(24px,1.9vw,30px)] leading-tight text-[#1F2A2E]`}>{card.label}</p>
-                  {card.description ? <p className="mt-3 vt-md leading-[1.65] text-[#5B6566] text-pretty">{card.description}</p> : null}
+                <li
+                  key={card.label}
+                  data-reveal={index % 4}
+                  className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-[clamp(18px,2vw,36px)] border-b ${RULE} py-[clamp(24px,2.6vw,44px)]`}
+                >
+                  <span
+                    className={`flex h-[clamp(48px,3.4vw,64px)] w-[clamp(48px,3.4vw,64px)] items-center justify-center rounded-full bg-[#E6EFEA] ${SERIF} text-[clamp(17px,1.3vw,22px)] text-[#17505F]`}
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0 self-center">
+                    <p className={`${SERIF} text-[clamp(26px,2.3vw,42px)] leading-[1.12] text-[#1F2A2E] text-balance`}>{card.label}</p>
+                    {card.description ? (
+                      <p className="mt-2.5 max-w-[56ch] vt-md leading-[1.7] text-[#5B6566] text-pretty">{card.description}</p>
+                    ) : null}
+                  </div>
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
         </section>
       ) : null}
@@ -510,60 +549,114 @@ export async function ShowcaseProfileView({
             <p className={`${BODY} max-w-[60ch] lg:pt-12`}>{t("vitrine.services.intro")}</p>
           </div>
 
-          <ul className="mt-[clamp(40px,4.5vw,64px)] grid gap-4">
-            {priceRows.map((row, index) => (
-              <li
-                key={row.key}
-                data-reveal={index}
-                className={`grid items-center gap-x-10 gap-y-5 rounded-[32px] border p-[clamp(22px,2.6vw,40px)] md:grid-cols-[minmax(0,1fr)_auto_auto] ${
-                  index === 0 && row.offered ? `border-[#17505F]/30 bg-[#F3F7F5] ${SOFT_SHADOW}` : "border-[#ECE8E1] bg-white"
-                }`}
-              >
-                <div className="min-w-0">
-                  <h3 className={`${SERIF} text-[clamp(25px,2.2vw,34px)] leading-tight text-[#1F2A2E]`}>{row.title}</h3>
-                  <p className="mt-2 vt-md text-[#5B6566]">{row.meta}</p>
-                  {row.details.length > 0 ? (
-                    <ul className="mt-4 flex flex-wrap gap-2">
+          <ul
+            className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(16px,1.6vw,28px)] ${priceRows.length > 1 ? "lg:grid-cols-2" : "lg:max-w-[820px]"}`}
+            data-price-cards=""
+          >
+            {priceRows.map((row, index) => {
+              const featured = index === 0;
+              return (
+                <li
+                  key={row.key}
+                  data-reveal={index}
+                  className={`relative isolate flex min-w-0 flex-col overflow-hidden rounded-[40px] p-[clamp(26px,3vw,52px)] ${
+                    featured
+                      ? "bg-[#17505F] text-white shadow-[0_44px_90px_-56px_rgba(14,58,70,0.9)]"
+                      : "border border-[#ECE8E1] bg-[#FBFAF7] text-[#1F2A2E]"
+                  }`}
+                >
+                  {featured ? (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-28 -top-28 -z-10 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.12),rgba(255,255,255,0)_70%)]"
+                    />
+                  ) : null}
+                  <span
+                    className={`flex h-[clamp(52px,3.6vw,64px)] w-[clamp(52px,3.6vw,64px)] items-center justify-center rounded-2xl ${
+                      featured ? "bg-white/12 text-white" : "bg-[#E6EFEA] text-[#17505F]"
+                    }`}
+                  >
+                    <row.icon className="h-[42%] w-[42%]" aria-hidden="true" />
+                  </span>
+                  <h3 className={`mt-7 ${SERIF} text-[clamp(28px,2.5vw,44px)] leading-[1.08] text-balance ${featured ? "text-white" : "text-[#1F2A2E]"}`}>
+                    {row.title}
+                  </h3>
+                  <p className={`mt-3 max-w-[46ch] vt-md leading-[1.65] text-pretty ${featured ? "text-white/78" : "text-[#5B6566]"}`}>{row.point}</p>
+                  <ul className="mt-6 flex flex-wrap gap-2">
+                    {row.chips.map((chip) => (
+                      <li
+                        key={chip.text}
+                        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 vt-sm ${
+                          featured ? "bg-white/10 text-white" : "border border-[#ECE8E1] bg-white text-[#3E494B]"
+                        }`}
+                      >
+                        <chip.icon className={`h-4 w-4 shrink-0 ${featured ? "text-white/80" : "text-[#17505F]"}`} aria-hidden="true" />
+                        {chip.text}
+                      </li>
+                    ))}
+                  </ul>
+                  {row.offered && row.details.length > 0 ? (
+                    <ul className={`mt-6 divide-y ${featured ? "divide-white/15" : "divide-[#ECE8E1]"}`}>
                       {row.details.map((detail) => (
-                        <li key={detail} className="rounded-full bg-white px-4 py-1.5 vt-sm text-[#3E494B]">
-                          {detail}
+                        <li key={detail.type} className="flex items-baseline justify-between gap-4 py-3 vt-md">
+                          <span className={featured ? "text-white/80" : "text-[#5B6566]"}>{detail.type}</span>
+                          <span className={`${SERIF} text-[clamp(20px,1.6vw,26px)]`}>{detail.price}</span>
                         </li>
                       ))}
                     </ul>
                   ) : null}
-                </div>
-                {!row.offered ? (
-                  <p className="vt-md text-[#5B6566] md:col-span-2 md:max-w-[40ch] md:text-right">{t("profile.notAccepting", { name })}</p>
-                ) : (
-                  <>
-                    <p className={`${SERIF} whitespace-nowrap text-[clamp(38px,3.4vw,56px)] leading-none text-[#1F2A2E]`}>
-                      {row.price !== null ? money.format(row.price) : <span className="text-[20px] text-[#5B6566]">{t("vitrine.services.priceLater")}</span>}
-                    </p>
-                    <a href={bookHref} {...bookFunnel} className={`${index === 0 ? BUTTON_PRIMARY : BUTTON_OUTLINE} md:min-w-[170px]`}>
-                      {showSlots ? t("vitrine.choose") : bookLabel}
-                    </a>
-                  </>
-                )}
-              </li>
-            ))}
+                  <div className={`mt-auto pt-[clamp(28px,3vw,44px)]`}>
+                    <div
+                      className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-5 border-t pt-[clamp(22px,2.4vw,36px)] ${
+                        featured ? "border-white/15" : "border-[#ECE8E1]"
+                      }`}
+                    >
+                      {row.offered ? (
+                        <>
+                          {row.price !== null ? (
+                            <p className="flex items-baseline gap-2.5">
+                              <span className={`${SERIF} whitespace-nowrap text-[clamp(46px,4.2vw,76px)] leading-none`}>{money.format(row.price)}</span>
+                              <span className={`vt-sm ${featured ? "text-white/70" : "text-[#5B6566]"}`}>{t("vitrine.services.perSession")}</span>
+                            </p>
+                          ) : (
+                            <p className={`max-w-[24ch] vt-md ${featured ? "text-white/80" : "text-[#5B6566]"}`}>{t("vitrine.services.priceLater")}</p>
+                          )}
+                          <a
+                            href={bookHref}
+                            {...bookFunnel}
+                            className={
+                              featured
+                                ? "inline-flex items-center justify-center gap-2.5 rounded-full bg-white px-[clamp(24px,2.4vw,34px)] py-4 vt-sm font-semibold text-[#17505F] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#E6EFEA] hover:text-[#0E3A46] motion-reduce:hover:translate-y-0"
+                                : BUTTON_PRIMARY
+                            }
+                          >
+                            {showSlots ? (row.key === "standard" ? t("vitrine.services.seeTimes") : t("vitrine.services.seeQuick")) : bookLabel}
+                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                          </a>
+                        </>
+                      ) : (
+                        <p className={`vt-md ${featured ? "text-white/80" : "text-[#5B6566]"}`}>{t("profile.notAccepting", { name })}</p>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
 
-          <ul className="mt-6 flex flex-wrap gap-2.5">
-            {profile.insuranceNote.map((paragraph, index) => (
-              <li key={index} className="flex items-start gap-2.5 whitespace-pre-line rounded-[24px] bg-[#F6F3EE] px-5 py-3 vt-sm leading-[1.6] text-[#3E494B]">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#17505F]" aria-hidden="true" />
-                {paragraph}
-              </li>
-            ))}
-            <li className="flex items-center gap-2.5 rounded-full bg-[#F6F3EE] px-5 py-3 vt-sm text-[#3E494B]">
-              <CalendarDays className="h-4 w-4 shrink-0 text-[#17505F]" aria-hidden="true" />
-              {t("profile.cancellation", { hours: profile.freeCancellationHours })}
-            </li>
-            <li className="flex items-center gap-2.5 rounded-full bg-[#F6F3EE] px-5 py-3 vt-sm text-[#3E494B]">
-              <Tag className="h-4 w-4 shrink-0 text-[#17505F]" aria-hidden="true" />
-              {t("profile.receipt")}
-            </li>
-          </ul>
+          <div className="mt-[clamp(16px,1.6vw,28px)] rounded-[40px] bg-[#F6F3EE] p-[clamp(24px,2.8vw,48px)]" data-service-notes="">
+            <p className={`${SERIF} text-[clamp(22px,1.9vw,30px)] text-[#1F2A2E]`}>{t("vitrine.services.notesTitle")}</p>
+            <ul className={`mt-6 grid gap-x-[clamp(24px,3vw,56px)] gap-y-5 ${serviceNotes.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+              {serviceNotes.map((note, index) => (
+                <li key={index} className="flex min-w-0 items-start gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#17505F]">
+                    <note.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <p className="min-w-0 whitespace-pre-line pt-2 vt-sm leading-[1.65] text-[#3E494B] text-pretty">{note.text}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
