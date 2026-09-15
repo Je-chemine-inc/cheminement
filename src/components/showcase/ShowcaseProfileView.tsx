@@ -539,11 +539,12 @@ export async function ShowcaseProfileView({
       ) : null}
 
       {/* Tarifs */}
-      <section id={VITRINE_ANCHORS.services} className={SECTION}>
+      {/* Its own soft green ground, so it never reads as one block with « Valeurs » above */}
+      <section id={VITRINE_ANCHORS.services} className={`${SECTION} bg-[#EEF4F1]`}>
         <div className={WRAP}>
           <div className="grid gap-x-[clamp(40px,6vw,120px)] gap-y-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
             <div className="min-w-0">
-              <p className={LABEL}>{t("vitrine.services.eyebrow")}</p>
+              <p className={`${LABEL} bg-white`}>{t("vitrine.services.eyebrow")}</p>
               <h2 className={`${H2} mt-5`}>{t("vitrine.services.title")}</h2>
             </div>
             <p className={`${BODY} max-w-[60ch] lg:pt-12`}>{t("vitrine.services.intro")}</p>
@@ -562,7 +563,7 @@ export async function ShowcaseProfileView({
                   className={`relative isolate flex min-w-0 flex-col overflow-hidden rounded-[40px] p-[clamp(26px,3vw,52px)] ${
                     featured
                       ? "bg-[#17505F] text-white shadow-[0_44px_90px_-56px_rgba(14,58,70,0.9)]"
-                      : "border border-[#ECE8E1] bg-[#FBFAF7] text-[#1F2A2E]"
+                      : "bg-white text-[#1F2A2E] shadow-[0_30px_70px_-54px_rgba(31,42,46,0.45)]"
                   }`}
                 >
                   {featured ? (
@@ -644,12 +645,12 @@ export async function ShowcaseProfileView({
             })}
           </ul>
 
-          <div className="mt-[clamp(16px,1.6vw,28px)] rounded-[40px] bg-[#F6F3EE] p-[clamp(24px,2.8vw,48px)]" data-service-notes="">
+          <div className="mt-[clamp(16px,1.6vw,28px)] rounded-[40px] bg-white/70 p-[clamp(24px,2.8vw,48px)]" data-service-notes="">
             <p className={`${SERIF} text-[clamp(22px,1.9vw,30px)] text-[#1F2A2E]`}>{t("vitrine.services.notesTitle")}</p>
             <ul className={`mt-6 grid gap-x-[clamp(24px,3vw,56px)] gap-y-5 ${serviceNotes.length >= 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
               {serviceNotes.map((note, index) => (
                 <li key={index} className="flex min-w-0 items-start gap-4">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#17505F]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#E6EFEA] text-[#17505F]">
                     <note.icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <p className="min-w-0 whitespace-pre-line pt-2 vt-sm leading-[1.65] text-[#3E494B] text-pretty">{note.text}</p>
