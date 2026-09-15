@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SHOWCASE_SECTION_KEYS,
   SHOWCASE_TEXT_LIMITS,
+  approachHeadings,
   layoutChoicesOf,
   resolveSectionOrder,
   visibleSections,
@@ -36,6 +37,24 @@ describe("section order and visibility", () => {
       "slots",
       "expertises",
     ]);
+  });
+});
+
+describe("approachHeadings", () => {
+  it("titles the section « approach » with the steps under it when there is approach text", () => {
+    expect(approachHeadings({ hasApproachText: true, customApproachTitle: "" })).toEqual({ title: "approach", stepsSubheading: true });
+  });
+
+  it("titles a steps-only section with the steps title, without repeating it", () => {
+    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "" })).toEqual({ title: "steps", stepsSubheading: false });
+  });
+
+  it("keeps the professional's own approach title even without approach text (it was silently dropped)", () => {
+    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "Ma façon de travailler" })).toEqual({
+      title: "approach",
+      stepsSubheading: true,
+    });
+    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "   " })).toEqual({ title: "steps", stepsSubheading: false });
   });
 });
 

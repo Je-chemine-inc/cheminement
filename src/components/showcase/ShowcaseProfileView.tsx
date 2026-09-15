@@ -43,6 +43,7 @@ import { VITRINE_ANCHORS, headlinePrice, initialsOf, vitrineSections, type Vitri
 import { pageImages, pickAmbience } from "@/lib/showcase-imagery";
 import {
   SHOWCASE_ACCENTS,
+  approachHeadings,
   visibleSections,
   type ShowcaseSectionKey,
   type ShowcaseTextKey,
@@ -213,6 +214,7 @@ export async function ShowcaseProfileView({
   const about = profile.bio;
   const hasAbout = about.length > 0 || Boolean(profile.quote) || profile.credentials.length > 0;
   const hasApproachText = profile.approach.length > 0 || profile.methods.length > 0;
+  const approachHeading = approachHeadings({ hasApproachText, customApproachTitle: custom.texts.approachTitle ?? "" });
   const shownSections = visibleSections(custom.sectionOrder, custom.hiddenSections, {
     about: hasAbout,
     approach: true,
@@ -387,7 +389,7 @@ export async function ShowcaseProfileView({
           {/* The approach text reads right under the title */}
           <div className="max-w-[72ch]" data-approach-head="">
             <p className={`${LABEL} bg-white`}>{t("vitrine.approach.eyebrow")}</p>
-            <h2 className={`${H2} mt-5`}>{hasApproachText ? text("approachTitle", t("vitrine.approach.title")) : text("stepsTitle", t("vitrine.approach.stepsTitle"))}</h2>
+            <h2 className={`${H2} mt-5`}>{approachHeading.title === "approach" ? text("approachTitle", t("vitrine.approach.title")) : text("stepsTitle", t("vitrine.approach.stepsTitle"))}</h2>
             {profile.approach.length > 0 ? (
               <div className="mt-5 max-w-[68ch] space-y-5">
                 {profile.approach.map((paragraph, index) => (
@@ -440,7 +442,7 @@ export async function ShowcaseProfileView({
           ) : null}
 
           {/* How a request unfolds: four connected steps, an arrow between cards on wide screens */}
-          {hasApproachText ? (
+          {approachHeading.stepsSubheading ? (
             <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(28px,2.6vw,46px)] leading-tight text-[#1F2A2E]`}>
               {text("stepsTitle", t("vitrine.approach.stepsTitle"))}
             </h3>

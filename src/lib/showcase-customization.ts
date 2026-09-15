@@ -122,6 +122,18 @@ export function visibleSections(
   );
 }
 
+/**
+ * The approach section's headings. With no approach text it shows only the request steps, under
+ * the steps title; a title the professional wrote for the section still heads it, steps below.
+ */
+export function approachHeadings(input: { hasApproachText: boolean; customApproachTitle: string }): {
+  title: "approach" | "steps";
+  stepsSubheading: boolean;
+} {
+  const titled = input.hasApproachText || input.customApproachTitle.trim().length > 0;
+  return { title: titled ? "approach" : "steps", stepsSubheading: titled };
+}
+
 // ------------------------------------------------------------------ colour
 
 /** The approved accents: each dark enough for white text, with a darker hover and a soft tint. */
