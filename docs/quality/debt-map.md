@@ -199,3 +199,10 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
     - `showcases-guard.spec.ts` now also walks this route (401/403, nothing touched).
     - Local end to end: hide + reorder show on the public page at once; a stale save gets 409; professionals and visitors are refused.
   - **Not done.** No history of who changed what beyond `updatedBy` and a server log line. The profile bio is still shown unreviewed.
+- **2026-09-15** — **[fix] « Nos professionnels » showed typed words as degrees and titles as bios (seen in production right after PR #12).**
+  - **Degrees.** Profiles hold free text: the first degrees of the listed professionals were « Master », « Maitrise » and two sentences. The page read « Master, Psychologue », so `degreeOf` now shows only an abbreviation:
+    - dotted: « Ph.D. », « M.A. », « Ph. D. », « B.Sc. »;
+    - or two or more capitals: « PhD », « MSc », « MBA »;
+    - it takes the first such entry, else none.
+  - **Summaries.** A bio made only of title words (« Psychothérapeute », « Psychologue Psychologue scolaire Psychothérapeute ») now shows no summary instead of repeating the title (`isTitlesOnly`).
+  - **Not changed.** What professionals wrote stays as is; they can write a real bio in their profile.

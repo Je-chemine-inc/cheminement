@@ -123,9 +123,45 @@ function photoUrlOf(fileId: unknown): string | null {
   return OBJECT_ID_RE.test(id) ? `/api/files/${id}` : null;
 }
 
-function degreeOf(profile: DirectoryProfileSource): string | null {
-  const degree = clean(profile.education?.find((item) => clean(item?.degree))?.degree);
-  return degree && degree.length <= DEGREE_MAX ? degree : null;
+/** « Ph.D. », « M.A. », « Ph. D. », « B.Sc. » */
+const DOTTED_DEGREE_RE = /^[A-Za-zÀ-ÿ]{1,4}\.(\s?[A-Za-zÀ-ÿ]{1,4}\.?)*$/;
+/** « PhD », « MSc », « MBA »: at least two capitals, no spaces. */
+const ACRONYM_DEGREE_RE = /^(?=(?:[^A-Z]*[A-Z]){2})[A-Za-z]{2,5}$/;
+
+/**
+ * The degree shown before the title: an abbreviation only. Profiles hold free text (« Master »,
+ * « Maîtrise en travail social »), which reads badly as « Master, Psychologue », so a word or a
+ * sentence is not shown.
+ */
+export function degreeOf(profile: Pick<DirectoryProfileSource, "education">): string | null {
+  for (const item of profile.education ?? []) {
+    const degree = clean(item?.degree);
+    if (degree && degree.length <= DEGREE_MAX && (DOTTED_DEGREE_RE.test(degree) || ACRONYM_DEGREE_RE.test(degree))) {
+      return degree;
+    }
+  }
+  return null;
+}
+
+/** Words of professional titles, without accents: a text made of these only says nothing the title does not. */
+const TITLE_WORDS = new Set([
+  "psychologue", "psychologist", "psychotherapeute", "psychotherapist", "neuropsychologue", "neuropsychologist",
+  "psychoeducateur", "psychoeducatrice", "psychoeducator", "ergotherapeute", "occupational", "therapist",
+  "psychiatre", "psychiatrist", "sexologue", "sexologist", "conseiller", "conseillere", "orientation", "counsellor",
+  "counselor", "travailleur", "travailleuse", "social", "sociale", "worker", "clinicien", "clinicienne", "clinical",
+  "scolaire", "school", "autorise", "autorisee", "licensed", "sante", "mentale", "mental", "health",
+  "en", "et", "de", "du", "la", "le", "and", "in", "of",
+]);
+
+/** A summary that only repeats titles (« Psychothérapeute », « Psychologue Psychologue scolaire »): shown as none. */
+export function isTitlesOnly(text: string): boolean {
+  const words = text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter(Boolean);
+  return words.length > 0 && words.every((word) => TITLE_WORDS.has(word));
 }
 
 interface DirectoryInput {
@@ -183,10 +219,11 @@ function candidatesOf(input: DirectoryInput): Candidate[] {
             ? "incomplete"
             : null;
 
-    const summary = shortenSummary(
+    const text = shortenSummary(
       (content && (pick(content.intro, locale) || pick(content.bio, locale) || pick(content.headline, locale))) ||
         clean(profile?.bio),
     );
+    const summary = isTitlesOnly(text) ? "" : text;
     rows.push({
       sortKey: `${clean(user.lastName)} ${clean(user.firstName)}`.trim() || displayName,
       excludedBy,

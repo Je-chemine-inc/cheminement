@@ -9,6 +9,8 @@ import {
   DIRECTORY_SUMMARY_MAX,
   buildProfessionalsDirectory,
   buildProfessionalsDirectoryAdminRows,
+  degreeOf,
+  isTitlesOnly,
   parseDirectoryCuration,
   shortenSummary,
   type DirectoryPageSource,
@@ -144,6 +146,30 @@ describe("the team's hiding and order", () => {
       { id: A, displayName: "Dre Leanna Zozula", title: { key: "psychologist", label: null }, showcasePath: "/leanna-zozula", excludedBy: "hiddenByProfessional", hiddenByTeam: true, placed: true },
       { id: B, displayName: "Jean-Marc Assaad", title: { key: "psychologist", label: null }, showcasePath: null, excludedBy: "hiddenByTeam", hiddenByTeam: true, placed: false },
     ]);
+  });
+});
+
+describe("what professionals typed, as the page shows it", () => {
+  it("shows a degree only when it is an abbreviation, the first such one", () => {
+    for (const degree of ["Ph.D.", "M.A.", "Ph. D.", "B.Sc.", "PhD", "MSc", "MBA"]) {
+      expect(degreeOf({ education: [{ degree }] }), degree).toBe(degree);
+    }
+    for (const degree of ["Master", "Maitrise", "Maîtrise en travail social", "Maitrise en éducation ( carriérologie/counselling)", "Doctorat", "Maitrise."]) {
+      expect(degreeOf({ education: [{ degree }] }), degree).toBeNull();
+    }
+    expect(degreeOf({ education: [{ degree: "Maîtrise en psychologie" }, { degree: "Ph.D." }] })).toBe("Ph.D.");
+    expect(degreeOf({ education: null })).toBeNull();
+  });
+
+  it("drops a summary that only repeats titles, and keeps a real text", () => {
+    expect(isTitlesOnly("Psychothérapeute")).toBe(true);
+    expect(isTitlesOnly("Psychologue Psychologue scolaire Psychothérapeute")).toBe(true);
+    expect(isTitlesOnly("Travailleur social et psychothérapeute autorisé")).toBe(true);
+    expect(isTitlesOnly("Psychologue depuis douze ans, je reçois à Mascouche.")).toBe(false);
+    expect(isTitlesOnly("")).toBe(false);
+    const list = build({ profiles: [profile(B, { bio: "Psychologue Psychologue scolaire" }), profile(C, { bio: "Travailleur social depuis 2009." })] });
+    expect(list.find((pro) => pro.id === B)!.summary).toBe("");
+    expect(list.find((pro) => pro.id === C)!.summary).toBe("Travailleur social depuis 2009.");
   });
 });
 
