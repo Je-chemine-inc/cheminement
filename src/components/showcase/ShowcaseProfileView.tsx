@@ -199,21 +199,15 @@ export async function ShowcaseProfileView({
       : t("vitrine.about.heading", { title, city: officeCity })
     : t("vitrine.about.headingNoTitle", { name, city: officeCity });
 
-  const heroFacts: { icon: LucideIcon; text: string }[] = [
+  // « En bref », beside the portrait: the order and permit already sit under the name.
+  const briefFacts: { icon: LucideIcon; text: string }[] = [
     ...profile.highlights.map((text) => ({ icon: Check, text })),
+    ...(years !== null ? [{ icon: Award, text: t("profile.experience", { years }) }] : []),
+    ...(languages ? [{ icon: Globe, text: languages }] : []),
     ...profile.modalities.map((modality) => ({
       icon: MODALITY_ICONS[modality],
       text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
     })),
-    ...(languages ? [{ icon: Globe, text: languages }] : []),
-    ...(years !== null ? [{ icon: Award, text: t("profile.experience", { years }) }] : []),
-  ];
-  const facts: { icon: LucideIcon; text: string }[] = [
-    ...(credential ? [{ icon: ShieldCheck, text: credential }] : []),
-    ...(years !== null ? [{ icon: Award, text: t("profile.experience", { years }) }] : []),
-    ...(languages ? [{ icon: Globe, text: languages }] : []),
-    ...(hasInPerson ? [{ icon: MapPin, text: t("vitrine.about.office", { city: officeCity }) }] : []),
-    ...(hasVideo ? [{ icon: Video, text: t("vitrine.chips.video") }] : []),
   ];
   const steps = [
     { title: t("vitrine.approach.requestTitle"), body: t("vitrine.approach.requestBody", { name }) },
@@ -356,15 +350,18 @@ export async function ShowcaseProfileView({
                 {t("vitrine.heroSecondary")}
               </a>
             </div>
-            {heroFacts.length > 0 ? (
-              <ul className="vitrine-up mt-9 flex flex-wrap gap-2.5 [animation-delay:.26s]">
-                {heroFacts.map((fact, index) => (
-                  <li key={index} className={PILL}>
-                    <fact.icon className="h-4 w-4 text-[#17505F]" aria-hidden="true" />
-                    {fact.text}
-                  </li>
-                ))}
-              </ul>
+            {briefFacts.length > 0 ? (
+              <div className="vitrine-up mt-9 max-w-[62ch] rounded-[32px] bg-[#F6F3EE] p-[clamp(20px,2.4vw,32px)] [animation-delay:.26s]" data-brief="">
+                <p className={`${SERIF} text-[22px] text-[#1F2A2E]`}>{t("vitrine.about.factsTitle")}</p>
+                <ul className="mt-4 flex flex-wrap gap-2.5">
+                  {briefFacts.map((fact, index) => (
+                    <li key={index} className={PILL}>
+                      <fact.icon className="h-4 w-4 shrink-0 text-[#17505F]" aria-hidden="true" />
+                      {fact.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </div>
         </div>
@@ -418,19 +415,6 @@ export async function ShowcaseProfileView({
                       <li key={index} className="flex items-start gap-3 vt-md leading-[1.6] text-[#3E494B]">
                         <span className="mt-[0.6em] h-2 w-2 shrink-0 rounded-full bg-[#17505F]" aria-hidden="true" />
                         {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {facts.length > 0 ? (
-                <div className="mt-10 rounded-[32px] bg-[#F6F3EE] p-[clamp(20px,2.4vw,32px)]">
-                  <p className={`${SERIF} text-[22px] text-[#1F2A2E]`}>{t("vitrine.about.factsTitle")}</p>
-                  <ul className="mt-4 flex flex-wrap gap-2.5">
-                    {facts.map((fact, index) => (
-                      <li key={index} className={PILL}>
-                        <fact.icon className="h-4 w-4 shrink-0 text-[#17505F]" aria-hidden="true" />
-                        {fact.text}
                       </li>
                     ))}
                   </ul>

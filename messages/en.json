@@ -7446,7 +7446,6 @@
         "headingYears": "{title} for {years, plural, one {# year} other {# years}}, in {city}",
         "headingNoTitle": "{name}, in {city}",
         "factsTitle": "At a glance",
-        "office": "Office in {city}",
         "credentialsTitle": "Background",
         "quoteBy": "— {name}",
         "officePhotoAlt": "The office of {name}"
