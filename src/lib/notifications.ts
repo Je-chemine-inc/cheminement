@@ -8893,10 +8893,18 @@ export async function sendDirectRequestUnavailableEmail(data: {
   pageUrl: string;
   rerouteUrl: string;
   locale?: string | null;
+  /** The request came from the waitlist and the person keeps their place on it. */
+  backOnWaitlist?: boolean;
 }): Promise<boolean> {
   const lang = toEmailLang(data.locale);
   const branding = await getBranding();
   const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const waitlistFr = data.backOnWaitlist
+    ? " Vous gardez votre place sur sa liste d'attente : nous vous écrirons dès qu'un autre créneau se libère."
+    : "";
+  const waitlistEn = data.backOnWaitlist
+    ? " You keep your place on their waitlist: we will write to you as soon as another time opens up."
+    : "";
   const copy = {
     fr: {
       title:
@@ -8906,7 +8914,7 @@ export async function sendDirectRequestUnavailableEmail(data: {
       greeting: `Bonjour ${data.clientName},`,
       intro:
         data.outcome === "declined"
-          ? `${data.professionalName} ne peut pas vous recevoir le ${slot}. Le créneau a été libéré.`
+          ? `${data.professionalName} ne peut pas vous recevoir le ${slot}. Le créneau a été libéré.${waitlistFr}`
           : `${data.professionalName} n'a pas pu répondre à temps à votre demande pour le ${slot}. Le créneau a été libéré.`,
       cta: "Choisir un autre créneau",
       preamble: "Ou laissez Je chemine vous jumeler avec le professionnel qui vous convient :",
@@ -8921,7 +8929,7 @@ export async function sendDirectRequestUnavailableEmail(data: {
       greeting: `Hello ${data.clientName},`,
       intro:
         data.outcome === "declined"
-          ? `${data.professionalName} cannot see you on ${slot}. The time was freed.`
+          ? `${data.professionalName} cannot see you on ${slot}. The time was freed.${waitlistEn}`
           : `${data.professionalName} could not answer your request for ${slot} in time. The time was freed.`,
       cta: "Choose another time",
       preamble: "Or let Je chemine match you with the professional who suits you:",

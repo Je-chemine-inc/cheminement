@@ -26,6 +26,18 @@ export const WAITLIST_MAX_OPEN_PER_PROFESSIONAL = 50;
 /** A closed entry — converted, expired, left or removed — is deleted this long after closing. */
 export const WAITLIST_CLOSED_RETENTION_DAYS = 90;
 
+/** No offer goes out between these Montréal hours: offers wait until morning (owner, 2026-09-15). */
+export const WAITLIST_QUIET_FROM_HOUR = 21;
+export const WAITLIST_QUIET_UNTIL_HOUR = 8;
+
+/** Whether it is quiet hours in Montréal (21 h to 8 h), whatever the server's time zone. */
+export function isWaitlistQuietHours(now: Date): boolean {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", hour: "2-digit", hourCycle: "h23" }).format(now),
+  );
+  return hour >= WAITLIST_QUIET_FROM_HOUR || hour < WAITLIST_QUIET_UNTIL_HOUR;
+}
+
 export const WAITLIST_STATUSES = ["active", "offered", "converted", "expired", "left", "removed"] as const;
 export type WaitlistStatus = (typeof WAITLIST_STATUSES)[number];
 /** Still waiting: counted in the queue and in the per-professional cap. */

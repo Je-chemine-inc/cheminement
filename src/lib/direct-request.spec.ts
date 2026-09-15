@@ -24,6 +24,10 @@ const h = vi.hoisted(() => ({
   populated: null as Record<string, unknown> | null,
   professional: null as Record<string, unknown> | null,
   emails: [] as [string, Record<string, unknown>][],
+  waitlistUpdates: [] as [Record<string, unknown>, Record<string, unknown>][],
+  waitlistModified: 1,
+  waitlistThrows: null as unknown,
+  waitlistOpen: false,
 }));
 
 vi.mock("server-only", () => ({}));
@@ -68,6 +72,16 @@ vi.mock("@/models/Appointment", () => ({
       return Object.assign(Promise.resolve(h.claimed), { select: () => Promise.resolve(h.claimed) });
     },
     find: () => ({ select: () => ({ limit: () => ({ lean: async () => h.due }) }) }),
+  },
+}));
+vi.mock("@/models/WaitlistEntry", () => ({
+  default: {
+    updateOne: async (filter: Record<string, unknown>, update: Record<string, unknown>) => {
+      h.waitlistUpdates.push([filter, update]);
+      if (h.waitlistThrows) throw h.waitlistThrows;
+      return { modifiedCount: h.waitlistModified };
+    },
+    exists: async () => (h.waitlistOpen ? { _id: "entry" } : null),
   },
 }));
 vi.mock("@/models/User", () => ({
@@ -138,6 +152,10 @@ beforeEach(() => {
   h.populated = null;
   h.professional = null;
   h.emails = [];
+  h.waitlistUpdates = [];
+  h.waitlistModified = 1;
+  h.waitlistThrows = null;
+  h.waitlistOpen = false;
 });
 
 describe("prepareDirectRequest", () => {
@@ -306,6 +324,34 @@ describe("releaseDirectRequest", () => {
     expect(h.releases).toEqual([[HOLD, { appointmentId: APPT }]]);
   });
 
+  it("puts a person who came from the waitlist back at their place when the professional declines", async () => {
+    const ENTRY = "0123456789abcdef0123eeee";
+    h.current = { directRequest: { state: "pending", professionalId: PRO, holdId: HOLD, source: "waitlist", waitlistEntryId: ENTRY } };
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, reason: "slot_unavailable", now });
+    expect(released?.backOnWaitlist).toBe(true);
+    expect(h.waitlistUpdates).toEqual([
+      [
+        { _id: ENTRY, status: "converted", expiresAt: { $gt: now } },
+        { $set: { status: "active", isOpen: true }, $unset: { closedAt: "" } },
+      ],
+    ]);
+
+    // The place would have ended by now, or the person already joined again: no place back, no error.
+    h.waitlistUpdates = [];
+    h.waitlistModified = 0;
+    expect((await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, now }))?.backOnWaitlist).toBe(false);
+    h.waitlistThrows = Object.assign(new Error("E11000 duplicate key"), { code: 11000 });
+    expect((await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, now }))?.backOnWaitlist).toBe(false);
+  });
+
+  it("leaves the waitlist alone when the request came from the page, expired, or was withdrawn", async () => {
+    await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, now });
+    h.current = { directRequest: { state: "pending", professionalId: PRO, holdId: HOLD, source: "waitlist", waitlistEntryId: "e" } };
+    await releaseDirectRequest({ appointmentId: APPT, outcome: "expired", now });
+    await releaseDirectRequest({ appointmentId: APPT, outcome: "withdrawn", now });
+    expect(h.waitlistUpdates).toEqual([]);
+  });
+
   it("does nothing when another outcome won the race, or the request is no longer pending", async () => {
     h.claimed = null;
     expect(await releaseDirectRequest({ appointmentId: APPT, outcome: "expired", now })).toBeNull();
@@ -369,6 +415,23 @@ describe("the emails", () => {
       ],
       ["admin", expect.objectContaining({ outcome: "declined", reason: "not_a_fit", note: "Hors champ", clientName: "Julie Tremblay" })],
     ]);
+  });
+
+  it("tells a person back on the waitlist that they keep their place", async () => {
+    h.populated = {
+      _id: APPT,
+      bookingFor: "self",
+      clientId: client,
+      directRequest: { ...request, state: "declined", source: "waitlist", waitlistEntryId: "0123456789abcdef0123eeee" },
+    };
+    h.waitlistOpen = true;
+    await notifyDirectRequestReleased(APPT, "ab".repeat(32));
+    expect(h.emails[0]).toEqual(["unavailable", expect.objectContaining({ outcome: "declined", backOnWaitlist: true })]);
+
+    h.emails = [];
+    h.waitlistOpen = false;
+    await notifyDirectRequestReleased(APPT, "ab".repeat(32));
+    expect(h.emails[0]).toEqual(["unavailable", expect.objectContaining({ backOnWaitlist: false })]);
   });
 
   it("sends nothing for a withdrawn request", async () => {

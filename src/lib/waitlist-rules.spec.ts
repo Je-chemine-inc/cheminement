@@ -5,6 +5,7 @@ import {
   entryFitsSlot,
   isGsm7,
   isWaitlistLeaveToken,
+  isWaitlistQuietHours,
   isWaitlistOfferToken,
   parseWaitlistJoin,
   parseWaitlistPhone,
@@ -18,6 +19,19 @@ import {
   type WaitlistQueueEntry,
   type WaitlistSlot,
 } from "@/lib/waitlist-rules";
+
+describe("isWaitlistQuietHours", () => {
+  it("is quiet from 21:00 to 07:59 in Montréal, in summer and in winter", () => {
+    // September: Montréal is UTC-4.
+    expect(isWaitlistQuietHours(new Date("2026-09-15T00:59:00Z"))).toBe(false); // 20:59
+    expect(isWaitlistQuietHours(new Date("2026-09-15T01:00:00Z"))).toBe(true); // 21:00
+    expect(isWaitlistQuietHours(new Date("2026-09-15T11:59:00Z"))).toBe(true); // 07:59
+    expect(isWaitlistQuietHours(new Date("2026-09-15T12:00:00Z"))).toBe(false); // 08:00
+    // January: UTC-5.
+    expect(isWaitlistQuietHours(new Date("2027-01-15T02:00:00Z"))).toBe(true); // 21:00
+    expect(isWaitlistQuietHours(new Date("2027-01-15T13:00:00Z"))).toBe(false); // 08:00
+  });
+});
 
 const slot = (dayKey: string, time: string, service: "standard" | "quick" = "standard", durationMinutes = 50): WaitlistSlot => ({
   service,

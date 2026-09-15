@@ -283,6 +283,17 @@ describe("offerFreeSlotsForProfessional", () => {
     expect(h.slotsCalls).toEqual([]);
   });
 
+  it("offers nothing at night in Montréal, and offers again from 8 h", async () => {
+    h.findResults = [[queueRow()]];
+    // 22:00 in Montréal.
+    expect(await offerFreeSlotsForProfessional(PRO, new Date("2026-09-15T02:00:00Z"))).toEqual({ offered: 0 });
+    expect(h.finds).toEqual([]);
+    expect(h.holdCalls).toEqual([]);
+    expect(h.emails).toEqual([]);
+    // 08:00 in Montréal, the next morning.
+    expect(await offerFreeSlotsForProfessional(PRO, new Date("2026-09-14T12:00:00Z"))).toEqual({ offered: 1 });
+  });
+
   it("does not even look for times when nobody waits", async () => {
     h.exists = false;
     await notifySlotFreed(PRO);

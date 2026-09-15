@@ -21,6 +21,7 @@ import {
   WAITLIST_MAX_MISSED_OFFERS,
   WAITLIST_MAX_OPEN_PER_PROFESSIONAL,
   WAITLIST_OFFER_MINUTES,
+  isWaitlistQuietHours,
   pickOffers,
   waitlistOfferSms,
   waitlistSlotKey,
@@ -216,6 +217,8 @@ export async function offerFreeSlotsForProfessional(
 ): Promise<{ offered: number }> {
   if (!mongoose.Types.ObjectId.isValid(professionalId)) return { offered: 0 };
   if (!(await isShowcaseEnabled())) return { offered: 0 };
+  // At night the times stay free; the job offers them from 8 h.
+  if (isWaitlistQuietHours(now)) return { offered: 0 };
   await connectToDatabase();
 
   const queue = await WaitlistEntry.find({ professionalId, status: "active" })

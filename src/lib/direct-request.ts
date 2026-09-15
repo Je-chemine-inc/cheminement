@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment, { type IAppointment } from "@/models/Appointment";
 import User from "@/models/User";
+import WaitlistEntry from "@/models/WaitlistEntry";
+import { waitlistStatusFields } from "@/lib/waitlist-rules";
 import { calculateAppointmentPricing, type PricingResult } from "@/lib/pricing";
 import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { isShowcaseSlotFree, loadBookableShowcase } from "@/lib/showcase-booking";
@@ -232,7 +234,7 @@ export async function releaseDirectRequest(input: {
   reason?: DirectRequestDeclineReason;
   note?: string;
   now?: Date;
-}): Promise<{ appointment: IAppointment; rerouteToken: string | null } | null> {
+}): Promise<{ appointment: IAppointment; rerouteToken: string | null; backOnWaitlist: boolean } | null> {
   if (!mongoose.Types.ObjectId.isValid(input.appointmentId)) return null;
   await connectToDatabase();
   const now = input.now ?? new Date();
@@ -296,7 +298,33 @@ export async function releaseDirectRequest(input: {
       console.error("[direct-request] hold not released:", error),
     );
   }
-  return { appointment, rerouteToken };
+  // A declined request that came from a waitlist offer puts the person back at their place (owner, 2026-09-15).
+  const backOnWaitlist =
+    input.outcome === "declined" && request.source === "waitlist" && request.waitlistEntryId
+      ? await reopenWaitlistEntry(request.waitlistEntryId, now)
+      : false;
+  return { appointment, rerouteToken, backOnWaitlist };
+}
+
+/**
+ * Reopens the waitlist entry a declined request was claimed from. Its `createdAt` is unchanged, so
+ * the person is back at their original place, and the declined time stays among its offers, so it is
+ * never offered to them again. Nothing when the place would have ended by now, or when the person
+ * joined the list again meanwhile (one open entry per email: the new place stands).
+ */
+async function reopenWaitlistEntry(entryId: unknown, now: Date): Promise<boolean> {
+  try {
+    const res = await WaitlistEntry.updateOne(
+      { _id: entryId, status: "converted", expiresAt: { $gt: now } },
+      { $set: waitlistStatusFields("active"), $unset: { closedAt: "" } },
+    );
+    return res.modifiedCount === 1;
+  } catch (error) {
+    if ((error as { code?: number } | null)?.code !== 11000) {
+      console.error("[direct-request] waitlist entry not reopened:", error);
+    }
+    return false;
+  }
 }
 
 function appUrl(path: string): string {
@@ -382,10 +410,15 @@ export async function notifyDirectRequestReleased(appointmentId: string, reroute
   const { request, recipient } = loaded;
   if (request.state !== "declined" && request.state !== "expired") return;
   const outcome = request.state;
+  const backOnWaitlist =
+    outcome === "declined" && request.waitlistEntryId
+      ? Boolean(await WaitlistEntry.exists({ _id: request.waitlistEntryId, isOpen: true }))
+      : false;
   const tasks: Promise<unknown>[] = [];
   if (recipient) {
     tasks.push(
       sendDirectRequestUnavailableEmail({
+        backOnWaitlist,
         clientName: recipient.name,
         clientEmail: recipient.email,
         professionalName: request.professionalName,
