@@ -166,7 +166,7 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
   - **Not changed.** An appointment refunded before this fix has no `refundRequest`; it is recognised by `payment.status` alone.
 - **2026-09-15** — **[feature, live on merge] « Nos professionnels » at www /professionnels (owner's request, inspired by a clinic's team page).**
   - **The page.** Every active professional is listed with a round portrait, their name, degree and title, and a short text. « Lire plus » links to the professional's page when they have a published one (owner's choice: every professional, not only those with a page).
-  - **Where it is linked.** In the header (desktop and the « Découvrir » mobile section), the footer's Espace column, a band on the home page and « Qui sommes-nous », and the sitemap.
+  - **Where it is linked.** In the header, inside the « À propos » menu (desktop and mobile), the footer's Espace column, a band on the home page and « Qui sommes-nous », and the sitemap.
   - **Who is listed.** Rules live in `src/lib/professionals-directory.ts` (pure, spec'd); the loader is `professionals-directory-queries.ts`.
     - Professionals with `role: "professional"` and `status: "active"`.
     - A professional who unticked « Profil visible aux clients » (`Profile.profileVisible`) is never listed, even with a page.
@@ -206,3 +206,10 @@ Severity: **P1** = can lose money / data / security now · **P2** = real risk, h
     - it takes the first such entry, else none.
   - **Summaries.** A bio made only of title words (« Psychothérapeute », « Psychologue Psychologue scolaire Psychothérapeute ») now shows no summary instead of repeating the title (`isTitlesOnly`).
   - **Not changed.** What professionals wrote stays as is; they can write a real bio in their profile.
+- **2026-09-16** — **[change] « Nos professionnels » redesigned (owner: « take it to the next level », then « keep the layout of circled image and description »).** The page keeps its rows — a circled portrait beside the presentation, alternating sides — in the professionals' pages' own type and palette (Fraunces + Plus Jakarta, sand `#F6F3EE`, teal `#17505F`), at their measure: content up to 1600 px with gutters growing to 96 px.
+  - **Hero.** Eyebrow, large serif title (up to 92 px), lead, « Trouver mon professionnel » (/appointment) and « Nous contacter », three figures (professionals, languages spoken, combined years) and, from `lg`, an overlapping cluster of the team's portraits and monograms. The glows sit on one layer at the top of the page, so none meets a clipped edge.
+  - **Rows.** Portrait 240 px to 352 px with a teal ring and a halo, or a tinted monogram (`directory-tints.ts`, taken in turn). Beside it: degree and title, the name (up to 48 px), years of experience, the text, then languages and ways of consulting as chips, and « Voir le profil » only when the professional has a published page. The text stays left-aligned on every row; only the portrait changes side.
+  - **Filter.** Chips by profession, counted, in `ProfessionalsDirectoryGrid` (the page's only client component). Hidden with fewer than two professions.
+  - **Closing.** A teal band leading to the matching questionnaire, plus the contact line.
+  - **New on each listed professional** (`professionals-directory.ts`): `languages` and `modalities`, read from the profile's own words through the showcase's `showcaseLanguageKey` / `showcaseModalityKey` (so « Video Call », « Vidéo » and « En personne » all land right), and `yearsOfExperience` (a whole 0–70). The keys the page may read stay pinned by `DIRECTORY_PROFESSIONAL_KEYS`.
+  - **Checked:** 400 px, 1440 px and 1920 px with no horizontal scroll, both languages, and professionals with and without a portrait.

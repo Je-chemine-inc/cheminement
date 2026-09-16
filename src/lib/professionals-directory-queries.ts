@@ -34,7 +34,7 @@ async function loadInputs() {
   const ids = users.map((user) => user._id);
   const [profiles, showcaseOn] = await Promise.all([
     Profile.find({ userId: { $in: ids } })
-      .select("userId specialty bio education.degree profileVisible profileCompleted")
+      .select("userId specialty bio education.degree profileVisible profileCompleted languages modalities yearsOfExperience")
       .lean(),
     isShowcaseEnabled(),
   ]);

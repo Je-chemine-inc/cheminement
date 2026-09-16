@@ -50,6 +50,7 @@ export function Header() {
 
   const aboutDropdownItems = [
     { href: "/who-we-are", label: t("nav.whoWeAre") },
+    { href: "/professionnels", label: t("nav.professionals") },
     { href: "/why-us", label: t("nav.whyUs") },
   ];
 
@@ -85,6 +86,7 @@ export function Header() {
       label: t("nav.aboutUs"),
       items: [
         { href: "/who-we-are", label: t("nav.whoWeAre"), icon: Users },
+        { href: "/professionnels", label: t("nav.professionals"), icon: UsersRound },
         { href: "/why-us", label: t("nav.whyUs"), icon: Heart },
       ],
     },
@@ -102,7 +104,6 @@ export function Header() {
     {
       label: t("menuSections.discover"),
       items: [
-        { href: "/professionnels", label: t("nav.professionals"), icon: UsersRound },
         { href: "/approaches", label: t("nav.approaches"), icon: Compass },
         { href: "/nouveautes", label: t("nav.nouveautes"), icon: Newspaper },
       ],
@@ -155,7 +156,7 @@ export function Header() {
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 className={`inline-flex items-center gap-1 text-sm font-semibold transition-all duration-300 ease-in-out focus-visible:outline-none ${
-                  pathname === "/who-we-are" || pathname === "/why-us"
+                  pathname === "/who-we-are" || pathname === "/professionnels" || pathname === "/why-us"
                     ? "text-primary underline underline-offset-4"
                     : "text-foreground hover:text-primary"
                 }`}
@@ -206,18 +207,6 @@ export function Header() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Our professionals link */}
-            <Link
-              href="/professionnels"
-              className={`text-sm font-semibold transition-all duration-300 ease-in-out ${
-                pathname === "/professionnels"
-                  ? "text-primary font-semibold underline underline-offset-4"
-                  : "text-foreground hover:text-primary"
-              }`}
-            >
-              {t("nav.professionals")}
-            </Link>
 
             {/* Approaches link */}
             <Link
