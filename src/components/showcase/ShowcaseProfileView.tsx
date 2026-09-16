@@ -140,10 +140,10 @@ const SERIF = "font-[family-name:var(--font-vitrine-serif)]";
 // Wide screens use their width: content up to 2240 px, and type that grows with the viewport.
 const WRAP = "mx-auto w-full max-w-[2240px] px-[clamp(20px,5vw,136px)]";
 // scroll-mt clears the floating header when a nav link scrolls to a section.
-const SECTION = "scroll-mt-28 py-[clamp(64px,7vw,150px)]";
+const SECTION = "scroll-mt-28 py-[clamp(56px,5vw,104px)]";
 const LABEL = "inline-flex items-center rounded-full bg-[color:var(--vt-accent-soft,#E6EFEA)] px-4 py-1.5 text-[clamp(13px,calc(0.25vw+9.5px),16px)] font-semibold text-[color:var(--vt-accent,#17505F)]";
-const H2 = `${SERIF} text-[clamp(34px,3.4vw,76px)] font-normal leading-[1.08] tracking-[-0.01em] text-[#1F2A2E] text-pretty`;
-const BODY = "text-[clamp(17px,calc(0.45vw+11px),23px)] leading-[1.8] text-[#3E494B] text-pretty";
+const H2 = `${SERIF} text-[clamp(30px,2.3vw,52px)] font-normal leading-[1.1] tracking-[-0.01em] text-[#1F2A2E] text-pretty`;
+const BODY = "text-[clamp(16.5px,calc(0.28vw+12px),20px)] leading-[1.75] text-[#3E494B] text-pretty";
 const RULE = "border-[#ECE8E1]";
 const SOFT_SHADOW = "shadow-[0_30px_70px_-50px_rgba(31,42,46,0.45)]";
 const PILL = "inline-flex items-center gap-2 rounded-full border border-[#ECE8E1] bg-white px-[clamp(16px,1vw,24px)] py-[clamp(10px,0.6vw,14px)] text-[clamp(15px,calc(0.3vw+10px),19px)] text-[#1F2A2E]";
@@ -158,9 +158,9 @@ html:has(#${ROOT_ID}){scroll-behavior:smooth}
 @media (prefers-reduced-motion: reduce){html:has(#${ROOT_ID}){scroll-behavior:auto}}
 #${ROOT_ID}{word-spacing:.06em}
 #${ROOT_ID} .vt-xs{font-size:clamp(13px,calc(.2vw + 9.5px),16px)}
-#${ROOT_ID} .vt-sm{font-size:clamp(14.5px,calc(.3vw + 10px),18.5px)}
-#${ROOT_ID} .vt-md{font-size:clamp(16px,calc(.35vw + 10.5px),20px)}
-#${ROOT_ID} .vt-lg{font-size:clamp(18px,calc(.4vw + 11.5px),22px)}
+#${ROOT_ID} .vt-sm{font-size:clamp(14.5px,calc(.18vw + 12px),17px)}
+#${ROOT_ID} .vt-md{font-size:clamp(15.5px,calc(.2vw + 12.5px),18px)}
+#${ROOT_ID} .vt-lg{font-size:clamp(17px,calc(.25vw + 13px),20px)}
 #${ROOT_ID} [class*="font-vitrine-serif"]{font-variation-settings:"SOFT" 100,"WONK" 0;word-spacing:normal}
 @keyframes vitrineUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes vitrineIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
@@ -379,7 +379,7 @@ export async function ShowcaseProfileView({
               {profile.quote ? (
                 <figure className="relative mt-10 max-w-[62ch] rounded-[32px] bg-[color:var(--vt-accent-soft,#E6EFEA)] px-[clamp(24px,3vw,44px)] py-[clamp(24px,2.6vw,36px)]">
                   <Quote className="absolute left-[clamp(20px,2.4vw,34px)] top-[clamp(22px,2.4vw,34px)] h-7 w-7 text-[color:var(--vt-accent,#17505F)]/30" aria-hidden="true" />
-                  <blockquote className={`pl-11 ${SERIF} text-[clamp(22px,1.9vw,32px)] italic leading-[1.35] text-[#1F2A2E] text-pretty`}>
+                  <blockquote className={`pl-11 ${SERIF} text-[clamp(20px,1.4vw,27px)] italic leading-[1.35] text-[#1F2A2E] text-pretty`}>
                     {profile.quote}
                   </blockquote>
                   <figcaption className="mt-3 pl-11 vt-sm font-semibold text-[color:var(--vt-accent,#17505F)]">{t("vitrine.about.quoteBy", { name })}</figcaption>
@@ -432,7 +432,7 @@ export async function ShowcaseProfileView({
           {/* Methods: horizontal cards; a single method spans the whole row */}
           {profile.methods.length > 0 ? (
             <>
-              <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(28px,2.6vw,46px)] leading-tight text-[#1F2A2E]`}>
+              <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(24px,1.8vw,36px)] leading-tight text-[#1F2A2E]`}>
                 {text("methodsTitle", t("vitrine.approach.methodsTitle"))}
               </h3>
               <ul
@@ -455,7 +455,7 @@ export async function ShowcaseProfileView({
                         {method.name}
                       </span>
                       {method.title ? (
-                        <p className={`mt-4 ${SERIF} text-[clamp(24px,2.1vw,38px)] leading-[1.15] text-[#1F2A2E] text-balance`}>{method.title}</p>
+                        <p className={`mt-4 ${SERIF} text-[clamp(21px,1.5vw,30px)] leading-[1.15] text-[#1F2A2E] text-balance`}>{method.title}</p>
                       ) : null}
                       {method.body.map((paragraph, paragraphIndex) => (
                         <p key={paragraphIndex} className="mt-3 max-w-[72ch] vt-md leading-[1.75] text-[#5B6566] text-pretty">
@@ -471,7 +471,7 @@ export async function ShowcaseProfileView({
 
           {/* How a request unfolds: four connected steps, an arrow between cards on wide screens */}
           {approachHeading.stepsSubheading ? (
-            <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(28px,2.6vw,46px)] leading-tight text-[#1F2A2E]`}>
+            <h3 className={`${SERIF} mt-[clamp(56px,6vw,104px)] text-[clamp(24px,1.8vw,36px)] leading-tight text-[#1F2A2E]`}>
               {text("stepsTitle", t("vitrine.approach.stepsTitle"))}
             </h3>
           ) : null}
@@ -748,7 +748,7 @@ export async function ShowcaseProfileView({
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/85 text-[color:var(--vt-accent,#17505F)]">
                       <theme.icon className="h-5 w-5" aria-hidden="true" />
                     </span>
-                    <h3 className={`mt-6 ${SERIF} text-[clamp(24px,2vw,34px)] leading-tight text-[#1F2A2E] text-balance`}>{area.title}</h3>
+                    <h3 className={`mt-6 ${SERIF} text-[clamp(21px,1.5vw,28px)] leading-tight text-[#1F2A2E] text-balance`}>{area.title}</h3>
                     {area.body.map((paragraph, paragraphIndex) => (
                       <p key={paragraphIndex} className="mt-3 max-w-[58ch] vt-md leading-[1.7] text-[#3E494B] text-pretty">
                         {paragraph}
@@ -789,7 +789,7 @@ export async function ShowcaseProfileView({
                         </span>
                         <span className={`${SERIF} vt-md text-[#1F2A2E]/35`}>{String(index + 1).padStart(2, "0")}</span>
                       </span>
-                      <span className={`mt-auto block pt-6 ${SERIF} text-[clamp(19px,1.9vw,34px)] leading-[1.1] text-[#1F2A2E] text-balance sm:pt-10`}>
+                      <span className={`mt-auto block pt-6 ${SERIF} text-[clamp(18px,1.3vw,26px)] leading-[1.1] text-[#1F2A2E] text-balance sm:pt-10`}>
                         {expertise.label}
                       </span>
                     </div>
@@ -834,7 +834,7 @@ export async function ShowcaseProfileView({
                     </span>
                   </a>
                   <div className="flex flex-1 flex-col px-[clamp(10px,1.2vw,18px)] pb-3 pt-6">
-                    <h3 className={`${SERIF} break-words text-[clamp(24px,2vw,30px)] leading-tight text-[#1F2A2E]`}>
+                    <h3 className={`${SERIF} break-words text-[clamp(21px,1.5vw,26px)] leading-tight text-[#1F2A2E]`}>
                       <a href={product.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
                         {product.title}
                       </a>
@@ -899,7 +899,7 @@ export async function ShowcaseProfileView({
                         {new Intl.DateTimeFormat(localeTag, { dateStyle: "long", timeZone: "America/Toronto" }).format(new Date(article.publishedAt))}
                       </p>
                     ) : null}
-                    <h3 className={`${SERIF} mt-3 break-words text-[clamp(24px,2vw,30px)] leading-tight text-[#1F2A2E]`}>
+                    <h3 className={`${SERIF} mt-3 break-words text-[clamp(21px,1.5vw,26px)] leading-tight text-[#1F2A2E]`}>
                       <a href={article.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
                         {article.title}
                       </a>
@@ -929,7 +929,7 @@ export async function ShowcaseProfileView({
           <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-[color:var(--vt-accent-dark,#0E3A46)]/90 via-[color:var(--vt-accent-dark,#0E3A46)]/75 to-[color:var(--vt-accent-dark,#0E3A46)]/40" />
           <div className="flex min-h-[clamp(380px,38vw,560px)] flex-col items-start justify-center px-[clamp(24px,5vw,88px)] py-[clamp(48px,6vw,96px)]">
             <p className="inline-flex rounded-full bg-white/15 px-4 py-1.5 vt-xs font-semibold text-white backdrop-blur-md">{t("vitrine.ctaEyebrow")}</p>
-            <h2 className={`${SERIF} mt-5 max-w-[18ch] text-[clamp(36px,4.4vw,68px)] font-normal leading-[1.06] text-white text-balance`}>
+            <h2 className={`${SERIF} mt-5 max-w-[18ch] text-[clamp(30px,2.6vw,52px)] font-normal leading-[1.08] text-white text-balance`}>
               {text("ctaTitle", t("vitrine.cta.title"))}
             </h2>
             <p className="mt-5 max-w-[52ch] text-[clamp(17px,1.5vw,20px)] leading-[1.7] text-white/85 text-pretty">{text("ctaBody", t("vitrine.cta.body", { name }))}</p>
@@ -1015,7 +1015,7 @@ export async function ShowcaseProfileView({
 
           <div className="min-w-0">
             {title ? <p className={`vitrine-up ${LABEL}`}>{title}</p> : null}
-            <h1 className={`vitrine-up mt-5 ${SERIF} text-[clamp(46px,5.2vw,120px)] font-normal leading-[1] tracking-[-0.02em] text-[#1F2A2E] text-balance [animation-delay:.06s]`}>
+            <h1 className={`vitrine-up mt-5 ${SERIF} text-[clamp(40px,3.4vw,74px)] font-normal leading-[1.02] tracking-[-0.02em] text-[#1F2A2E] text-balance [animation-delay:.06s]`}>
               {name}
             </h1>
             {credential ? (
@@ -1025,7 +1025,7 @@ export async function ShowcaseProfileView({
               </p>
             ) : null}
             {profile.headline ? (
-              <p className={`vitrine-up mt-7 max-w-[32ch] ${SERIF} text-[clamp(25px,2.2vw,50px)] leading-[1.3] text-[#1F2A2E] text-pretty [animation-delay:.14s]`}>
+              <p className={`vitrine-up mt-7 max-w-[32ch] ${SERIF} text-[clamp(22px,1.5vw,32px)] leading-[1.35] text-[#1F2A2E] text-pretty [animation-delay:.14s]`}>
                 {profile.headline}
               </p>
             ) : null}
