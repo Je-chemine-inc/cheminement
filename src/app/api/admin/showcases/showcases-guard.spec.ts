@@ -39,10 +39,6 @@ const trap = new Proxy(
 vi.mock("@/models/ShowcasePage", () => ({ default: trap }));
 vi.mock("@/models/User", () => ({ default: trap }));
 vi.mock("@/models/PlatformSettings", () => ({ default: trap }));
-vi.mock("@/lib/professionals-directory-queries", () => ({
-  loadProfessionalsDirectoryAdmin: () => h.touched(),
-  saveProfessionalsDirectoryCuration: () => h.touched(),
-}));
 vi.mock("@/lib/showcase-photo", () => ({
   storeShowcasePhoto: () => h.touched(),
   deleteUnreferencedShowcasePhotos: () => h.touched(),
@@ -65,7 +61,7 @@ vi.mock("@/lib/showcase-service", () => ({
 }));
 
 const API = path.join(process.cwd(), "src/app/api/admin");
-const ROOTS = ["showcases", "showcase-settings", "professionals-directory"];
+const ROOTS = ["showcases", "showcase-settings"];
 
 function routeFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

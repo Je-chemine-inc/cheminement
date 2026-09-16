@@ -33,7 +33,6 @@ import {
   Store,
   ListOrdered,
   GraduationCap,
-  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -106,12 +105,6 @@ export function AdminSidebar() {
           title: t("showcases"),
           url: "/admin/dashboard/showcases",
           icon: Store,
-          requires: "manageProfessionals",
-        },
-        {
-          title: t("professionalsDirectory"),
-          url: "/admin/dashboard/professionals-directory",
-          icon: UsersRound,
           requires: "manageProfessionals",
         },
         {
