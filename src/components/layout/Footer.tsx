@@ -62,11 +62,6 @@ export async function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/professionnels" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-                  {tNav("professionals")}
-                </Link>
-              </li>
-              <li>
                 <Link href="/why-us" className="text-primary-foreground/70 hover:text-primary-foreground transition-colors">
                   {tNav("whyUs")}
                 </Link>

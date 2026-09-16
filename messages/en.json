@@ -39,107 +39,8 @@
     "schoolManager": {
       "title": "For schools and institutions",
       "description": "Give your students and staff supervised access to mental health professionals, with centralized follow-up and billing."
-    },
-    "professionals": {
-      "title": "Our professionals",
-      "description": "Meet Je chemine's psychologists, psychotherapists and other mental health professionals across Quebec."
     }
-  },
-  "ProfessionalsDirectoryAdmin": {
-    "title": "Our professionals (website)",
-    "subtitle": "Choose who appears on the public « Our professionals » page and in what order. The public page changes as soon as you save.",
-    "viewPublic": "View the public page",
-    "refresh": "Refresh",
-    "save": "Save",
-    "resetOrder": "Back to alphabetical order",
-    "unsaved": "Unsaved changes",
-    "orderHint": "Saving fixes the order of the whole list. A new professional appears after the others, by last name, until you move them.",
-    "done": "Saved. The public page is up to date.",
-    "empty": "No active professionals.",
-    "hasPage": "Showcase page",
-    "columns": {
-      "position": "Order",
-      "professional": "Professional",
-      "status": "On the website",
-      "actions": "Actions"
-    },
-    "statuses": {
-      "listed": "Shown",
-      "hiddenByTeam": "Hidden by the team",
-      "hiddenByProfessional": "Hidden by the professional",
-      "incomplete": "Incomplete profile"
-    },
-    "notes": {
-      "hiddenByProfessional": "The professional unticked « Profile visible to clients »: they do not appear, whatever the team chooses.",
-      "incomplete": "Will appear once their profile is completed or their showcase page published."
-    },
-    "actions": {
-      "up": "Move {name} up",
-      "down": "Move {name} down",
-      "hide": "Hide",
-      "show": "Show"
-    },
-    "errors": {
-      "generic": "Something went wrong. Try again.",
-      "network": "Could not connect. Check your network and try again.",
-      "CHANGED": "Someone changed the list in the meantime. It was reloaded: make your changes again.",
-      "SETTINGS_MISSING": "Save the platform settings once first.",
-      "INVALID": "The list sent is not valid. Refresh the page."
-    },
-    "access": {
-      "title": "Restricted access",
-      "body": "You need the permission to manage professionals to open this screen."
-    }
-  },
-  "Professionals": {
-    "eyebrow": "Our team",
-    "stats": {
-      "professionals": "{count, plural, one {# professional} other {# professionals}}",
-      "languages": "{count, plural, one {# language spoken} other {# languages spoken}}",
-      "years": "{count, plural, one {# year of combined experience} other {# years of combined experience}}"
-    },
-    "cta": {
-      "match": "Find my professional",
-      "contact": "Contact us"
-    },
-    "filters": {
-      "label": "Filter by profession",
-      "all": "All"
-    },
-    "groups": {
-      "psychologist": "Psychologists",
-      "psychotherapist": "Psychotherapists",
-      "neuropsychologist": "Neuropsychologists",
-      "psychoeducator": "Psychoeducators",
-      "occupationalTherapistMentalHealth": "Occupational therapists",
-      "psychiatrist": "Psychiatrists",
-      "other": "Other professionals"
-    },
-    "experience": "{count, plural, one {# year of experience} other {# years of experience}}",
-    "languagesLabel": "Languages",
-    "modalitiesLabel": "Consultations",
-    "viewProfile": "View profile",
-    "noResults": "No professionals in this category yet.",
-    "closing": {
-      "title": "Not sure who to turn to?",
-      "text": "Answer a few questions: our matching suggests the professional who fits your needs.",
-      "cta": "Start matching",
-      "contact": "Write to us"
-    },
-    "title": "Our professionals",
-    "intro": "Psychologists, psychotherapists and other mental health professionals who support Quebecers, in French and English.",
-    "contactLine": "For more information about our team, <link>contact us</link>.",
-    "readMore": "Read more",
-    "readMoreLabel": "Read more about {name}",
-    "photoAlt": "Portrait of {name}",
-    "empty": "Our professionals will be introduced here soon.",
-    "teaser": {
-      "badge": "Our team",
-      "title": "Our professionals",
-      "text": "Meet the professionals who support you: their background, their title and their approach.",
-      "button": "Meet our professionals"
-    }
-  },
+  },
   "Common": {
     "notFoundTitle": "Page not found",
     "notFoundBody": "This page doesn't exist or has been removed. It may have moved, or the address may contain a typo.",
@@ -2141,8 +2042,7 @@
       "schoolServices": "School Services",
       "platform": "Space",
       "contact": "Contact",
-      "professional": "I am a Professional",
-      "professionals": "Our professionals"
+      "professional": "I am a Professional"
     },
     "menuSections": {
       "navigation": "Navigation",
@@ -3480,7 +3380,6 @@
       "organizations": "Paying organizations",
       "organizationInvoices": "Organization invoices",
       "showcases": "Showcase pages",
-      "professionalsDirectory": "Our professionals (website)",
       "showcase": "My showcase page",
       "waitlist": "Waitlist",
       "waitlists": "Waitlists",
@@ -4285,7 +4184,7 @@
       "privacy": "Privacy",
       "privacyDesc": "Manage your privacy and visibility settings.",
       "profileVisible": "Profile visible to clients",
-      "profileVisibleDesc": "Allow clients to find you through the platform, and appear in « Our professionals » on the website.",
+      "profileVisibleDesc": "Allow clients to find you through the platform.",
       "showRating": "Show my rating",
       "showRatingDesc": "Display your average rating on your public profile.",
       "visibleToPros": "Visible to other professionals",
