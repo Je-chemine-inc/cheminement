@@ -99,6 +99,30 @@ const VALUE_THEMES: { icon: LucideIcon; tint: string }[] = [
   { icon: Users, tint: "bg-[#EFF2E4]" },
 ];
 
+/** The accompaniment cards' grid: three across when there are three, never a lone card on its own row. */
+const EXPERTISE_GRIDS: Record<number, string> = {
+  1: "mx-auto max-w-[420px]",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-2 xl:grid-cols-4",
+  5: "sm:grid-cols-2 lg:grid-cols-5",
+  6: "sm:grid-cols-2 lg:grid-cols-3",
+  7: "sm:grid-cols-2 lg:grid-cols-4",
+  8: "sm:grid-cols-2 lg:grid-cols-4",
+  9: "sm:grid-cols-2 lg:grid-cols-3",
+  10: "sm:grid-cols-2 lg:grid-cols-5",
+  12: "sm:grid-cols-2 lg:grid-cols-4",
+};
+
+const FOCUS_GRIDS: Record<number, string> = {
+  1: "mx-auto max-w-[760px]",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "sm:grid-cols-2 xl:grid-cols-4",
+  5: "sm:grid-cols-2 lg:grid-cols-3",
+  6: "sm:grid-cols-2 lg:grid-cols-3",
+};
+
 /** The value cards' grid for 1 to 5 values: every row filled, never a lone narrow card. */
 const VALUE_GRIDS: Record<number, string> = {
   1: "mx-auto max-w-[760px]",
@@ -697,47 +721,70 @@ export async function ShowcaseProfileView({
     ),
     expertises: (
       <>
-      {/* Ce que j'accompagne: the professional's own cards, then the catalog expertises */}
-      {profile.expertises.length > 0 || profile.focusAreas.length > 0 ? (
+      {/* Ce que j'accompagne: the professional's own cards */}
+      {profile.focusAreas.length > 0 ? (
         <section className={SECTION}>
           <div className={WRAP}>
             {/* The intro reads as the title's subtitle, right under it */}
             <div className="max-w-[72ch]" data-expertises-head="">
-              <p className={LABEL}>{t("vitrine.expertises.eyebrow")}</p>
+              <p className={LABEL}>{t("vitrine.focus.eyebrow")}</p>
               <h2 className={`${H2} mt-5`}>{text("expertisesTitle", t("vitrine.expertisesTitle"))}</h2>
               <p className={`${BODY} mt-5 max-w-[58ch]`}>{text("expertisesIntro", t("vitrine.expertisesIntro", { name }))}</p>
             </div>
-            {profile.focusAreas.length > 0 ? (
-              <ul className="mt-[clamp(32px,4.5vw,64px)] grid gap-4 md:grid-cols-2">
-                {profile.focusAreas.map((area, index) => {
-                  const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
-                  return (
-                    <li key={index} data-reveal={index % 2} data-focus-area="" className={`min-w-0 rounded-[34px] p-[clamp(22px,2.4vw,40px)] ${theme.tint}`}>
-                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/85 text-[color:var(--vt-accent,#17505F)]">
-                        <theme.icon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <h3 className={`mt-6 ${SERIF} text-[clamp(24px,2vw,34px)] leading-tight text-[#1F2A2E] text-balance`}>{area.title}</h3>
-                      {area.body.map((paragraph, paragraphIndex) => (
-                        <p key={paragraphIndex} className="mt-3 max-w-[58ch] vt-md leading-[1.7] text-[#3E494B] text-pretty">
-                          {paragraph}
-                        </p>
-                      ))}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : null}
-            {profile.expertises.length > 0 ? (
-            <ul className="mt-[clamp(32px,4.5vw,64px)] grid grid-cols-2 gap-3 sm:gap-[clamp(14px,1.2vw,22px)] sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+            <ul
+              className={`mt-[clamp(32px,4.5vw,64px)] grid gap-[clamp(14px,1.4vw,24px)] ${
+                FOCUS_GRIDS[profile.focusAreas.length] ?? "sm:grid-cols-2 xl:grid-cols-3"
+              }`}
+            >
+              {profile.focusAreas.map((area, index) => {
+                const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
+                return (
+                  <li
+                    key={index}
+                    data-reveal={index % 3}
+                    data-focus-area=""
+                    className={`flex h-full min-w-0 flex-col rounded-[34px] p-[clamp(22px,2.4vw,40px)] ${theme.tint}`}
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/85 text-[color:var(--vt-accent,#17505F)]">
+                      <theme.icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <h3 className={`mt-6 ${SERIF} text-[clamp(24px,2vw,34px)] leading-tight text-[#1F2A2E] text-balance`}>{area.title}</h3>
+                    {area.body.map((paragraph, paragraphIndex) => (
+                      <p key={paragraphIndex} className="mt-3 max-w-[58ch] vt-md leading-[1.7] text-[#3E494B] text-pretty">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Champs d'expertise: the catalogue areas, on their own ground so the two read apart */}
+      {profile.expertises.length > 0 ? (
+        <section className={`${SECTION} bg-[#F6F3EE]`}>
+          <div className={WRAP}>
+            <div className="max-w-[72ch]" data-expertise-list-head="">
+              <p className={`${LABEL} bg-white`}>{t("vitrine.expertises.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{t("vitrine.expertises.title")}</h2>
+              <p className={`${BODY} mt-5 max-w-[58ch]`}>{t("vitrine.expertises.intro")}</p>
+            </div>
+            <ul
+              className={`mt-[clamp(32px,4.5vw,64px)] grid grid-cols-2 gap-3 sm:gap-[clamp(14px,1.2vw,22px)] ${
+                EXPERTISE_GRIDS[profile.expertises.length] ?? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              }`}
+            >
               {profile.expertises.map((expertise, index) => {
                 const theme = EXPERTISE_THEMES[index % EXPERTISE_THEMES.length];
                 return (
                   <li key={expertise.label} data-reveal={index % 4}>
                     <div
-                      className={`flex h-full min-h-[168px] flex-col rounded-[26px] p-4 sm:min-h-[clamp(220px,15vw,290px)] sm:rounded-[34px] sm:p-[clamp(20px,1.8vw,30px)] ${theme.tint}`}
+                      className={`flex h-full min-h-[168px] flex-col rounded-[26px] bg-white p-4 sm:min-h-[clamp(220px,15vw,290px)] sm:rounded-[34px] sm:p-[clamp(20px,1.8vw,30px)]`}
                     >
                       <span className="flex items-start justify-between gap-4">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-[color:var(--vt-accent,#17505F)] shadow-[0_12px_28px_-18px_rgba(31,42,46,0.45)] sm:h-[clamp(52px,3.4vw,66px)] sm:w-[clamp(52px,3.4vw,66px)]">
+                        <span className={`flex h-11 w-11 items-center justify-center rounded-full text-[color:var(--vt-accent,#17505F)] shadow-[0_12px_28px_-18px_rgba(31,42,46,0.45)] sm:h-[clamp(52px,3.4vw,66px)] sm:w-[clamp(52px,3.4vw,66px)] ${theme.tint}`}>
                           <theme.icon className="h-[45%] w-[45%]" aria-hidden="true" />
                         </span>
                         <span className={`${SERIF} vt-md text-[#1F2A2E]/35`}>{String(index + 1).padStart(2, "0")}</span>
@@ -750,7 +797,6 @@ export async function ShowcaseProfileView({
                 );
               })}
             </ul>
-            ) : null}
           </div>
         </section>
       ) : null}

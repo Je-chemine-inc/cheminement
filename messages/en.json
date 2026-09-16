@@ -7606,7 +7606,12 @@
         "read": "Read the article"
       },
       "expertises": {
-        "eyebrow": "Areas of expertise"
+        "eyebrow": "Areas of expertise",
+        "title": "My areas of expertise",
+        "intro": "The main reasons people come to see me."
+      },
+      "focus": {
+        "eyebrow": "Support"
       },
       "cta": {
         "title": "The first step is often the hardest",

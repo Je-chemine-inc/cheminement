@@ -7605,7 +7605,12 @@
         "read": "Lire l'article"
       },
       "expertises": {
-        "eyebrow": "Champs d'expertise"
+        "eyebrow": "Champs d'expertise",
+        "title": "Mes champs d'expertise",
+        "intro": "Les grands motifs de consultation pour lesquels je reçois."
+      },
+      "focus": {
+        "eyebrow": "Accompagnement"
       },
       "cta": {
         "title": "Le premier pas est souvent le plus difficile",
