@@ -14,6 +14,11 @@ const EASE = "cubic-bezier(.22,.8,.26,1)";
  * already in view — so a section can animate its own insides from that moment
  * (« En bref »). Those animations must be additions: with reduced motion, or
  * without JavaScript, the class never comes.
+ *
+ * An element marked `data-appear` instead of `data-reveal` is only told when it
+ * arrives: nothing about it is hidden or moved, because it carries its own
+ * animation (a heading's cascade, a run of paragraphs). That makes it safe on
+ * something already positioned, which `data-reveal` is not.
  */
 export function VitrineMotion({ rootId }: { rootId: string }) {
   useEffect(() => {
@@ -23,17 +28,21 @@ export function VitrineMotion({ rootId }: { rootId: string }) {
 
     const fold = window.innerHeight * 0.92;
     const timers: number[] = [];
+    // Only what this component hid is put back; everything else is just told it arrived.
+    const hidden = new Set<HTMLElement>();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const element = entry.target as HTMLElement;
-          element.style.opacity = "1";
-          element.style.transform = "none";
+          if (hidden.has(element)) {
+            element.style.opacity = "1";
+            element.style.transform = "none";
+            // Hand the element back to its own hover transitions once it has arrived.
+            timers.push(window.setTimeout(() => (element.style.transition = ""), 1100));
+          }
           element.classList.add("vt-seen");
           observer.unobserve(element);
-          // Hand the element back to its own hover transitions once it has arrived.
-          timers.push(window.setTimeout(() => (element.style.transition = ""), 1100));
         }
       },
       { rootMargin: "0px 0px -7% 0px", threshold: 0.01 },
@@ -49,6 +58,15 @@ export function VitrineMotion({ rootId }: { rootId: string }) {
       element.style.opacity = "0";
       element.style.transform = "translateY(20px)";
       element.style.transition = `opacity .75s ${EASE} ${delay}, transform .75s ${EASE} ${delay}`;
+      hidden.add(element);
+      observer.observe(element);
+    }
+
+    for (const element of root.querySelectorAll<HTMLElement>("[data-appear]")) {
+      if (element.getBoundingClientRect().top < fold) {
+        element.classList.add("vt-seen");
+        continue;
+      }
       observer.observe(element);
     }
 

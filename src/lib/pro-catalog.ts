@@ -46,7 +46,7 @@ export function serializeCatalogItem(
   d: Pick<
     IProCatalogItem,
     "category" | "labelFr" | "labelEn" | "aliases" | "active" | "createdAt" | "updatedAt"
-  > & { _id: unknown; showcase?: boolean; slug?: string },
+  > & { _id: unknown; showcase?: boolean; slug?: string; descriptionFr?: string; descriptionEn?: string },
 ) {
   return {
     id: String(d._id),
@@ -57,9 +57,28 @@ export function serializeCatalogItem(
     active: d.active !== false,
     showcase: d.showcase === true,
     slug: d.slug || "",
+    descriptionFr: d.descriptionFr || "",
+    descriptionEn: d.descriptionEn || "",
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
   };
+}
+
+/** How long a theme's description may be. Long enough for a short paragraph, short enough to read. */
+export const PRO_CATALOG_DESCRIPTION_MAX = 600;
+
+/**
+ * What a theme covers, as the catalogue stores it: one paragraph, so runs of whitespace and line
+ * breaks collapse to single spaces, cut at a word rather than mid-word when it is too long. Anything
+ * that is not a string is nothing to say.
+ */
+export function catalogDescription(input: unknown): string {
+  if (typeof input !== "string") return "";
+  const text = input.replace(/\s+/g, " ").trim();
+  if (text.length <= PRO_CATALOG_DESCRIPTION_MAX) return text;
+  const cut = text.slice(0, PRO_CATALOG_DESCRIPTION_MAX);
+  const space = cut.lastIndexOf(" ");
+  return (space > PRO_CATALOG_DESCRIPTION_MAX - 60 ? cut.slice(0, space) : cut).trimEnd();
 }
 
 const CATALOG_SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;

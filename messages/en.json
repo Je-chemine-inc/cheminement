@@ -787,6 +787,9 @@
       "showcaseHint": "Professionals can show it on their showcase page, and it can get its own city pages.",
       "slugLabel": "URL segment",
       "slugHint": "Used in the address of city pages, for example /specialite/anxiete. Leave empty to build it from the French label.",
+      "descriptionFrLabel": "What the theme covers (French)",
+      "descriptionEnLabel": "What the theme covers (English)",
+      "descriptionHint": "A few sentences, written once: they appear on the page of every professional offering this theme, under « Reasons for consulting ». 600 characters, one paragraph. Leave empty for the theme to be named without being explained.",
       "showcaseBadge": "Showcase pages"
     },
     "motifs": {
@@ -7424,7 +7427,7 @@
         "credentials": "Background",
         "approach": "Approach",
         "focus": "What I help with",
-        "products": "Trainings",
+        "products": "Resources",
         "articles": "Articles"
       },
       "chips": {
@@ -7460,7 +7463,7 @@
         "methodsTitle": "The methods I use"
       },
       "products": {
-        "eyebrow": "Trainings and products",
+        "eyebrow": "Resources",
         "title": "Learn at your own pace, between sessions"
       },
       "articles": {
@@ -7470,6 +7473,9 @@
       },
       "focus": {
         "eyebrow": "Support"
+      },
+      "themes": {
+        "title": "Reasons for consulting"
       },
       "emergencyTitle": "Need help quickly?",
       "expertisesTitle": "What I help with",
@@ -7754,7 +7760,7 @@
         "about": "About",
         "approach": "Approach and how a request works",
         "expertises": "What I help with",
-        "products": "Trainings and products",
+        "products": "Resources",
         "articles": "Articles"
       },
       "show": "Show “{section}”",

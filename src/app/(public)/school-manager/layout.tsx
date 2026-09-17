@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 /**
  * Metadata only. The page in this segment is a client component, which
@@ -11,6 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("schoolManager.title"),
     description: t("schoolManager.description"),
     openGraph: {
+      ...SITE_OPEN_GRAPH,
       title: t("schoolManager.title"),
       description: t("schoolManager.description"),
     },

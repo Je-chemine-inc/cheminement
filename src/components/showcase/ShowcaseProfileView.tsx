@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Plus,
   Quote,
   ReceiptText,
   ShieldCheck,
@@ -77,7 +78,6 @@ const LABEL_ON_DARK = "text-center text-[clamp(10.5px,0.72vw,13px)] font-semibol
 const H2 = `${SERIF} text-[clamp(26px,1.9vw,42px)] font-normal leading-[1.12] tracking-[-0.01em] text-[#1F2A2E] text-pretty`;
 const BODY = "text-[clamp(15.5px,calc(0.2vw+12.5px),18px)] leading-[1.7] text-[#3E494B] text-pretty";
 const SOFT_SHADOW = "shadow-[0_30px_70px_-50px_rgba(31,42,46,0.45)]";
-const PILL = "inline-flex items-center gap-2 rounded-full border border-[#ECE8E1] bg-white px-[clamp(16px,1vw,24px)] py-[clamp(10px,0.6vw,14px)] text-[clamp(15px,calc(0.3vw+10px),19px)] text-[#1F2A2E]";
 // The hero's button: larger than the shared one because it stands alone on a whole screen, and in
 // the platform's own primary colour so it reads as the same button as « Commencer » in the nav bar.
 const BUTTON_HERO =
@@ -114,10 +114,32 @@ html:has(#${ROOT_ID}){scroll-behavior:smooth}
 #${ROOT_ID} [data-brief].vt-seen .vt-sheen{animation:vtSheen 2.2s cubic-bezier(.3,.7,.35,1) .2s both}
 #${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:transform .6s cubic-bezier(.2,.8,.24,1),border-color .6s ease}
 #${ROOT_ID} [data-brief-item]:hover .vt-brief-icon{transform:scale(1.07);border-color:rgba(255,255,255,.55)}
+@keyframes vtStepNum{from{opacity:0;transform:translate3d(-7px,0,0)}to{opacity:1;transform:none}}
+@keyframes vtStepLate{from{opacity:0;transform:translate3d(0,9px,0)}to{opacity:1;transform:none}}
+@keyframes vtHeadIn{from{opacity:0;transform:translate3d(0,15px,0)}to{opacity:1;transform:none}}
+@keyframes vtBarIn{from{opacity:0;transform:translate3d(0,140%,0)}to{opacity:1;transform:none}}
+/* « Parcours » on arrival: a line rises, its rule draws from the left, its numeral follows. */
+#${ROOT_ID} [data-steps].vt-seen [data-step]{animation:vtBriefIn .85s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-rule{animation:vtBriefRule 1.05s cubic-bezier(.22,.8,.26,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 110ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-num{animation:vtStepNum .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 190ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-late{animation:vtStepLate .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 200ms)}
+/* A heading arrives in reading order — its label, its title, then what follows it; a run of
+   paragraphs arrives one after another. Both wait for .vt-seen, so neither exists without it. */
+#${ROOT_ID} [data-head].vt-seen > *,#${ROOT_ID} [data-paras].vt-seen > *{animation:vtHeadIn .85s cubic-bezier(.16,.84,.3,1) both}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(2),#${ROOT_ID} [data-paras].vt-seen > :nth-child(2){animation-delay:95ms}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(3),#${ROOT_ID} [data-paras].vt-seen > :nth-child(3){animation-delay:190ms}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(n+4),#${ROOT_ID} [data-paras].vt-seen > :nth-child(n+4){animation-delay:270ms}
+#${ROOT_ID} details .vt-theme-mark{transition:transform .5s cubic-bezier(.2,.8,.24,1)}
+#${ROOT_ID} details[open] .vt-theme-mark{transform:rotate(45deg)}
+#${ROOT_ID} details[open] .vt-theme-body{animation:vtStepLate .55s cubic-bezier(.16,.84,.3,1) both}
+#${ROOT_ID} [data-step] .vt-step-num{transition:color .45s ease}
+#${ROOT_ID} [data-step]:hover .vt-step-num{color:var(--vt-accent,#17505F)}
 @keyframes vitrineIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+/* The phone's bar rises once the hero has had its moment, like the dock on a wider screen. */
+#${ROOT_ID} .vt-bar{animation:vtBarIn .8s cubic-bezier(.16,.84,.3,1) .9s both}
 .vitrine-up{animation:vitrineUp .8s cubic-bezier(.22,.8,.26,1) both}
 .vitrine-in{animation:vitrineIn 1s cubic-bezier(.22,.8,.26,1) .05s both}
-@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen{animation:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:none}}
+@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} .vt-bar,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen,#${ROOT_ID} [data-step],#${ROOT_ID} .vt-step-rule,#${ROOT_ID} .vt-step-num,#${ROOT_ID} .vt-step-late,#${ROOT_ID} .vt-theme-body,#${ROOT_ID} [data-head] > *,#${ROOT_ID} [data-paras] > *{animation:none}#${ROOT_ID} details .vt-theme-mark{transition:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon,#${ROOT_ID} [data-step] .vt-step-num{transition:none}}
 `;
 
 /** Where "request an appointment" leads: the booking funnel on www. */
@@ -252,7 +274,7 @@ export async function ShowcaseProfileView({
                   {profile.headline}
                 </p>
               ) : null}
-              <div className="mx-auto mt-8 max-w-[100ch] space-y-5 text-left">
+              <div className="mx-auto mt-8 max-w-[100ch] space-y-5 text-left" data-paras="" data-appear="">
                 {[...profile.intro, ...about].map((paragraph, index) => (
                   <p key={index} className={`${BODY} whitespace-pre-line`}>
                     {paragraph}
@@ -307,16 +329,25 @@ export async function ShowcaseProfileView({
                 </figure>
               ) : null}
               {profile.credentials.length > 0 ? (
-                <div id={VITRINE_ANCHORS.credentials} className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28">
+                <div
+                  id={VITRINE_ANCHORS.credentials}
+                  className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28"
+                  data-steps=""
+                  data-reveal="0"
+                >
                   <p className={LABEL}>{t("vitrine.about.credentialsTitle")}</p>
                   <ul className="mt-[clamp(20px,2vw,32px)] border-t border-[#E2DCD1] text-left">
                     {profile.credentials.map((line, index) => (
                       <li
                         key={index}
-                        className="flex items-baseline gap-[clamp(16px,1.6vw,28px)] border-b border-[#E2DCD1] py-[clamp(12px,1.1vw,18px)]"
+                        data-step=""
+                        style={{ "--vt-i": index } as CSSProperties}
+                        className="relative flex items-baseline gap-[clamp(16px,1.6vw,28px)] py-[clamp(12px,1.1vw,18px)]"
                       >
-                        <span className="vt-xs tabular-nums text-[#1F2A2E]/30">{String(index + 1).padStart(2, "0")}</span>
+                        <span className="vt-step-num vt-xs tabular-nums text-[#1F2A2E]/30">{String(index + 1).padStart(2, "0")}</span>
                         <span className={`${SERIF} text-[clamp(16px,1.05vw,21px)] leading-[1.4] text-[#1F2A2E]`}>{line}</span>
+                        {/* The rule under a line draws itself: a border cannot be drawn, a span can */}
+                        <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
                       </li>
                     ))}
                   </ul>
@@ -341,11 +372,11 @@ export async function ShowcaseProfileView({
       <section id={VITRINE_ANCHORS.approach} className={SECTION}>
         <div className={WRAP}>
           {/* The approach text reads right under the title */}
-          <div className={HEAD} data-approach-head="">
+          <div className={HEAD} data-approach-head="" data-head="" data-appear="">
             <p className={`${LABEL}`}>{t("vitrine.approach.eyebrow")}</p>
             <h2 className={`${H2} mt-5`}>{text("approachTitle", t("vitrine.approach.title"))}</h2>
             {profile.approach.length > 0 ? (
-              <div className="mt-5 space-y-5 text-left">
+              <div className="mt-5 space-y-5 text-left" data-paras="" data-appear="">
                 {profile.approach.map((paragraph, index) => (
                   <p key={index} className={`${BODY} whitespace-pre-line`}>
                     {paragraph}
@@ -407,42 +438,87 @@ export async function ShowcaseProfileView({
         <section id={VITRINE_ANCHORS.focus} className={SECTION}>
           <div className={WRAP}>
             {/* The intro reads as the title's subtitle, right under it */}
-            <div className={HEAD} data-expertises-head="">
+            <div className={HEAD} data-expertises-head="" data-head="" data-appear="">
               <p className={LABEL}>{t("vitrine.focus.eyebrow")}</p>
               <h2 className={`${H2} mt-5`}>{text("expertisesTitle", t("vitrine.expertisesTitle"))}</h2>
               <p className={`${BODY} mx-auto mt-5 max-w-[84ch]`}>{text("expertisesIntro", t("vitrine.expertisesIntro", { name }))}</p>
             </div>
             {/* Lines, not cards: the area's name, then what it covers, a hairline between each. */}
-            <ul className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[100ch] border-t border-[#E2DCD1] text-left">
+            <ul
+              className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[100ch] border-t border-[#E2DCD1] text-left"
+              data-steps=""
+              data-reveal="0"
+            >
               {profile.focusAreas.map((area, index) => (
                 <li
                   key={index}
-                  data-reveal={index % 3}
+                  data-step=""
                   data-focus-area=""
-                  className="grid gap-x-[clamp(24px,3vw,56px)] gap-y-2 border-b border-[#E2DCD1] py-[clamp(18px,1.8vw,28px)] md:grid-cols-[minmax(0,11fr)_minmax(0,17fr)]"
+                  style={{ "--vt-i": index } as CSSProperties}
+                  className="relative grid gap-x-[clamp(24px,3vw,56px)] gap-y-2 py-[clamp(18px,1.8vw,28px)] md:grid-cols-[minmax(0,11fr)_minmax(0,17fr)]"
                 >
                   <h3 className={`${SERIF} text-[clamp(19px,1.3vw,26px)] leading-[1.2] text-[#1F2A2E] text-balance`}>
                     {area.title}
                   </h3>
-                  <div className="min-w-0">
+                  {/* The description follows its title a beat behind */}
+                  <div className="vt-step-late min-w-0">
                     {area.body.map((paragraph, paragraphIndex) => (
                       <p key={paragraphIndex} className="vt-md leading-[1.7] text-[#3E494B] text-pretty">
                         {paragraph}
                       </p>
                     ))}
                   </div>
+                  <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
                 </li>
               ))}
             </ul>
-            {/* The catalogue areas close the section as tags: the words a visitor scans for. */}
+            {/* The catalogue themes close the section: one a line, opened to read what it covers.
+                A theme nobody has written about is a line, not an empty thing to open. */}
             {profile.expertises.length > 0 ? (
-              <ul className="mx-auto mt-[clamp(28px,3vw,44px)] flex max-w-[100ch] flex-wrap justify-center gap-2.5" data-expertise-tags="">
-                {profile.expertises.map((expertise) => (
-                  <li key={expertise.label} className={PILL}>
-                    {expertise.label}
-                  </li>
-                ))}
-              </ul>
+              <div
+                className="mx-auto mt-[clamp(36px,4vw,64px)] max-w-[100ch]"
+                data-expertise-themes=""
+                data-steps=""
+                data-reveal="0"
+              >
+                <p className={LABEL}>{t("vitrine.themes.title")}</p>
+                <ul className="mt-[clamp(18px,2vw,32px)] border-t border-[#E2DCD1] text-left">
+                  {profile.expertises.map((expertise, index) => (
+                    <li
+                      key={expertise.label}
+                      data-step=""
+                      style={{ "--vt-i": index } as CSSProperties}
+                      className="relative"
+                    >
+                      {expertise.description ? (
+                        <details>
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-[clamp(16px,2vw,40px)] py-[clamp(14px,1.4vw,22px)] [&::-webkit-details-marker]:hidden">
+                            <span className={`${SERIF} text-[clamp(17px,1.15vw,23px)] leading-[1.3] text-[#1F2A2E]`}>
+                              {expertise.label}
+                            </span>
+                            {/* A plus that turns into a cross when the line is open */}
+                            <Plus
+                              aria-hidden="true"
+                              strokeWidth={1.5}
+                              className="vt-theme-mark h-[clamp(18px,1.3vw,24px)] w-[clamp(18px,1.3vw,24px)] shrink-0 text-[color:var(--vt-accent,#17505F)]"
+                            />
+                          </summary>
+                          <p className={`vt-theme-body ${BODY} max-w-[82ch] pb-[clamp(16px,1.6vw,26px)]`}>
+                            {expertise.description}
+                          </p>
+                        </details>
+                      ) : (
+                        <div className="py-[clamp(14px,1.4vw,22px)]">
+                          <span className={`${SERIF} text-[clamp(17px,1.15vw,23px)] leading-[1.3] text-[#1F2A2E]`}>
+                            {expertise.label}
+                          </span>
+                        </div>
+                      )}
+                      <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </div>
         </section>
@@ -455,8 +531,10 @@ export async function ShowcaseProfileView({
       {products.length > 0 ? (
         <section id={VITRINE_ANCHORS.products} className={SECTION}>
           <div className={WRAP}>
-            <p className={`${LABEL}`}>{t("vitrine.products.eyebrow")}</p>
-            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
+            <div className={HEAD} data-head="" data-appear="">
+              <p className={LABEL}>{t("vitrine.products.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
+            </div>
             <ul
               className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${products.length >= 3 ? "xl:grid-cols-3" : ""}`}
             >
@@ -466,8 +544,8 @@ export async function ShowcaseProfileView({
                   data-reveal={index}
                   className="group flex min-w-0 flex-col overflow-hidden rounded-[36px] bg-white p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_70px_-50px_rgba(31,42,46,0.55)] motion-reduce:hover:translate-y-0"
                 >
-                  <a href={product.url} className="relative block aspect-[16/10] w-full overflow-hidden rounded-[28px] bg-[#F6F3EE]">
-                    {product.iconUrl ? (
+                  {product.iconUrl ? (
+                    <a href={product.url} className="relative block aspect-[16/10] w-full overflow-hidden rounded-[28px] bg-[#F6F3EE]">
                       <Image
                         src={product.iconUrl}
                         alt=""
@@ -476,12 +554,18 @@ export async function ShowcaseProfileView({
                         className="object-cover transition-transform duration-700 group-hover:scale-[1.04] motion-reduce:transition-none"
                         unoptimized={preview}
                       />
-                    ) : null}
-                    <span className="absolute left-4 top-4 rounded-full bg-white/90 px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)] backdrop-blur-md">
-                      {t(`profile.productType_${product.type}`)}
-                    </span>
-                  </a>
+                      <span className="absolute left-4 top-4 rounded-full bg-white/90 px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)] backdrop-blur-md">
+                        {t(`profile.productType_${product.type}`)}
+                      </span>
+                    </a>
+                  ) : null}
                   <div className="flex flex-1 flex-col px-[clamp(10px,1.2vw,18px)] pb-3 pt-6">
+                    {/* Without an image the type has nowhere to sit, so it opens the card instead. */}
+                    {product.iconUrl ? null : (
+                      <span className="mb-4 inline-flex w-fit rounded-full bg-[#F6F3EE] px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)]">
+                        {t(`profile.productType_${product.type}`)}
+                      </span>
+                    )}
                     <h3 className={`${SERIF} break-words text-[clamp(21px,1.5vw,26px)] leading-tight text-[#1F2A2E]`}>
                       <a href={product.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
                         {product.title}
@@ -500,9 +584,12 @@ export async function ShowcaseProfileView({
                       <span className={`${SERIF} text-[30px] text-[#1F2A2E]`}>
                         {product.priceCents > 0 ? money.format(product.priceCents / 100) : t("profile.productFree")}
                       </span>
-                      <a href={product.url} className={`${BUTTON_OUTLINE} py-3`}>
+                      <a href={product.url} className={`group ${BUTTON_OUTLINE} py-3`}>
                         {t("profile.productOpen")}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                          aria-hidden="true"
+                        />
                       </a>
                     </div>
                   </div>
@@ -520,8 +607,10 @@ export async function ShowcaseProfileView({
       {articles.length > 0 ? (
         <section id={VITRINE_ANCHORS.articles} className={SECTION} data-articles="">
           <div className={WRAP}>
-            <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
-            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
+            <div className={HEAD} data-head="" data-appear="">
+              <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
+            </div>
             <ul className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${articles.length >= 3 ? "xl:grid-cols-3" : ""}`}>
               {articles.map((article, index) => (
                 <li
@@ -554,9 +643,12 @@ export async function ShowcaseProfileView({
                     </h3>
                     {article.summary ? <p className="mt-3 line-clamp-3 vt-md leading-[1.7] text-[#5B6566]">{article.summary}</p> : null}
                     <div className="mt-auto pt-6">
-                      <a href={article.url} className={`${BUTTON_OUTLINE} py-3`}>
+                      <a href={article.url} className={`group ${BUTTON_OUTLINE} py-3`}>
                         {t("vitrine.articles.read")}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                          aria-hidden="true"
+                        />
                       </a>
                     </div>
                   </div>
@@ -634,11 +726,14 @@ export async function ShowcaseProfileView({
             <a
               href={bookHref}
               {...bookFunnel}
-              className={`vt-line mt-[clamp(24px,2.4vw,42px)] ${BUTTON_HERO}`}
+              className={`group vt-line mt-[clamp(24px,2.4vw,42px)] ${BUTTON_HERO}`}
               style={{ animationDelay: `${afterName + 0.14}s` }}
             >
               {bookLabel}
-              <ArrowRight className="h-[1.1em] w-[1.1em]" aria-hidden="true" />
+              <ArrowRight
+                className="h-[1.1em] w-[1.1em] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                aria-hidden="true"
+              />
             </a>
           </div>
         </div>
@@ -653,7 +748,7 @@ export async function ShowcaseProfileView({
       {preview ? null : (
         <>
           <div aria-hidden="true" className="h-[92px] bg-[#F6F3EE] md:hidden" />
-          <div className="fixed inset-x-3 bottom-3 z-[60] flex items-center gap-3 rounded-full border border-[#ECE8E1] bg-white/95 py-2 pl-5 pr-2 shadow-[0_18px_40px_-20px_rgba(31,42,46,0.45)] backdrop-blur-xl [margin-bottom:env(safe-area-inset-bottom)] md:hidden">
+          <div className="vt-bar fixed inset-x-3 bottom-3 z-[60] flex items-center gap-3 rounded-full border border-[#ECE8E1] bg-white/95 py-2 pl-5 pr-2 shadow-[0_18px_40px_-20px_rgba(31,42,46,0.45)] backdrop-blur-xl [margin-bottom:env(safe-area-inset-bottom)] md:hidden">
             {standard.offered ? (
               <div className="min-w-0">
                 {standardPrice !== null ? (

@@ -787,6 +787,9 @@
       "showcaseHint": "Les professionnels peuvent l'afficher sur leur page vitrine, et elle pourra avoir ses propres pages par ville.",
       "slugLabel": "Segment d'adresse",
       "slugHint": "Sert dans l'adresse des pages par ville, par exemple /specialite/anxiete. Laissez vide pour le créer à partir du libellé français.",
+      "descriptionFrLabel": "Ce que couvre le thème (français)",
+      "descriptionEnLabel": "Ce que couvre le thème (anglais)",
+      "descriptionHint": "Quelques phrases, écrites une seule fois : elles s'affichent sur la page de chaque professionnel qui offre ce thème, sous « Motifs de consultation ». 600 caractères, un seul paragraphe. Laissez vide pour que le thème soit nommé sans être expliqué.",
       "showcaseBadge": "Pages vitrines"
     },
     "motifs": {
@@ -7423,7 +7426,7 @@
         "credentials": "Parcours",
         "approach": "Approche",
         "focus": "Accompagnement",
-        "products": "Formations",
+        "products": "Ressources",
         "articles": "Articles"
       },
       "chips": {
@@ -7459,7 +7462,7 @@
         "methodsTitle": "Les méthodes que j'utilise"
       },
       "products": {
-        "eyebrow": "Formations et produits",
+        "eyebrow": "Ressources",
         "title": "Apprendre à votre rythme, entre les séances"
       },
       "articles": {
@@ -7469,6 +7472,9 @@
       },
       "focus": {
         "eyebrow": "Accompagnement"
+      },
+      "themes": {
+        "title": "Motifs de consultation"
       },
       "emergencyTitle": "Besoin d'aide rapidement ?",
       "expertisesTitle": "Ce que j'accompagne",
@@ -7753,7 +7759,7 @@
         "about": "À propos",
         "approach": "Approche et déroulement d’une demande",
         "expertises": "Ce que j’accompagne",
-        "products": "Formations et produits",
+        "products": "Ressources",
         "articles": "Articles"
       },
       "show": "Afficher « {section} »",

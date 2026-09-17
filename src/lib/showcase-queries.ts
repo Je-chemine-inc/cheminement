@@ -67,13 +67,15 @@ async function loadExpertises(ids: readonly unknown[]): Promise<ShowcaseExpertis
     showcase: true,
     active: true,
   })
-    .select("slug labelFr labelEn")
+    .select("slug labelFr labelEn descriptionFr descriptionEn")
     .lean();
   return docs.map((doc) => ({
     id: String(doc._id),
     slug: doc.slug ?? null,
     labelFr: doc.labelFr,
     labelEn: doc.labelEn ?? null,
+    descriptionFr: doc.descriptionFr ?? null,
+    descriptionEn: doc.descriptionEn ?? null,
   }));
 }
 
