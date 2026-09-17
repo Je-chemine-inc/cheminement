@@ -173,18 +173,6 @@ export async function ShowcaseProfileView({
     products: products.length > 0,
     articles: articles.length > 0,
   });
-  const sections = vitrineSections({
-    hasAbout,
-    hasFocusAreas: profile.focusAreas.length > 0,
-    hasProducts: products.length > 0,
-    hasArticles: articles.length > 0,
-    order: shownSections,
-  });
-  const navLinks = sections.map((section: VitrineSection) => ({
-    href: `#${VITRINE_ANCHORS[section]}`,
-    label: t(`vitrine.nav.${section}`),
-  }));
-
   const languages = profile.languages.map((language) => t(`languages.${language}`)).join(", ");
   const standardPrice = headlinePrice(standard.prices);
   const years = profile.yearsOfExperience;
@@ -201,6 +189,20 @@ export async function ShowcaseProfileView({
       text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
     })),
   ];
+
+  const sections = vitrineSections({
+    hasAbout,
+    hasBrief: briefFacts.length > 0,
+    hasCredentials: profile.credentials.length > 0,
+    hasFocusAreas: profile.focusAreas.length > 0,
+    hasProducts: products.length > 0,
+    hasArticles: articles.length > 0,
+    order: shownSections,
+  });
+  const navLinks = sections.map((section: VitrineSection) => ({
+    href: `#${VITRINE_ANCHORS[section]}`,
+    label: t(`vitrine.nav.${section}`),
+  }));
 
   // Each section below the introduction on its own, so a professional can reorder or hide it (visibleSections).
   const sectionBlocks: Record<ShowcaseSectionKey, ReactNode> = {
@@ -232,7 +234,7 @@ export async function ShowcaseProfileView({
                 ))}
               </div>
               {briefFacts.length > 0 ? (
-                <div className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch]" data-brief="">
+                <div id={VITRINE_ANCHORS.brief} className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28" data-brief="">
                   <p className={LABEL}>{t("vitrine.about.factsTitle")}</p>
                   <ul className="mt-[clamp(20px,2vw,32px)] flex flex-wrap justify-center gap-2.5">
                     {briefFacts.map((fact, index) => (
@@ -254,7 +256,7 @@ export async function ShowcaseProfileView({
                 </figure>
               ) : null}
               {profile.credentials.length > 0 ? (
-                <div className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch]">
+                <div id={VITRINE_ANCHORS.credentials} className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28">
                   <p className={LABEL}>{t("vitrine.about.credentialsTitle")}</p>
                   <ul className="mt-[clamp(20px,2vw,32px)] border-t border-[#E2DCD1] text-left">
                     {profile.credentials.map((line, index) => (
