@@ -31,6 +31,13 @@ export interface IProCatalogItem extends Document {
    */
   showcase?: boolean;
   slug?: string;
+  /**
+   * Expertises on showcase pages (spec 003): what the theme covers, in a few
+   * sentences, written once by Je chemine and shown on every page offering it.
+   * Empty means the theme is named without being explained.
+   */
+  descriptionFr?: string;
+  descriptionEn?: string;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -56,6 +63,8 @@ const ProCatalogItemSchema = new Schema<IProCatalogItem>(
     showcase: { type: Boolean, default: false },
     // Never stored empty: the unique index below applies to every string.
     slug: { type: String, trim: true, lowercase: true },
+    descriptionFr: { type: String, trim: true, default: "", maxlength: 600 },
+    descriptionEn: { type: String, trim: true, default: "", maxlength: 600 },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },

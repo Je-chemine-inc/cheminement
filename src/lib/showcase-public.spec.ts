@@ -52,8 +52,8 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       quickConsultation: { durationMinutes: 25 },
     },
     expertises: [
-      { id: "e1", slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
-      { id: "e2", slug: "burn-out", labelFr: "Épuisement professionnel", labelEn: "" },
+      { id: "e1", slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety", descriptionFr: "Ce qu'elle couvre.", descriptionEn: "What it covers." },
+      { id: "e2", slug: "burn-out", labelFr: "Épuisement professionnel", labelEn: "", descriptionFr: "Ce qu'il couvre." },
     ],
     prices: { solo: 130, couple: 160, group: 90 },
     quickPrice: 70,
@@ -94,8 +94,8 @@ describe("buildShowcasePublicProfile", () => {
       focusAreas: [{ title: "Anxiété et stress", body: ["On apprend.", "Ensemble."] }],
       methods: [{ name: "TCC", title: "Thérapie cognitive", body: ["Des outils concrets."] }],
       expertises: [
-        { slug: "burn-out", label: "Épuisement professionnel" },
-        { slug: "anxiete", label: "Anxiété" },
+        { slug: "burn-out", label: "Épuisement professionnel", description: "Ce qu'il couvre." },
+        { slug: "anxiete", label: "Anxiété", description: "Ce qu'elle couvre." },
       ],
       languages: ["french", "english"],
       modalities: ["inPerson", "video"],
@@ -128,6 +128,23 @@ describe("buildShowcasePublicProfile", () => {
     expect(profile.methods[0]).toMatchObject({ name: "CBT", title: "Thérapie cognitive" });
     expect(profile.quote).toBe("Chacun trouve ses ressources.");
     expect(profile.expertises.map((e) => e.label)).toEqual(["Épuisement professionnel", "Anxiety"]);
+    // A theme's description follows the same rule as its label: the English one when it exists.
+    expect(profile.expertises.map((e) => e.description)).toEqual(["Ce qu'il couvre.", "What it covers."]);
+  });
+
+  it("names a theme nobody has written about, without anything to open", () => {
+    const profile = buildShowcasePublicProfile(
+      input({
+        expertises: [
+          { id: "e1", slug: "anxiete", labelFr: "Anxiété", labelEn: "Anxiety" },
+          { id: "e2", slug: "burn-out", labelFr: "Épuisement professionnel", descriptionFr: "   " },
+        ],
+      }),
+    )!;
+    expect(profile.expertises).toEqual([
+      { slug: "burn-out", label: "Épuisement professionnel", description: "" },
+      { slug: "anxiete", label: "Anxiété", description: "" },
+    ]);
   });
 
   it("never lets a private field through, whatever the sources carry", () => {

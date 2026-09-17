@@ -92,6 +92,9 @@ export interface ShowcaseExpertiseSource {
   slug?: string | null;
   labelFr: string;
   labelEn?: string | null;
+  /** What the theme covers, written once by Je chemine; empty when nothing is written. */
+  descriptionFr?: string | null;
+  descriptionEn?: string | null;
 }
 
 export type ShowcaseServiceSwitches = { standard?: boolean | null; quick?: boolean | null } | null | undefined;
@@ -142,7 +145,8 @@ export interface ShowcasePublicProfile {
   credentials: string[];
   focusAreas: { title: string; body: string[] }[];
   methods: { name: string; title: string; body: string[] }[];
-  expertises: { slug: string | null; label: string }[];
+  /** The catalogue themes the professional offers, each with what it covers ("" when unwritten). */
+  expertises: { slug: string | null; label: string; description: string }[];
   languages: ShowcaseLanguageKey[];
   modalities: ShowcaseModalityKey[];
   officeCity: string | null;
@@ -302,8 +306,13 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
   for (const id of content.expertiseIds ?? []) {
     const expertise = byId.get(String(id));
     if (!expertise) continue;
+    // The English wording when there is one, the French otherwise — the rule the label follows.
     const label = locale === "en" && expertise.labelEn?.trim() ? expertise.labelEn.trim() : expertise.labelFr.trim();
-    expertises.push({ slug: expertise.slug?.trim() || null, label });
+    const description =
+      locale === "en" && expertise.descriptionEn?.trim()
+        ? expertise.descriptionEn.trim()
+        : (expertise.descriptionFr?.trim() ?? "");
+    expertises.push({ slug: expertise.slug?.trim() || null, label, description });
   }
 
   const offeredTypes = uniqueKeys(profile?.sessionTypes, therapyTypeOf, SHOWCASE_THERAPY_TYPES);

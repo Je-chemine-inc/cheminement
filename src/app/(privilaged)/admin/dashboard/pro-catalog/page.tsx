@@ -12,6 +12,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +35,9 @@ interface CatalogItem {
   active: boolean;
   /** Spec 003: an expertise offered as a tag on showcase pages. */
   showcase: boolean;
+  /** What the theme covers, on every page offering it. */
+  descriptionFr: string;
+  descriptionEn: string;
   /** Its URL segment on the city pages. */
   slug: string;
 }
@@ -45,6 +49,8 @@ const emptyDraft = (category: Category): CatalogItem => ({
   labelEn: "",
   active: true,
   showcase: false,
+  descriptionFr: "",
+  descriptionEn: "",
   slug: "",
 });
 
@@ -95,7 +101,13 @@ export default function AdminProCatalogPage() {
     setEditorOpen(true);
   };
   const openEdit = (item: CatalogItem) => {
-    setDraft({ ...item, showcase: item.showcase === true, slug: item.slug ?? "" });
+    setDraft({
+      ...item,
+      showcase: item.showcase === true,
+      slug: item.slug ?? "",
+      descriptionFr: item.descriptionFr ?? "",
+      descriptionEn: item.descriptionEn ?? "",
+    });
     setMutationError(null);
     setEditorOpen(true);
   };
@@ -124,7 +136,12 @@ export default function AdminProCatalogPage() {
             // Only an expertise can appear on showcase pages; the API refuses
             // these fields for the other categories.
             ...(draft.category === "expertise"
-              ? { showcase: draft.showcase, slug: draft.slug.trim().toLowerCase() }
+              ? {
+                  showcase: draft.showcase,
+                  slug: draft.slug.trim().toLowerCase(),
+                  descriptionFr: draft.descriptionFr,
+                  descriptionEn: draft.descriptionEn,
+                }
               : {}),
           }),
         },
@@ -333,6 +350,25 @@ export default function AdminProCatalogPage() {
                     onChange={(e) => setDraft({ ...draft, slug: e.target.value.toLowerCase() })}
                   />
                   <p className="text-xs text-muted-foreground">{t("slugHint")}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pro-catalog-description-fr">{t("descriptionFrLabel")}</Label>
+                  <Textarea
+                    id="pro-catalog-description-fr"
+                    rows={4}
+                    maxLength={600}
+                    value={draft.descriptionFr}
+                    onChange={(e) => setDraft({ ...draft, descriptionFr: e.target.value })}
+                  />
+                  <Label htmlFor="pro-catalog-description-en">{t("descriptionEnLabel")}</Label>
+                  <Textarea
+                    id="pro-catalog-description-en"
+                    rows={4}
+                    maxLength={600}
+                    value={draft.descriptionEn}
+                    onChange={(e) => setDraft({ ...draft, descriptionEn: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("descriptionHint")}</p>
                 </div>
               </div>
             )}

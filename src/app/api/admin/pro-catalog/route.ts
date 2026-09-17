@@ -8,6 +8,7 @@ import {
   normalizeAliases,
   serializeCatalogItem,
   catalogSlug,
+  catalogDescription,
 } from "@/lib/pro-catalog";
 
 // GET /api/admin/pro-catalog — full list (active + inactive), all categories.
@@ -18,7 +19,7 @@ export async function GET() {
   try {
     const docs = await ProCatalogItem.find({})
       .sort({ category: 1, labelFr: 1 })
-      .select("category labelFr labelEn aliases active showcase slug createdAt updatedAt")
+      .select("category labelFr labelEn aliases active showcase slug descriptionFr descriptionEn createdAt updatedAt")
       .lean();
     return NextResponse.json({ items: docs.map(serializeCatalogItem) });
   } catch (error) {
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
     const labelEn = typeof body?.labelEn === "string" ? body.labelEn.trim() : "";
     const aliases = normalizeAliases(body?.aliases);
     const active = body?.active !== false;
+    // Only an expertise's description is ever read (on showcase pages), but it costs nothing to keep
+    // whatever an admin writes on any item.
+    const descriptionFr = catalogDescription(body?.descriptionFr);
+    const descriptionEn = catalogDescription(body?.descriptionEn);
 
     if (!PRO_CATALOG_CATEGORIES.includes(category)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
@@ -92,6 +97,8 @@ export async function POST(req: NextRequest) {
       aliases,
       active,
       showcase,
+      descriptionFr,
+      descriptionEn,
       ...(slug ? { slug } : {}),
       createdBy: auth.session!.user.id,
       updatedBy: auth.session!.user.id,

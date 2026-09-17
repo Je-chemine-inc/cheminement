@@ -6,6 +6,7 @@ import {
   normalizeAliases,
   serializeCatalogItem,
   catalogSlug,
+  catalogDescription,
 } from "@/lib/pro-catalog";
 
 // PATCH /api/admin/pro-catalog/[id]
@@ -44,6 +45,13 @@ export async function PATCH(
     }
     if (typeof body?.active === "boolean") {
       update.active = body.active;
+    }
+    // What the theme covers, shown on every page offering it; "" clears it.
+    if (typeof body?.descriptionFr === "string") {
+      update.descriptionFr = catalogDescription(body.descriptionFr);
+    }
+    if (typeof body?.descriptionEn === "string") {
+      update.descriptionEn = catalogDescription(body.descriptionEn);
     }
 
     // Spec 003: only an expertise can be offered on showcase pages. Its URL

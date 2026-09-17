@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Plus,
   Quote,
   ReceiptText,
   ShieldCheck,
@@ -77,7 +78,6 @@ const LABEL_ON_DARK = "text-center text-[clamp(10.5px,0.72vw,13px)] font-semibol
 const H2 = `${SERIF} text-[clamp(26px,1.9vw,42px)] font-normal leading-[1.12] tracking-[-0.01em] text-[#1F2A2E] text-pretty`;
 const BODY = "text-[clamp(15.5px,calc(0.2vw+12.5px),18px)] leading-[1.7] text-[#3E494B] text-pretty";
 const SOFT_SHADOW = "shadow-[0_30px_70px_-50px_rgba(31,42,46,0.45)]";
-const PILL = "inline-flex items-center gap-2 rounded-full border border-[#ECE8E1] bg-white px-[clamp(16px,1vw,24px)] py-[clamp(10px,0.6vw,14px)] text-[clamp(15px,calc(0.3vw+10px),19px)] text-[#1F2A2E]";
 // The hero's button: larger than the shared one because it stands alone on a whole screen, and in
 // the platform's own primary colour so it reads as the same button as « Commencer » in the nav bar.
 const BUTTON_HERO =
@@ -114,10 +114,22 @@ html:has(#${ROOT_ID}){scroll-behavior:smooth}
 #${ROOT_ID} [data-brief].vt-seen .vt-sheen{animation:vtSheen 2.2s cubic-bezier(.3,.7,.35,1) .2s both}
 #${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:transform .6s cubic-bezier(.2,.8,.24,1),border-color .6s ease}
 #${ROOT_ID} [data-brief-item]:hover .vt-brief-icon{transform:scale(1.07);border-color:rgba(255,255,255,.55)}
+@keyframes vtStepNum{from{opacity:0;transform:translate3d(-7px,0,0)}to{opacity:1;transform:none}}
+@keyframes vtStepLate{from{opacity:0;transform:translate3d(0,9px,0)}to{opacity:1;transform:none}}
+/* « Parcours » on arrival: a line rises, its rule draws from the left, its numeral follows. */
+#${ROOT_ID} [data-steps].vt-seen [data-step]{animation:vtBriefIn .85s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-rule{animation:vtBriefRule 1.05s cubic-bezier(.22,.8,.26,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 110ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-num{animation:vtStepNum .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 190ms)}
+#${ROOT_ID} [data-steps].vt-seen .vt-step-late{animation:vtStepLate .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 200ms)}
+#${ROOT_ID} details .vt-theme-mark{transition:transform .5s cubic-bezier(.2,.8,.24,1)}
+#${ROOT_ID} details[open] .vt-theme-mark{transform:rotate(45deg)}
+#${ROOT_ID} details[open] .vt-theme-body{animation:vtStepLate .55s cubic-bezier(.16,.84,.3,1) both}
+#${ROOT_ID} [data-step] .vt-step-num{transition:color .45s ease}
+#${ROOT_ID} [data-step]:hover .vt-step-num{color:var(--vt-accent,#17505F)}
 @keyframes vitrineIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
 .vitrine-up{animation:vitrineUp .8s cubic-bezier(.22,.8,.26,1) both}
 .vitrine-in{animation:vitrineIn 1s cubic-bezier(.22,.8,.26,1) .05s both}
-@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen{animation:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:none}}
+@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen,#${ROOT_ID} [data-step],#${ROOT_ID} .vt-step-rule,#${ROOT_ID} .vt-step-num,#${ROOT_ID} .vt-step-late,#${ROOT_ID} .vt-theme-body{animation:none}#${ROOT_ID} details .vt-theme-mark{transition:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon,#${ROOT_ID} [data-step] .vt-step-num{transition:none}}
 `;
 
 /** Where "request an appointment" leads: the booking funnel on www. */
@@ -307,16 +319,25 @@ export async function ShowcaseProfileView({
                 </figure>
               ) : null}
               {profile.credentials.length > 0 ? (
-                <div id={VITRINE_ANCHORS.credentials} className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28">
+                <div
+                  id={VITRINE_ANCHORS.credentials}
+                  className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28"
+                  data-steps=""
+                  data-reveal="0"
+                >
                   <p className={LABEL}>{t("vitrine.about.credentialsTitle")}</p>
                   <ul className="mt-[clamp(20px,2vw,32px)] border-t border-[#E2DCD1] text-left">
                     {profile.credentials.map((line, index) => (
                       <li
                         key={index}
-                        className="flex items-baseline gap-[clamp(16px,1.6vw,28px)] border-b border-[#E2DCD1] py-[clamp(12px,1.1vw,18px)]"
+                        data-step=""
+                        style={{ "--vt-i": index } as CSSProperties}
+                        className="relative flex items-baseline gap-[clamp(16px,1.6vw,28px)] py-[clamp(12px,1.1vw,18px)]"
                       >
-                        <span className="vt-xs tabular-nums text-[#1F2A2E]/30">{String(index + 1).padStart(2, "0")}</span>
+                        <span className="vt-step-num vt-xs tabular-nums text-[#1F2A2E]/30">{String(index + 1).padStart(2, "0")}</span>
                         <span className={`${SERIF} text-[clamp(16px,1.05vw,21px)] leading-[1.4] text-[#1F2A2E]`}>{line}</span>
+                        {/* The rule under a line draws itself: a border cannot be drawn, a span can */}
+                        <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
                       </li>
                     ))}
                   </ul>
@@ -413,36 +434,81 @@ export async function ShowcaseProfileView({
               <p className={`${BODY} mx-auto mt-5 max-w-[84ch]`}>{text("expertisesIntro", t("vitrine.expertisesIntro", { name }))}</p>
             </div>
             {/* Lines, not cards: the area's name, then what it covers, a hairline between each. */}
-            <ul className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[100ch] border-t border-[#E2DCD1] text-left">
+            <ul
+              className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[100ch] border-t border-[#E2DCD1] text-left"
+              data-steps=""
+              data-reveal="0"
+            >
               {profile.focusAreas.map((area, index) => (
                 <li
                   key={index}
-                  data-reveal={index % 3}
+                  data-step=""
                   data-focus-area=""
-                  className="grid gap-x-[clamp(24px,3vw,56px)] gap-y-2 border-b border-[#E2DCD1] py-[clamp(18px,1.8vw,28px)] md:grid-cols-[minmax(0,11fr)_minmax(0,17fr)]"
+                  style={{ "--vt-i": index } as CSSProperties}
+                  className="relative grid gap-x-[clamp(24px,3vw,56px)] gap-y-2 py-[clamp(18px,1.8vw,28px)] md:grid-cols-[minmax(0,11fr)_minmax(0,17fr)]"
                 >
                   <h3 className={`${SERIF} text-[clamp(19px,1.3vw,26px)] leading-[1.2] text-[#1F2A2E] text-balance`}>
                     {area.title}
                   </h3>
-                  <div className="min-w-0">
+                  {/* The description follows its title a beat behind */}
+                  <div className="vt-step-late min-w-0">
                     {area.body.map((paragraph, paragraphIndex) => (
                       <p key={paragraphIndex} className="vt-md leading-[1.7] text-[#3E494B] text-pretty">
                         {paragraph}
                       </p>
                     ))}
                   </div>
+                  <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
                 </li>
               ))}
             </ul>
-            {/* The catalogue areas close the section as tags: the words a visitor scans for. */}
+            {/* The catalogue themes close the section: one a line, opened to read what it covers.
+                A theme nobody has written about is a line, not an empty thing to open. */}
             {profile.expertises.length > 0 ? (
-              <ul className="mx-auto mt-[clamp(28px,3vw,44px)] flex max-w-[100ch] flex-wrap justify-center gap-2.5" data-expertise-tags="">
-                {profile.expertises.map((expertise) => (
-                  <li key={expertise.label} className={PILL}>
-                    {expertise.label}
-                  </li>
-                ))}
-              </ul>
+              <div
+                className="mx-auto mt-[clamp(36px,4vw,64px)] max-w-[100ch]"
+                data-expertise-themes=""
+                data-steps=""
+                data-reveal="0"
+              >
+                <p className={LABEL}>{t("vitrine.themes.title")}</p>
+                <ul className="mt-[clamp(18px,2vw,32px)] border-t border-[#E2DCD1] text-left">
+                  {profile.expertises.map((expertise, index) => (
+                    <li
+                      key={expertise.label}
+                      data-step=""
+                      style={{ "--vt-i": index } as CSSProperties}
+                      className="relative"
+                    >
+                      {expertise.description ? (
+                        <details>
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-[clamp(16px,2vw,40px)] py-[clamp(14px,1.4vw,22px)] [&::-webkit-details-marker]:hidden">
+                            <span className={`${SERIF} text-[clamp(17px,1.15vw,23px)] leading-[1.3] text-[#1F2A2E]`}>
+                              {expertise.label}
+                            </span>
+                            {/* A plus that turns into a cross when the line is open */}
+                            <Plus
+                              aria-hidden="true"
+                              strokeWidth={1.5}
+                              className="vt-theme-mark h-[clamp(18px,1.3vw,24px)] w-[clamp(18px,1.3vw,24px)] shrink-0 text-[color:var(--vt-accent,#17505F)]"
+                            />
+                          </summary>
+                          <p className={`vt-theme-body ${BODY} max-w-[82ch] pb-[clamp(16px,1.6vw,26px)]`}>
+                            {expertise.description}
+                          </p>
+                        </details>
+                      ) : (
+                        <div className="py-[clamp(14px,1.4vw,22px)]">
+                          <span className={`${SERIF} text-[clamp(17px,1.15vw,23px)] leading-[1.3] text-[#1F2A2E]`}>
+                            {expertise.label}
+                          </span>
+                        </div>
+                      )}
+                      <span aria-hidden="true" className="vt-step-rule absolute inset-x-0 bottom-0 h-px origin-left bg-[#E2DCD1]" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </div>
         </section>
