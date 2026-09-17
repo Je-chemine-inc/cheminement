@@ -7384,7 +7384,6 @@
       "officeIn": "Office in {city}",
       "experience": "{years, plural, =0 {Less than a year of experience} one {# year of experience} other {# years of experience}}",
       "bookCta": "Request an appointment",
-      "matchCta": "Get matched with a professional",
       "presentationTitle": "About",
       "approachTitle": "My approach",
       "valuesTitle": "Values",
@@ -7483,8 +7482,7 @@
       },
       "sticky": {
         "price": "{price} · {minutes} min",
-        "note": "Standard consultation",
-        "cta": "Book an appointment"
+        "note": "Standard consultation"
       }
     },
     "titles": {

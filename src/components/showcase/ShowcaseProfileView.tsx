@@ -16,7 +16,6 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import type { DirectRequestService } from "@/lib/direct-request-rules";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import { VITRINE_ANCHORS, formatShowcasePrice, headlinePrice, vitrineSections, type VitrineSection } from "@/lib/showcase-vitrine";
@@ -136,15 +135,13 @@ export async function ShowcaseProfileView({
       ? t("vitrine.orderPermit", { order: orderName, number: profile.licenseNumber })
       : orderName ?? (profile.licenseNumber ? t("profile.permit", { number: profile.licenseNumber }) : null);
   const officeCity = profile.officeCity ?? profile.city.name;
-  const { standard, quick } = profile.services;
+  const { standard } = profile.services;
   const bookingUrl = showcaseBookingUrl(profile);
-  const bookable: DirectRequestService[] = [
-    ...(standard.offered ? (["standard"] as const) : []),
-    ...(quick.offered ? (["quick"] as const) : []),
-  ];
-  // Every booking button leads to Je chemine's funnel: a request made there reaches the general
-  // list, which is where a professional is chosen.
-  const bookLabel = bookable.length > 0 ? t("profile.bookCta") : t("profile.matchCta");
+  // Every booking button opens Je chemine's own request, which reaches the general list where a
+  // professional is chosen. The funnel only treats a request as aimed at one professional when the
+  // link carries a service, a day and a time as well (readShowcaseDirectIntent); this one carries
+  // none of them, so the wording is the same whoever the page belongs to.
+  const bookLabel = t("profile.bookCta");
   const bookHref = bookingUrl;
   const bookFunnel = { "data-showcase-cta": "" };
   // The professional's own choices (texts, sections, colour, photos); each falls back to the page's default.
@@ -619,7 +616,7 @@ export async function ShowcaseProfileView({
               {...bookFunnel}
               className="ml-auto inline-flex flex-none items-center rounded-full bg-[color:var(--vt-accent,#17505F)] px-5 py-3.5 vt-sm font-semibold text-white"
             >
-              {bookable.length > 0 ? t("vitrine.sticky.cta") : bookLabel}
+              {bookLabel}
             </a>
           </div>
           <VitrineMotion rootId={ROOT_ID} />
