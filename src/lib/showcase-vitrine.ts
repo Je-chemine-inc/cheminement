@@ -24,13 +24,15 @@ export function formatShowcasePrice(amount: number, localeTag: string): string {
 export const VITRINE_ANCHORS = {
   top: "haut",
   about: "a-propos",
+  brief: "en-bref",
+  credentials: "parcours",
   approach: "approche",
   focus: "accompagnement",
   products: "formations",
   articles: "articles",
 } as const;
 
-export type VitrineSection = "about" | "approach" | "focus" | "products" | "articles";
+export type VitrineSection = "about" | "brief" | "credentials" | "approach" | "focus" | "products" | "articles";
 
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
@@ -43,6 +45,10 @@ export const VITRINE_DAYS_PER_VIEW = 5;
  */
 export function vitrineSections(input: {
   hasAbout: boolean;
+  /** « En bref »: the chips under the presentation. */
+  hasBrief?: boolean;
+  /** « Parcours »: the professional's diplomas and roles. */
+  hasCredentials?: boolean;
   /** « Ce que j'accompagne »: the professional's own cards. */
   hasFocusAreas?: boolean;
   hasProducts: boolean;
@@ -53,6 +59,8 @@ export function vitrineSections(input: {
 }): VitrineSection[] {
   const sections: VitrineSection[] = [
     ...(input.hasAbout ? (["about"] as const) : []),
+    ...(input.hasBrief ? (["brief"] as const) : []),
+    ...(input.hasCredentials ? (["credentials"] as const) : []),
     "approach",
     ...(input.hasFocusAreas ? (["focus"] as const) : []),
     ...(input.hasProducts ? (["products"] as const) : []),
@@ -60,9 +68,11 @@ export function vitrineSections(input: {
   ];
   const order = input.order;
   if (!order) return sections;
-  // « Ce que j’accompagne » and « Mes champs d’expertise » are two headings drawn from one section
-  // key, so both follow the place the professional gave « expertises » in their order.
-  const keyOf = (section: VitrineSection) => (section === "focus" ? "expertises" : section);
+  // Some headings are blocks inside a section rather than sections of their own: « En bref » and
+  // « Parcours » sit in « À propos », « Ce que j’accompagne » comes from « expertises ». Each follows
+  // the place the professional gave the section it belongs to.
+  const INSIDE: Partial<Record<VitrineSection, string>> = { brief: "about", credentials: "about", focus: "expertises" };
+  const keyOf = (section: VitrineSection) => INSIDE[section] ?? section;
   return sections
     .filter((section) => order.includes(keyOf(section)))
     .sort((a, b) => order.indexOf(keyOf(a)) - order.indexOf(keyOf(b)));

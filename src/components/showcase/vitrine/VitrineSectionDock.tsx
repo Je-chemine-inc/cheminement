@@ -79,7 +79,7 @@ export function VitrineSectionDock({ links, navLabel }: { links: DockLink[]; nav
                 aria-current={current ? "true" : undefined}
                 className={`inline-flex whitespace-nowrap rounded-full px-[clamp(12px,1.1vw,20px)] py-[clamp(7px,0.6vw,11px)] text-[clamp(12px,0.78vw,14.5px)] font-semibold transition-colors duration-300 ${
                   current
-                    ? "bg-[color:var(--vt-accent,#17505F)] text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-[#3E494B] hover:bg-[#F6F3EE] hover:text-[color:var(--vt-accent,#17505F)]"
                 }`}
               >
