@@ -116,20 +116,30 @@ html:has(#${ROOT_ID}){scroll-behavior:smooth}
 #${ROOT_ID} [data-brief-item]:hover .vt-brief-icon{transform:scale(1.07);border-color:rgba(255,255,255,.55)}
 @keyframes vtStepNum{from{opacity:0;transform:translate3d(-7px,0,0)}to{opacity:1;transform:none}}
 @keyframes vtStepLate{from{opacity:0;transform:translate3d(0,9px,0)}to{opacity:1;transform:none}}
+@keyframes vtHeadIn{from{opacity:0;transform:translate3d(0,15px,0)}to{opacity:1;transform:none}}
+@keyframes vtBarIn{from{opacity:0;transform:translate3d(0,140%,0)}to{opacity:1;transform:none}}
 /* « Parcours » on arrival: a line rises, its rule draws from the left, its numeral follows. */
 #${ROOT_ID} [data-steps].vt-seen [data-step]{animation:vtBriefIn .85s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms)}
 #${ROOT_ID} [data-steps].vt-seen .vt-step-rule{animation:vtBriefRule 1.05s cubic-bezier(.22,.8,.26,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 110ms)}
 #${ROOT_ID} [data-steps].vt-seen .vt-step-num{animation:vtStepNum .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 190ms)}
 #${ROOT_ID} [data-steps].vt-seen .vt-step-late{animation:vtStepLate .8s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 95ms + 200ms)}
+/* A heading arrives in reading order — its label, its title, then what follows it; a run of
+   paragraphs arrives one after another. Both wait for .vt-seen, so neither exists without it. */
+#${ROOT_ID} [data-head].vt-seen > *,#${ROOT_ID} [data-paras].vt-seen > *{animation:vtHeadIn .85s cubic-bezier(.16,.84,.3,1) both}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(2),#${ROOT_ID} [data-paras].vt-seen > :nth-child(2){animation-delay:95ms}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(3),#${ROOT_ID} [data-paras].vt-seen > :nth-child(3){animation-delay:190ms}
+#${ROOT_ID} [data-head].vt-seen > :nth-child(n+4),#${ROOT_ID} [data-paras].vt-seen > :nth-child(n+4){animation-delay:270ms}
 #${ROOT_ID} details .vt-theme-mark{transition:transform .5s cubic-bezier(.2,.8,.24,1)}
 #${ROOT_ID} details[open] .vt-theme-mark{transform:rotate(45deg)}
 #${ROOT_ID} details[open] .vt-theme-body{animation:vtStepLate .55s cubic-bezier(.16,.84,.3,1) both}
 #${ROOT_ID} [data-step] .vt-step-num{transition:color .45s ease}
 #${ROOT_ID} [data-step]:hover .vt-step-num{color:var(--vt-accent,#17505F)}
 @keyframes vitrineIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+/* The phone's bar rises once the hero has had its moment, like the dock on a wider screen. */
+#${ROOT_ID} .vt-bar{animation:vtBarIn .8s cubic-bezier(.16,.84,.3,1) .9s both}
 .vitrine-up{animation:vitrineUp .8s cubic-bezier(.22,.8,.26,1) both}
 .vitrine-in{animation:vitrineIn 1s cubic-bezier(.22,.8,.26,1) .05s both}
-@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen,#${ROOT_ID} [data-step],#${ROOT_ID} .vt-step-rule,#${ROOT_ID} .vt-step-num,#${ROOT_ID} .vt-step-late,#${ROOT_ID} .vt-theme-body{animation:none}#${ROOT_ID} details .vt-theme-mark{transition:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon,#${ROOT_ID} [data-step] .vt-step-num{transition:none}}
+@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} .vt-bar,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen,#${ROOT_ID} [data-step],#${ROOT_ID} .vt-step-rule,#${ROOT_ID} .vt-step-num,#${ROOT_ID} .vt-step-late,#${ROOT_ID} .vt-theme-body,#${ROOT_ID} [data-head] > *,#${ROOT_ID} [data-paras] > *{animation:none}#${ROOT_ID} details .vt-theme-mark{transition:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon,#${ROOT_ID} [data-step] .vt-step-num{transition:none}}
 `;
 
 /** Where "request an appointment" leads: the booking funnel on www. */
@@ -264,7 +274,7 @@ export async function ShowcaseProfileView({
                   {profile.headline}
                 </p>
               ) : null}
-              <div className="mx-auto mt-8 max-w-[100ch] space-y-5 text-left">
+              <div className="mx-auto mt-8 max-w-[100ch] space-y-5 text-left" data-paras="" data-appear="">
                 {[...profile.intro, ...about].map((paragraph, index) => (
                   <p key={index} className={`${BODY} whitespace-pre-line`}>
                     {paragraph}
@@ -362,11 +372,11 @@ export async function ShowcaseProfileView({
       <section id={VITRINE_ANCHORS.approach} className={SECTION}>
         <div className={WRAP}>
           {/* The approach text reads right under the title */}
-          <div className={HEAD} data-approach-head="">
+          <div className={HEAD} data-approach-head="" data-head="" data-appear="">
             <p className={`${LABEL}`}>{t("vitrine.approach.eyebrow")}</p>
             <h2 className={`${H2} mt-5`}>{text("approachTitle", t("vitrine.approach.title"))}</h2>
             {profile.approach.length > 0 ? (
-              <div className="mt-5 space-y-5 text-left">
+              <div className="mt-5 space-y-5 text-left" data-paras="" data-appear="">
                 {profile.approach.map((paragraph, index) => (
                   <p key={index} className={`${BODY} whitespace-pre-line`}>
                     {paragraph}
@@ -428,7 +438,7 @@ export async function ShowcaseProfileView({
         <section id={VITRINE_ANCHORS.focus} className={SECTION}>
           <div className={WRAP}>
             {/* The intro reads as the title's subtitle, right under it */}
-            <div className={HEAD} data-expertises-head="">
+            <div className={HEAD} data-expertises-head="" data-head="" data-appear="">
               <p className={LABEL}>{t("vitrine.focus.eyebrow")}</p>
               <h2 className={`${H2} mt-5`}>{text("expertisesTitle", t("vitrine.expertisesTitle"))}</h2>
               <p className={`${BODY} mx-auto mt-5 max-w-[84ch]`}>{text("expertisesIntro", t("vitrine.expertisesIntro", { name }))}</p>
@@ -521,7 +531,7 @@ export async function ShowcaseProfileView({
       {products.length > 0 ? (
         <section id={VITRINE_ANCHORS.products} className={SECTION}>
           <div className={WRAP}>
-            <div className={HEAD}>
+            <div className={HEAD} data-head="" data-appear="">
               <p className={LABEL}>{t("vitrine.products.eyebrow")}</p>
               <h2 className={`${H2} mt-5`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
             </div>
@@ -574,9 +584,12 @@ export async function ShowcaseProfileView({
                       <span className={`${SERIF} text-[30px] text-[#1F2A2E]`}>
                         {product.priceCents > 0 ? money.format(product.priceCents / 100) : t("profile.productFree")}
                       </span>
-                      <a href={product.url} className={`${BUTTON_OUTLINE} py-3`}>
+                      <a href={product.url} className={`group ${BUTTON_OUTLINE} py-3`}>
                         {t("profile.productOpen")}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                          aria-hidden="true"
+                        />
                       </a>
                     </div>
                   </div>
@@ -594,8 +607,10 @@ export async function ShowcaseProfileView({
       {articles.length > 0 ? (
         <section id={VITRINE_ANCHORS.articles} className={SECTION} data-articles="">
           <div className={WRAP}>
-            <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
-            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
+            <div className={HEAD} data-head="" data-appear="">
+              <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
+            </div>
             <ul className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${articles.length >= 3 ? "xl:grid-cols-3" : ""}`}>
               {articles.map((article, index) => (
                 <li
@@ -628,9 +643,12 @@ export async function ShowcaseProfileView({
                     </h3>
                     {article.summary ? <p className="mt-3 line-clamp-3 vt-md leading-[1.7] text-[#5B6566]">{article.summary}</p> : null}
                     <div className="mt-auto pt-6">
-                      <a href={article.url} className={`${BUTTON_OUTLINE} py-3`}>
+                      <a href={article.url} className={`group ${BUTTON_OUTLINE} py-3`}>
                         {t("vitrine.articles.read")}
-                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                          aria-hidden="true"
+                        />
                       </a>
                     </div>
                   </div>
@@ -708,11 +726,14 @@ export async function ShowcaseProfileView({
             <a
               href={bookHref}
               {...bookFunnel}
-              className={`vt-line mt-[clamp(24px,2.4vw,42px)] ${BUTTON_HERO}`}
+              className={`group vt-line mt-[clamp(24px,2.4vw,42px)] ${BUTTON_HERO}`}
               style={{ animationDelay: `${afterName + 0.14}s` }}
             >
               {bookLabel}
-              <ArrowRight className="h-[1.1em] w-[1.1em]" aria-hidden="true" />
+              <ArrowRight
+                className="h-[1.1em] w-[1.1em] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:transform-none"
+                aria-hidden="true"
+              />
             </a>
           </div>
         </div>
@@ -727,7 +748,7 @@ export async function ShowcaseProfileView({
       {preview ? null : (
         <>
           <div aria-hidden="true" className="h-[92px] bg-[#F6F3EE] md:hidden" />
-          <div className="fixed inset-x-3 bottom-3 z-[60] flex items-center gap-3 rounded-full border border-[#ECE8E1] bg-white/95 py-2 pl-5 pr-2 shadow-[0_18px_40px_-20px_rgba(31,42,46,0.45)] backdrop-blur-xl [margin-bottom:env(safe-area-inset-bottom)] md:hidden">
+          <div className="vt-bar fixed inset-x-3 bottom-3 z-[60] flex items-center gap-3 rounded-full border border-[#ECE8E1] bg-white/95 py-2 pl-5 pr-2 shadow-[0_18px_40px_-20px_rgba(31,42,46,0.45)] backdrop-blur-xl [margin-bottom:env(safe-area-inset-bottom)] md:hidden">
             {standard.offered ? (
               <div className="min-w-0">
                 {standardPrice !== null ? (
