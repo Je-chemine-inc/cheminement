@@ -9,6 +9,7 @@ import {
 import ColorTransition from "@/components/ui/ColorTransition";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Seo");
@@ -16,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: t("approaches.title"),
     description: t("approaches.description"),
     openGraph: {
+      ...SITE_OPEN_GRAPH,
       title: t("approaches.title"),
       description: t("approaches.description"),
     },

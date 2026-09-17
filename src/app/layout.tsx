@@ -7,9 +7,10 @@ import { Providers } from "@/components/providers";
 import OrganizationJsonLd from "@/components/seo/OrganizationJsonLd";
 import { clientMessagesFor } from "@/lib/client-messages";
 import { SHOWCASE_PAGE_HEADER } from "@/lib/showcase-hosts";
+import { SITE_OPEN_GRAPH, SITE_NAME } from "@/lib/site-metadata";
 import { SITE_URL } from "@/lib/site-url";
 
-const SITE_TITLE = "Je chemine - Soins en santé mentale";
+const SITE_TITLE = `${SITE_NAME} - Soins en santé mentale`;
 const SITE_DESCRIPTION =
   "Plateforme de santé mentale du Québec : jumelage avec des professionnels qualifiés, prise de rendez-vous et accompagnement bilingue, en personne ou en ligne.";
 
@@ -27,21 +28,20 @@ export const metadata: Metadata = {
   title: {
     default: SITE_TITLE,
     // Pages set only their own name; the brand is appended here so every
-    // title is distinct without repeating "Je chemine" in each file.
-    template: "%s | Je chemine",
+    // title is distinct without repeating it in each file.
+    template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   icons: {
     icon: "/favicon.png",
   },
   // og:image / twitter:image are auto-injected from src/app/opengraph-image.tsx.
+  // No url here: it would make every page that inherits this claim the home page's address.
+  // The home page sets its own; everywhere else the canonical is the address.
   openGraph: {
-    type: "website",
-    siteName: "Je chemine",
+    ...SITE_OPEN_GRAPH,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    url: SITE_URL,
-    locale: "fr_CA",
   },
   twitter: {
     card: "summary_large_image",
