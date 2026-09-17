@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 import fr from "../../messages/fr.json";
@@ -62,6 +62,43 @@ describe("clientMessagesFor", () => {
         ).toContain(namespace);
       }
     }
+  });
+
+  /**
+   * The root layout sends the small bundle, and Next does not re-render a shared layout on a
+   * client-side navigation — so whatever area a visitor lands on decides the bundle for every page
+   * they click afterwards. Every area that renders pages therefore carries `SiteMessages` itself.
+   * A missing one is invisible from a direct load: it only shows when a visitor arrives on a
+   * professional's page and clicks into the site, and then every client component prints its key
+   * (seen in production 2026-09-17).
+   */
+  it("wraps every area of the site that renders pages in SiteMessages", () => {
+    const app = join(ROOT, "src/app");
+    // A professional's page is the one area that must NOT: it is why the small bundle exists.
+    const exempt = new Set(["api", "actions", "[proSlug]"]);
+    const areas = readdirSync(app, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !exempt.has(entry.name))
+      .map((entry) => entry.name);
+    expect(areas.length).toBeGreaterThan(0);
+
+    const rendersPages = (dir: string): boolean =>
+      readdirSync(dir, { withFileTypes: true }).some((entry) =>
+        entry.isDirectory() ? rendersPages(join(dir, entry.name)) : entry.name === "page.tsx",
+      );
+
+    for (const area of areas) {
+      if (!rendersPages(join(app, area))) continue;
+      const layout = join(app, area, "layout.tsx");
+      expect(existsSync(layout), `src/app/${area} renders pages but has no layout.tsx`).toBe(true);
+      expect(
+        readFileSync(layout, "utf8"),
+        `src/app/${area}/layout.tsx must wrap its pages in SiteMessages`,
+      ).toContain("SiteMessages");
+    }
+  });
+
+  it("keeps a professional's page out of it, which is the whole point", () => {
+    expect(existsSync(join(ROOT, "src/app/[proSlug]/layout.tsx"))).toBe(false);
   });
 
   it("renders the 404 of a marked path with server-side translations only", () => {
