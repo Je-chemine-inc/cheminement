@@ -16,6 +16,7 @@
  */
 export const SHOWCASE_PAGE_CLIENT_NAMESPACES = [
   "CookieConsent",
+  "Header",
   "InactivityGuard",
   "ShowcaseBooking",
   "ShowcaseWaitlist",

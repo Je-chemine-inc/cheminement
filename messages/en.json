@@ -7418,13 +7418,11 @@
       "orderPermit": "{order} · permit no. {number}",
       "placeBoth": "{city} and online",
       "placeVideo": "Online consultations",
-      "heroSecondary": "See fees",
       "nav": {
         "label": "On this page",
         "about": "About",
         "approach": "Approach",
-        "services": "Fees",
-        "slots": "Availability",
+        "focus": "What I help with",
         "products": "Trainings",
         "articles": "Articles"
       },
@@ -7458,42 +7456,7 @@
       "approach": {
         "eyebrow": "Approach",
         "title": "My approach",
-        "methodsTitle": "The methods I use",
-        "stepsTitle": "How a request works",
-        "step": "Step {number}",
-        "requestTitle": "Your request",
-        "requestBody": "You pick a time in the availability and fill in your request. The time is held for you while {name} reviews it.",
-        "answerTitle": "The answer",
-        "answerBody": "{name} confirms or declines within 24 hours at most. You receive the answer and the details by email.",
-        "firstTitle": "The first meeting",
-        "firstBody": "You go over your situation and set goals together, in the format you chose.",
-        "nextTitle": "What follows",
-        "nextBody": "The next meetings are scheduled with {name}. A receipt is issued for every paid session.",
-        "stepLabel": "Step {number}"
-      },
-      "values": {
-        "eyebrow": "Values",
-        "title": "What guides my practice",
-        "intro": "The principles behind every meeting, from the first conversation to follow-up."
-      },
-      "services": {
-        "eyebrow": "Services and fees",
-        "title": "Fees shown up front, no surprises",
-        "intro": "All fees are in Canadian dollars and shown before you make a request. Choose the consultation that suits you.",
-        "quickPoint": "For a specific, one-time need",
-        "priceLater": "Fee confirmed with your request",
-        "seeTimes": "See availability",
-        "seeQuick": "See times",
-        "standardPoint": "Ongoing support, session after session, at your own pace.",
-        "perSession": "per session",
-        "notesTitle": "Good to know"
-      },
-      "dispos": {
-        "eyebrow": "Availability",
-        "title": "Choose a time that works for you",
-        "intro": "Pick a day and a time: {name} answers your request within 24 hours at most.",
-        "closedTitle": "No consultation open right now",
-        "closedIntro": "Join the waitlist for {name}, or let Je chemine match you with another professional."
+        "methodsTitle": "The methods I use"
       },
       "products": {
         "eyebrow": "Trainings and products",
@@ -7504,23 +7467,12 @@
         "title": "Worth reading",
         "read": "Read the article"
       },
-      "expertises": {
-        "eyebrow": "Areas of expertise",
-        "title": "My areas of expertise",
-        "intro": "The main reasons people come to see me."
-      },
       "focus": {
         "eyebrow": "Support"
-      },
-      "cta": {
-        "title": "The first step is often the hardest",
-        "body": "Choose a time that works for you: your request goes straight to {name}.",
-        "waitlist": "Waitlist"
       },
       "emergencyTitle": "Need help quickly?",
       "expertisesTitle": "What I help with",
       "expertisesIntro": "The difficulties and life situations {name} can help you with.",
-      "ctaEyebrow": "First step",
       "footer": {
         "pageTitle": "On this page",
         "platformTitle": "Je chemine",
@@ -7801,13 +7753,9 @@
       "sections": {
         "about": "About",
         "approach": "Approach and how a request works",
-        "values": "Values",
-        "services": "Services and fees",
-        "slots": "Availability",
         "expertises": "What I help with",
         "products": "Trainings and products",
-        "articles": "Articles",
-        "cta": "Closing band"
+        "articles": "Articles"
       },
       "show": "Show “{section}”",
       "moveUp": "Move “{section}” up",
@@ -7834,16 +7782,7 @@
         "articlesTitle": "“Articles” title",
         "ctaTitle": "Closing band title",
         "ctaBody": "Closing band text"
-      },
-      "photosTitle": "Ambience photos",
-      "photosHint": "Choose your photos from Je chemine’s library. Your office photos always come first.",
-      "photoSlots": {
-        "band": "Large photo under the introduction",
-        "about": "Photo beside “About”",
-        "closing": "Closing band photo"
-      },
-      "photoAuto": "Automatic",
-      "photoOption": "Photo {number}"
+      }
     }
   },
   "ShowcaseAdmin": {

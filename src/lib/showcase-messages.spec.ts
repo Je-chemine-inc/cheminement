@@ -13,7 +13,6 @@ import { SHOWCASE_ADMIN_WORDED_KEYS, SHOWCASE_ERROR_CODES } from "@/lib/showcase
 import { SHOWCASE_BADGES } from "@/lib/showcase-badges";
 import {
   SHOWCASE_ACCENT_KEYS,
-  SHOWCASE_AMBIENCE_SLOTS,
   SHOWCASE_SECTION_KEYS,
   SHOWCASE_TEXT_DEFAULTS,
   SHOWCASE_TEXT_KEYS,
@@ -54,7 +53,6 @@ const LISTS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ["ShowcasePro.customize.texts", SHOWCASE_TEXT_KEYS],
   ["ShowcasePro.customize.sections", SHOWCASE_SECTION_KEYS],
   ["ShowcasePro.customize.accents", SHOWCASE_ACCENT_KEYS],
-  ["ShowcasePro.customize.photoSlots", SHOWCASE_AMBIENCE_SLOTS],
   // The page wording a blank text keeps.
   ["Showcase", Object.values(SHOWCASE_TEXT_DEFAULTS)],
 ];

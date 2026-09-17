@@ -75,6 +75,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description,
     image: profile.photoUrl ? canonicalSiteUrl(profile.photoUrl) : null,
     type: "profile",
+    // The pages are reachable by their link but kept out of search while their design and their text
+    // are still being reviewed with the professionals. Drop this, and the sitemap block in
+    // src/app/sitemap.ts, to let them be indexed.
+    index: false,
   });
 }
 

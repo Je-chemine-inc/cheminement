@@ -25,13 +25,10 @@ import {
   REQUIRED_SHOWCASE_SECTIONS,
   SHOWCASE_ACCENTS,
   SHOWCASE_ACCENT_KEYS,
-  SHOWCASE_AMBIENCE_SLOTS,
   SHOWCASE_TEXT_DEFAULTS,
   SHOWCASE_TEXT_KEYS,
   SHOWCASE_TEXT_LIMITS,
-  ambienceChoicesFor,
   type ShowcaseAccentKey,
-  type ShowcaseAmbienceSlot,
   type ShowcaseSectionKey,
   type ShowcaseTextKey,
 } from "@/lib/showcase-customization";
@@ -74,7 +71,6 @@ interface DraftState {
   sectionOrder: ShowcaseSectionKey[];
   hiddenSections: ShowcaseSectionKey[];
   accent: ShowcaseAccentKey;
-  ambience: Record<ShowcaseAmbienceSlot, string>;
 }
 
 const FIELD_LIMITS: Record<LocalizedField, number> = {
@@ -139,7 +135,6 @@ function toDraftState(
     sectionOrder: [...content.sectionOrder],
     hiddenSections: [...content.hiddenSections],
     accent: content.accent,
-    ambience: { ...content.ambience },
   };
 }
 
@@ -224,7 +219,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           sectionOrder: draft.sectionOrder,
           hiddenSections: draft.hiddenSections,
           accent: draft.accent,
-          ambience: draft.ambience,
           ...(audience === "admin"
             ? {
                 orderCode: draft.orderCode || null,
@@ -534,7 +528,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         ? draft.hiddenSections.filter((current) => current !== key)
         : [...draft.hiddenSections, key],
     });
-  const setAmbience = (slot: ShowcaseAmbienceSlot, src: string) => update({ ambience: { ...draft.ambience, [slot]: src } });
   // The wording a blank text keeps, as the page would show it.
   // The « À propos » title follows the page's rule (title, years, office city), the others take the name and city.
   const officeCityName = view.profileFacts.officeCity?.trim().slice(0, 80) || view.page.cityName;
@@ -888,45 +881,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           </div>
         </div>
 
-        <div className="space-y-4">
-          <Label>{t("customize.photosTitle")}</Label>
-          <p className="text-xs text-muted-foreground">{t("customize.photosHint")}</p>
-          {SHOWCASE_AMBIENCE_SLOTS.map((slot) => (
-            <div key={slot} className="space-y-2" data-ambience-slot={slot}>
-              <p className="text-sm text-foreground">{t(`customize.photoSlots.${slot}`)}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  aria-pressed={!draft.ambience[slot]}
-                  onClick={() => setAmbience(slot, "")}
-                  className={`flex h-16 items-center justify-center rounded-lg border-2 px-3 text-xs ${
-                    !draft.ambience[slot] ? "border-foreground text-foreground" : "border-border/60 text-muted-foreground"
-                  }`}
-                >
-                  {t("customize.photoAuto")}
-                </button>
-                {ambienceChoicesFor(slot).map((src, index) => {
-                  const on = draft.ambience[slot] === src;
-                  return (
-                    <button
-                      key={src}
-                      type="button"
-                      aria-pressed={on}
-                      aria-label={t("customize.photoOption", { number: index + 1 })}
-                      onClick={() => setAmbience(slot, src)}
-                      className={`overflow-hidden rounded-lg border-2 ${slot === "about" ? "h-20 w-16" : "h-16 w-24"} ${
-                        on ? "border-foreground" : "border-transparent"
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt="" className="h-full w-full object-cover" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className={cardClass} aria-labelledby="showcase-expertises-title">

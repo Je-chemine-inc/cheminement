@@ -89,7 +89,7 @@ export const SHOWCASE_LIMITS = {
   orderLabel: 80,
   /** A short description under each value. */
   valueDescription: 120,
-  /** Photos of the office, shown in the page's large image slots before any ambience photo. */
+  /** Photos of the office, the only photography a page shows besides the portrait. */
   officePhotos: 6,
   /** One sentence the page quotes, signed with the professional's name. */
   quote: 240,

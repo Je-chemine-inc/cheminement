@@ -1,4 +1,3 @@
-import { TALL_AMBIENCE_IMAGES, WIDE_AMBIENCE_IMAGES } from "@/lib/showcase-imagery";
 
 /**
  * What a professional makes their own on their page (spec 003, 2026-09-15),
@@ -15,48 +14,25 @@ export const SHOWCASE_TEXT_KEYS = [
   "aboutTitle",
   "approachTitle",
   "methodsTitle",
-  "stepsTitle",
-  "valuesTitle",
-  "valuesIntro",
-  "servicesTitle",
-  "servicesIntro",
-  "standardPoint",
-  "quickPoint",
-  "disposTitle",
-  "disposIntro",
   "expertisesTitle",
   "expertisesIntro",
   "productsTitle",
   "articlesTitle",
-  "ctaTitle",
-  "ctaBody",
 ] as const;
 export type ShowcaseTextKey = (typeof SHOWCASE_TEXT_KEYS)[number];
 
 const TITLE = 90;
 const INTRO = 300;
-const POINT = 160;
 
 /** Each text is a single line; titles are short, intros a sentence or two. */
 export const SHOWCASE_TEXT_LIMITS: Readonly<Record<ShowcaseTextKey, number>> = {
   aboutTitle: TITLE,
   approachTitle: TITLE,
   methodsTitle: TITLE,
-  stepsTitle: TITLE,
-  valuesTitle: TITLE,
-  valuesIntro: INTRO,
-  servicesTitle: TITLE,
-  servicesIntro: INTRO,
-  standardPoint: POINT,
-  quickPoint: POINT,
-  disposTitle: TITLE,
-  disposIntro: INTRO,
   expertisesTitle: TITLE,
   expertisesIntro: INTRO,
   productsTitle: TITLE,
   articlesTitle: TITLE,
-  ctaTitle: TITLE,
-  ctaBody: INTRO,
 };
 
 /** The page's own wording a blank text keeps (Showcase messages), shown as the editor's placeholder. */
@@ -64,21 +40,10 @@ export const SHOWCASE_TEXT_DEFAULTS: Readonly<Record<ShowcaseTextKey, string>> =
   aboutTitle: "vitrine.about.headingNoTitle",
   approachTitle: "vitrine.approach.title",
   methodsTitle: "vitrine.approach.methodsTitle",
-  stepsTitle: "vitrine.approach.stepsTitle",
-  valuesTitle: "vitrine.values.title",
-  valuesIntro: "vitrine.values.intro",
-  servicesTitle: "vitrine.services.title",
-  servicesIntro: "vitrine.services.intro",
-  standardPoint: "vitrine.services.standardPoint",
-  quickPoint: "vitrine.services.quickPoint",
-  disposTitle: "vitrine.dispos.title",
-  disposIntro: "vitrine.dispos.intro",
   expertisesTitle: "vitrine.expertisesTitle",
   expertisesIntro: "vitrine.expertisesIntro",
   productsTitle: "vitrine.products.title",
   articlesTitle: "vitrine.articles.title",
-  ctaTitle: "vitrine.cta.title",
-  ctaBody: "vitrine.cta.body",
 };
 
 // ---------------------------------------------------------------- sections
@@ -87,18 +52,15 @@ export const SHOWCASE_TEXT_DEFAULTS: Readonly<Record<ShowcaseTextKey, string>> =
 export const SHOWCASE_SECTION_KEYS = [
   "about",
   "approach",
-  "values",
-  "services",
-  "slots",
   "expertises",
   "products",
   "articles",
-  "cta",
 ] as const;
 export type ShowcaseSectionKey = (typeof SHOWCASE_SECTION_KEYS)[number];
 
-/** Prices and booking are how a client reaches the professional: they cannot be hidden. */
-export const REQUIRED_SHOWCASE_SECTIONS: ReadonlySet<ShowcaseSectionKey> = new Set(["services", "slots"]);
+/** Every section can be hidden: a client reaches the professional through Je chemine's funnel, which
+ * the page's buttons lead to whatever the professional shows. */
+export const REQUIRED_SHOWCASE_SECTIONS: ReadonlySet<ShowcaseSectionKey> = new Set();
 export const HIDEABLE_SHOWCASE_SECTIONS: readonly ShowcaseSectionKey[] = SHOWCASE_SECTION_KEYS.filter(
   (key) => !REQUIRED_SHOWCASE_SECTIONS.has(key),
 );
@@ -130,14 +92,6 @@ export function visibleSections(
  * The approach section's headings. With no approach text it shows only the request steps, under
  * the steps title; a title the professional wrote for the section still heads it, steps below.
  */
-export function approachHeadings(input: { hasApproachText: boolean; customApproachTitle: string }): {
-  title: "approach" | "steps";
-  stepsSubheading: boolean;
-} {
-  const titled = input.hasApproachText || input.customApproachTitle.trim().length > 0;
-  return { title: titled ? "approach" : "steps", stepsSubheading: titled };
-}
-
 export type AboutHeadingMessage =
   | { key: "vitrine.about.headingYears"; values: { title: string; years: number; city: string } }
   | { key: "vitrine.about.heading"; values: { title: string; city: string } }
@@ -178,27 +132,12 @@ export function isShowcaseAccentKey(value: unknown): value is ShowcaseAccentKey 
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(SHOWCASE_ACCENTS, value);
 }
 
-// ------------------------------------------------------------------ photos
-
-export const SHOWCASE_AMBIENCE_SLOTS = ["band", "about", "closing"] as const;
-export type ShowcaseAmbienceSlot = (typeof SHOWCASE_AMBIENCE_SLOTS)[number];
-
-/** The library photos a slot may show: landscape for the wide bands, portrait beside « À propos ». */
-export function ambienceChoicesFor(slot: ShowcaseAmbienceSlot): readonly string[] {
-  return slot === "about" ? TALL_AMBIENCE_IMAGES : WIDE_AMBIENCE_IMAGES;
-}
-
-export function isAmbienceChoice(slot: ShowcaseAmbienceSlot, value: unknown): value is string {
-  return typeof value === "string" && ambienceChoicesFor(slot).includes(value);
-}
-
 // ------------------------------------------------------------------ reading
 
 export interface ShowcaseLayoutChoices {
   sectionOrder: ShowcaseSectionKey[];
   hiddenSections: ShowcaseSectionKey[];
   accent: ShowcaseAccentKey;
-  ambience: Partial<Record<ShowcaseAmbienceSlot, string>>;
 }
 
 /** A stored copy's layout choices, anything unknown replaced by the default. */
@@ -208,22 +147,15 @@ export function layoutChoicesOf(
         sectionOrder?: readonly unknown[] | null;
         hiddenSections?: readonly unknown[] | null;
         accent?: unknown;
-        ambience?: Partial<Record<ShowcaseAmbienceSlot, unknown>> | null;
       }
     | null
     | undefined,
 ): ShowcaseLayoutChoices {
   const hidden = source?.hiddenSections ?? [];
   const accent = source?.accent;
-  const ambience: Partial<Record<ShowcaseAmbienceSlot, string>> = {};
-  for (const slot of SHOWCASE_AMBIENCE_SLOTS) {
-    const value = source?.ambience?.[slot];
-    if (isAmbienceChoice(slot, value)) ambience[slot] = value;
-  }
   return {
     sectionOrder: resolveSectionOrder(source?.sectionOrder),
     hiddenSections: HIDEABLE_SHOWCASE_SECTIONS.filter((key) => hidden.includes(key)),
     accent: isShowcaseAccentKey(accent) ? accent : DEFAULT_SHOWCASE_ACCENT,
-    ambience,
   };
 }

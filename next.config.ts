@@ -75,6 +75,9 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // Next 16 only serves the qualities named here. 75 is its default; 90 is for a professional's
+    // portrait on their page, where the photo has a cut-out edge that a harder re-encode frays.
+    qualities: [75, 90],
     remotePatterns: [
       {
         protocol: "https",

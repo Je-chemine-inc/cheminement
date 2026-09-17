@@ -11,7 +11,6 @@ import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
   SHOWCASE_TEXT_KEYS,
   layoutChoicesOf,
-  type ShowcaseAmbienceSlot,
   type ShowcaseLayoutChoices,
   type ShowcaseTextKey,
 } from "@/lib/showcase-customization";
@@ -67,7 +66,6 @@ export interface ShowcaseContentSource {
   sectionOrder?: readonly unknown[] | null;
   hiddenSections?: readonly unknown[] | null;
   accent?: string | null;
-  ambience?: Partial<Record<ShowcaseAmbienceSlot, unknown>> | null;
 }
 
 /** The professional's page choices: texts in the page's language (only those written in French), and the layout. */

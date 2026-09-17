@@ -4,15 +4,12 @@ import { isValidShowcaseSlug } from "@/lib/showcase-slug";
 import {
   DEFAULT_SHOWCASE_ACCENT,
   REQUIRED_SHOWCASE_SECTIONS,
-  SHOWCASE_AMBIENCE_SLOTS,
   SHOWCASE_SECTION_KEYS,
   SHOWCASE_TEXT_KEYS,
   SHOWCASE_TEXT_LIMITS,
-  isAmbienceChoice,
   isShowcaseAccentKey,
   isShowcaseSectionKey,
   resolveSectionOrder,
-  type ShowcaseAmbienceSlot,
   type ShowcaseTextKey,
 } from "@/lib/showcase-customization";
 import {
@@ -337,21 +334,6 @@ export function normalizeShowcaseDraft(
     set["draft.accent"] = accent === DEFAULT_SHOWCASE_ACCENT ? "" : accent;
   }
 
-  if (has("ambience")) {
-    const raw = input.ambience;
-    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-      return { ok: false, code: "INVALID_FIELD", field: "ambience" };
-    }
-    const ambience: Partial<Record<ShowcaseAmbienceSlot, string>> = {};
-    for (const slot of SHOWCASE_AMBIENCE_SLOTS) {
-      const value = (raw as Record<string, unknown>)[slot];
-      if (value === undefined || value === null || value === "") continue;
-      if (!isAmbienceChoice(slot, value)) return { ok: false, code: "INVALID_FIELD", field: `ambience.${slot}` };
-      ambience[slot] = value;
-    }
-    set["draft.ambience"] = ambience;
-  }
-
   if (has("expertiseIds")) {
     if (!Array.isArray(input.expertiseIds)) {
       return { ok: false, code: "INVALID_FIELD", field: "expertiseIds" };
@@ -466,7 +448,6 @@ export const SHOWCASE_EDITABLE_FIELDS = [
   "sectionOrder",
   "hiddenSections",
   "accent",
-  "ambience",
 ] as const;
 export type ShowcaseEditableField = (typeof SHOWCASE_EDITABLE_FIELDS)[number];
 
@@ -478,7 +459,7 @@ function isBlank(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0;
   if (typeof value === "object") {
     const text = value as { fr?: unknown; en?: unknown };
-    // A text with neither language, or a choice object with nothing chosen (texts, ambience).
+    // A text with neither language, or a choice object with nothing chosen (texts).
     return "fr" in text ? !text.fr && !text.en : Object.keys(value).length === 0;
   }
   return false;

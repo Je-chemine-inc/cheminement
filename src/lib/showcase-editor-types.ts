@@ -3,7 +3,6 @@ import type { ShowcaseLanguageKey, ShowcaseModalityKey } from "@/lib/showcase-pu
 import type { ShowcaseRequirement } from "@/lib/showcase-workflow";
 import type {
   ShowcaseAccentKey,
-  ShowcaseAmbienceSlot,
   ShowcaseSectionKey,
   ShowcaseTextKey,
 } from "@/lib/showcase-customization";
@@ -44,7 +43,6 @@ export interface ShowcaseContentJson {
   hiddenSections: ShowcaseSectionKey[];
   accent: ShowcaseAccentKey;
   /** The library photo chosen per slot, empty for the automatic one. */
-  ambience: Record<ShowcaseAmbienceSlot, string>;
 }
 
 export interface ShowcaseEditorJson {
