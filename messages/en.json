@@ -7427,7 +7427,7 @@
         "credentials": "Background",
         "approach": "Approach",
         "focus": "What I help with",
-        "products": "Trainings",
+        "products": "Resources",
         "articles": "Articles"
       },
       "chips": {
@@ -7463,7 +7463,7 @@
         "methodsTitle": "The methods I use"
       },
       "products": {
-        "eyebrow": "Trainings and products",
+        "eyebrow": "Resources",
         "title": "Learn at your own pace, between sessions"
       },
       "articles": {
@@ -7760,7 +7760,7 @@
         "about": "About",
         "approach": "Approach and how a request works",
         "expertises": "What I help with",
-        "products": "Trainings and products",
+        "products": "Resources",
         "articles": "Articles"
       },
       "show": "Show “{section}”",

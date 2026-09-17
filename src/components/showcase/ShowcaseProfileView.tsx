@@ -521,8 +521,10 @@ export async function ShowcaseProfileView({
       {products.length > 0 ? (
         <section id={VITRINE_ANCHORS.products} className={SECTION}>
           <div className={WRAP}>
-            <p className={`${LABEL}`}>{t("vitrine.products.eyebrow")}</p>
-            <h2 className={`${H2} mt-5 max-w-[24ch]`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
+            <div className={HEAD}>
+              <p className={LABEL}>{t("vitrine.products.eyebrow")}</p>
+              <h2 className={`${H2} mt-5`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
+            </div>
             <ul
               className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${products.length >= 3 ? "xl:grid-cols-3" : ""}`}
             >
@@ -532,8 +534,8 @@ export async function ShowcaseProfileView({
                   data-reveal={index}
                   className="group flex min-w-0 flex-col overflow-hidden rounded-[36px] bg-white p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_34px_70px_-50px_rgba(31,42,46,0.55)] motion-reduce:hover:translate-y-0"
                 >
-                  <a href={product.url} className="relative block aspect-[16/10] w-full overflow-hidden rounded-[28px] bg-[#F6F3EE]">
-                    {product.iconUrl ? (
+                  {product.iconUrl ? (
+                    <a href={product.url} className="relative block aspect-[16/10] w-full overflow-hidden rounded-[28px] bg-[#F6F3EE]">
                       <Image
                         src={product.iconUrl}
                         alt=""
@@ -542,12 +544,18 @@ export async function ShowcaseProfileView({
                         className="object-cover transition-transform duration-700 group-hover:scale-[1.04] motion-reduce:transition-none"
                         unoptimized={preview}
                       />
-                    ) : null}
-                    <span className="absolute left-4 top-4 rounded-full bg-white/90 px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)] backdrop-blur-md">
-                      {t(`profile.productType_${product.type}`)}
-                    </span>
-                  </a>
+                      <span className="absolute left-4 top-4 rounded-full bg-white/90 px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)] backdrop-blur-md">
+                        {t(`profile.productType_${product.type}`)}
+                      </span>
+                    </a>
+                  ) : null}
                   <div className="flex flex-1 flex-col px-[clamp(10px,1.2vw,18px)] pb-3 pt-6">
+                    {/* Without an image the type has nowhere to sit, so it opens the card instead. */}
+                    {product.iconUrl ? null : (
+                      <span className="mb-4 inline-flex w-fit rounded-full bg-[#F6F3EE] px-4 py-1.5 vt-xs font-semibold text-[color:var(--vt-accent,#17505F)]">
+                        {t(`profile.productType_${product.type}`)}
+                      </span>
+                    )}
                     <h3 className={`${SERIF} break-words text-[clamp(21px,1.5vw,26px)] leading-tight text-[#1F2A2E]`}>
                       <a href={product.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
                         {product.title}

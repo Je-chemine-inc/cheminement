@@ -7426,7 +7426,7 @@
         "credentials": "Parcours",
         "approach": "Approche",
         "focus": "Accompagnement",
-        "products": "Formations",
+        "products": "Ressources",
         "articles": "Articles"
       },
       "chips": {
@@ -7462,7 +7462,7 @@
         "methodsTitle": "Les méthodes que j'utilise"
       },
       "products": {
-        "eyebrow": "Formations et produits",
+        "eyebrow": "Ressources",
         "title": "Apprendre à votre rythme, entre les séances"
       },
       "articles": {
@@ -7759,7 +7759,7 @@
         "about": "À propos",
         "approach": "Approche et déroulement d’une demande",
         "expertises": "Ce que j’accompagne",
-        "products": "Formations et produits",
+        "products": "Ressources",
         "articles": "Articles"
       },
       "show": "Afficher « {section} »",
