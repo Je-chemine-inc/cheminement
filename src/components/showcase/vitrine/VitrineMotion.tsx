@@ -9,6 +9,11 @@ const EASE = "cubic-bezier(.22,.8,.26,1)";
  * `data-reveal`, the value being their place in a row). Only what starts below
  * the fold is hidden, and only once this runs: without JavaScript, for a
  * crawler, or with reduced motion, everything is simply there.
+ *
+ * Each one is given the class `vt-seen` when it arrives — at once when it was
+ * already in view — so a section can animate its own insides from that moment
+ * (« En bref »). Those animations must be additions: with reduced motion, or
+ * without JavaScript, the class never comes.
  */
 export function VitrineMotion({ rootId }: { rootId: string }) {
   useEffect(() => {
@@ -25,6 +30,7 @@ export function VitrineMotion({ rootId }: { rootId: string }) {
           const element = entry.target as HTMLElement;
           element.style.opacity = "1";
           element.style.transform = "none";
+          element.classList.add("vt-seen");
           observer.unobserve(element);
           // Hand the element back to its own hover transitions once it has arrived.
           timers.push(window.setTimeout(() => (element.style.transition = ""), 1100));
@@ -34,7 +40,11 @@ export function VitrineMotion({ rootId }: { rootId: string }) {
     );
 
     for (const element of root.querySelectorAll<HTMLElement>("[data-reveal]")) {
-      if (element.getBoundingClientRect().top < fold) continue;
+      if (element.getBoundingClientRect().top < fold) {
+        // Already in view: nothing to rise, but what it carries inside still plays.
+        element.classList.add("vt-seen");
+        continue;
+      }
       const delay = `${Math.min((Number(element.dataset.reveal) || 0) * 70, 280)}ms`;
       element.style.opacity = "0";
       element.style.transform = "translateY(20px)";

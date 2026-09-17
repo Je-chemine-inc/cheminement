@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Phone,
   Quote,
+  ReceiptText,
   ShieldCheck,
   Video,
   type LucideIcon,
@@ -54,6 +55,14 @@ const MODALITY_ICONS: Record<ShowcaseModalityKey, LucideIcon> = {
   chat: MessageSquare,
 };
 
+/**
+ * The ways of consulting « En bref » names. Booking is centralised — a visitor asks Je chemine for a
+ * rendez-vous, and the channel is agreed in the funnel — so the page says where the professional
+ * receives and whether they receive remotely, rather than listing every channel their account
+ * declares. The account keeps them all: matching and the waitlist still read them.
+ */
+const BRIEF_MODALITIES: readonly ShowcaseModalityKey[] = ["inPerson", "video"];
+
 const ROOT_ID = "vitrine";
 const SERIF = "font-[family-name:var(--font-vitrine-serif)]";
 // One centred column: content up to 1680 px, with type that grows with the viewport.
@@ -63,6 +72,8 @@ const HEAD = "mx-auto max-w-[92ch] text-center";
 // scroll-mt clears the floating header when a nav link scrolls to a section.
 const SECTION = "scroll-mt-28 py-[clamp(44px,3.6vw,76px)]";
 const LABEL = "inline-flex items-center rounded-full bg-[color:var(--vt-accent-soft,#E6EFEA)] px-4 py-1.5 text-[clamp(13px,calc(0.25vw+9.5px),16px)] font-semibold text-[color:var(--vt-accent,#17505F)]";
+/** A heading on the deep « En bref » block: spaced capitals, the quietest thing on it. */
+const LABEL_ON_DARK = "text-center text-[clamp(10.5px,0.72vw,13px)] font-semibold uppercase tracking-[0.34em] text-white/55";
 const H2 = `${SERIF} text-[clamp(26px,1.9vw,42px)] font-normal leading-[1.12] tracking-[-0.01em] text-[#1F2A2E] text-pretty`;
 const BODY = "text-[clamp(15.5px,calc(0.2vw+12.5px),18px)] leading-[1.7] text-[#3E494B] text-pretty";
 const SOFT_SHADOW = "shadow-[0_30px_70px_-50px_rgba(31,42,46,0.45)]";
@@ -94,10 +105,19 @@ html:has(#${ROOT_ID}){scroll-behavior:smooth}
 #${ROOT_ID} .vt-line{animation:vtHeroLine 1s cubic-bezier(.16,.84,.3,1) both}
 #${ROOT_ID} .vt-portrait{will-change:transform,opacity;animation:vtHeroPortrait 1.6s cubic-bezier(.2,.8,.24,1) .1s both}
 #${ROOT_ID} .vt-band{animation:vtHeroBand 1.2s ease-out both}
+@keyframes vtBriefIn{from{opacity:0;transform:translate3d(0,16px,0)}to{opacity:1;transform:none}}
+@keyframes vtBriefRule{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes vtSheen{0%{opacity:0;transform:translateX(-160%) skewX(-14deg)}22%{opacity:1}100%{opacity:0;transform:translateX(460%) skewX(-14deg)}}
+/* « En bref » on arrival (.vt-seen, never without JavaScript): facts rise in turn, rules draw from the left, a light crosses. */
+#${ROOT_ID} [data-brief].vt-seen [data-brief-item]{animation:vtBriefIn .95s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(var(--vt-i,0) * 110ms)}
+#${ROOT_ID} [data-brief].vt-seen .vt-brief-rule{animation:vtBriefRule 1.15s cubic-bezier(.22,.8,.26,1) both;animation-delay:calc(var(--vt-i,0) * 110ms + 130ms)}
+#${ROOT_ID} [data-brief].vt-seen .vt-sheen{animation:vtSheen 2.2s cubic-bezier(.3,.7,.35,1) .2s both}
+#${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:transform .6s cubic-bezier(.2,.8,.24,1),border-color .6s ease}
+#${ROOT_ID} [data-brief-item]:hover .vt-brief-icon{transform:scale(1.07);border-color:rgba(255,255,255,.55)}
 @keyframes vitrineIn{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
 .vitrine-up{animation:vitrineUp .8s cubic-bezier(.22,.8,.26,1) both}
 .vitrine-in{animation:vitrineIn 1s cubic-bezier(.22,.8,.26,1) .05s both}
-@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band{animation:none}}
+@media (prefers-reduced-motion: reduce){.vitrine-up,.vitrine-in,#${ROOT_ID} .vt-word,#${ROOT_ID} .vt-line,#${ROOT_ID} .vt-portrait,#${ROOT_ID} .vt-band,#${ROOT_ID} [data-brief-item],#${ROOT_ID} .vt-brief-rule,#${ROOT_ID} .vt-sheen{animation:none}#${ROOT_ID} [data-brief-item] .vt-brief-icon{transition:none}}
 `;
 
 /** Where "request an appointment" leads: the booking funnel on www. */
@@ -179,15 +199,21 @@ export async function ShowcaseProfileView({
   const aboutDefault = aboutHeadingMessage({ title, years, name, city: officeCity });
   const aboutHeading = t(aboutDefault.key, aboutDefault.values);
 
-  // « En bref », beside the portrait: the order and permit already sit under the name.
+  // What the professional wrote about insurance receipts, on one line.
+  const insuranceNote = profile.insuranceNote.join(" ").trim();
+
+  // « En bref », under the presentation: the order and permit already sit under the name.
   const briefFacts: { icon: LucideIcon; text: string }[] = [
     ...profile.highlights.map((text) => ({ icon: Check, text })),
+    ...(insuranceNote ? [{ icon: ReceiptText, text: insuranceNote }] : []),
     ...(years !== null ? [{ icon: Award, text: t("profile.experience", { years }) }] : []),
     ...(languages ? [{ icon: Globe, text: languages }] : []),
-    ...profile.modalities.map((modality) => ({
-      icon: MODALITY_ICONS[modality],
-      text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
-    })),
+    ...profile.modalities
+      .filter((modality) => BRIEF_MODALITIES.includes(modality))
+      .map((modality) => ({
+        icon: MODALITY_ICONS[modality],
+        text: modality === "inPerson" ? t("vitrine.chips.inPerson", { city: officeCity }) : t(`vitrine.chips.${modality}`),
+      })),
   ];
 
   const sections = vitrineSections({
@@ -234,16 +260,41 @@ export async function ShowcaseProfileView({
                 ))}
               </div>
               {briefFacts.length > 0 ? (
-                <div id={VITRINE_ANCHORS.brief} className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28" data-brief="">
-                  <p className={LABEL}>{t("vitrine.about.factsTitle")}</p>
-                  <ul className="mt-[clamp(20px,2vw,32px)] flex flex-wrap justify-center gap-2.5">
-                    {briefFacts.map((fact, index) => (
-                      <li key={index} className={PILL}>
-                        <fact.icon className="h-4 w-4 shrink-0 text-[color:var(--vt-accent,#17505F)]" aria-hidden="true" />
-                        {fact.text}
-                      </li>
-                    ))}
-                  </ul>
+                <div
+                  id={VITRINE_ANCHORS.brief}
+                  className="mx-auto mt-[clamp(40px,4vw,72px)] max-w-[100ch] scroll-mt-28"
+                  data-brief=""
+                  data-reveal="0"
+                >
+                  <div className="relative overflow-hidden rounded-[clamp(26px,3vw,46px)] bg-[color:var(--vt-accent-dark,#0E3A46)] px-[clamp(24px,3.4vw,72px)] py-[clamp(32px,3.2vw,58px)] shadow-[0_54px_104px_-66px_rgba(31,42,46,0.9)] ring-1 ring-inset ring-white/10">
+                    {/* Depth without a second colour: a light from the top left, the corner falling away */}
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_95%_at_8%_-12%,rgba(255,255,255,0.17),transparent_58%)]" />
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(200deg,transparent_42%,rgba(0,0,0,0.3)_100%)]" />
+                    {/* A light crosses the block once, as it arrives */}
+                    <span aria-hidden="true" className="vt-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/14 to-transparent opacity-0" />
+                    <p className={`relative ${LABEL_ON_DARK}`}>{t("vitrine.about.factsTitle")}</p>
+                    {/* Lines, not boxes: one fact a line, in two columns from sm up. */}
+                    <ul className="relative mt-[clamp(22px,2.4vw,42px)] grid gap-x-[clamp(32px,4vw,80px)] border-t border-white/12 text-left sm:grid-cols-2">
+                      {briefFacts.map((fact, index) => (
+                        <li
+                          key={index}
+                          data-brief-item=""
+                          style={{ "--vt-i": index } as CSSProperties}
+                          // An odd last fact takes the whole width, so no rule stops halfway across the block.
+                          // Mind the space before the interpolation: Tailwind scans this file as text, and a `${` glued
+                          // to the last utility swallows it.
+                          className={`relative flex items-center gap-[clamp(14px,1.5vw,26px)] py-[clamp(16px,1.7vw,28px)] ${index === briefFacts.length - 1 && briefFacts.length % 2 === 1 ? "sm:col-span-2" : ""}`}
+                        >
+                          <span className="vt-brief-icon grid h-[clamp(38px,2.7vw,52px)] w-[clamp(38px,2.7vw,52px)] shrink-0 place-items-center rounded-full border border-white/25 text-white/85 transition-colors duration-500">
+                            <fact.icon strokeWidth={1.25} className="h-[clamp(16px,1.15vw,21px)] w-[clamp(16px,1.15vw,21px)]" aria-hidden="true" />
+                          </span>
+                          <span className={`${SERIF} text-[clamp(17px,1.3vw,25px)] leading-[1.3] text-[#F6F3EE] text-pretty`}>{fact.text}</span>
+                          {/* The rule under a fact draws itself from the left */}
+                          <span aria-hidden="true" className="vt-brief-rule absolute inset-x-0 bottom-0 h-px origin-left bg-white/15" />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               ) : null}
               {profile.quote ? (
@@ -628,7 +679,7 @@ export async function ShowcaseProfileView({
       <Footer />
       {/* The dock is fixed to the bottom of the screen, so at the very end of the page it would sit on
           the footer’s own last line. This strip, in the footer colour, is what it rests on instead. */}
-      {preview ? null : (
+      {preview || navLinks.length === 0 ? null : (
         <>
           <div aria-hidden="true" className="h-[clamp(72px,6vw,104px)] bg-primary" />
           <VitrineSectionDock links={navLinks} navLabel={t("vitrine.nav.label")} />
