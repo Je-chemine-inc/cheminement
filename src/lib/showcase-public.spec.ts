@@ -87,10 +87,9 @@ describe("buildShowcasePublicProfile", () => {
       credentials: ["D. Psy., Université de Montréal"],
       customization: {
         texts: {},
-        sectionOrder: ["about", "approach", "values", "services", "slots", "expertises", "products", "articles", "cta"],
+        sectionOrder: ["about", "approach", "expertises", "products", "articles"],
         hiddenSections: [],
         accent: "teal",
-        ambience: {},
       },
       focusAreas: [{ title: "Anxiété et stress", body: ["On apprend.", "Ensemble."] }],
       methods: [{ name: "TCC", title: "Thérapie cognitive", body: ["Des outils concrets."] }],
@@ -168,20 +167,18 @@ describe("buildShowcasePublicProfile", () => {
       ...base.content,
       texts: {
         approachTitle: { fr: "Ma façon de travailler", en: "How I work" },
-        ctaTitle: { fr: "", en: "English only" },
+        disposTitle: { fr: "", en: "English only" },
         bogus: { fr: "POISON", en: "" },
       },
-      sectionOrder: ["cta", "about"],
-      hiddenSections: ["values", "services"],
+      sectionOrder: ["articles", "about"],
+      hiddenSections: ["expertises", "bogus"],
       accent: "plum",
-      ambience: { band: "/evil.jpg" },
     };
     const custom = buildShowcasePublicProfile(input({ content }))!.customization;
     expect(custom.texts).toEqual({ approachTitle: "Ma façon de travailler" });
-    expect(custom.sectionOrder.slice(0, 3)).toEqual(["cta", "about", "approach"]);
-    expect(custom.hiddenSections).toEqual(["values"]);
+    expect(custom.sectionOrder.slice(0, 3)).toEqual(["articles", "about", "approach"]);
+    expect(custom.hiddenSections).toEqual(["expertises"]);
     expect(custom.accent).toBe("plum");
-    expect(custom.ambience).toEqual({});
     expect(JSON.stringify(custom)).not.toContain("POISON");
     expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({ approachTitle: "How I work" });
   });

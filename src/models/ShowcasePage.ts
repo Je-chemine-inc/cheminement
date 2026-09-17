@@ -85,7 +85,6 @@ export interface IShowcaseContent {
   /** A SHOWCASE_ACCENTS key; empty for the default colour. */
   accent: string;
   /** Library photos chosen per image slot (paths under /showcase/ambiance). */
-  ambience: { band?: string; about?: string; closing?: string };
 }
 
 export interface IShowcaseHistoryEntry {
@@ -203,7 +202,6 @@ const ShowcaseContentSchema = new Schema<IShowcaseContent>(
     sectionOrder: { type: [String], default: [] },
     hiddenSections: { type: [String], default: [] },
     accent: { type: String, trim: true, default: "" },
-    ambience: { type: AmbienceSchema, default: () => ({}) },
   },
   { _id: false },
 );

@@ -8514,7 +8514,6 @@ const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> 
   sectionOrder: "ordre des sections",
   hiddenSections: "sections affichées",
   accent: "couleur de la page",
-  ambience: "photos d'ambiance",
 };
 
 /**

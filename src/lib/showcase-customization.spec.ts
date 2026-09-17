@@ -3,13 +3,11 @@ import {
   SHOWCASE_SECTION_KEYS,
   SHOWCASE_TEXT_LIMITS,
   aboutHeadingMessage,
-  approachHeadings,
   layoutChoicesOf,
   resolveSectionOrder,
   visibleSections,
   type ShowcaseSectionKey,
 } from "@/lib/showcase-customization";
-import { TALL_AMBIENCE_IMAGES, WIDE_AMBIENCE_IMAGES } from "@/lib/showcase-imagery";
 import { changedShowcaseFields, normalizeShowcaseDraft } from "@/lib/showcase-workflow";
 
 const ALL_AVAILABLE = Object.fromEntries(SHOWCASE_SECTION_KEYS.map((key) => [key, true])) as Record<ShowcaseSectionKey, boolean>;
@@ -20,46 +18,21 @@ describe("section order and visibility", () => {
       "products",
       "about",
       "approach",
-      "values",
-      "services",
-      "slots",
       "expertises",
       "articles",
-      "cta",
     ]);
     expect(resolveSectionOrder(undefined)).toEqual([...SHOWCASE_SECTION_KEYS]);
   });
 
-  it("draws a section only when it has something to show and is not hidden, never hiding prices or booking", () => {
-    expect(visibleSections(["cta", "about"], ["about", "services", "slots"], { ...ALL_AVAILABLE, products: false })).toEqual([
-      "cta",
-      "approach",
-      "values",
-      "services",
-      "slots",
-      "expertises",
+  it("draws a section only when it has something to show and is not hidden", () => {
+    expect(visibleSections(["articles", "about"], ["about"], { ...ALL_AVAILABLE, products: false })).toEqual([
       "articles",
+      "approach",
+      "expertises",
     ]);
   });
 });
 
-describe("approachHeadings", () => {
-  it("titles the section « approach » with the steps under it when there is approach text", () => {
-    expect(approachHeadings({ hasApproachText: true, customApproachTitle: "" })).toEqual({ title: "approach", stepsSubheading: true });
-  });
-
-  it("titles a steps-only section with the steps title, without repeating it", () => {
-    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "" })).toEqual({ title: "steps", stepsSubheading: false });
-  });
-
-  it("keeps the professional's own approach title even without approach text (it was silently dropped)", () => {
-    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "Ma façon de travailler" })).toEqual({
-      title: "approach",
-      stepsSubheading: true,
-    });
-    expect(approachHeadings({ hasApproachText: false, customApproachTitle: "   " })).toEqual({ title: "steps", stepsSubheading: false });
-  });
-});
 
 describe("aboutHeadingMessage", () => {
   it("names the title and the years when the profile has both, the title alone without years", () => {
@@ -88,15 +61,13 @@ describe("layoutChoicesOf", () => {
     expect(
       layoutChoicesOf({
         sectionOrder: [],
-        hiddenSections: ["services", "values", "x"],
+        hiddenSections: ["slots", "expertises", "x"],
         accent: "neon",
-        ambience: { band: "/evil.jpg", about: TALL_AMBIENCE_IMAGES[0], closing: TALL_AMBIENCE_IMAGES[0] },
       }),
     ).toEqual({
       sectionOrder: [...SHOWCASE_SECTION_KEYS],
-      hiddenSections: ["values"],
+      hiddenSections: ["expertises"],
       accent: "teal",
-      ambience: { about: TALL_AMBIENCE_IMAGES[0] },
     });
     expect(layoutChoicesOf(undefined).accent).toBe("teal");
     expect(layoutChoicesOf({ accent: "plum" }).accent).toBe("plum");
@@ -111,7 +82,7 @@ describe("normalizeShowcaseDraft: the page's customization", () => {
       save({
         texts: {
           approachTitle: { fr: "  Ma  façon\nde travailler ", en: "" },
-          valuesTitle: { fr: "", en: "Only English" },
+          disposTitle: { fr: "", en: "Only English" },
           bogus: { fr: "POISON", en: "" },
         },
       }),
@@ -119,12 +90,12 @@ describe("normalizeShowcaseDraft: the page's customization", () => {
   });
 
   it("refuses a text too long or malformed, naming it", () => {
-    expect(save({ texts: { ctaTitle: { fr: "x".repeat(SHOWCASE_TEXT_LIMITS.ctaTitle + 1), en: "" } } })).toMatchObject({
+    expect(save({ texts: { aboutTitle: { fr: "x".repeat(SHOWCASE_TEXT_LIMITS.aboutTitle + 1), en: "" } } })).toMatchObject({
       ok: false,
       code: "TOO_LONG",
-      field: "texts.ctaTitle.fr",
+      field: "texts.aboutTitle.fr",
     });
-    expect(save({ texts: { ctaTitle: "plain" } })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "texts.ctaTitle" });
+    expect(save({ texts: { aboutTitle: "plain" } })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "texts.aboutTitle" });
     expect(save({ texts: [] })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "texts" });
   });
 
@@ -137,13 +108,12 @@ describe("normalizeShowcaseDraft: the page's customization", () => {
     }
   });
 
-  it("hides optional sections only, in the page's order", () => {
-    expect(save({ hiddenSections: ["products", "values"] })).toMatchObject({
+  it("hides sections in the page's order, and refuses a key it does not know", () => {
+    expect(save({ hiddenSections: ["products", "expertises"] })).toMatchObject({
       ok: true,
-      set: { "draft.hiddenSections": ["values", "products"] },
+      set: { "draft.hiddenSections": ["expertises", "products"] },
     });
-    expect(save({ hiddenSections: ["services"] })).toMatchObject({ ok: false, field: "hiddenSections" });
-    expect(save({ hiddenSections: ["slots"] })).toMatchObject({ ok: false, field: "hiddenSections" });
+    expect(save({ hiddenSections: ["bogus"] })).toMatchObject({ ok: false, field: "hiddenSections" });
   });
 
   it("takes a colour from the palette, storing none for the default", () => {
@@ -153,14 +123,6 @@ describe("normalizeShowcaseDraft: the page's customization", () => {
     expect(save({ accent: "#ff0000" })).toMatchObject({ ok: false, code: "INVALID_FIELD", field: "accent" });
   });
 
-  it("takes only library photos of the slot's shape", () => {
-    expect(save({ ambience: { band: WIDE_AMBIENCE_IMAGES[1], about: "", closing: null } })).toMatchObject({
-      ok: true,
-      set: { "draft.ambience": { band: WIDE_AMBIENCE_IMAGES[1] } },
-    });
-    expect(save({ ambience: { about: WIDE_AMBIENCE_IMAGES[0] } })).toMatchObject({ ok: false, field: "ambience.about" });
-    expect(save({ ambience: { band: "https://evil.example/x.jpg" } })).toMatchObject({ ok: false, field: "ambience.band" });
-  });
 });
 
 describe("changedShowcaseFields: the page's customization", () => {
@@ -171,7 +133,7 @@ describe("changedShowcaseFields: the page's customization", () => {
   });
 
   it("names the choices that change", () => {
-    expect(changedShowcaseFields({ accent: "" }, { accent: "plum", texts: { ctaTitle: { fr: "Venez", en: "" } } })).toEqual([
+    expect(changedShowcaseFields({ accent: "" }, { accent: "plum", texts: { aboutTitle: { fr: "Venez", en: "" } } })).toEqual([
       "accent",
       "texts",
     ]);

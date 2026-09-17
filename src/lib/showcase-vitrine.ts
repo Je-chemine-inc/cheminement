@@ -1,6 +1,4 @@
-import { SHOWCASE_SLOTS_ANCHOR } from "@/lib/showcase-booking-types";
 import type { ShowcasePrice } from "@/lib/showcase-public";
-import { SHOWCASE_WAITLIST_ANCHOR } from "@/lib/waitlist-rules";
 
 /**
  * The rules of a professional's page layout (the « vitrine » design, spec 003):
@@ -27,14 +25,12 @@ export const VITRINE_ANCHORS = {
   top: "haut",
   about: "a-propos",
   approach: "approche",
-  services: "tarifs",
-  slots: SHOWCASE_SLOTS_ANCHOR,
-  waitlist: SHOWCASE_WAITLIST_ANCHOR,
+  focus: "accompagnement",
   products: "formations",
   articles: "articles",
 } as const;
 
-export type VitrineSection = "about" | "approach" | "services" | "slots" | "products" | "articles";
+export type VitrineSection = "about" | "approach" | "focus" | "products" | "articles";
 
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
@@ -47,7 +43,8 @@ export const VITRINE_DAYS_PER_VIEW = 5;
  */
 export function vitrineSections(input: {
   hasAbout: boolean;
-  showSlots: boolean;
+  /** « Ce que j'accompagne »: the professional's own cards. */
+  hasFocusAreas?: boolean;
   hasProducts: boolean;
   /** The professional's live articles. */
   hasArticles?: boolean;
@@ -57,14 +54,18 @@ export function vitrineSections(input: {
   const sections: VitrineSection[] = [
     ...(input.hasAbout ? (["about"] as const) : []),
     "approach",
-    "services",
-    ...(input.showSlots ? (["slots"] as const) : []),
+    ...(input.hasFocusAreas ? (["focus"] as const) : []),
     ...(input.hasProducts ? (["products"] as const) : []),
     ...(input.hasArticles ? (["articles"] as const) : []),
   ];
   const order = input.order;
   if (!order) return sections;
-  return sections.filter((section) => order.includes(section)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  // « Ce que j’accompagne » and « Mes champs d’expertise » are two headings drawn from one section
+  // key, so both follow the place the professional gave « expertises » in their order.
+  const keyOf = (section: VitrineSection) => (section === "focus" ? "expertises" : section);
+  return sections
+    .filter((section) => order.includes(keyOf(section)))
+    .sort((a, b) => order.indexOf(keyOf(a)) - order.indexOf(keyOf(b)));
 }
 
 /** The price a standard consultation is shown at: the individual session's, else the lowest. */

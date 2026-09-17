@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
 import { listPublishedContent } from "@/lib/content-entry";
 import { CONTENT_KINDS, CONTENT_KIND_PUBLIC_BASE } from "@/lib/content-kind";
-import { loadShowcaseDirectory } from "@/lib/showcase-queries";
-import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { SITE_URL } from "@/lib/site-url";
 
 /**
@@ -70,21 +68,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Spec 003: each professional's page (www.jechemine.ca/<slug>), once the pages are on.
-  try {
-    if (await isShowcaseEnabled()) {
-      for (const page of await loadShowcaseDirectory()) {
-        entries.push({
-          url: `${SITE_URL}/${page.slug}`,
-          lastModified: page.lastModified ?? now,
-          changeFrequency: "monthly",
-          priority: 0.8,
-        });
-      }
-    }
-  } catch (error) {
-    console.error("[sitemap] failed to list the professionals' pages:", error);
-  }
+  // Spec 003: a professional's page (www.jechemine.ca/<slug>) is reachable by its link but is not
+  // listed here while the pages are being reviewed with the professionals — it would put a page under
+  // review in front of searchers. Restore this together with the `index: false` in
+  // src/app/[proSlug]/page.tsx.
 
   return entries;
 }

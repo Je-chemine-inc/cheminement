@@ -11,10 +11,8 @@ import { findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
 import { showcaseTitleOf } from "@/lib/showcase-title";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
-  SHOWCASE_AMBIENCE_SLOTS,
   SHOWCASE_TEXT_KEYS,
   layoutChoicesOf,
-  type ShowcaseAmbienceSlot,
   type ShowcaseTextKey,
 } from "@/lib/showcase-customization";
 import {
@@ -224,10 +222,6 @@ function contentView(content: ContentLean | undefined) {
     sectionOrder: layout.sectionOrder,
     hiddenSections: layout.hiddenSections,
     accent: layout.accent,
-    ambience: Object.fromEntries(SHOWCASE_AMBIENCE_SLOTS.map((slot) => [slot, layout.ambience[slot] ?? ""])) as Record<
-      ShowcaseAmbienceSlot,
-      string
-    >,
     displayName: content?.displayName ?? "",
     headline: text(content?.headline),
     intro: text(content?.intro),
