@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { LocaleSwitcher } from "@/components/ui/LocaleSwitcher";
+import SiteMessages from "@/components/SiteMessages";
 
 export default async function VerifyLayout({
   children,
@@ -30,7 +31,9 @@ export default async function VerifyLayout({
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full">{children}</div>
+      <div className="relative z-10 w-full">
+        <SiteMessages>{children}</SiteMessages>
+      </div>
     </main>
   );
 }

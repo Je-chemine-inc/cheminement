@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
+import SiteMessages from "@/components/SiteMessages";
 
 /**
  * Gate the public booking funnel.
@@ -24,5 +25,5 @@ export default async function AppointmentLayout({
   if (role === "professional") redirect("/professional/dashboard");
   if (role === "employee") redirect("/login");
 
-  return <>{children}</>;
+  return <SiteMessages>{children}</SiteMessages>;
 }
