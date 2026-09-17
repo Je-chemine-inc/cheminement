@@ -7383,7 +7383,6 @@
       "officeIn": "Bureau à {city}",
       "experience": "{years, plural, =0 {Moins d'un an d'expérience} one {# an d'expérience} other {# ans d'expérience}}",
       "bookCta": "Demander un rendez-vous",
-      "matchCta": "Être jumelé avec un professionnel",
       "presentationTitle": "Présentation",
       "approachTitle": "Mon approche",
       "valuesTitle": "Valeurs",
@@ -7482,8 +7481,7 @@
       },
       "sticky": {
         "price": "{price} · {minutes} min",
-        "note": "Consultation standard",
-        "cta": "Prendre rendez-vous"
+        "note": "Consultation standard"
       }
     },
     "titles": {
