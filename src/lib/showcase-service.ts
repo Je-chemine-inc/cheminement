@@ -49,6 +49,7 @@ import { showcaseWorkDays } from "@/lib/showcase-availability";
 import { slotGridOf } from "@/lib/available-slots";
 import { quickConsultationMinutes } from "@/lib/professional-pricing";
 import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
+import { findTeamResources, listTeamResourceOptions, resolveTeamResources, type TeamResourceView } from "@/lib/showcase-team-resources";
 import {
   sendAdminShowcaseUpdatedAlert,
   sendShowcasePublishedEmail,
@@ -120,6 +121,7 @@ type PageLean = {
   unpublishedAt?: Date;
   unpublishedBy?: ShowcaseActor;
   services?: { standard?: boolean; quick?: boolean };
+  teamResourceSlugs?: string[];
   consent?: { acceptedAt?: Date; version?: string; source?: ShowcaseActor };
   invitedAt?: Date;
   changeAlertedAt?: Date;
@@ -256,11 +258,15 @@ export type ShowcaseContentView = ReturnType<typeof contentView>;
 export async function loadShowcaseEditor(userId: string) {
   const page = await loadPage(userId);
   if (!page) return null;
-  const [profile, options, showcaseEnabled, stats] = await Promise.all([
+  const [profile, options, showcaseEnabled, stats, teamResources] = await Promise.all([
     profileFacts(userId),
     showcaseExpertiseOptions(),
     isShowcaseEnabled(),
     loadShowcaseStats("page", [String(page._id)]),
+    resolveTeamResources(page.teamResourceSlugs).catch((error): TeamResourceView[] => {
+      console.error("[showcase] team resources could not be read for the editor:", error);
+      return [];
+    }),
   ]);
   // The page's city is the office address's: what the next publication will use.
   const officeKey = officeCityKey(profile);
@@ -334,6 +340,7 @@ export async function loadShowcaseEditor(userId: string) {
     })),
     consentVersion: SHOWCASE_CONSENT_VERSION,
     showcaseEnabled,
+    teamResources,
     availability: {
       hoursConfirmedAt,
       week: showcaseWorkDays(profile?.availability?.days),
@@ -370,6 +377,7 @@ export async function loadShowcaseAdminView(userId: string) {
         .map((entry) => ({ at: entry.at, actor: entry.actor, action: entry.action, note: entry.note ?? "" })),
       previousSlugs: page?.previousSlugs ?? [],
       invitedAt: page?.invitedAt ?? null,
+      teamResourceOptions: await listTeamResourceOptions(),
     },
   };
 }
@@ -808,6 +816,40 @@ export async function removeShowcaseOfficePhoto(input: {
   const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
   if (!current.includes(input.fileId)) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
   return writeOfficePhotos(found.page, input.actor, []);
+}
+
+/**
+ * The Je chemine resources an admin places on a professional's page (owner, 2026-09-18: « we force
+ * our resources into their pages »), as the whole list in the order the page shows it. Live, like the
+ * consultation switches: no draft, no publication. Only the team's own published resources — never
+ * another professional's product — at most SHOWCASE_LIMITS.teamResources, each once.
+ */
+export async function updateShowcaseTeamResources(input: {
+  userId: string;
+  slugs: unknown;
+  adminId: string;
+}): Promise<ServiceResult<{ teamResources: TeamResourceView[] }>> {
+  if (!Array.isArray(input.slugs) || input.slugs.some((slug) => typeof slug !== "string")) {
+    return fail(400, "INVALID_FIELD", { field: "slugs" });
+  }
+  const slugs = [...new Set((input.slugs as string[]).map((slug) => slug.trim()).filter(Boolean))];
+  if (slugs.length > SHOWCASE_LIMITS.teamResources) return fail(400, "TOO_MANY_ITEMS", { field: "slugs" });
+  if (!mongoose.Types.ObjectId.isValid(input.userId)) return fail(404, "NOT_FOUND");
+  const found = await findTeamResources(slugs);
+  const unknown = slugs.filter((slug) => !found.has(slug));
+  if (unknown.length > 0) return fail(409, "UNKNOWN_RESOURCE", { slugs: unknown });
+  await connectToDatabase();
+  const updated = await ShowcasePage.findOneAndUpdate(
+    { userId: input.userId },
+    { $set: { teamResourceSlugs: slugs }, $push: historyEntry("admin", input.adminId, "resources", slugs.join(", ") || "—") },
+    { new: true },
+  )
+    .select("_id")
+    .lean();
+  if (!updated) return fail(404, "NOT_FOUND");
+  return success({
+    teamResources: slugs.map((slug) => ({ slug, title: found.get(slug)!.title, priceCents: found.get(slug)!.priceCents, available: true })),
+  });
 }
 
 export async function updateShowcaseServices(input: {

@@ -25,6 +25,7 @@ import {
   VITRINE_NAV_TEXT,
   focusSectionParts,
   formatShowcasePrice,
+  showcaseResourceCards,
   headlinePrice,
   vitrineSections,
   type VitrineSection,
@@ -161,7 +162,8 @@ export function showcaseBookingUrl(profile: Pick<ShowcasePublicProfile, "slug" |
 export async function ShowcaseProfileView({
   profile,
   preview = false,
-  products = [],
+  products: ownProducts = [],
+  teamResources = [],
   articles = [],
   bookingOptions = [],
 }: {
@@ -174,6 +176,8 @@ export async function ShowcaseProfileView({
   bookingOptions?: ShowcaseBookingOption[];
   /** The professional's live trainings and products (spec 003 phase 5), sold on www. */
   products?: ShowcaseProductCard[];
+  /** Je chemine's own resources the team placed on the page (2026-09-18): after the professional's, always shown. */
+  teamResources?: ShowcaseProductCard[];
   /** The professional's live articles, read at /nouveautes/<slug>. */
   articles?: ShowcaseArticleCard[];
 }) {
@@ -226,13 +230,24 @@ export async function ShowcaseProfileView({
   const nameWords = name.split(/\s+/).filter(Boolean);
   const afterName = 0.18 + Math.max(0, nameWords.length - 1) * 0.11 + 0.26;
 
-  const shownSections = visibleSections(custom.sectionOrder, custom.hiddenSections, {
-    about: hasAbout,
-    approach: hasApproachText,
-    expertises: profile.expertises.length > 0 || profile.focusAreas.length > 0,
-    products: products.length > 0,
-    articles: articles.length > 0,
+  // « Ressources »: the professional's own, then the team's — which show even when the section is hidden.
+  const products = showcaseResourceCards({
+    own: ownProducts,
+    team: teamResources,
+    hidden: custom.hiddenSections.includes("products"),
   });
+  const shownSections = visibleSections(
+    custom.sectionOrder,
+    custom.hiddenSections,
+    {
+      about: hasAbout,
+      approach: hasApproachText,
+      expertises: profile.expertises.length > 0 || profile.focusAreas.length > 0,
+      products: products.length > 0,
+      articles: articles.length > 0,
+    },
+    teamResources.length > 0 ? ["products"] : [],
+  );
   const languages = profile.languages.map((language) => t(`languages.${language}`)).join(", ");
   const standardPrice = headlinePrice(standard.prices);
   const years = profile.yearsOfExperience;
@@ -622,6 +637,11 @@ export async function ShowcaseProfileView({
                         {t(`profile.productType_${product.type}`)}
                       </span>
                     )}
+                    {product.source === "jechemine" ? (
+                      <p className="mb-2 vt-xs font-semibold uppercase tracking-[0.14em] text-[#5B6566]" data-team-resource="">
+                        {t("vitrine.products.byTeam")}
+                      </p>
+                    ) : null}
                     <h3 className={`${SERIF} break-words text-[clamp(21px,1.5vw,26px)] leading-tight text-[#1F2A2E]`}>
                       <a href={product.url} className="hover:text-[color:var(--vt-accent,#17505F)]">
                         {product.title}

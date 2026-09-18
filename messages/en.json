@@ -7410,6 +7410,7 @@
       "productType_video": "Video",
       "productType_audio": "Audio",
       "productType_pdf": "PDF document",
+      "productType_article": "Article",
       "productType_webinar": "Webinar",
       "productType_external": "External link",
       "productFree": "Free",
@@ -7466,7 +7467,8 @@
       },
       "products": {
         "eyebrow": "Resources",
-        "title": "Learn at your own pace, between sessions"
+        "title": "Learn at your own pace, between sessions",
+        "byTeam": "Je chemine resource"
       },
       "articles": {
         "eyebrow": "Articles",
@@ -7709,6 +7711,12 @@
         "live": "Online: your page shows your availability. First free time: {when}."
       }
     },
+    "teamResources": {
+      "title": "Resources added by Je chemine",
+      "body": "They appear in “Resources” on your page, after yours, even if you hide that section. For any question, write to the team.",
+      "open": "View",
+      "free": "Free"
+    },
     "editor": {
       "save": "Save",
       "saving": "Saving…",
@@ -7724,6 +7732,7 @@
       "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
       "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
       "TOO_MANY_ITEMS": "A list has more items than allowed.",
+      "UNKNOWN_RESOURCE": "This is not a published Je chemine resource.",
       "OFFICE_PHOTO_NOT_FOUND": "This photo is no longer on the page. Reload it.",
       "INVALID_ORDER": "Choose a professional order from the list.",
       "NOTHING_TO_SAVE": "There are no changes to save.",
@@ -7777,7 +7786,7 @@
       "show": "Show “{section}”",
       "moveUp": "Move “{section}” up",
       "moveDown": "Move “{section}” down",
-      "required": "“Availability” does not move: it follows “About” when you show your availability.",
+      "required": "“Availability” does not move: it follows “About” when you show your availability. Resources added by Je chemine always show in “Resources”.",
       "textsTitle": "Section names, titles and texts",
       "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A section’s name also appears in the navigation bar at the bottom of the page. A text replaces the page’s own only when it is written in French.",
       "texts": {
@@ -7830,6 +7839,23 @@
         "noFreeTime": "No free time in the next six weeks according to their schedule: the section stays hidden.",
         "live": "Online: the page shows their availability. First free time: {when}."
       }
+    },
+    "teamResources": {
+      "title": "Je chemine resources on this page",
+      "hint": "They appear in “Resources”, after the professional's own, even if the section is hidden. The professional sees them in “My showcase page” but cannot remove them. Each change goes live at once.",
+      "chosen": "On the page",
+      "empty": "No Je chemine resource on this page.",
+      "filter": "Filter published resources",
+      "none": "No published resource matches.",
+      "noneAtAll": "No Je chemine resource is published.",
+      "add": "Add “{title}”",
+      "remove": "Remove",
+      "moveUp": "Move “{title}” up",
+      "moveDown": "Move “{title}” down",
+      "withdrawn": "no longer published: it no longer shows",
+      "free": "Free",
+      "max": "At most {max} resources per page.",
+      "open": "View"
     },
     "editor": {
       "fields": {
@@ -7946,6 +7972,7 @@
         "unpublish": "Taken down",
         "republish": "Put back online",
         "move": "Address changed",
+        "resources": "Je chemine resources changed",
         "invite": "Invitation",
         "submit": "Sent for review",
         "request_changes": "Changes requested",

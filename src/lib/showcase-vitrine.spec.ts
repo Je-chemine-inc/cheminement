@@ -5,6 +5,7 @@ import {
   daysInView,
   focusSectionParts,
   formatShowcasePrice,
+  showcaseResourceCards,
   groupSlotsByPeriod,
   headlinePrice,
   slotPeriod,
@@ -100,5 +101,21 @@ describe("focusSectionParts (« Ce que j'accompagne »)", () => {
 
   it("is not there with neither", () => {
     expect(focusSectionParts({ focusAreas: 0, themes: 0 })).toEqual({ show: false, cards: false, themes: false });
+  });
+});
+
+describe("showcaseResourceCards (« Ressources »)", () => {
+  it("lists the professional's own, then the team's in the team's order", () => {
+    expect(showcaseResourceCards({ own: ["guide", "webinaire"], team: ["respirer", "dormir"], hidden: false })).toEqual([
+      "guide",
+      "webinaire",
+      "respirer",
+      "dormir",
+    ]);
+  });
+
+  it("keeps the team's when the professional hid the section, and only theirs", () => {
+    expect(showcaseResourceCards({ own: ["guide"], team: ["respirer"], hidden: true })).toEqual(["respirer"]);
+    expect(showcaseResourceCards({ own: ["guide"], team: [], hidden: true })).toEqual([]);
   });
 });

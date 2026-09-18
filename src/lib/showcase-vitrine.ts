@@ -125,6 +125,15 @@ export function focusSectionParts(input: { focusAreas: number; themes: number })
   return { show: cards || themes, cards, themes };
 }
 
+/**
+ * The cards « Ressources » shows: the professional's own, then the ones the team placed on the page,
+ * in the team's order. The team's always show (owner, 2026-09-18): when the professional hid the
+ * section, it still shows, with the team's alone.
+ */
+export function showcaseResourceCards<T>(input: { own: readonly T[]; team: readonly T[]; hidden: boolean }): T[] {
+  return input.hidden ? [...input.team] : [...input.own, ...input.team];
+}
+
 /** The price a standard consultation is shown at: the individual session's, else the lowest. */
 export function headlinePrice(prices: readonly ShowcasePrice[]): number | null {
   if (prices.length === 0) return null;

@@ -123,15 +123,20 @@ export function resolveSectionOrder(order: readonly unknown[] | null | undefined
   return [...seen, ...SHOWCASE_SECTION_KEYS.filter((key) => !seen.has(key))];
 }
 
-/** The sections a page draws, in order: those with something to show that are not hidden (the required ones always). */
+/**
+ * The sections a page draws, in order: those with something to show that are not hidden (the required
+ * ones always). A `forced` section shows even when hidden — « Ressources » while it holds resources the
+ * team placed on the page, which always show (owner, 2026-09-18) — and keeps its place in the order.
+ */
 export function visibleSections(
   order: readonly unknown[] | null | undefined,
   hidden: readonly unknown[] | null | undefined,
   available: Readonly<Record<ShowcaseSectionKey, boolean>>,
+  forced: readonly ShowcaseSectionKey[] = [],
 ): ShowcaseSectionKey[] {
   const hiddenKeys = new Set((hidden ?? []).filter(isShowcaseSectionKey));
   return resolveSectionOrder(order).filter(
-    (key) => available[key] && (REQUIRED_SHOWCASE_SECTIONS.has(key) || !hiddenKeys.has(key)),
+    (key) => available[key] && (REQUIRED_SHOWCASE_SECTIONS.has(key) || forced.includes(key) || !hiddenKeys.has(key)),
   );
 }
 

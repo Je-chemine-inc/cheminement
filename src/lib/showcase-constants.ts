@@ -25,6 +25,8 @@ export const SHOWCASE_HISTORY_ACTIONS = [
   "unpublish",
   "republish",
   "move",
+  // An admin changed the Je chemine resources the page shows (2026-09-18).
+  "resources",
   "invite",
   "submit",
   "request_changes",
@@ -87,6 +89,8 @@ export const SHOWCASE_LIMITS = {
   orderLabel: 80,
   /** One photo of the office (owner, 2026-09-18), shown in « À propos »: the page never showed more. */
   officePhotos: 1,
+  /** Je chemine resources an admin may place on one page. */
+  teamResources: 6,
   /** One sentence the page quotes, signed with the professional's name. */
   quote: 240,
   /** Short mentions under the introduction (« Reçus pour assurances »). */

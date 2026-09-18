@@ -216,3 +216,22 @@ describe("the texts a professional can rewrite", () => {
     });
   });
 });
+
+describe("visibleSections with a forced section (team resources, 2026-09-18)", () => {
+  const hiddenProducts = ["products"];
+
+  it("shows a forced section the professional hid, in its place", () => {
+    expect(visibleSections(["products", "about"], hiddenProducts, ALL_AVAILABLE, ["products"])).toEqual([
+      "products",
+      "about",
+      "approach",
+      "expertises",
+      "articles",
+    ]);
+    expect(visibleSections(["products", "about"], hiddenProducts, ALL_AVAILABLE)).not.toContain("products");
+  });
+
+  it("never draws a forced section with nothing to show", () => {
+    expect(visibleSections(undefined, [], { ...ALL_AVAILABLE, products: false }, ["products"])).not.toContain("products");
+  });
+});

@@ -42,6 +42,10 @@ const h = vi.hoisted(() => {
     sendUnpublished: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
     bookingReads: [] as string[],
     bookingOptions: [] as unknown[] | Error,
+    teamFound: new Map<string, { title: string; priceCents: number }>(),
+    teamLookups: [] as string[][],
+    teamResolved: [] as unknown[],
+    teamOptions: [] as unknown[],
   };
 });
 
@@ -111,6 +115,14 @@ vi.mock("@/lib/showcase-booking", () => ({
     return h.bookingOptions;
   },
 }));
+vi.mock("@/lib/showcase-team-resources", () => ({
+  findTeamResources: async (slugs: string[]) => {
+    h.teamLookups.push(slugs);
+    return new Map([...h.teamFound].filter(([slug]) => slugs.includes(slug)));
+  },
+  resolveTeamResources: async () => h.teamResolved,
+  listTeamResourceOptions: async () => h.teamOptions,
+}));
 vi.mock("@/lib/notifications", () => ({
   sendAdminShowcaseUpdatedAlert: h.sendUpdated,
   sendShowcasePublishedEmail: h.sendPublished,
@@ -119,6 +131,7 @@ vi.mock("@/lib/notifications", () => ({
 
 import {
   activateShowcase,
+  loadShowcaseAdminView,
   loadShowcaseEditor,
   moveShowcase,
   removeShowcaseOfficePhoto,
@@ -129,6 +142,7 @@ import {
   setShowcasePhoto,
   unpublishShowcase,
   updateShowcaseServices,
+  updateShowcaseTeamResources,
   type ServiceResult,
 } from "@/lib/showcase-service";
 
@@ -843,5 +857,87 @@ describe("loadShowcaseEditor — « Disponibilités »", () => {
     h.bookingOptions = new Error("database down");
     const view = await loadShowcaseEditor(PRO);
     expect(view?.availability.options).toEqual([]);
+  });
+});
+
+/**
+ * Je chemine's own resources on a professional's page (owner, 2026-09-18: « we force our resources
+ * into their pages »): an admin sets the whole list, live; only the team's published resources pass.
+ */
+describe("updateShowcaseTeamResources", () => {
+  beforeEach(() => {
+    h.teamFound = new Map([
+      ["respirer", { title: "Respirer", priceCents: 0 }],
+      ["dormir", { title: "Mieux dormir", priceCents: 1500 }],
+    ]);
+    h.teamLookups = [];
+    h.findOneAndUpdate = [];
+    h.updateResult = { _id: "p1" };
+  });
+
+  it("stores the list in the admin's order, each once, live, and records it in the history", async () => {
+    const result = await updateShowcaseTeamResources({ userId: PRO, slugs: [" dormir ", "respirer", "dormir"], adminId: ADMIN });
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        teamResources: [
+          { slug: "dormir", title: "Mieux dormir", priceCents: 1500, available: true },
+          { slug: "respirer", title: "Respirer", priceCents: 0, available: true },
+        ],
+      },
+    });
+    const [filter, update] = h.findOneAndUpdate[0];
+    expect(filter).toEqual({ userId: PRO });
+    expect(update.$set).toEqual({ teamResourceSlugs: ["dormir", "respirer"] });
+    expect(update.$push).toMatchObject({ history: { $each: [{ actor: "admin", by: ADMIN, action: "resources", note: "dormir, respirer" }] } });
+  });
+
+  it("clears the list", async () => {
+    expect(await updateShowcaseTeamResources({ userId: PRO, slugs: [], adminId: ADMIN })).toMatchObject({ ok: true, value: { teamResources: [] } });
+    expect(h.findOneAndUpdate[0][1].$set).toEqual({ teamResourceSlugs: [] });
+  });
+
+  it("refuses anything but the team's published resources, and writes nothing", async () => {
+    // A professional's product, an unpublished resource or a made-up slug: the team query finds none of them.
+    expect(await updateShowcaseTeamResources({ userId: PRO, slugs: ["respirer", "produit-dun-pro"], adminId: ADMIN })).toMatchObject({
+      ok: false,
+      status: 409,
+      code: "UNKNOWN_RESOURCE",
+      details: { slugs: ["produit-dun-pro"] },
+    });
+    expect(h.findOneAndUpdate).toEqual([]);
+  });
+
+  it("refuses a malformed list or too many, before reading anything", async () => {
+    for (const slugs of [undefined, "respirer", [1], [{ slug: "x" }]]) {
+      expect(await updateShowcaseTeamResources({ userId: PRO, slugs, adminId: ADMIN })).toMatchObject({ status: 400, code: "INVALID_FIELD" });
+    }
+    const seven = Array.from({ length: 7 }, (_, i) => `r${i}`);
+    expect(await updateShowcaseTeamResources({ userId: PRO, slugs: seven, adminId: ADMIN })).toMatchObject({ status: 400, code: "TOO_MANY_ITEMS" });
+    expect(h.teamLookups).toEqual([]);
+    expect(h.findOneAndUpdate).toEqual([]);
+  });
+
+  it("answers 404 for a professional without a page", async () => {
+    h.updateResult = null;
+    expect(await updateShowcaseTeamResources({ userId: PRO, slugs: ["respirer"], adminId: ADMIN })).toMatchObject({ status: 404, code: "NOT_FOUND" });
+    expect(await updateShowcaseTeamResources({ userId: "nope", slugs: ["respirer"], adminId: ADMIN })).toMatchObject({ status: 404 });
+  });
+});
+
+describe("the editors see the team's resources", () => {
+  beforeEach(() => {
+    h.enabled = true;
+    h.page = page({ status: "published", published: completeDraft, publishedRevision: 4, teamResourceSlugs: ["respirer"] });
+    h.profile = {};
+    h.teamResolved = [{ slug: "respirer", title: "Respirer", priceCents: 0, available: true }];
+    h.teamOptions = [{ slug: "respirer", title: "Respirer", priceCents: 0, mediaType: "article" }];
+  });
+
+  it("gives both views the page's list, and the admin's every resource to choose from", async () => {
+    expect((await loadShowcaseEditor(PRO))!.teamResources).toEqual(h.teamResolved);
+    const admin = (await loadShowcaseAdminView(PRO))!;
+    expect(admin.teamResources).toEqual(h.teamResolved);
+    expect(admin.admin.teamResourceOptions).toEqual(h.teamOptions);
   });
 });

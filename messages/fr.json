@@ -7409,6 +7409,7 @@
       "productType_video": "Vidéo",
       "productType_audio": "Audio",
       "productType_pdf": "Document PDF",
+      "productType_article": "Article",
       "productType_webinar": "Webinaire",
       "productType_external": "Lien externe",
       "productFree": "Gratuit",
@@ -7465,7 +7466,8 @@
       },
       "products": {
         "eyebrow": "Ressources",
-        "title": "Apprendre à votre rythme, entre les séances"
+        "title": "Apprendre à votre rythme, entre les séances",
+        "byTeam": "Ressource Je chemine"
       },
       "articles": {
         "eyebrow": "Articles",
@@ -7708,6 +7710,12 @@
         "live": "En ligne : votre page affiche vos disponibilités. Première plage libre : {when}."
       }
     },
+    "teamResources": {
+      "title": "Ressources ajoutées par Je chemine",
+      "body": "Elles apparaissent dans « Ressources » sur votre page, après les vôtres, même si vous masquez cette section. Pour une question, écrivez à l'équipe.",
+      "open": "Voir",
+      "free": "Gratuit"
+    },
     "editor": {
       "save": "Enregistrer",
       "saving": "Enregistrement…",
@@ -7723,6 +7731,7 @@
       "UNKNOWN_EXPERTISE": "Un champ d'expertise choisi n'est plus offert. Rechargez la page.",
       "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
       "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
+      "UNKNOWN_RESOURCE": "Cette ressource n'est pas une ressource Je chemine publiée.",
       "OFFICE_PHOTO_NOT_FOUND": "Cette photo n'est plus sur la page. Rechargez-la.",
       "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
       "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",
@@ -7776,7 +7785,7 @@
       "show": "Afficher « {section} »",
       "moveUp": "Monter « {section} »",
       "moveDown": "Descendre « {section} »",
-      "required": "« Disponibilités » ne se déplace pas : elle suit « À propos » quand vous affichez vos disponibilités.",
+      "required": "« Disponibilités » ne se déplace pas : elle suit « À propos » quand vous affichez vos disponibilités. Les ressources ajoutées par Je chemine s’affichent toujours dans « Ressources ».",
       "textsTitle": "Noms, titres et textes des sections",
       "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Le nom d’une section apparaît aussi dans la barre de navigation en bas de la page. Un texte remplace celui de la page seulement s’il est écrit en français.",
       "texts": {
@@ -7829,6 +7838,23 @@
         "noFreeTime": "Aucune plage libre dans les six prochaines semaines selon son horaire : la section reste cachée.",
         "live": "En ligne : la page affiche ses disponibilités. Première plage libre : {when}."
       }
+    },
+    "teamResources": {
+      "title": "Ressources Je chemine sur cette page",
+      "hint": "Elles apparaissent dans « Ressources », après celles du professionnel, même s'il a masqué la section. Le professionnel les voit dans « Ma page vitrine » mais ne peut pas les retirer. Chaque changement est en ligne aussitôt.",
+      "chosen": "Sur la page",
+      "empty": "Aucune ressource Je chemine sur cette page.",
+      "filter": "Filtrer les ressources publiées",
+      "none": "Aucune ressource publiée ne correspond.",
+      "noneAtAll": "Aucune ressource Je chemine n'est publiée.",
+      "add": "Ajouter « {title} »",
+      "remove": "Retirer",
+      "moveUp": "Monter « {title} »",
+      "moveDown": "Descendre « {title} »",
+      "withdrawn": "plus publiée : elle n'apparaît plus",
+      "free": "Gratuit",
+      "max": "{max} ressources au plus par page.",
+      "open": "Voir"
     },
     "editor": {
       "fields": {
@@ -7945,6 +7971,7 @@
         "unpublish": "Retirée",
         "republish": "Remise en ligne",
         "move": "Adresse changée",
+        "resources": "Ressources Je chemine modifiées",
         "invite": "Invitation",
         "submit": "Envoyée pour révision",
         "request_changes": "Modifications demandées",

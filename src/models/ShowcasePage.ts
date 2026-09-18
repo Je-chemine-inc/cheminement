@@ -130,6 +130,12 @@ export interface IShowcasePage extends Document {
    */
   services: { standard: boolean; quick: boolean };
   /**
+   * Je chemine's own resources an admin placed on the page, by slug, in the order shown (owner,
+   * 2026-09-18: « we force our resources into their pages »). Live, like `services`: no draft, no
+   * publication, and the professional's saves never touch it. They always show in « Ressources ».
+   */
+  teamResourceSlugs: string[];
+  /**
    * The professional's agreement to publication (Loi 25), versioned. Since
    * 2026-09-14 an admin confirms it when publishing (`source` "admin",
    * `attestedBy`); older pages carry the professional's own acceptance.
@@ -250,6 +256,7 @@ const ShowcasePageSchema = new Schema<IShowcasePage>(
     publishedBy: { type: Schema.Types.ObjectId, ref: "User" },
     unpublishedAt: Date,
     unpublishedBy: { type: String, enum: ["professional", "admin"] },
+    teamResourceSlugs: { type: [String], default: [] },
     services: {
       standard: { type: Boolean, default: false },
       quick: { type: Boolean, default: false },

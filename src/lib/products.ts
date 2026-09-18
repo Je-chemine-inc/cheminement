@@ -711,15 +711,20 @@ export async function settleProductPurchase(entitlementId: string): Promise<void
 /* Public                                                                     */
 /* ------------------------------------------------------------------------ */
 
+/** What a card in « Ressources » is: a product's type, or « article » for a Je chemine reading. */
+export type ShowcaseResourceType = ProductType | "article";
+
 export interface ShowcaseProductCard {
   slug: string;
-  type: ProductType;
+  type: ShowcaseResourceType;
   title: string;
   summary: string;
   iconUrl: string | null;
   priceCents: number;
   webinarStartsAt: string | null;
   url: string;
+  /** One of Je chemine's own resources, placed on the page by the team (showcase-team-resources). */
+  source?: "jechemine";
 }
 
 /** A professional's live products for their showcase page, newest first. */
