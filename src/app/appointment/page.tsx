@@ -1147,6 +1147,13 @@ export default function BookAppointmentPage() {
             </h1>
           </div>
 
+          {/* A time chosen on a showcase page (spec 003) stays in sight from the very first screen. */}
+          {directRequest.status !== "none" ? (
+            <div className="mx-auto mb-10 max-w-3xl" data-direct-first-screen="">
+              <DirectRequestBanner state={directRequest} />
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <ProfileSelectionCard
               href={withFor("self")}

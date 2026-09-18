@@ -40,6 +40,8 @@ export interface DirectRequestRow {
     dayKey: string;
     time: string;
     respondBy: string;
+    /** The client agreed, when asking, that a decline hands the request to the general list (phase 3b). */
+    fallbackToGeneral?: boolean;
   };
 }
 
@@ -239,6 +241,11 @@ export function DirectRequestsPanel<T extends DirectRequestRow>({
                     <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
                     {t("card.answerBy", { time: deadlineLabel(request.respondBy) })}
                   </p>
+                  {request.fallbackToGeneral ? (
+                    <p className="mt-1 text-xs text-muted-foreground" data-direct-fallback-note="">
+                      {t("card.fallback")}
+                    </p>
+                  ) : null}
 
                   <div className="mt-3 flex flex-wrap justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => onView(row)} aria-label={t("card.view")}>
@@ -279,10 +286,17 @@ export function DirectRequestsPanel<T extends DirectRequestRow>({
                   {answer.mode === "accept" ? t("answer.acceptTitle") : t("answer.declineTitle")}
                 </DialogTitle>
                 <DialogDescription>
-                  {t(answer.mode === "accept" ? "answer.acceptBody" : "answer.declineBody", {
-                    name: `${answering.clientId.firstName} ${answering.clientId.lastName}`,
-                    slot: slotLabel(answering.directRequest.dayKey, answering.directRequest.time),
-                  })}
+                  {t(
+                    answer.mode === "accept"
+                      ? "answer.acceptBody"
+                      : answering.directRequest.fallbackToGeneral
+                        ? "answer.declineBodyHandedOn"
+                        : "answer.declineBody",
+                    {
+                      name: `${answering.clientId.firstName} ${answering.clientId.lastName}`,
+                      slot: slotLabel(answering.directRequest.dayKey, answering.directRequest.time),
+                    },
+                  )}
                 </DialogDescription>
               </DialogHeader>
 
