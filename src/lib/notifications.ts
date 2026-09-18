@@ -8500,6 +8500,7 @@ const SHOWCASE_FIELD_LABELS_FR: Readonly<Record<ShowcaseEditableField, string>> 
   intro: "introduction",
   bio: "présentation",
   approach: "approche",
+  city: "ville de la page",
   expertiseIds: "champs d'expertise",
   insuranceNote: "note sur les assurances",
   quote: "citation",

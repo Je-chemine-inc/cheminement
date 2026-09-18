@@ -20,6 +20,7 @@ import {
 import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
 import { AdminAccessRequired } from "@/components/admin/AdminAccessRequired";
 import { ShowcaseAvailabilityCard } from "@/components/showcase/ShowcaseAvailabilityCard";
+import { ShowcaseCityChange } from "@/components/showcase/ShowcaseCityPicker";
 import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
 import { ShowcaseTeamResourcesAdminCard } from "@/components/showcase/ShowcaseTeamResourcesCard";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
@@ -195,6 +196,17 @@ export default function AdminShowcaseDetailPage() {
 
         <div className="space-y-2 text-sm">
           <p className="break-all text-foreground">{page.publicUrl}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground">{t("detail.city")}</span>
+            <ShowcaseCityChange
+              apiBase={`/api/admin/showcases/${userId}`}
+              cityKey={page.cityKey}
+              cityName={page.cityName}
+              options={view.cityOptions}
+              onChanged={load}
+              audience="admin"
+            />
+          </div>
           <p className={page.consent.current ? "text-muted-foreground" : "text-amber-700"}>
             {!page.consent.current
               ? t("detail.consentMissing")

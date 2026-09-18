@@ -7566,7 +7566,7 @@
     "statusText": {
       "published": "Your page is live:",
       "approvedClosed": "Your page is published. The public will see it as soon as showcase pages open.",
-      "liveEdits": "Your changes are published as soon as you save them. The page address and the professional order are managed by the team: write to us to change them. The page's city follows the office address in your profile.",
+      "liveEdits": "Your changes are published as soon as you save them. The page address and the professional order are managed by the team: write to us to change them. You can change the page's city yourself, further down.",
       "unpublishedByProfessional": "You took your page down. You can put it back online at any time.",
       "unpublishedByAdmin": "The team took your page down. Write to us to learn more."
     },
@@ -7577,14 +7577,7 @@
     "missing": {
       "photo": "A photo",
       "displayName": "The display name",
-      "headline": "The headline in French",
-      "bio": "A presentation in French of at least 200 characters",
-      "expertises": "At least 3 areas of expertise",
-      "order": "The professional order",
-      "title": "The professional title, in the profile",
-      "license": "The permit number, in the profile",
-      "modalities": "The consultation modes, in the profile",
-      "city": "A recognised city in the office address, in the profile"
+      "city": "The page's city"
     },
     "actions": {
       "preview": "Preview",
@@ -7684,11 +7677,15 @@
       "otherLabel": "Name of the order"
     },
     "city": {
-      "title": "Page city"
+      "title": "Page city",
+      "change": "Change the city",
+      "choose": "Choose a city",
+      "save": "Save",
+      "hint": "It shows in your page's title and links. Your office address is not needed."
     },
     "identity": {
       "title": "Professional order and page city",
-      "hint": "The order is managed by the Je chemine team: write to us to change it. The city follows the office address in your profile."
+      "hint": "The order is managed by the Je chemine team: write to us to change it. You can change your page's city here."
     },
     "availability": {
       "title": "Availability on my page",
@@ -7757,7 +7754,7 @@
       "REVISION_CHANGED": "The page changed since you loaded it. Reload it before going on.",
       "SLUG_TAKEN": "This address is already in use.",
       "INVALID_SLUG": "Invalid address: lowercase letters, digits and hyphens only.",
-      "OFFICE_CITY_UNKNOWN": "The office address in the profile does not name a recognised city. Correct it, then try again.",
+      "INVALID_CITY": "Choose a city from the list.",
       "ALREADY_INVITED": "This professional already has a showcase page.",
       "CONFLICT": "The page was changed at the same time. Reload it.",
       "INVALID_ACTION": "Unknown action.",
@@ -7923,14 +7920,18 @@
     "activate": {
       "title": "Activate the page of {name}",
       "body": "A showcase page is created for this professional, prefilled from their profile. No email is sent to them: you fill in the page, then publish it with their agreement.",
-      "cityFromOffice": "Page city: {city}, from the office address in their profile.",
-      "noOfficeCity": "The office address in their profile does not name a recognised city. Correct it in their file before activating the page.",
+      "city": "Page city",
+      "cityHint": "Proposed from the office address when it names one; the address is not needed. The professional can change it later.",
       "slug": "Page address (optional)",
-      "slugHint": "Leave empty to use the first and last name. Lowercase letters, digits and hyphens only.",
+      "slugHint": "Leave empty to use the proposed address, with the profession when the title allows it. Lowercase letters, digits and hyphens only.",
       "preview": "Address: {url}",
       "submit": "Activate and prepare the page"
     },
+    "city": {
+      "hint": "It shows in the page's title and links. The professional can change it too."
+    },
     "detail": {
+      "city": "City:",
       "back": "Back to showcase pages",
       "notFound": "This professional has no showcase page.",
       "loadError": "The showcase page could not be loaded.",
@@ -7973,6 +7974,7 @@
         "republish": "Put back online",
         "move": "Address changed",
         "resources": "Je chemine resources changed",
+        "city": "City changed",
         "invite": "Invitation",
         "submit": "Sent for review",
         "request_changes": "Changes requested",

@@ -55,6 +55,7 @@ vi.mock("@/lib/showcase-service", () => ({
   moveShowcase: () => h.touched(),
   setShowcasePhoto: () => h.touched(),
   setShowcaseOfficePhoto: () => h.touched(),
+  setShowcaseCity: () => h.touched(),
   updateShowcaseTeamResources: () => h.touched(),
   removeShowcaseOfficePhoto: () => h.touched(),
   updateShowcaseServices: () => h.touched(),
