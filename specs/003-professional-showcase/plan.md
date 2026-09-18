@@ -595,18 +595,18 @@ chrome with absolute www links.
 
 The owner's model: « Demander un rendez-vous » stays centralised (the general list) on every page,
 and says so. A section « Disponibilités » appears **only** when the professional publishes real
-hours; picking a time there is a direct request to her, as phase 3 built it. On 2026-09-16 the
+hours; picking a time there is a direct request to them, as phase 3 built it. On 2026-09-16 the
 section had been removed outright because a page with no real hours was advertising booking.
 
 **Owner's decisions (2026-09-18):** the section sits after « À propos »; the fallback checkbox is
-unchecked by default; only hours the professional saved herself count; both the standard session
+unchecked by default; only hours the professional saved themselves count; both the standard session
 and the quick consultation are offered.
 
-**Why « saved by her »:** in production 5 of the 6 active professionals have exactly Monday–Friday
+**Why « saved by them »:** in production 5 of the 6 active professionals have exactly Monday–Friday
 9:00–17:00 — the signup default. Showing « the schedule » would advertise slots nobody chose.
 
 Steps, reusing phase 3 throughout (slots, holds, `directRequest`, accept/decline, timeouts):
-1. `Profile.availabilityConfirmedAt`, set only when the professional saves her own schedule.
+1. `Profile.availabilityConfirmedAt`, set only when the professional saves their own schedule.
    `loadBookableShowcase` treats unconfirmed availability as none — the one choke point for the
    page, the slots API, the direct intake and the waitlist runner.
 2. The page renders « Disponibilités » (restyled `VitrineBooking`, no waitlist) after « À propos »

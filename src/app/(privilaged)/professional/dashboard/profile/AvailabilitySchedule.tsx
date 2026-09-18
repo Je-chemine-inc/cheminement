@@ -196,7 +196,7 @@ const AvailabilitySchedule = ({
         // sibling-owned field (e.g. acceptingNewClients, just toggled elsewhere)
         // back into shared page state and visually revert it. Fall back to the
         // local spread only if the PUT returns nothing.
-        // Her own save confirms the hours: only confirmed hours become bookable times on her page.
+        // The professional's own save confirms the hours: only confirmed hours become bookable times on their page.
         const updated = await profileAPI.update({ availability, confirmAvailability: true });
         setProfile(
           (updated as IProfile) ?? ({ ...profile, availability } as IProfile),

@@ -196,7 +196,7 @@ describe("isShowcaseSlotFree", () => {
 });
 
 /**
- * Phase 3b: a page offers times only on hours the professional saved herself. In production 5 of
+ * Phase 3b: a page offers times only on hours the professional saved themselves. In production 5 of
  * the 6 active professionals still carried the signup default, Monday–Friday 9:00–17:00.
  */
 describe("hours the professional never confirmed", () => {
@@ -216,7 +216,7 @@ describe("hours the professional never confirmed", () => {
     expect(await isShowcaseSlotFree(bookable, "standard", "2026-09-15", "09:00", now)).toBe(false);
   });
 
-  it("start offering times the moment she confirms them", async () => {
+  it("start offering times the moment they confirm them", async () => {
     h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: new Date("2026-09-18T12:00:00Z") };
     const bookable = (await loadBookableShowcase("sassi"))!;
     const slots = await listShowcaseSlots(bookable, "standard", null, now);
@@ -231,7 +231,7 @@ describe("showcaseBookingOptions (spec 003 phase 3b)", () => {
     expect(options[0]).toMatchObject({ service: "standard", minutes: 60 });
   });
 
-  it("offers nothing on hours the professional never saved herself — no section at all", async () => {
+  it("offers nothing on hours the professional never saved themselves — no section at all", async () => {
     h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: undefined };
     expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
   });

@@ -56,7 +56,7 @@ export function vitrineSections(input: {
   hasProducts: boolean;
   /** The professional's live articles. */
   hasArticles?: boolean;
-  /** « Disponibilités »: real hours she published, with a free time in the horizon (phase 3b). */
+  /** « Disponibilités »: real hours the professional published, with a free time in the horizon (phase 3b). */
   hasAvailability?: boolean;
   /** The sections the page draws, in the professional's order: the links follow it and skip what is not drawn. */
   order?: readonly string[];
@@ -73,9 +73,9 @@ export function vitrineSections(input: {
   const order = input.order;
   const ordered = order ? inOrder(sections, order) : sections;
   if (!input.hasAvailability) return ordered;
-  // « Disponibilités » is not a section a professional orders or hides: it exists only while she
-  // publishes real hours, and it follows « À propos » (with « En bref » and « Parcours ») wherever
-  // she put it, or opens the page when there is none (owner, 2026-09-18).
+  // « Disponibilités » is not a section a professional orders or hides: it exists only while they
+  // publish real hours, and it follows « À propos » (with « En bref » and « Parcours ») wherever
+  // they put it, or opens the page when there is none (owner, 2026-09-18).
   const ABOUT = new Set<VitrineSection>(["about", "brief", "credentials"]);
   let at = 0;
   ordered.forEach((section, index) => {

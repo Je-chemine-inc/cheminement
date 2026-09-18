@@ -9,7 +9,7 @@ describe("availabilityConfirmationFor", () => {
   const now = new Date("2026-09-18T15:00:00Z");
   const hours = { availability: { days: [{ day: "Monday", isWorkDay: true, startTime: "09:00", endTime: "12:00" }] } };
 
-  it("confirms the hours a professional saves from her own schedule editor", () => {
+  it("confirms the hours a professional saves from their own schedule editor", () => {
     expect(availabilityConfirmationFor({ confirm: true, update: hours, role: "professional", now })).toBe(now);
   });
 
@@ -18,7 +18,7 @@ describe("availabilityConfirmationFor", () => {
     expect(availabilityConfirmationFor({ confirm: "true", update: hours, role: "professional", now })).toBeNull();
   });
 
-  it("never confirms for anyone but the professional herself", () => {
+  it("never confirms for anyone but the professional themselves", () => {
     for (const role of ["admin", "client", "employee", undefined]) {
       expect(availabilityConfirmationFor({ confirm: true, update: hours, role, now })).toBeNull();
     }
@@ -29,7 +29,7 @@ describe("availabilityConfirmationFor", () => {
     expect(availabilityConfirmationFor({ confirm: true, update: { availability: { days: "x" } }, role: "professional", now })).toBeNull();
   });
 
-  it("is not something a professional can write herself", () => {
+  it("is not something a professional can write themselves", () => {
     expect(PROFILE_SELF_WRITABLE as readonly string[]).not.toContain("availabilityConfirmedAt");
     expect(pickWritable({ availabilityConfirmedAt: "2020-01-01" }, PROFILE_SELF_WRITABLE)).toEqual({});
   });

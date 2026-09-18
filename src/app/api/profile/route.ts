@@ -82,7 +82,7 @@ export async function PUT(req: NextRequest) {
       if (key in update) update[key] = update[key] === true;
     }
 
-    // Her own schedule editor confirms the hours it saves; nothing else can (spec 003 phase 3b).
+    // The professional's own schedule editor confirms the hours it saves; nothing else can (spec 003 phase 3b).
     const confirmedAt = availabilityConfirmationFor({
       confirm: confirmAvailability,
       update,

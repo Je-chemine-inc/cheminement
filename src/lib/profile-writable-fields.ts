@@ -20,7 +20,7 @@
  *   route from the `acceptProfessionalTerms` flag + `LEGAL_VERSIONS`, never
  *   from client input.
  * - `calendarFeedToken` — server-generated secret for the iCal feed.
- * - `availabilityConfirmedAt` — stamped by the route when the professional saves her own hours
+ * - `availabilityConfirmedAt` — stamped by the route when the professional saves their own hours
  *   (`availabilityConfirmationFor`); a forged date would put invented times on a public page.
  * - `createdAt` / `updatedAt` — mongoose timestamps.
  */
@@ -68,8 +68,8 @@ export const PROFILE_SELF_WRITABLE = [
 export type ProfileSelfWritableField = (typeof PROFILE_SELF_WRITABLE)[number];
 
 /**
- * When a save confirms a professional's weekly hours: only when she saves them herself, from her
- * own schedule editor, which says so with `confirmAvailability: true`, and the request really
+ * When a save confirms a professional's weekly hours: only when they save them themselves, from
+ * their own schedule editor, which says so with `confirmAvailability: true`, and the request really
  * carries hours. Null otherwise — a save of anything else, a signup, or any other role leaves the
  * stamp as it was.
  *

@@ -108,7 +108,7 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
     cityKey: page.cityKey,
     displayName:
       page.published.displayName?.trim() || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-    // Only hours she saved herself are hers (spec 003 phase 3b): the signup default is what most
+    // Only hours the professional saved themselves count (spec 003 phase 3b): the signup default is what most
     // professionals still carry, and every booking path reads the schedule from here.
     availability: profile?.availabilityConfirmedAt ? (profile.availability ?? null) : null,
     services: {
@@ -213,10 +213,10 @@ export async function isShowcaseSlotFree(
 /**
  * The consultations a page can offer a time for right now (spec 003 phase 3b): offered on the page,
  * and with at least one free time anywhere in the horizon — a professional fully booked for the next
- * two weeks but free after that still has her section. An empty list means the page shows no
+ * two weeks but free after that still has their section. An empty list means the page shows no
  * « Disponibilités » at all, and « Demander un rendez-vous » stays the only way in: the general list.
  *
- * Hours she never saved herself are none (`loadBookableShowcase`), so a signup default never gets here.
+ * Hours the professional never saved themselves are none (`loadBookableShowcase`), so a signup default never gets here.
  */
 export async function showcaseBookingOptions(slug: string, now: Date = new Date()): Promise<ShowcaseBookingOption[]> {
   const bookable = await loadBookableShowcase(slug);
