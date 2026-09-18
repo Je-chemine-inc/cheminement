@@ -620,3 +620,27 @@ Steps, reusing phase 3 throughout (slots, holds, `directRequest`, accept/decline
 
 Legacy contact: `appointment/page.tsx` (checkbox + copy), the direct-request state machine and the
 matcher hand-off, email templates — each behind a spec first.
+
+### Phase 3b addendum — the professional turns it on (2026-09-18)
+
+The owner, after seeing it locally: « make it work so Hélène, from her account, can activate it and
+set her hours — the form 100 % working with our platform ».
+
+- **One switch, the professional's:** « Afficher mes disponibilités sur ma page » is the page's
+  consultation switches (`services.standard` / `services.quick`). Both are now **off until switched
+  on** (schema default and every reader: only `true` counts), so no page opens times its
+  professional did not open. In production all three pages already had both off.
+- **Decoupled from the profile's intake flags:** « Accepte de nouveaux clients » and « consultations
+  ponctuelles rapides » now govern automatic matching only, as their own copy always said. Hélène
+  takes no new clients through the general list and still wants her free hours on her page.
+- **One place:** a « Disponibilités sur ma page » card opens « Ma page vitrine » — the switch, the
+  consultations, her hours editor (the same one as in Profil; her save confirms the hours), and a
+  state line (`showcaseAvailabilityState`: off / page not online / needs hours / no free time /
+  live with the first free time). The admin's page screen shows the same card, worded about the
+  professional, without the editor. The old « Services offerts sur la page » card is gone.
+- **The form, end to end:** its first screen names the professional and the time chosen; the
+  professional's request card and decline dialog say when a decline hands the request to the
+  general list (the client's consent) instead of promising another time.
+- **Verified** in two browsers against the local server: sign in as the professional, switch on,
+  save hours, a client asks through the form and is accepted, another ticks the box and is declined
+  to the general list, switch off and on — 50 checks on screen, in the database and in the emails.
