@@ -32,6 +32,7 @@ import {
   sendDirectRequestConfirmationEmail,
   sendDirectRequestReceivedEmail,
   sendDirectRequestUnavailableEmail,
+  sendDirectRequestHandedOnEmail,
 } from "@/lib/notifications";
 
 /**
@@ -194,6 +195,7 @@ export async function prepareDirectRequest(input: {
         respondBy,
         state: "pending",
         ...(waitlist ? { waitlistEntryId: new mongoose.Types.ObjectId(waitlist.entryId) } : {}),
+        ...(intent.fallbackToGeneral && !waitlist ? { fallbackToGeneral: true } : {}),
       },
     },
   };
@@ -234,7 +236,13 @@ export async function releaseDirectRequest(input: {
   reason?: DirectRequestDeclineReason;
   note?: string;
   now?: Date;
-}): Promise<{ appointment: IAppointment; rerouteToken: string | null; backOnWaitlist: boolean } | null> {
+}): Promise<{
+  appointment: IAppointment;
+  rerouteToken: string | null;
+  backOnWaitlist: boolean;
+  /** Handed straight to matching, as the client agreed when asking (phase 3b): run the matcher. */
+  handedToMatching: boolean;
+} | null> {
   if (!mongoose.Types.ObjectId.isValid(input.appointmentId)) return null;
   await connectToDatabase();
   const now = input.now ?? new Date();
@@ -257,9 +265,29 @@ export async function releaseDirectRequest(input: {
   }
   if (input.outcome === "expired") filter["directRequest.respondBy"] = { $lte: now };
 
+  // The client agreed to the general list when asking (phase 3b). Not for a waitlist offer, whose
+  // person goes back to their place on the list (phase 4) — never to someone else behind their back.
+  const handedToMatching =
+    input.outcome !== "withdrawn" && request.fallbackToGeneral === true && request.source !== "waitlist";
+
   let update: Record<string, unknown>;
   let rerouteToken: string | null = null;
-  if (input.outcome === "withdrawn") {
+  if (handedToMatching && input.outcome !== "withdrawn") {
+    const set: Record<string, unknown> = {
+      routingStatus: "pending",
+      "directRequest.state": "rerouted",
+      "directRequest.answeredAt": now,
+    };
+    if (input.outcome === "declined") {
+      if (input.reason) set["directRequest.declineReason"] = input.reason;
+      const note = input.note?.trim();
+      if (note) set["directRequest.declineNote"] = note;
+    }
+    update = { $set: set, $unset: { date: "", time: "", proposedTo: "", proposedAt: "" } };
+    if (directRequestExcludesProfessional(input.outcome, input.reason)) {
+      update.$addToSet = { refusedBy: request.professionalId };
+    }
+  } else if (input.outcome === "withdrawn") {
     update = {
       $set: {
         status: "cancelled",
@@ -303,7 +331,57 @@ export async function releaseDirectRequest(input: {
     input.outcome === "declined" && request.source === "waitlist" && request.waitlistEntryId
       ? await reopenWaitlistEntry(request.waitlistEntryId, now)
       : false;
-  return { appointment, rerouteToken, backOnWaitlist };
+  return { appointment, rerouteToken, backOnWaitlist, handedToMatching };
+}
+
+/**
+ * Runs Je chemine's matching on a request handed on as the client agreed (phase 3b) — what the
+ * emailed reroute link does after its claim. Imported late: the matcher's module graph reaches back
+ * here through the proposal timeouts.
+ */
+export async function matchHandedOnRequest(appointmentId: string): Promise<void> {
+  const { routeAppointmentToProfessionals } = await import("@/lib/appointment-routing");
+  await routeAppointmentToProfessionals(appointmentId);
+}
+
+/**
+ * A request was handed to matching as the client agreed (phase 3b): tell them nothing is expected of
+ * them, and tell the team where it went.
+ */
+export async function notifyDirectRequestHandedOn(appointmentId: string, outcome: "declined" | "expired"): Promise<void> {
+  const loaded = await loadForEmail(appointmentId);
+  if (!loaded) return;
+  const { request, recipient } = loaded;
+  if (request.state !== "rerouted") return;
+  const tasks: Promise<unknown>[] = [];
+  if (recipient) {
+    tasks.push(
+      sendDirectRequestHandedOnEmail({
+        clientName: recipient.name,
+        clientEmail: recipient.email,
+        professionalName: request.professionalName,
+        outcome,
+        service: request.service,
+        dayKey: request.dayKey,
+        time: request.time,
+        locale: recipient.language,
+      }),
+    );
+  }
+  tasks.push(
+    sendAdminDirectRequestReturnedAlert({
+      outcome,
+      clientName: recipient?.name ?? "Client",
+      professionalName: request.professionalName,
+      service: request.service,
+      dayKey: request.dayKey,
+      time: request.time,
+      reason: request.declineReason ?? null,
+      note: request.declineNote ?? null,
+      handedToMatching: true,
+    }),
+  );
+  await settle(tasks);
 }
 
 /**
@@ -468,6 +546,14 @@ export async function runDirectRequestTimeouts(now: Date = new Date()): Promise<
     const released = await releaseDirectRequest({ appointmentId: id, outcome: "expired", now });
     if (!released) continue;
     expired++;
+    if (released.handedToMatching) {
+      // The client agreed to the general list when asking (phase 3b): match first, then tell them.
+      await matchHandedOnRequest(id).catch((error) => console.error("[direct-request] matching failed:", id, error));
+      await notifyDirectRequestHandedOn(id, "expired").catch((error) =>
+        console.error("[direct-request] hand-on emails failed:", id, error),
+      );
+      continue;
+    }
     await notifyDirectRequestReleased(id, released.rerouteToken).catch((error) =>
       console.error("[direct-request] expiry emails failed:", id, error),
     );

@@ -104,6 +104,8 @@ export interface DirectIntent {
   date: string;
   /** Montréal wall-clock start, "HH:mm". */
   time: string;
+  /** The client ticked « send my request to the general list » (phase 3b); absent unless ticked. */
+  fallbackToGeneral?: true;
 }
 
 const SHOWCASE_SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -119,7 +121,7 @@ export function parseDirectIntent(
 ): { ok: true; intent: DirectIntent | null } | { ok: false } {
   if (value === undefined || value === null) return { ok: true, intent: null };
   if (!isPlainObject(value)) return { ok: false };
-  const { slug, service, date, time } = value;
+  const { slug, service, date, time, fallbackToGeneral } = value;
   if (
     typeof slug !== "string" ||
     slug.length > 80 ||
@@ -130,7 +132,8 @@ export function parseDirectIntent(
   ) {
     return { ok: false };
   }
-  return { ok: true, intent: { slug, service, date, time } };
+  // Only an explicit true is consent; anything else is its absence (phase 3b).
+  return { ok: true, intent: { slug, service, date, time, ...(fallbackToGeneral === true ? { fallbackToGeneral: true as const } : {}) } };
 }
 
 /** Payment methods a client may pick at booking. Never "manual" — that one means

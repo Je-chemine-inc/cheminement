@@ -5,7 +5,9 @@ const APPT = "0123456789abcdef0123aaaa";
 
 const h = vi.hoisted(() => ({
   session: null as { user: { id: string; role: string } } | null,
-  released: null as { rerouteToken: string | null } | null,
+  released: null as { rerouteToken: string | null; handedToMatching?: boolean } | null,
+  matched: [] as string[],
+  handedOn: [] as unknown[][],
   releaseCalls: [] as Record<string, unknown>[],
   notified: [] as unknown[][],
   afterTasks: [] as (() => unknown)[],
@@ -32,6 +34,12 @@ vi.mock("@/lib/direct-request", () => ({
   notifyDirectRequestReleased: async (...args: unknown[]) => {
     h.notified.push(args);
   },
+  matchHandedOnRequest: async (id: string) => {
+    h.matched.push(id);
+  },
+  notifyDirectRequestHandedOn: async (...args: unknown[]) => {
+    h.handedOn.push(args);
+  },
 }));
 
 import { POST } from "@/app/api/appointments/[id]/decline-direct/route";
@@ -45,6 +53,8 @@ beforeEach(() => {
   h.released = { rerouteToken: "ab".repeat(32) };
   h.releaseCalls = [];
   h.notified = [];
+  h.matched = [];
+  h.handedOn = [];
   h.afterTasks = [];
   h.exists = null;
 });
@@ -59,6 +69,16 @@ describe("POST /api/appointments/[id]/decline-direct", () => {
     expect(h.notified).toEqual([]);
     await h.afterTasks[0]();
     expect(h.notified).toEqual([[APPT, "ab".repeat(32)]]);
+  });
+
+  it("hands a request on to matching when the client agreed, then tells them — no link to choose from (phase 3b)", async () => {
+    h.released = { rerouteToken: null, handedToMatching: true };
+    const res = await call({ reason: "not_a_fit" });
+    expect(res.status).toBe(200);
+    await h.afterTasks[0]();
+    expect(h.matched).toEqual([APPT]);
+    expect(h.handedOn).toEqual([[APPT, "declined"]]);
+    expect(h.notified).toEqual([]);
   });
 
   it("requires a known reason and a short note", async () => {

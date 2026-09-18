@@ -8958,6 +8958,60 @@ export async function sendDirectRequestUnavailableEmail(data: {
   );
 }
 
+/**
+ * A direct request went to Je chemine's general list, as the client agreed when asking (spec 003
+ * phase 3b). Nothing is asked of them: a professional's acceptance will be the next email. Sent
+ * under the same type as the « unavailable » email, so the same switch governs both.
+ */
+export async function sendDirectRequestHandedOnEmail(data: {
+  clientName: string;
+  clientEmail: string;
+  professionalName: string;
+  outcome: "declined" | "expired";
+  service: DirectRequestServiceKey;
+  dayKey: string;
+  time: string;
+  locale?: string | null;
+}): Promise<boolean> {
+  const lang = toEmailLang(data.locale);
+  const branding = await getBranding();
+  const slot = formatShowcaseSlot(data.dayKey, data.time, lang);
+  const copy = {
+    fr: {
+      title: "Votre demande est transmise à notre liste générale",
+      greeting: `Bonjour ${data.clientName},`,
+      intro:
+        (data.outcome === "declined"
+          ? `${data.professionalName} ne peut pas vous recevoir le ${slot}.`
+          : `${data.professionalName} n'a pas pu répondre à temps à votre demande pour le ${slot}.`) +
+        " Comme vous l'avez accepté en faisant votre demande, nous la transmettons à notre liste générale : nous vous proposerons le professionnel disponible le plus rapidement.",
+      outro: `Vous n'avez rien à faire : vous recevrez un courriel dès qu'un professionnel accepte votre demande.\n\n${SHOWCASE_SIGNATURE.fr}`,
+    },
+    en: {
+      title: "Your request is going to our general list",
+      greeting: `Hello ${data.clientName},`,
+      intro:
+        (data.outcome === "declined"
+          ? `${data.professionalName} cannot see you on ${slot}.`
+          : `${data.professionalName} could not answer your request for ${slot} in time.`) +
+        " As you agreed when you asked, we are passing it to our general list: we will offer you the professional available soonest.",
+      outro: `There is nothing you need to do: you will get an email as soon as a professional accepts your request.\n\n${SHOWCASE_SIGNATURE.en}`,
+    },
+  }[lang];
+  const html = buildEmailHtml({
+    title: copy.title,
+    theme: "info",
+    greeting: copy.greeting,
+    intro: copy.intro,
+    details: [{ label: "Consultation", value: DIRECT_REQUEST_SERVICE_LABELS[lang][data.service] }],
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+  const text = buildEmailText([copy.title, copy.intro, copy.outro], lang);
+  return sendEmail({ to: data.clientEmail, subject: copy.title, html, text }, "direct_request_unavailable");
+}
+
 /** A direct request came back to the service-request queue. French-only team alert. */
 export async function sendAdminDirectRequestReturnedAlert(data: {
   outcome: "declined" | "expired";
@@ -8968,6 +9022,8 @@ export async function sendAdminDirectRequestReturnedAlert(data: {
   time: string;
   reason?: string | null;
   note?: string | null;
+  /** Handed straight to matching, as the client agreed when asking (phase 3b). */
+  handedToMatching?: boolean;
 }): Promise<void> {
   await connectToDatabase();
   const recipients = await getAdminAlertRecipients();
@@ -8980,7 +9036,9 @@ export async function sendAdminDirectRequestReturnedAlert(data: {
   const title =
     data.outcome === "declined" ? "Demande directe déclinée" : "Demande directe sans réponse";
   const slot = formatShowcaseSlot(data.dayKey, data.time, "fr");
-  const intro = `La demande de ${data.clientName} auprès de ${data.professionalName} pour le ${slot} est revenue dans les demandes de service. La personne a reçu un courriel pour choisir un autre créneau ou être jumelée.`;
+  const intro = data.handedToMatching
+    ? `La demande de ${data.clientName} auprès de ${data.professionalName} pour le ${slot} a été transmise au jumelage, comme la personne l'avait accepté en la faisant. Elle en a été avertie par courriel.`
+    : `La demande de ${data.clientName} auprès de ${data.professionalName} pour le ${slot} est revenue dans les demandes de service. La personne a reçu un courriel pour choisir un autre créneau ou être jumelée.`;
   const details = [
     { label: "Professionnel", value: data.professionalName },
     { label: "Client", value: data.clientName },

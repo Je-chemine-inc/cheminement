@@ -4,7 +4,12 @@ import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectToDatabase from "@/lib/mongodb";
 import Appointment from "@/models/Appointment";
-import { notifyDirectRequestReleased, releaseDirectRequest } from "@/lib/direct-request";
+import {
+  matchHandedOnRequest,
+  notifyDirectRequestHandedOn,
+  notifyDirectRequestReleased,
+  releaseDirectRequest,
+} from "@/lib/direct-request";
 import { afterSlotFreed } from "@/lib/waitlist-slot-freed";
 import {
   DIRECT_REQUEST_DECLINE_NOTE_MAX,
@@ -62,11 +67,21 @@ export async function POST(
         : NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    after(() =>
-      notifyDirectRequestReleased(id, released.rerouteToken).catch((error) =>
-        console.error("[decline-direct] emails failed:", error),
-      ),
-    );
+    if (released.handedToMatching) {
+      // The client agreed to the general list when asking (phase 3b): match, then tell them.
+      after(async () => {
+        await matchHandedOnRequest(id).catch((error) => console.error("[decline-direct] matching failed:", error));
+        await notifyDirectRequestHandedOn(id, "declined").catch((error) =>
+          console.error("[decline-direct] emails failed:", error),
+        );
+      });
+    } else {
+      after(() =>
+        notifyDirectRequestReleased(id, released.rerouteToken).catch((error) =>
+          console.error("[decline-direct] emails failed:", error),
+        ),
+      );
+    }
     // The freed time goes to the professional's waitlist (phase 4).
     const professionalId = session.user.id;
     after(() => afterSlotFreed(professionalId));
