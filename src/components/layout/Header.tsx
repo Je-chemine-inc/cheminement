@@ -116,7 +116,9 @@ export function Header() {
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-border/20 bg-card">
-      <div className="container mx-auto px-4 max-w-7xl">
+      {/* Never a search snippet: Google once used the menu as the home page's description.
+          data-nosnippet is honoured on div, span and section, not on <header> itself. */}
+      <div className="container mx-auto px-4 max-w-7xl" data-nosnippet="">
         <div className="flex h-14 items-center justify-between">
           {/* Logo/Brand */}
           <div className="flex items-center">

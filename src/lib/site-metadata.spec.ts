@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { describe, expect, it } from "vitest";
 import { SITE_NAME, SITE_OPEN_GRAPH, websiteJsonLd } from "@/lib/site-metadata";
 import { SITE_URL } from "@/lib/site-url";
@@ -35,5 +37,35 @@ describe("websiteJsonLd", () => {
     const url = String(websiteJsonLd().url);
     expect(url).toBe(`${SITE_URL}/`);
     expect(new URL(url).pathname).toBe("/");
+  });
+});
+
+/**
+ * Google once built the home page's result snippet out of the navigation bar (« Je chemine.
+ * Accueil À propos. Services… »): for a search on the brand it prefers text containing the words
+ * searched, and the logo's alt text at the top of the header was the only place the name appeared.
+ */
+describe("what Google may quote from a page", () => {
+  const read = (file: string) => readFileSync(join(__dirname, "..", "..", file), "utf8");
+
+  it("never quotes the header or the footer", () => {
+    // Honoured on div, span and section only — so on the element inside <header>/<footer>.
+    expect(read("src/components/layout/Header.tsx")).toMatch(/<header[^>]*>\s*(\{\/\*[\s\S]*?\*\/\}\s*)?<div[^>]*data-nosnippet/);
+    expect(read("src/components/layout/Footer.tsx")).toMatch(/<footer[^>]*>\s*(\{\/\*[\s\S]*?\*\/\}\s*)?<div[^>]*data-nosnippet/);
+  });
+
+  it("opens the home page's title with the site's name, in both languages", () => {
+    for (const file of ["messages/fr.json", "messages/en.json"]) {
+      const title = JSON.parse(read(file)).Seo.home.title as string;
+      expect(title.startsWith(`${SITE_NAME} | `), `${file}: Seo.home.title`).toBe(true);
+    }
+  });
+
+  it("names the site in the home page's description, in both languages", () => {
+    for (const file of ["messages/fr.json", "messages/en.json"]) {
+      const description = JSON.parse(read(file)).Seo.home.description as string;
+      expect(description.startsWith(SITE_NAME), `${file}: Seo.home.description`).toBe(true);
+      expect(description.length, `${file}: Seo.home.description`).toBeLessThanOrEqual(160);
+    }
   });
 });
