@@ -21,6 +21,7 @@ import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider
 import { AdminAccessRequired } from "@/components/admin/AdminAccessRequired";
 import { ShowcaseAvailabilityCard } from "@/components/showcase/ShowcaseAvailabilityCard";
 import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
+import { ShowcaseTeamResourcesAdminCard } from "@/components/showcase/ShowcaseTeamResourcesCard";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
@@ -279,6 +280,8 @@ export default function AdminShowcaseDetailPage() {
         reload={load}
         audience="admin"
       />
+
+      <ShowcaseTeamResourcesAdminCard apiBase={`/api/admin/showcases/${userId}`} view={view} reload={load} />
 
       <ShowcaseFactsCard
         view={view}

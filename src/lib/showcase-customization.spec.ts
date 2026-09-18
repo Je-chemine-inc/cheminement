@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   SHOWCASE_SECTION_KEYS,
+  SHOWCASE_TEXT_DEFAULTS,
+  SHOWCASE_TEXT_GROUPS,
+  SHOWCASE_TEXT_KEYS,
   SHOWCASE_TEXT_LIMITS,
   aboutHeadingMessage,
   layoutChoicesOf,
@@ -9,6 +12,7 @@ import {
   type ShowcaseSectionKey,
 } from "@/lib/showcase-customization";
 import { changedShowcaseFields, normalizeShowcaseDraft } from "@/lib/showcase-workflow";
+import { VITRINE_NAV_TEXT } from "@/lib/showcase-vitrine";
 import fr from "../../messages/fr.json";
 import en from "../../messages/en.json";
 
@@ -148,5 +152,86 @@ describe("changedShowcaseFields: the page's customization", () => {
       "accent",
       "texts",
     ]);
+  });
+});
+
+/**
+ * Every heading a page shows is the professional's to rewrite (owner, 2026-09-18): each section's
+ * name — its dock entry too — « En bref », « Parcours », « Motifs de consultation », and the
+ * « Disponibilités » title and text. A blank one keeps the page's own wording.
+ */
+describe("the texts a professional can rewrite", () => {
+  const save = (body: Record<string, unknown>) => normalizeShowcaseDraft(body, new Set(), "professional");
+  const at = (messages: unknown, path: string) =>
+    path.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], messages);
+
+  it("lists each text in exactly one section of the editor", () => {
+    const grouped = SHOWCASE_TEXT_GROUPS.flatMap((group) => group.keys);
+    expect(new Set(grouped).size).toBe(grouped.length);
+    expect([...grouped].sort()).toEqual([...SHOWCASE_TEXT_KEYS].sort());
+  });
+
+  it("gives every text a limit, the page's wording as its default and an editor label, in both languages", () => {
+    for (const key of SHOWCASE_TEXT_KEYS) {
+      expect(SHOWCASE_TEXT_LIMITS[key], key).toBeGreaterThan(0);
+      for (const [language, messages] of [["fr", fr], ["en", en]] as const) {
+        expect(typeof at(messages, `Showcase.${SHOWCASE_TEXT_DEFAULTS[key]}`), `${language}: default of ${key}`).toBe("string");
+        expect(typeof at(messages, `ShowcasePro.customize.texts.${key}`), `${language}: label of ${key}`).toBe("string");
+      }
+    }
+    for (const { group } of SHOWCASE_TEXT_GROUPS) {
+      expect(typeof at(fr, `ShowcasePro.customize.groups.${group}`)).toBe("string");
+      expect(typeof at(en, `ShowcasePro.customize.groups.${group}`)).toBe("string");
+    }
+  });
+
+  it("keeps every section's name short enough for the dock", () => {
+    for (const key of Object.values(VITRINE_NAV_TEXT)) expect(SHOWCASE_TEXT_LIMITS[key], key).toBeLessThanOrEqual(30);
+  });
+
+  it("stores a section's name and the « Disponibilités » texts, and refuses a name too long for the dock", () => {
+    expect(
+      save({
+        texts: {
+          aboutLabel: { fr: " Qui  suis-je ", en: "Who I am" },
+          availabilityTitle: { fr: "Prendre rendez-vous avec moi", en: "" },
+          themesTitle: { fr: "Ce dont on peut parler", en: "" },
+        },
+      }),
+    ).toEqual({
+      ok: true,
+      set: {
+        "draft.texts": {
+          aboutLabel: { fr: "Qui suis-je", en: "Who I am" },
+          availabilityTitle: { fr: "Prendre rendez-vous avec moi", en: "" },
+          themesTitle: { fr: "Ce dont on peut parler", en: "" },
+        },
+      },
+      unset: [],
+    });
+    expect(save({ texts: { productsLabel: { fr: "x".repeat(31), en: "" } } })).toMatchObject({
+      ok: false,
+      code: "TOO_LONG",
+      field: "texts.productsLabel.fr",
+    });
+  });
+});
+
+describe("visibleSections with a forced section (team resources, 2026-09-18)", () => {
+  const hiddenProducts = ["products"];
+
+  it("shows a forced section the professional hid, in its place", () => {
+    expect(visibleSections(["products", "about"], hiddenProducts, ALL_AVAILABLE, ["products"])).toEqual([
+      "products",
+      "about",
+      "approach",
+      "expertises",
+      "articles",
+    ]);
+    expect(visibleSections(["products", "about"], hiddenProducts, ALL_AVAILABLE)).not.toContain("products");
+  });
+
+  it("never draws a forced section with nothing to show", () => {
+    expect(visibleSections(undefined, [], { ...ALL_AVAILABLE, products: false }, ["products"])).not.toContain("products");
   });
 });

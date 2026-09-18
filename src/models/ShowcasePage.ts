@@ -51,6 +51,10 @@ export interface IShowcaseContent {
   /** Plain text; paragraphs separated by a blank line. Never HTML. */
   bio: ILocalizedText;
   approach: ILocalizedText;
+  /**
+   * Retired on 2026-09-18 (owner: « Remove those inputs »): no page shows values since 2026-09-17,
+   * and nothing edits them. Stored values are kept as they are.
+   */
   values: IShowcaseValue[];
   /** One sentence the page quotes, signed with the display name. */
   quote: ILocalizedText;
@@ -84,7 +88,6 @@ export interface IShowcaseContent {
   hiddenSections: string[];
   /** A SHOWCASE_ACCENTS key; empty for the default colour. */
   accent: string;
-  /** Library photos chosen per image slot (paths under /showcase/ambiance). */
 }
 
 export interface IShowcaseHistoryEntry {
@@ -126,6 +129,12 @@ export interface IShowcasePage extends Document {
    * new review.
    */
   services: { standard: boolean; quick: boolean };
+  /**
+   * Je chemine's own resources an admin placed on the page, by slug, in the order shown (owner,
+   * 2026-09-18: « we force our resources into their pages »). Live, like `services`: no draft, no
+   * publication, and the professional's saves never touch it. They always show in « Ressources ».
+   */
+  teamResourceSlugs: string[];
   /**
    * The professional's agreement to publication (Loi 25), versioned. Since
    * 2026-09-14 an admin confirms it when publishing (`source` "admin",
@@ -174,11 +183,6 @@ const MethodSchema = new Schema<IShowcaseMethod>({ name: localized(), title: loc
 
 const TextsSchema = new Schema(
   Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, { type: LocalizedTextSchema, default: undefined }])),
-  { _id: false },
-);
-
-const AmbienceSchema = new Schema(
-  { band: { type: String, trim: true }, about: { type: String, trim: true }, closing: { type: String, trim: true } },
   { _id: false },
 );
 
@@ -252,6 +256,7 @@ const ShowcasePageSchema = new Schema<IShowcasePage>(
     publishedBy: { type: Schema.Types.ObjectId, ref: "User" },
     unpublishedAt: Date,
     unpublishedBy: { type: String, enum: ["professional", "admin"] },
+    teamResourceSlugs: { type: [String], default: [] },
     services: {
       standard: { type: Boolean, default: false },
       quick: { type: Boolean, default: false },

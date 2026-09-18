@@ -126,7 +126,6 @@ export type DraftRefusal =
   | "TOO_LONG"
   | "UNKNOWN_EXPERTISE"
   | "TOO_MANY_EXPERTISES"
-  | "TOO_MANY_VALUES"
   | "TOO_MANY_ITEMS"
   | "INVALID_ORDER";
 
@@ -247,34 +246,8 @@ export function normalizeShowcaseDraft(
     set[`draft.${field}`] = result.value;
   }
 
-  if (has("values")) {
-    if (!Array.isArray(input.values)) return { ok: false, code: "INVALID_FIELD", field: "values" };
-    const values: (Localized & { details?: Localized })[] = [];
-    for (const [index, raw] of input.values.entries()) {
-      const result = cleanLocalized(raw, L.valueLength, "line");
-      if (!result.ok) {
-        return {
-          ok: false,
-          code: result.where === "shape" ? "INVALID_FIELD" : "TOO_LONG",
-          field: `values.${index}`,
-        };
-      }
-      const details = cleanLocalized((raw as { details?: unknown }).details, L.valueDescription, "line");
-      if (!details.ok) {
-        return {
-          ok: false,
-          code: details.where === "shape" ? "INVALID_FIELD" : "TOO_LONG",
-          field: `values.${index}.details`,
-        };
-      }
-      // A value without its French wording is dropped; an empty description is not stored.
-      if (result.value.fr) {
-        values.push({ ...result.value, ...(details.value.fr || details.value.en ? { details: details.value } : {}) });
-      }
-    }
-    if (values.length > L.values) return { ok: false, code: "TOO_MANY_VALUES", field: "values" };
-    set["draft.values"] = values;
-  }
+  // « Valeurs » is retired (owner, 2026-09-18): the page stopped showing it, so the editor stopped
+  // asking. A body that still carries `values` changes nothing, like any other unknown field.
 
   for (const [field, maxItems, maxLength] of LINE_LISTS) {
     if (!has(field)) continue;
@@ -434,7 +407,6 @@ export const SHOWCASE_EDITABLE_FIELDS = [
   "intro",
   "bio",
   "approach",
-  "values",
   "expertiseIds",
   "insuranceNote",
   "quote",

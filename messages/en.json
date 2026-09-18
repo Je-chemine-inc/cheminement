@@ -7410,6 +7410,7 @@
       "productType_video": "Video",
       "productType_audio": "Audio",
       "productType_pdf": "PDF document",
+      "productType_article": "Article",
       "productType_webinar": "Webinar",
       "productType_external": "External link",
       "productFree": "Free",
@@ -7466,7 +7467,8 @@
       },
       "products": {
         "eyebrow": "Resources",
-        "title": "Learn at your own pace, between sessions"
+        "title": "Learn at your own pace, between sessions",
+        "byTeam": "Je chemine resource"
       },
       "articles": {
         "eyebrow": "Articles",
@@ -7616,14 +7618,12 @@
       "remove": "Remove the photo"
     },
     "officePhotos": {
-      "title": "Office photos",
-      "hint": "Up to 6 photos of the office or consulting room. They are shown large on the page, instead of the ambience photos, in the order chosen. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
+      "title": "Office photo",
+      "hint": "One photo of the office or consulting room. It shows in « About », beside the presentation. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
       "add": "Add an office photo",
+      "replace": "Replace the photo",
       "remove": "Remove",
-      "moveUp": "Move earlier",
-      "moveDown": "Move later",
-      "alt": "Office photo {number}",
-      "full": "The maximum of 6 photos is reached. Remove one to add another."
+      "alt": "Office photo"
     },
     "presentation": {
       "title": "Presentation",
@@ -7643,17 +7643,12 @@
       "bioPlaceholder": "Your background, your practice and the people you work with. Leave an empty line between paragraphs.",
       "approach": "My approach",
       "approachPlaceholder": "How your sessions go and what your approach is based on.",
-      "values": "Values",
-      "valuesHint": "Up to 5 words or short phrases, for example \"Kindness\".",
-      "addValue": "Add a value",
-      "removeValue": "Remove this value",
       "insuranceNote": "Insurance note",
       "insuranceNotePlaceholder": "E.g. My services can be reimbursed by most group insurance plans.",
-      "valueDescription": "Description (optional)",
       "quote": "Quote",
       "quotePlaceholder": "One sentence that sums up the way of working, signed with the display name.",
       "highlights": "Highlights",
-      "highlightsHint": "Up to 4 short mentions shown under the presentation, for example \"Receipts for group insurance\".",
+      "highlightsHint": "Up to 4 short mentions, shown in “At a glance”, within “About”: for example \"Receipts for group insurance\".",
       "highlightsAdd": "Add a highlight",
       "credentials": "Background",
       "credentialsHint": "Up to 6 lines: degrees, trainings and notable experience.",
@@ -7678,7 +7673,7 @@
     },
     "expertises": {
       "title": "Areas of expertise",
-      "hint": "Choose 3 to 12 areas. They help people find you by city and by need.",
+      "hint": "Choose 3 to 12 areas. They show in “What I help with”, under “Reasons for consulting”, and help people find you by need.",
       "count": "{count, plural, =0 {None selected} one {# selected} other {# selected}}",
       "none": "The team has not opened any areas of expertise for showcase pages yet."
     },
@@ -7716,6 +7711,12 @@
         "live": "Online: your page shows your availability. First free time: {when}."
       }
     },
+    "teamResources": {
+      "title": "Resources added by Je chemine",
+      "body": "They appear in “Resources” on your page, after yours, even if you hide that section. For any question, write to the team.",
+      "open": "View",
+      "free": "Free"
+    },
     "editor": {
       "save": "Save",
       "saving": "Saving…",
@@ -7730,9 +7731,8 @@
       "INVALID_FIELD": "A field has an invalid value.",
       "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
       "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
-      "TOO_MANY_VALUES": "Enter at most 5 values.",
       "TOO_MANY_ITEMS": "A list has more items than allowed.",
-      "OFFICE_PHOTO_LIMIT": "The maximum of 6 office photos is reached.",
+      "UNKNOWN_RESOURCE": "This is not a published Je chemine resource.",
       "OFFICE_PHOTO_NOT_FOUND": "This photo is no longer on the page. Reload it.",
       "INVALID_ORDER": "Choose a professional order from the list.",
       "NOTHING_TO_SAVE": "There are no changes to save.",
@@ -7765,7 +7765,7 @@
     },
     "customize": {
       "title": "Customize the page",
-      "hint": "Your colour, the order of the sections, their titles and your ambience photos. Changes go live when you save.",
+      "hint": "Your colour, the order of the sections, their names and their titles. Changes go live when you save.",
       "accentTitle": "Page colour",
       "accents": {
         "teal": "Teal",
@@ -7778,7 +7778,7 @@
       "sectionsHint": "Move sections and hide the ones you do not want to show. A section with no content stays hidden.",
       "sections": {
         "about": "About",
-        "approach": "Approach and how a request works",
+        "approach": "Approach",
         "expertises": "What I help with",
         "products": "Resources",
         "articles": "Articles"
@@ -7786,28 +7786,36 @@
       "show": "Show “{section}”",
       "moveUp": "Move “{section}” up",
       "moveDown": "Move “{section}” down",
-      "required": "Services and fees and Availability are always shown.",
-      "textsTitle": "Section titles and texts",
-      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A text replaces the page’s own only when it is written in French.",
+      "required": "“Availability” does not move: it follows “About” when you show your availability. Resources added by Je chemine always show in “Resources”.",
+      "textsTitle": "Section names, titles and texts",
+      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A section’s name also appears in the navigation bar at the bottom of the page. A text replaces the page’s own only when it is written in French.",
       "texts": {
-        "aboutTitle": "“About” title",
-        "approachTitle": "“Approach” title",
+        "aboutLabel": "Section name",
+        "aboutTitle": "Title",
+        "factsTitle": "“At a glance” title",
+        "credentialsTitle": "“Background” title",
+        "availabilityLabel": "Section name",
+        "availabilityTitle": "Title",
+        "availabilityIntro": "Text under the title",
+        "approachLabel": "Section name",
+        "approachTitle": "Title",
         "methodsTitle": "Methods title",
-        "stepsTitle": "“How a request works” title",
-        "valuesTitle": "“Values” title",
-        "valuesIntro": "Text under “Values”",
-        "servicesTitle": "“Services and fees” title",
-        "servicesIntro": "Text under “Services and fees”",
-        "standardPoint": "Standard consultation description",
-        "quickPoint": "Quick consultation description",
-        "disposTitle": "“Availability” title",
-        "disposIntro": "Text under “Availability”",
-        "expertisesTitle": "“What I help with” title",
-        "expertisesIntro": "Text under “What I help with”",
-        "productsTitle": "“Trainings and products” title",
-        "articlesTitle": "“Articles” title",
-        "ctaTitle": "Closing band title",
-        "ctaBody": "Closing band text"
+        "expertisesLabel": "Section name",
+        "expertisesTitle": "Title",
+        "expertisesIntro": "Text under the title",
+        "themesTitle": "Reasons for consulting title",
+        "productsLabel": "Section name",
+        "productsTitle": "Title",
+        "articlesLabel": "Section name",
+        "articlesTitle": "Title"
+      },
+      "groups": {
+        "about": "About",
+        "availability": "Availability",
+        "approach": "Approach",
+        "expertises": "What I help with",
+        "products": "Resources",
+        "articles": "Articles"
       }
     }
   },
@@ -7832,6 +7840,23 @@
         "live": "Online: the page shows their availability. First free time: {when}."
       }
     },
+    "teamResources": {
+      "title": "Je chemine resources on this page",
+      "hint": "They appear in “Resources”, after the professional's own, even if the section is hidden. The professional sees them in “My showcase page” but cannot remove them. Each change goes live at once.",
+      "chosen": "On the page",
+      "empty": "No Je chemine resource on this page.",
+      "filter": "Filter published resources",
+      "none": "No published resource matches.",
+      "noneAtAll": "No Je chemine resource is published.",
+      "add": "Add “{title}”",
+      "remove": "Remove",
+      "moveUp": "Move “{title}” up",
+      "moveDown": "Move “{title}” down",
+      "withdrawn": "no longer published: it no longer shows",
+      "free": "Free",
+      "max": "At most {max} resources per page.",
+      "open": "View"
+    },
     "editor": {
       "fields": {
         "introPlaceholder": "A few sentences to introduce the professional.",
@@ -7839,7 +7864,7 @@
         "approachPlaceholder": "How their sessions go and what their approach is based on."
       },
       "expertises": {
-        "hint": "Choose 3 to 12 areas. They help people find this professional by city and by need."
+        "hint": "Choose 3 to 12 areas. They show in “What I help with”, under “Reasons for consulting”, and help people find this professional by need."
       }
     },
     "title": "Showcase pages",
@@ -7947,6 +7972,7 @@
         "unpublish": "Taken down",
         "republish": "Put back online",
         "move": "Address changed",
+        "resources": "Je chemine resources changed",
         "invite": "Invitation",
         "submit": "Sent for review",
         "request_changes": "Changes requested",

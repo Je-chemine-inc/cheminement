@@ -3,6 +3,7 @@ import type { ShowcaseLanguageKey, ShowcaseModalityKey } from "@/lib/showcase-pu
 import type { ShowcaseRequirement } from "@/lib/showcase-workflow";
 import type { ShowcaseWorkDay } from "@/lib/showcase-availability";
 import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
+import type { TeamResourceOption, TeamResourceView } from "@/lib/showcase-team-resources";
 import type {
   ShowcaseAccentKey,
   ShowcaseSectionKey,
@@ -25,8 +26,6 @@ export interface ShowcaseContentJson {
   bio: LocalizedTextJson;
   approach: LocalizedTextJson;
   insuranceNote: LocalizedTextJson;
-  /** Each value with its description (empty when none). */
-  values: (LocalizedTextJson & { details: LocalizedTextJson })[];
   quote: LocalizedTextJson;
   highlights: LocalizedTextJson[];
   credentials: LocalizedTextJson[];
@@ -44,7 +43,6 @@ export interface ShowcaseContentJson {
   sectionOrder: ShowcaseSectionKey[];
   hiddenSections: ShowcaseSectionKey[];
   accent: ShowcaseAccentKey;
-  /** The library photo chosen per slot, empty for the automatic one. */
 }
 
 export interface ShowcaseEditorJson {
@@ -101,6 +99,8 @@ export interface ShowcaseEditorJson {
     /** The consultations the page shows a time for now, each with its first free time. */
     options: ShowcaseBookingOption[];
   };
+  /** Je chemine resources the team placed on the page (2026-09-18): shown, not removable by the professional. */
+  teamResources: TeamResourceView[];
   /** Anonymous counts over the last `days` days. */
   stats: { days: number; views: number; ctaClicks: number };
 }
@@ -112,6 +112,8 @@ export interface ShowcaseAdminJson extends ShowcaseEditorJson {
     history: { at: string; actor: string; action: string; note: string }[];
     previousSlugs: string[];
     invitedAt: string | null;
+    /** Every team resource an admin can place on the page. */
+    teamResourceOptions: TeamResourceOption[];
   };
 }
 
@@ -134,9 +136,8 @@ export const SHOWCASE_ERROR_CODES = [
   "INVALID_FIELD",
   "UNKNOWN_EXPERTISE",
   "TOO_MANY_EXPERTISES",
-  "TOO_MANY_VALUES",
   "TOO_MANY_ITEMS",
-  "OFFICE_PHOTO_LIMIT",
+  "UNKNOWN_RESOURCE",
   "OFFICE_PHOTO_NOT_FOUND",
   "INVALID_ORDER",
   "NOTHING_TO_SAVE",

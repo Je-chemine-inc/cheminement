@@ -40,7 +40,6 @@ const profile = {
   intro: [SECRET],
   bio: [SECRET],
   approach: [],
-  values: [],
   expertises: [],
   languages: [],
   modalities: [],

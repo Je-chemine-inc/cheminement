@@ -49,6 +49,7 @@ import { showcaseWorkDays } from "@/lib/showcase-availability";
 import { slotGridOf } from "@/lib/available-slots";
 import { quickConsultationMinutes } from "@/lib/professional-pricing";
 import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
+import { findTeamResources, listTeamResourceOptions, resolveTeamResources, type TeamResourceView } from "@/lib/showcase-team-resources";
 import {
   sendAdminShowcaseUpdatedAlert,
   sendShowcasePublishedEmail,
@@ -88,7 +89,7 @@ type Localized = { fr?: string; en?: string };
 type ContentLean = Partial<
   Omit<
     IShowcaseContent,
-    "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "values" | "quote" | "highlights" | "credentials" | "focusAreas" | "methods"
+    "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "quote" | "highlights" | "credentials" | "focusAreas" | "methods"
   >
 > & {
   headline?: Localized;
@@ -96,7 +97,6 @@ type ContentLean = Partial<
   bio?: Localized;
   approach?: Localized;
   insuranceNote?: Localized;
-  values?: (Localized & { details?: Localized })[];
   quote?: Localized;
   highlights?: Localized[];
   credentials?: Localized[];
@@ -121,6 +121,7 @@ type PageLean = {
   unpublishedAt?: Date;
   unpublishedBy?: ShowcaseActor;
   services?: { standard?: boolean; quick?: boolean };
+  teamResourceSlugs?: string[];
   consent?: { acceptedAt?: Date; version?: string; source?: ShowcaseActor };
   invitedAt?: Date;
   changeAlertedAt?: Date;
@@ -233,7 +234,6 @@ function contentView(content: ContentLean | undefined) {
     bio: text(content?.bio),
     approach: text(content?.approach),
     insuranceNote: text(content?.insuranceNote),
-    values: (content?.values ?? []).map((value) => ({ ...text(value), details: text(value.details) })),
     quote: text(content?.quote),
     highlights: (content?.highlights ?? []).map(text),
     credentials: (content?.credentials ?? []).map(text),
@@ -258,11 +258,15 @@ export type ShowcaseContentView = ReturnType<typeof contentView>;
 export async function loadShowcaseEditor(userId: string) {
   const page = await loadPage(userId);
   if (!page) return null;
-  const [profile, options, showcaseEnabled, stats] = await Promise.all([
+  const [profile, options, showcaseEnabled, stats, teamResources] = await Promise.all([
     profileFacts(userId),
     showcaseExpertiseOptions(),
     isShowcaseEnabled(),
     loadShowcaseStats("page", [String(page._id)]),
+    resolveTeamResources(page.teamResourceSlugs).catch((error): TeamResourceView[] => {
+      console.error("[showcase] team resources could not be read for the editor:", error);
+      return [];
+    }),
   ]);
   // The page's city is the office address's: what the next publication will use.
   const officeKey = officeCityKey(profile);
@@ -336,6 +340,7 @@ export async function loadShowcaseEditor(userId: string) {
     })),
     consentVersion: SHOWCASE_CONSENT_VERSION,
     showcaseEnabled,
+    teamResources,
     availability: {
       hoursConfirmedAt,
       week: showcaseWorkDays(profile?.availability?.days),
@@ -372,6 +377,7 @@ export async function loadShowcaseAdminView(userId: string) {
         .map((entry) => ({ at: entry.at, actor: entry.actor, action: entry.action, note: entry.note ?? "" })),
       previousSlugs: page?.previousSlugs ?? [],
       invitedAt: page?.invitedAt ?? null,
+      teamResourceOptions: await listTeamResourceOptions(),
     },
   };
 }
@@ -779,8 +785,12 @@ async function officePhotoPage(userId: string, actor: ShowcaseActor): Promise<{ 
   return { ok: true, page };
 }
 
-/** Adds an uploaded office photo at the end. The file is deleted when it cannot be added. */
-export async function addShowcaseOfficePhoto(input: {
+/**
+ * Sets the page's office photo from an upload. A page has one since 2026-09-18 (owner): a new photo
+ * takes the place of the one shown, and of any older extras the page still stored. The file is
+ * deleted when it cannot be set.
+ */
+export async function setShowcaseOfficePhoto(input: {
   userId: string;
   fileId: string;
   actor: ShowcaseActor;
@@ -791,12 +801,11 @@ export async function addShowcaseOfficePhoto(input: {
   };
   const found = await officePhotoPage(input.userId, input.actor);
   if (!found.ok) return discard(found);
-  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
-  if (current.length >= SHOWCASE_LIMITS.officePhotos) return discard(fail(409, "OFFICE_PHOTO_LIMIT"));
-  const result = await writeOfficePhotos(found.page, input.actor, [...current, input.fileId]);
+  const result = await writeOfficePhotos(found.page, input.actor, [input.fileId]);
   return result.ok ? result : discard(result);
 }
 
+/** Removes the page's office photo, and any older extras stored with it: the page then shows none. */
 export async function removeShowcaseOfficePhoto(input: {
   userId: string;
   fileId: string;
@@ -806,29 +815,41 @@ export async function removeShowcaseOfficePhoto(input: {
   if (!found.ok) return found;
   const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
   if (!current.includes(input.fileId)) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
-  return writeOfficePhotos(found.page, input.actor, current.filter((id) => id !== input.fileId));
+  return writeOfficePhotos(found.page, input.actor, []);
 }
 
-/** Moves an office photo one place earlier (`up`) or later (`down`). At either end, nothing changes. */
-export async function moveShowcaseOfficePhoto(input: {
+/**
+ * The Je chemine resources an admin places on a professional's page (owner, 2026-09-18: « we force
+ * our resources into their pages »), as the whole list in the order the page shows it. Live, like the
+ * consultation switches: no draft, no publication. Only the team's own published resources — never
+ * another professional's product — at most SHOWCASE_LIMITS.teamResources, each once.
+ */
+export async function updateShowcaseTeamResources(input: {
   userId: string;
-  fileId: string;
-  direction: unknown;
-  actor: ShowcaseActor;
-}): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
-  if (input.direction !== "up" && input.direction !== "down") return fail(400, "INVALID_FIELD", { field: "direction" });
-  const found = await officePhotoPage(input.userId, input.actor);
-  if (!found.ok) return found;
-  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
-  const index = current.indexOf(input.fileId);
-  if (index < 0) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
-  const target = input.direction === "up" ? index - 1 : index + 1;
-  if (target < 0 || target >= current.length) {
-    return success({ officePhotos: current.map((id) => ({ id, url: photoUrl(id) as string })) });
+  slugs: unknown;
+  adminId: string;
+}): Promise<ServiceResult<{ teamResources: TeamResourceView[] }>> {
+  if (!Array.isArray(input.slugs) || input.slugs.some((slug) => typeof slug !== "string")) {
+    return fail(400, "INVALID_FIELD", { field: "slugs" });
   }
-  const next = [...current];
-  [next[index], next[target]] = [next[target], next[index]];
-  return writeOfficePhotos(found.page, input.actor, next);
+  const slugs = [...new Set((input.slugs as string[]).map((slug) => slug.trim()).filter(Boolean))];
+  if (slugs.length > SHOWCASE_LIMITS.teamResources) return fail(400, "TOO_MANY_ITEMS", { field: "slugs" });
+  if (!mongoose.Types.ObjectId.isValid(input.userId)) return fail(404, "NOT_FOUND");
+  const found = await findTeamResources(slugs);
+  const unknown = slugs.filter((slug) => !found.has(slug));
+  if (unknown.length > 0) return fail(409, "UNKNOWN_RESOURCE", { slugs: unknown });
+  await connectToDatabase();
+  const updated = await ShowcasePage.findOneAndUpdate(
+    { userId: input.userId },
+    { $set: { teamResourceSlugs: slugs }, $push: historyEntry("admin", input.adminId, "resources", slugs.join(", ") || "—") },
+    { new: true },
+  )
+    .select("_id")
+    .lean();
+  if (!updated) return fail(404, "NOT_FOUND");
+  return success({
+    teamResources: slugs.map((slug) => ({ slug, title: found.get(slug)!.title, priceCents: found.get(slug)!.priceCents, available: true })),
+  });
 }
 
 export async function updateShowcaseServices(input: {

@@ -1,4 +1,5 @@
 import type { ShowcasePrice } from "@/lib/showcase-public";
+import type { ShowcaseTextKey } from "@/lib/showcase-customization";
 import { SHOWCASE_SLOTS_ANCHOR } from "@/lib/showcase-booking-types";
 
 /**
@@ -36,14 +37,28 @@ export const VITRINE_ANCHORS = {
 
 export type VitrineSection = "about" | "brief" | "credentials" | "availability" | "approach" | "focus" | "products" | "articles";
 
+/**
+ * The text a professional wrote for each section's name: the page's small heading, and the section's
+ * entry in the dock. Without it, each keeps the page's own wording.
+ */
+export const VITRINE_NAV_TEXT: Readonly<Record<VitrineSection, ShowcaseTextKey>> = {
+  about: "aboutLabel",
+  brief: "factsTitle",
+  credentials: "credentialsTitle",
+  availability: "availabilityLabel",
+  approach: "approachLabel",
+  focus: "expertisesLabel",
+  products: "productsLabel",
+  articles: "articlesLabel",
+};
+
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
 
 /**
- * The sections a page shows, in order. The approach section always appears:
- * it carries how a request unfolds even when the professional wrote nothing
- * about their approach. Free times only when a consultation is open and the
- * page is not a preview.
+ * The sections a page shows, in order: those with something to show, in the professional's order
+ * (`order` is the list the page draws, so a section it leaves out is left out here too). Free times
+ * only when a consultation is open and the page is not a preview.
  */
 export function vitrineSections(input: {
   hasAbout: boolean;
@@ -93,6 +108,30 @@ function inOrder(sections: VitrineSection[], order: readonly string[]): VitrineS
   return sections
     .filter((section) => order.includes(keyOf(section)))
     .sort((a, b) => order.indexOf(keyOf(a)) - order.indexOf(keyOf(b)));
+}
+
+/**
+ * What « Ce que j'accompagne » (the `expertises` section) shows: the professional's own cards, the
+ * catalogue themes, or both. Either alone is enough for the section, its heading and its dock entry —
+ * a page with themes and no card used to show no themes at all (fixed 2026-09-18).
+ */
+export function focusSectionParts(input: { focusAreas: number; themes: number }): {
+  show: boolean;
+  cards: boolean;
+  themes: boolean;
+} {
+  const cards = input.focusAreas > 0;
+  const themes = input.themes > 0;
+  return { show: cards || themes, cards, themes };
+}
+
+/**
+ * The cards « Ressources » shows: the professional's own, then the ones the team placed on the page,
+ * in the team's order. The team's always show (owner, 2026-09-18): when the professional hid the
+ * section, it still shows, with the team's alone.
+ */
+export function showcaseResourceCards<T>(input: { own: readonly T[]; team: readonly T[]; hidden: boolean }): T[] {
+  return input.hidden ? [...input.team] : [...input.own, ...input.team];
 }
 
 /** The price a standard consultation is shown at: the individual session's, else the lowest. */

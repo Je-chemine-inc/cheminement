@@ -110,36 +110,12 @@ describe("normalizeShowcaseDraft", () => {
     expect(normalizeShowcaseDraft({ expertiseIds: [...many] }, many)).toMatchObject({ code: "TOO_MANY_EXPERTISES" });
   });
 
-  it("keeps up to five values with their French wording", () => {
-    const result = normalizeShowcaseDraft(
-      { values: [{ fr: " Écoute ", en: "Listening" }, { fr: "", en: "Orphan" }, { fr: "Respect" }] },
-      allowed,
-    );
-    expect(result).toEqual({
-      ok: true,
-      set: { "draft.values": [{ fr: "Écoute", en: "Listening" }, { fr: "Respect", en: "" }] },
-      unset: [],
-    });
-    const six = Array.from({ length: 6 }, (_, i) => ({ fr: `v${i}` }));
-    expect(normalizeShowcaseDraft({ values: six }, allowed)).toMatchObject({ code: "TOO_MANY_VALUES" });
-  });
-
-  it("keeps a value's description, and stores none when it is empty", () => {
-    expect(
-      normalizeShowcaseDraft(
-        { values: [{ fr: "Clarté", en: "", details: { fr: " Vous savez où on va. ", en: "" } }, { fr: "Respect", details: { fr: "", en: "" } }] },
-        allowed,
-      ),
-    ).toEqual({
-      ok: true,
-      set: { "draft.values": [{ fr: "Clarté", en: "", details: { fr: "Vous savez où on va.", en: "" } }, { fr: "Respect", en: "" }] },
-      unset: [],
-    });
-    expect(normalizeShowcaseDraft({ values: [{ fr: "Clarté", details: { fr: "x".repeat(121) } }] }, allowed)).toEqual({
-      ok: false,
-      code: "TOO_LONG",
-      field: "values.0.details",
-    });
+  it("no longer saves values, retired on 2026-09-18: a body carrying them changes nothing", () => {
+    for (const actor of ["admin", "professional"] as const) {
+      expect(
+        normalizeShowcaseDraft({ values: [{ fr: "Écoute", en: "Listening", details: { fr: "Sans jugement." } }] }, allowed, actor),
+      ).toEqual({ ok: true, set: {}, unset: [] });
+    }
   });
 
   it("cleans the quote, the highlights and the credentials, dropping lines without French", () => {

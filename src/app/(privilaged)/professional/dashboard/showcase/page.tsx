@@ -8,6 +8,7 @@ import { ShowcaseAvailabilityCard } from "@/components/showcase/ShowcaseAvailabi
 import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseProStatus } from "@/components/showcase/ShowcaseProStatus";
+import { ShowcaseTeamResourcesNotice } from "@/components/showcase/ShowcaseTeamResourcesCard";
 import type { ShowcaseEditorJson } from "@/lib/showcase-editor-types";
 import { profileAPI } from "@/lib/api-client";
 import type { IProfile } from "@/models/Profile";
@@ -128,6 +129,7 @@ export default function ProfessionalShowcasePage() {
               )
             }
           />
+          <ShowcaseTeamResourcesNotice view={state.view} />
           <ShowcaseFactsCard view={state.view} profileHref="/professional/dashboard/profile" />
           <ShowcaseEditorForm
             key={state.view.page.slug}

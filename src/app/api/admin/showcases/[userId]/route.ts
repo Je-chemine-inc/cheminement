@@ -19,7 +19,7 @@ import {
  *    agreement is not on record yet): publish the draft revision the admin
  *    looked at (409 REVISION_CHANGED if it changed since);
  *  - `unpublish` + optional `note`, `republish`;
- *  - `move` + `slug` and/or `cityKey`.
+ *  - `move` + `slug` (the city follows the profile's office address).
  */
 type Params = { params: Promise<{ userId: string }> };
 

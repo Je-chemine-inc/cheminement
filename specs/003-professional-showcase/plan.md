@@ -644,3 +644,44 @@ set her hours — the form 100 % working with our platform ».
 - **Verified** in two browsers against the local server: sign in as the professional, switch on,
   save hours, a client asks through the form and is accepted, another ticks the box and is declined
   to the general list, switch off and on — 50 checks on screen, in the database and in the emails.
+
+## Phase 3c — the page is the professional's, and the team adds Je chemine resources (2026-09-18)
+
+The owner: « make sure everything in the page is controllable by the professional so he can add and
+modify things », and « sometimes we force our resources into their pages — give the admin the
+possibility ». An inventory of the live page found most of it already the professional's (texts,
+cards, photos, themes, colour, section order and visibility, 7 section titles, the availability
+switch and hours; title, permit, years, languages and ways of consulting in Profil). The gaps and
+what was done:
+
+**Owner's decisions (2026-09-18):** remove the inputs that show nowhere (« Valeurs », office photos
+2 to 6); theme descriptions stay Je chemine's only; the team's resources **always show** — the
+professional sees them but cannot remove them, even by hiding « Ressources ».
+
+- **Nothing entered that never shows.** « Valeurs » leaves the editor, the draft rules and the
+  public profile (stored values kept, retired). A page has **one office photo**: an upload replaces
+  it, removing clears it, ordering is gone.
+- **Themes show without cards.** A page with themes and no « Ce que j'accompagne » card showed no
+  themes at all; `focusSectionParts` now draws the section, its dock entry, the cards and the themes
+  list, each when it has something.
+- **Every heading is theirs.** `SHOWCASE_TEXT_KEYS` gains each section's name (which its dock entry
+  shows too), « En bref », « Parcours », « Motifs de consultation » and the « Disponibilités » title
+  and text — 18 texts, grouped by section in « Personnaliser la page », names capped at 30 characters
+  for the dock. A blank one keeps the page's wording.
+- **Stays the team's or the platform's:** the order name (verified), the page address, prices and
+  the quick consultation length (spec 001), the theme catalogue and its descriptions, removing the
+  portrait (a page needs one); the « Demander un rendez-vous » button, the line under it and the
+  booking panel's wording (Je chemine's centralised booking).
+- **Je chemine resources on a page.** `ShowcasePage.teamResourceSlugs`, set only by an admin
+  (`PUT /api/admin/showcases/[userId]/resources`, « Ressources Je chemine sur cette page »): the
+  team's own published resources only, six at most, in the admin's order, live. The page shows them
+  after the professional's own, marked « Ressource Je chemine », in the visitor's language; one the
+  team unpublishes drops out; when the professional hid « Ressources », the section stays with the
+  team's alone. The professional sees them read-only in « Ma page vitrine ». A paid one bought from
+  the page is Je chemine's sale, as on /book.
+- **Verified** in four browsers against the local server (the professional, an admin, a French and
+  an English visitor): 41 checks — one office photo added, replaced (old file deleted) and removed;
+  her section names on the page and in the dock, in both languages; themes without cards; the admin
+  placing and ordering three resources; the page's order, marks and prices; hiding « Ressources »;
+  removal and unpublishing; a professional's product refused; the professional unable to change the
+  team's list by either route. 15 of 15 mutants killed.

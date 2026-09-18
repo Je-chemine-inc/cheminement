@@ -11,6 +11,7 @@ import { ShowcaseProfileView } from "@/components/showcase/ShowcaseProfileView";
 import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
 import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
 import { listShowcaseProducts } from "@/lib/products";
+import { listShowcaseTeamResources } from "@/lib/showcase-team-resources";
 import { listShowcaseArticles } from "@/lib/articles";
 import { showcaseBookingOptions } from "@/lib/showcase-booking";
 
@@ -93,9 +94,14 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
   const locale = await currentLocale();
   // And the consultations the page can offer a time for: none unless the professional publishes
   // real hours with a free time ahead (spec 003 phase 3b) — then « Disponibilités » appears.
-  const [products, articles, bookingOptions] = await Promise.all([
+  // Je chemine's own resources the team placed on the page follow the professional's (2026-09-18).
+  const [products, teamResources, articles, bookingOptions] = await Promise.all([
     listShowcaseProducts(result.profile.slug, locale).catch((error) => {
       console.error("[showcase] products could not be listed:", error);
+      return [];
+    }),
+    listShowcaseTeamResources(result.profile.slug, locale).catch((error) => {
+      console.error("[showcase] team resources could not be listed:", error);
       return [];
     }),
     listShowcaseArticles(result.profile.slug, locale).catch((error) => {
@@ -112,7 +118,13 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
     <>
       <ShowcaseProfileJsonLd profile={result.profile} />
       <ShowcaseBeacon city={result.profile.city.key} slug={result.profile.slug} />
-      <ShowcaseProfileView profile={result.profile} products={products} articles={articles} bookingOptions={bookingOptions} />
+      <ShowcaseProfileView
+        profile={result.profile}
+        products={products}
+        teamResources={teamResources}
+        articles={articles}
+        bookingOptions={bookingOptions}
+      />
     </>
   );
 }

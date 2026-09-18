@@ -7409,6 +7409,7 @@
       "productType_video": "Vidéo",
       "productType_audio": "Audio",
       "productType_pdf": "Document PDF",
+      "productType_article": "Article",
       "productType_webinar": "Webinaire",
       "productType_external": "Lien externe",
       "productFree": "Gratuit",
@@ -7465,7 +7466,8 @@
       },
       "products": {
         "eyebrow": "Ressources",
-        "title": "Apprendre à votre rythme, entre les séances"
+        "title": "Apprendre à votre rythme, entre les séances",
+        "byTeam": "Ressource Je chemine"
       },
       "articles": {
         "eyebrow": "Articles",
@@ -7615,14 +7617,12 @@
       "remove": "Retirer la photo"
     },
     "officePhotos": {
-      "title": "Photos du cabinet",
-      "hint": "Jusqu'à 6 photos du bureau ou de la salle de consultation. Elles s'affichent en grand sur la page, à la place des photos d'ambiance, dans l'ordre choisi. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
+      "title": "Photo du cabinet",
+      "hint": "Une photo du bureau ou de la salle de consultation. Elle s'affiche dans « À propos », à côté de la présentation. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
       "add": "Ajouter une photo du cabinet",
+      "replace": "Remplacer la photo",
       "remove": "Retirer",
-      "moveUp": "Placer plus tôt",
-      "moveDown": "Placer plus tard",
-      "alt": "Photo du cabinet {number}",
-      "full": "Le maximum de 6 photos est atteint. Retirez-en une pour en ajouter une autre."
+      "alt": "Photo du cabinet"
     },
     "presentation": {
       "title": "Présentation",
@@ -7642,17 +7642,12 @@
       "bioPlaceholder": "Votre parcours, votre pratique et les personnes que vous accompagnez. Laissez une ligne vide entre les paragraphes.",
       "approach": "Mon approche",
       "approachPlaceholder": "Comment se déroulent vos rencontres et sur quoi repose votre approche.",
-      "values": "Valeurs",
-      "valuesHint": "Jusqu'à 5 mots ou courtes expressions, par exemple « Bienveillance ».",
-      "addValue": "Ajouter une valeur",
-      "removeValue": "Retirer cette valeur",
       "insuranceNote": "Note sur les assurances",
       "insuranceNotePlaceholder": "Ex. : Mes services sont admissibles au remboursement de la plupart des assurances collectives.",
-      "valueDescription": "Description (facultatif)",
       "quote": "Citation",
       "quotePlaceholder": "Une phrase qui résume la façon d'accompagner, signée du nom affiché.",
       "highlights": "Points forts",
-      "highlightsHint": "Jusqu'à 4 courtes mentions affichées sous la présentation, par exemple « Reçus pour assurances collectives ».",
+      "highlightsHint": "Jusqu'à 4 courtes mentions, affichées dans « En bref », dans « À propos » : par exemple « Reçus pour assurances collectives ».",
       "highlightsAdd": "Ajouter un point fort",
       "credentials": "Parcours",
       "credentialsHint": "Jusqu'à 6 lignes : diplômes, formations et expériences marquantes.",
@@ -7677,7 +7672,7 @@
     },
     "expertises": {
       "title": "Champs d'expertise",
-      "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à vous trouver selon leur ville et leur besoin.",
+      "hint": "Choisissez de 3 à 12 champs. Ils s'affichent dans « Ce que j'accompagne », sous « Motifs de consultation », et aident les personnes à vous trouver selon leur besoin.",
       "count": "{count, plural, =0 {Aucun champ choisi} one {# champ choisi} other {# champs choisis}}",
       "none": "L'équipe n'a pas encore ouvert de champs d'expertise pour les pages vitrines."
     },
@@ -7715,6 +7710,12 @@
         "live": "En ligne : votre page affiche vos disponibilités. Première plage libre : {when}."
       }
     },
+    "teamResources": {
+      "title": "Ressources ajoutées par Je chemine",
+      "body": "Elles apparaissent dans « Ressources » sur votre page, après les vôtres, même si vous masquez cette section. Pour une question, écrivez à l'équipe.",
+      "open": "Voir",
+      "free": "Gratuit"
+    },
     "editor": {
       "save": "Enregistrer",
       "saving": "Enregistrement…",
@@ -7729,9 +7730,8 @@
       "INVALID_FIELD": "Un champ contient une valeur invalide.",
       "UNKNOWN_EXPERTISE": "Un champ d'expertise choisi n'est plus offert. Rechargez la page.",
       "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
-      "TOO_MANY_VALUES": "Indiquez au plus 5 valeurs.",
       "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
-      "OFFICE_PHOTO_LIMIT": "Le maximum de 6 photos du cabinet est atteint.",
+      "UNKNOWN_RESOURCE": "Cette ressource n'est pas une ressource Je chemine publiée.",
       "OFFICE_PHOTO_NOT_FOUND": "Cette photo n'est plus sur la page. Rechargez-la.",
       "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
       "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",
@@ -7764,7 +7764,7 @@
     },
     "customize": {
       "title": "Personnaliser la page",
-      "hint": "Votre couleur, l’ordre des sections, leurs titres et vos photos d’ambiance. Les changements sont en ligne dès l’enregistrement.",
+      "hint": "Votre couleur, l’ordre des sections, leurs noms et leurs titres. Les changements sont en ligne dès l’enregistrement.",
       "accentTitle": "Couleur de la page",
       "accents": {
         "teal": "Sarcelle",
@@ -7777,7 +7777,7 @@
       "sectionsHint": "Déplacez les sections et masquez celles que vous ne voulez pas afficher. Une section sans contenu reste masquée.",
       "sections": {
         "about": "À propos",
-        "approach": "Approche et déroulement d’une demande",
+        "approach": "Approche",
         "expertises": "Ce que j’accompagne",
         "products": "Ressources",
         "articles": "Articles"
@@ -7785,28 +7785,36 @@
       "show": "Afficher « {section} »",
       "moveUp": "Monter « {section} »",
       "moveDown": "Descendre « {section} »",
-      "required": "Services et tarifs et Disponibilités restent toujours affichés.",
-      "textsTitle": "Titres et textes des sections",
-      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Un texte remplace celui de la page seulement s’il est écrit en français.",
+      "required": "« Disponibilités » ne se déplace pas : elle suit « À propos » quand vous affichez vos disponibilités. Les ressources ajoutées par Je chemine s’affichent toujours dans « Ressources ».",
+      "textsTitle": "Noms, titres et textes des sections",
+      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Le nom d’une section apparaît aussi dans la barre de navigation en bas de la page. Un texte remplace celui de la page seulement s’il est écrit en français.",
       "texts": {
-        "aboutTitle": "Titre « À propos »",
-        "approachTitle": "Titre « Approche »",
+        "aboutLabel": "Nom de la section",
+        "aboutTitle": "Titre",
+        "factsTitle": "Titre « En bref »",
+        "credentialsTitle": "Titre « Parcours »",
+        "availabilityLabel": "Nom de la section",
+        "availabilityTitle": "Titre",
+        "availabilityIntro": "Texte sous le titre",
+        "approachLabel": "Nom de la section",
+        "approachTitle": "Titre",
         "methodsTitle": "Titre des méthodes",
-        "stepsTitle": "Titre du déroulement d’une demande",
-        "valuesTitle": "Titre « Valeurs »",
-        "valuesIntro": "Texte sous « Valeurs »",
-        "servicesTitle": "Titre « Services et tarifs »",
-        "servicesIntro": "Texte sous « Services et tarifs »",
-        "standardPoint": "Description de la consultation standard",
-        "quickPoint": "Description de la consultation rapide",
-        "disposTitle": "Titre « Disponibilités »",
-        "disposIntro": "Texte sous « Disponibilités »",
-        "expertisesTitle": "Titre « Ce que j’accompagne »",
-        "expertisesIntro": "Texte sous « Ce que j’accompagne »",
-        "productsTitle": "Titre « Formations et produits »",
-        "articlesTitle": "Titre « Articles »",
-        "ctaTitle": "Titre du bandeau final",
-        "ctaBody": "Texte du bandeau final"
+        "expertisesLabel": "Nom de la section",
+        "expertisesTitle": "Titre",
+        "expertisesIntro": "Texte sous le titre",
+        "themesTitle": "Titre des motifs de consultation",
+        "productsLabel": "Nom de la section",
+        "productsTitle": "Titre",
+        "articlesLabel": "Nom de la section",
+        "articlesTitle": "Titre"
+      },
+      "groups": {
+        "about": "À propos",
+        "availability": "Disponibilités",
+        "approach": "Approche",
+        "expertises": "Ce que j’accompagne",
+        "products": "Ressources",
+        "articles": "Articles"
       }
     }
   },
@@ -7831,6 +7839,23 @@
         "live": "En ligne : la page affiche ses disponibilités. Première plage libre : {when}."
       }
     },
+    "teamResources": {
+      "title": "Ressources Je chemine sur cette page",
+      "hint": "Elles apparaissent dans « Ressources », après celles du professionnel, même s'il a masqué la section. Le professionnel les voit dans « Ma page vitrine » mais ne peut pas les retirer. Chaque changement est en ligne aussitôt.",
+      "chosen": "Sur la page",
+      "empty": "Aucune ressource Je chemine sur cette page.",
+      "filter": "Filtrer les ressources publiées",
+      "none": "Aucune ressource publiée ne correspond.",
+      "noneAtAll": "Aucune ressource Je chemine n'est publiée.",
+      "add": "Ajouter « {title} »",
+      "remove": "Retirer",
+      "moveUp": "Monter « {title} »",
+      "moveDown": "Descendre « {title} »",
+      "withdrawn": "plus publiée : elle n'apparaît plus",
+      "free": "Gratuit",
+      "max": "{max} ressources au plus par page.",
+      "open": "Voir"
+    },
     "editor": {
       "fields": {
         "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
@@ -7838,7 +7863,7 @@
         "approachPlaceholder": "Comment se déroulent ses rencontres et sur quoi repose son approche."
       },
       "expertises": {
-        "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à trouver ce professionnel selon leur ville et leur besoin."
+        "hint": "Choisissez de 3 à 12 champs. Ils s'affichent dans « Ce que j'accompagne », sous « Motifs de consultation », et aident les personnes à trouver ce professionnel selon leur besoin."
       }
     },
     "title": "Pages vitrines",
@@ -7946,6 +7971,7 @@
         "unpublish": "Retirée",
         "republish": "Remise en ligne",
         "move": "Adresse changée",
+        "resources": "Ressources Je chemine modifiées",
         "invite": "Invitation",
         "submit": "Envoyée pour révision",
         "request_changes": "Modifications demandées",

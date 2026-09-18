@@ -51,7 +51,6 @@ export interface ShowcaseContentSource {
   bio?: LocalizedSource;
   approach?: LocalizedSource;
   insuranceNote?: LocalizedSource;
-  values?: readonly ({ fr?: string | null; en?: string | null; details?: LocalizedSource } | null | undefined)[] | null;
   quote?: LocalizedSource;
   highlights?: readonly LocalizedSource[] | null;
   credentials?: readonly LocalizedSource[] | null;
@@ -135,9 +134,6 @@ export interface ShowcasePublicProfile {
   intro: string[];
   bio: string[];
   approach: string[];
-  values: string[];
-  /** The values again, each with its description ("" when none). */
-  valueCards: { label: string; description: string }[];
   quote: string;
   highlights: string[];
   credentials: string[];
@@ -186,8 +182,6 @@ export const SHOWCASE_PUBLIC_KEYS = [
   "slug",
   "title",
   "url",
-  "valueCards",
-  "values",
   "yearsOfExperience",
 ] as const;
 
@@ -336,12 +330,8 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
     intro: paragraphsOf(pick(content.intro, locale)),
     bio: paragraphsOf(pick(content.bio, locale)),
     approach: paragraphsOf(pick(content.approach, locale)),
-    values: (content.values ?? []).map((value) => pick(value, locale)).filter(Boolean),
-    // Like the draft rules, an item or a card exists only with its French wording.
-    valueCards: (content.values ?? [])
-      .filter(hasFrench)
-      .map((value) => ({ label: pick(value, locale), description: pick(value?.details, locale) })),
     quote: pick(content.quote, locale),
+    // Like the draft rules, an item or a card exists only with its French wording.
     highlights: (content.highlights ?? []).filter(hasFrench).map((line) => pick(line, locale)),
     credentials: (content.credentials ?? []).filter(hasFrench).map((line) => pick(line, locale)),
     focusAreas: (content.focusAreas ?? [])

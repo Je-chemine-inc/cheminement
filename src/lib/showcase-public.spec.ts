@@ -22,7 +22,6 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       bio: { fr: "Parcours.\n\nApproche humaine.", en: "Background." },
       approach: { fr: "TCC", en: "CBT" },
       insuranceNote: { fr: "Reçus pour assurances.", en: "" },
-      values: [{ fr: "Écoute", en: "Listening", details: { fr: "Sans jugement.", en: "Without judgement." } }, { fr: "Respect", en: "" }],
       quote: { fr: "Chacun trouve ses ressources.", en: "" },
       highlights: [{ fr: "Reçus pour assurances", en: "Insurance receipts" }, { fr: "", en: "Orphan" }],
       credentials: [{ fr: "D. Psy., Université de Montréal", en: "" }],
@@ -75,11 +74,6 @@ describe("buildShowcasePublicProfile", () => {
       intro: ["Bonjour.", "Bienvenue."],
       bio: ["Parcours.", "Approche humaine."],
       approach: ["TCC"],
-      values: ["Écoute", "Respect"],
-      valueCards: [
-        { label: "Écoute", description: "Sans jugement." },
-        { label: "Respect", description: "" },
-      ],
       quote: "Chacun trouve ses ressources.",
       highlights: ["Reçus pour assurances"],
       credentials: ["D. Psy., Université de Montréal"],
@@ -119,8 +113,6 @@ describe("buildShowcasePublicProfile", () => {
     const profile = buildShowcasePublicProfile(input({ locale: "en" }))!;
     expect(profile.headline).toBe("Psychologist for adults");
     expect(profile.intro).toEqual(["Bonjour.", "Bienvenue."]);
-    expect(profile.values).toEqual(["Listening", "Respect"]);
-    expect(profile.valueCards[0]).toEqual({ label: "Listening", description: "Without judgement." });
     expect(profile.highlights).toEqual(["Insurance receipts"]);
     expect(profile.focusAreas).toEqual([{ title: "Anxiety and stress", body: ["On apprend.", "Ensemble."] }]);
     expect(profile.methods[0]).toMatchObject({ name: "CBT", title: "Thérapie cognitive" });
@@ -196,6 +188,22 @@ describe("buildShowcasePublicProfile", () => {
     expect(custom.accent).toBe("plum");
     expect(JSON.stringify(custom)).not.toContain("POISON");
     expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({ approachTitle: "How I work" });
+  });
+
+  it("reads the section names and « Disponibilités » texts a professional wrote, French where no English was", () => {
+    const base = input();
+    const content = {
+      ...base.content,
+      texts: { aboutLabel: { fr: "Qui suis-je", en: "Who I am" }, availabilityIntro: { fr: "Écrivez-moi.", en: "" } },
+    };
+    expect(buildShowcasePublicProfile(input({ content }))!.customization.texts).toEqual({
+      aboutLabel: "Qui suis-je",
+      availabilityIntro: "Écrivez-moi.",
+    });
+    expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({
+      aboutLabel: "Who I am",
+      availabilityIntro: "Écrivez-moi.",
+    });
   });
 
   it("offers a consultation only when the professional switched it on (phase 3b)", () => {
