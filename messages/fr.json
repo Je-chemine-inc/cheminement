@@ -7450,9 +7450,9 @@
       },
       "about": {
         "eyebrow": "À propos",
-        "heading": "{title} à {city}",
-        "headingYears": "{title} depuis {years, plural, one {# an} other {# ans}}, à {city}",
-        "headingNoTitle": "{name}, à {city}",
+        "heading": "{title}",
+        "headingYears": "{title} depuis {years, plural, one {# an} other {# ans}}",
+        "headingNoTitle": "{name}",
         "factsTitle": "En bref",
         "credentialsTitle": "Parcours",
         "quoteBy": "— {name}",

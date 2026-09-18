@@ -89,13 +89,14 @@ export function visibleSections(
 }
 
 /**
- * The approach section's headings. With no approach text it shows only the request steps, under
- * the steps title; a title the professional wrote for the section still heads it, steps below.
+ * The « À propos » title's message and its values. No city: « Psychologue depuis 26 ans », not
+ * « …, à Québec » (owner, 2026-09-18) — the office address says less than it seems to for someone
+ * who sees people remotely across Québec, and the city already sits in the page's title for search.
  */
 export type AboutHeadingMessage =
-  | { key: "vitrine.about.headingYears"; values: { title: string; years: number; city: string } }
-  | { key: "vitrine.about.heading"; values: { title: string; city: string } }
-  | { key: "vitrine.about.headingNoTitle"; values: { name: string; city: string } };
+  | { key: "vitrine.about.headingYears"; values: { title: string; years: number } }
+  | { key: "vitrine.about.heading"; values: { title: string } }
+  | { key: "vitrine.about.headingNoTitle"; values: { name: string } };
 
 /**
  * The « À propos » title a page shows when the professional wrote none (Showcase messages). One rule
@@ -105,13 +106,12 @@ export function aboutHeadingMessage(input: {
   title: string | null;
   years: number | null;
   name: string;
-  city: string;
 }): AboutHeadingMessage {
-  if (!input.title) return { key: "vitrine.about.headingNoTitle", values: { name: input.name, city: input.city } };
+  if (!input.title) return { key: "vitrine.about.headingNoTitle", values: { name: input.name } };
   if (input.years !== null && input.years > 0) {
-    return { key: "vitrine.about.headingYears", values: { title: input.title, years: input.years, city: input.city } };
+    return { key: "vitrine.about.headingYears", values: { title: input.title, years: input.years } };
   }
-  return { key: "vitrine.about.heading", values: { title: input.title, city: input.city } };
+  return { key: "vitrine.about.heading", values: { title: input.title } };
 }
 
 // ------------------------------------------------------------------ colour

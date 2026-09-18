@@ -9,6 +9,8 @@ import {
   type ShowcaseSectionKey,
 } from "@/lib/showcase-customization";
 import { changedShowcaseFields, normalizeShowcaseDraft } from "@/lib/showcase-workflow";
+import fr from "../../messages/fr.json";
+import en from "../../messages/en.json";
 
 const ALL_AVAILABLE = Object.fromEntries(SHOWCASE_SECTION_KEYS.map((key) => [key, true])) as Record<ShowcaseSectionKey, boolean>;
 
@@ -36,23 +38,32 @@ describe("section order and visibility", () => {
 
 describe("aboutHeadingMessage", () => {
   it("names the title and the years when the profile has both, the title alone without years", () => {
-    expect(aboutHeadingMessage({ title: "Psychologue", years: 12, name: "Léo Barnabé", city: "Laval" })).toEqual({
+    expect(aboutHeadingMessage({ title: "Psychologue", years: 12, name: "Léo Barnabé" })).toEqual({
       key: "vitrine.about.headingYears",
-      values: { title: "Psychologue", years: 12, city: "Laval" },
+      values: { title: "Psychologue", years: 12 },
     });
     for (const years of [null, 0]) {
-      expect(aboutHeadingMessage({ title: "Psychologue", years, name: "Léo Barnabé", city: "Laval" })).toEqual({
+      expect(aboutHeadingMessage({ title: "Psychologue", years, name: "Léo Barnabé" })).toEqual({
         key: "vitrine.about.heading",
-        values: { title: "Psychologue", city: "Laval" },
+        values: { title: "Psychologue" },
       });
     }
   });
 
   it("uses the name only without a title (the editor's hint once promised the name with a title on the page)", () => {
-    expect(aboutHeadingMessage({ title: null, years: 12, name: "Léo Barnabé", city: "Laval" })).toEqual({
+    expect(aboutHeadingMessage({ title: null, years: 12, name: "Léo Barnabé" })).toEqual({
       key: "vitrine.about.headingNoTitle",
-      values: { name: "Léo Barnabé", city: "Laval" },
+      values: { name: "Léo Barnabé" },
     });
+  });
+
+  it("names no city, in either language — « Psychologue depuis 26 ans », not « …, à Québec »", () => {
+    for (const [language, messages] of [["fr", fr], ["en", en]] as const) {
+      const about = messages.Showcase.vitrine.about as Record<string, string>;
+      for (const key of ["heading", "headingYears", "headingNoTitle"]) {
+        expect(about[key], `${language}: vitrine.about.${key}`).not.toContain("{city}");
+      }
+    }
   });
 });
 
