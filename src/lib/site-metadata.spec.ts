@@ -54,6 +54,13 @@ describe("what Google may quote from a page", () => {
     expect(read("src/components/layout/Footer.tsx")).toMatch(/<footer[^>]*>\s*(\{\/\*[\s\S]*?\*\/\}\s*)?<div[^>]*data-nosnippet/);
   });
 
+  it("opens the home page's title with the site's name, in both languages", () => {
+    for (const file of ["messages/fr.json", "messages/en.json"]) {
+      const title = JSON.parse(read(file)).Seo.home.title as string;
+      expect(title.startsWith(`${SITE_NAME} | `), `${file}: Seo.home.title`).toBe(true);
+    }
+  });
+
   it("names the site in the home page's description, in both languages", () => {
     for (const file of ["messages/fr.json", "messages/en.json"]) {
       const description = JSON.parse(read(file)).Seo.home.description as string;

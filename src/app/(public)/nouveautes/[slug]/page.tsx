@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { contentSocialMetadata } from "@/lib/content-metadata";
+import { contentSocialMetadata, pageDescription } from "@/lib/content-metadata";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
@@ -50,7 +50,7 @@ export async function generateMetadata({
   const { doc, preview } = loaded;
   return {
     title: doc.title,
-    description: doc.summary || undefined,
+    description: pageDescription(doc.summary),
     ...(preview
       ? { robots: { index: false, follow: false } }
       : // Without this the link preview shows the generic site name, not the
