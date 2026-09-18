@@ -3497,6 +3497,7 @@
     },
     "schedule": {
       "title": "Availability Schedule",
+      "saveError": "The schedule could not be saved. Check your connection and try again.",
       "subtitle": "Define your working hours and availability for client bookings",
       "sessionSettings": "Session Settings",
       "defaultDuration": "Default Session Duration (minutes)",
@@ -7694,16 +7695,26 @@
       "title": "Professional order and page city",
       "hint": "The order is managed by the Je chemine team: write to us to change it. The city follows the office address in your profile."
     },
-    "services": {
-      "title": "Services offered on the page",
-      "hint": "These choices apply right away. Fees come from the pricing grid.",
-      "standard": "Standard consultation",
-      "standardHint": "The usual sessions, at the grid's fees.",
-      "quick": "Quick one-time consultation",
-      "quickHint": "A one-time meeting for a specific need.",
-      "hoursHint": "Times appear on the page, under « Availability », only when the service is switched on here and the professional has saved their own schedule in Profile → Availability. Otherwise the page keeps only the button to the general list.",
-      "notAcceptingClients": "The profile says new clients are not accepted: this service does not appear on the page.",
-      "notAcceptingQuick": "The profile says quick one-time consultations are not accepted: this service does not appear on the page."
+    "availability": {
+      "title": "Availability on my page",
+      "intro": "Your free times, taken from your schedule, appear on your page in an « Availability » section. A client picks a time there and sends you their request; the time is held for them until you answer.",
+      "switchLabel": "Show my availability on my page",
+      "consultations": "Consultations offered",
+      "standard": "Standard consultation · {minutes} min",
+      "standardHint": "The usual session, at your rate.",
+      "quick": "Quick one-time consultation · {minutes} min",
+      "quickHint": "A one-time meeting for a specific need, at your quick consultation rate.",
+      "requests": "Each request reaches you by email and in « Client Proposals ». You have up to 24 hours to answer (12 for a quick consultation); without an answer, the time is released.",
+      "viewOnPage": "See it on my page",
+      "hoursElsewhere": "Your schedule could not be loaded here.",
+      "hoursElsewhereLink": "Change it in Profile",
+      "state": {
+        "off": "Section hidden. Your page's « Request an appointment » button sends requests to Je chemine's general list.",
+        "pageHidden": "Your page is not online: your availability will appear when it is.",
+        "needsHours": "Last step: save your schedule below (« Edit », then « Save »). No time appears on your page until you have saved it yourself.",
+        "noFreeTime": "No free time in the next six weeks according to your schedule: the section stays hidden until a time opens up.",
+        "live": "Online: your page shows your availability. First free time: {when}."
+      }
     },
     "editor": {
       "save": "Save",
@@ -7801,6 +7812,26 @@
     }
   },
   "ShowcaseAdmin": {
+    "availability": {
+      "title": "Availability on the page",
+      "intro": "The professional's free times, taken from their schedule, appear on their page in an « Availability » section. A client picks a time there and sends them a request; the time is held until they answer.",
+      "switchLabel": "Show their availability on their page",
+      "standardHint": "The usual session, at their rate.",
+      "quickHint": "A one-time meeting for a specific need, at their quick consultation rate.",
+      "viewOnPage": "See it on the page",
+      "hoursTitle": "Their schedule",
+      "hoursNone": "No working day.",
+      "sessions": "{minutes}-minute sessions",
+      "hoursConfirmed": "Saved from the professional's own account on {date}.",
+      "hoursNever": "Never saved from the professional's own account: no time appears until it is.",
+      "state": {
+        "off": "Section hidden. The page's « Request an appointment » button sends requests to the general list.",
+        "pageHidden": "The page is not online: their availability will appear when it is.",
+        "needsHours": "Waiting for their schedule, to be saved from the professional's own account: no time appears until then.",
+        "noFreeTime": "No free time in the next six weeks according to their schedule: the section stays hidden.",
+        "live": "Online: the page shows their availability. First free time: {when}."
+      }
+    },
     "editor": {
       "fields": {
         "introPlaceholder": "A few sentences to introduce the professional.",

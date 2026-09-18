@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAdminPermissions } from "@/components/admin/AdminPermissionsProvider";
 import { AdminAccessRequired } from "@/components/admin/AdminAccessRequired";
+import { ShowcaseAvailabilityCard } from "@/components/showcase/ShowcaseAvailabilityCard";
 import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
@@ -270,6 +271,14 @@ export default function AdminShowcaseDetailPage() {
           </Button>
         </div>
       </section>
+
+      <ShowcaseAvailabilityCard<ShowcaseAdminJson>
+        apiBase={`/api/admin/showcases/${userId}`}
+        view={view}
+        onView={setView}
+        reload={load}
+        audience="admin"
+      />
 
       <ShowcaseFactsCard
         view={view}
