@@ -7615,14 +7615,12 @@
       "remove": "Retirer la photo"
     },
     "officePhotos": {
-      "title": "Photos du cabinet",
-      "hint": "Jusqu'à 6 photos du bureau ou de la salle de consultation. Elles s'affichent en grand sur la page, à la place des photos d'ambiance, dans l'ordre choisi. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
+      "title": "Photo du cabinet",
+      "hint": "Une photo du bureau ou de la salle de consultation. Elle s'affiche dans « À propos », à côté de la présentation. Aucune personne reconnaissable, aucun client, rien de confidentiel à l'écran. JPEG, PNG ou WebP, 5 Mo au plus.",
       "add": "Ajouter une photo du cabinet",
+      "replace": "Remplacer la photo",
       "remove": "Retirer",
-      "moveUp": "Placer plus tôt",
-      "moveDown": "Placer plus tard",
-      "alt": "Photo du cabinet {number}",
-      "full": "Le maximum de 6 photos est atteint. Retirez-en une pour en ajouter une autre."
+      "alt": "Photo du cabinet"
     },
     "presentation": {
       "title": "Présentation",
@@ -7642,13 +7640,8 @@
       "bioPlaceholder": "Votre parcours, votre pratique et les personnes que vous accompagnez. Laissez une ligne vide entre les paragraphes.",
       "approach": "Mon approche",
       "approachPlaceholder": "Comment se déroulent vos rencontres et sur quoi repose votre approche.",
-      "values": "Valeurs",
-      "valuesHint": "Jusqu'à 5 mots ou courtes expressions, par exemple « Bienveillance ».",
-      "addValue": "Ajouter une valeur",
-      "removeValue": "Retirer cette valeur",
       "insuranceNote": "Note sur les assurances",
       "insuranceNotePlaceholder": "Ex. : Mes services sont admissibles au remboursement de la plupart des assurances collectives.",
-      "valueDescription": "Description (facultatif)",
       "quote": "Citation",
       "quotePlaceholder": "Une phrase qui résume la façon d'accompagner, signée du nom affiché.",
       "highlights": "Points forts",
@@ -7729,9 +7722,7 @@
       "INVALID_FIELD": "Un champ contient une valeur invalide.",
       "UNKNOWN_EXPERTISE": "Un champ d'expertise choisi n'est plus offert. Rechargez la page.",
       "TOO_MANY_EXPERTISES": "Choisissez au plus 12 champs d'expertise.",
-      "TOO_MANY_VALUES": "Indiquez au plus 5 valeurs.",
       "TOO_MANY_ITEMS": "Une liste dépasse le nombre d'éléments permis.",
-      "OFFICE_PHOTO_LIMIT": "Le maximum de 6 photos du cabinet est atteint.",
       "OFFICE_PHOTO_NOT_FOUND": "Cette photo n'est plus sur la page. Rechargez-la.",
       "INVALID_ORDER": "Choisissez un ordre professionnel dans la liste.",
       "NOTHING_TO_SAVE": "Aucune modification à enregistrer.",

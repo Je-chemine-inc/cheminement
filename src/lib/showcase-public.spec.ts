@@ -22,7 +22,6 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       bio: { fr: "Parcours.\n\nApproche humaine.", en: "Background." },
       approach: { fr: "TCC", en: "CBT" },
       insuranceNote: { fr: "Reçus pour assurances.", en: "" },
-      values: [{ fr: "Écoute", en: "Listening", details: { fr: "Sans jugement.", en: "Without judgement." } }, { fr: "Respect", en: "" }],
       quote: { fr: "Chacun trouve ses ressources.", en: "" },
       highlights: [{ fr: "Reçus pour assurances", en: "Insurance receipts" }, { fr: "", en: "Orphan" }],
       credentials: [{ fr: "D. Psy., Université de Montréal", en: "" }],
@@ -75,11 +74,6 @@ describe("buildShowcasePublicProfile", () => {
       intro: ["Bonjour.", "Bienvenue."],
       bio: ["Parcours.", "Approche humaine."],
       approach: ["TCC"],
-      values: ["Écoute", "Respect"],
-      valueCards: [
-        { label: "Écoute", description: "Sans jugement." },
-        { label: "Respect", description: "" },
-      ],
       quote: "Chacun trouve ses ressources.",
       highlights: ["Reçus pour assurances"],
       credentials: ["D. Psy., Université de Montréal"],
@@ -119,8 +113,6 @@ describe("buildShowcasePublicProfile", () => {
     const profile = buildShowcasePublicProfile(input({ locale: "en" }))!;
     expect(profile.headline).toBe("Psychologist for adults");
     expect(profile.intro).toEqual(["Bonjour.", "Bienvenue."]);
-    expect(profile.values).toEqual(["Listening", "Respect"]);
-    expect(profile.valueCards[0]).toEqual({ label: "Listening", description: "Without judgement." });
     expect(profile.highlights).toEqual(["Insurance receipts"]);
     expect(profile.focusAreas).toEqual([{ title: "Anxiety and stress", body: ["On apprend.", "Ensemble."] }]);
     expect(profile.methods[0]).toMatchObject({ name: "CBT", title: "Thérapie cognitive" });

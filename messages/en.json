@@ -7616,14 +7616,12 @@
       "remove": "Remove the photo"
     },
     "officePhotos": {
-      "title": "Office photos",
-      "hint": "Up to 6 photos of the office or consulting room. They are shown large on the page, instead of the ambience photos, in the order chosen. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
+      "title": "Office photo",
+      "hint": "One photo of the office or consulting room. It shows in « About », beside the presentation. No recognizable person, no client, nothing confidential in view. JPEG, PNG or WebP, 5 MB at most.",
       "add": "Add an office photo",
+      "replace": "Replace the photo",
       "remove": "Remove",
-      "moveUp": "Move earlier",
-      "moveDown": "Move later",
-      "alt": "Office photo {number}",
-      "full": "The maximum of 6 photos is reached. Remove one to add another."
+      "alt": "Office photo"
     },
     "presentation": {
       "title": "Presentation",
@@ -7643,13 +7641,8 @@
       "bioPlaceholder": "Your background, your practice and the people you work with. Leave an empty line between paragraphs.",
       "approach": "My approach",
       "approachPlaceholder": "How your sessions go and what your approach is based on.",
-      "values": "Values",
-      "valuesHint": "Up to 5 words or short phrases, for example \"Kindness\".",
-      "addValue": "Add a value",
-      "removeValue": "Remove this value",
       "insuranceNote": "Insurance note",
       "insuranceNotePlaceholder": "E.g. My services can be reimbursed by most group insurance plans.",
-      "valueDescription": "Description (optional)",
       "quote": "Quote",
       "quotePlaceholder": "One sentence that sums up the way of working, signed with the display name.",
       "highlights": "Highlights",
@@ -7730,9 +7723,7 @@
       "INVALID_FIELD": "A field has an invalid value.",
       "UNKNOWN_EXPERTISE": "An area of expertise you chose is no longer offered. Reload the page.",
       "TOO_MANY_EXPERTISES": "Choose at most 12 areas of expertise.",
-      "TOO_MANY_VALUES": "Enter at most 5 values.",
       "TOO_MANY_ITEMS": "A list has more items than allowed.",
-      "OFFICE_PHOTO_LIMIT": "The maximum of 6 office photos is reached.",
       "OFFICE_PHOTO_NOT_FOUND": "This photo is no longer on the page. Reload it.",
       "INVALID_ORDER": "Choose a professional order from the list.",
       "NOTHING_TO_SAVE": "There are no changes to save.",

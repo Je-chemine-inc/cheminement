@@ -119,11 +119,10 @@ vi.mock("@/lib/notifications", () => ({
 
 import {
   activateShowcase,
-  addShowcaseOfficePhoto,
   loadShowcaseEditor,
   moveShowcase,
-  moveShowcaseOfficePhoto,
   removeShowcaseOfficePhoto,
+  setShowcaseOfficePhoto,
   publishShowcase,
   republishShowcase,
   saveShowcaseDraft,
@@ -676,15 +675,15 @@ describe("office photos", () => {
   const B = "bbbbbbbbbbbbbbbbbbbbbbbb";
   const C = "cccccccccccccccccccccccc";
 
-  it("the professional adds one to the live page at once, on the revision read, and the team is told", async () => {
-    h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [A] }, published: { ...completeDraft, officePhotoFileIds: [A] } });
-    const result = await addShowcaseOfficePhoto({ userId: PRO, fileId: B, actor: "professional" });
-    expect(result).toMatchObject({ ok: true, value: { officePhotos: [{ id: A, url: `/api/files/${A}` }, { id: B, url: `/api/files/${B}` }] } });
+  it("the professional sets it on the live page at once, on the revision read, and the team is told", async () => {
+    h.page = livePage();
+    const result = await setShowcaseOfficePhoto({ userId: PRO, fileId: B, actor: "professional" });
+    expect(result).toMatchObject({ ok: true, value: { officePhotos: [{ id: B, url: `/api/files/${B}` }] } });
     const [filter, update] = h.findOneAndUpdate[0];
     expect(filter).toEqual({ _id: "p1", draftRevision: 4 });
     expect(update.$set).toMatchObject({
-      "draft.officePhotoFileIds": [A, B],
-      "published.officePhotoFileIds": [A, B],
+      "draft.officePhotoFileIds": [B],
+      "published.officePhotoFileIds": [B],
       draftRevision: 5,
       publishedRevision: 5,
     });
@@ -694,9 +693,17 @@ describe("office photos", () => {
     expect(h.sendUpdated).toHaveBeenCalledWith(expect.objectContaining({ fields: ["officePhotos"] }));
   });
 
-  it("an admin adds one to the draft only, without telling the team", async () => {
+  it("a new photo replaces the one shown, and older extras, and their files go (one photo since 2026-09-18)", async () => {
+    h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [A, B] }, published: { ...completeDraft, officePhotoFileIds: [A, B] } });
+    const result = await setShowcaseOfficePhoto({ userId: PRO, fileId: C, actor: "professional" });
+    expect(result).toMatchObject({ ok: true, value: { officePhotos: [{ id: C }] } });
+    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "draft.officePhotoFileIds": [C], "published.officePhotoFileIds": [C] });
+    expect(h.deleteMany).toEqual([{ _id: { $in: [A, B] }, kind: "showcase-photo" }]);
+  });
+
+  it("an admin sets it on the draft only, without telling the team", async () => {
     h.page = page({ status: "published", published: { ...completeDraft }, publishedRevision: 4 });
-    const result = await addShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "admin" });
+    const result = await setShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "admin" });
     expect(result).toMatchObject({ ok: true, deferred: [] });
     const update = h.findOneAndUpdate[0][1];
     expect(update.$set).toMatchObject({ "draft.officePhotoFileIds": [A], draftUpdatedBy: "admin" });
@@ -705,56 +712,37 @@ describe("office photos", () => {
     expect(update).not.toHaveProperty("$push");
   });
 
-  it("deletes the uploaded file when it cannot be added: page in preparation, limit reached, page changed", async () => {
+  it("deletes the uploaded file when it cannot be set: page in preparation, page changed", async () => {
     h.page = page();
-    expect(await addShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "professional" })).toMatchObject({ code: "IN_PREPARATION" });
-    h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [1, 2, 3, 4, 5, 6].map((n) => String(n).repeat(24)) } });
-    expect(await addShowcaseOfficePhoto({ userId: PRO, fileId: B, actor: "professional" })).toMatchObject({ status: 409, code: "OFFICE_PHOTO_LIMIT" });
+    expect(await setShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "professional" })).toMatchObject({ code: "IN_PREPARATION" });
     h.page = livePage();
     h.updateResult = null;
-    expect(await addShowcaseOfficePhoto({ userId: PRO, fileId: C, actor: "professional" })).toMatchObject({ code: "CONFLICT" });
+    expect(await setShowcaseOfficePhoto({ userId: PRO, fileId: C, actor: "professional" })).toMatchObject({ code: "CONFLICT" });
     expect(h.deleteOne).toEqual([
       { _id: A, kind: "showcase-photo" },
-      { _id: B, kind: "showcase-photo" },
       { _id: C, kind: "showcase-photo" },
     ]);
   });
 
-  it("removing one deletes the file only once neither copy shows it", async () => {
+  it("removing it clears the photo, older extras included, and deletes the files only once neither copy shows them", async () => {
     h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [A, B] }, published: { ...completeDraft, officePhotoFileIds: [A, B] } });
     await removeShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "professional" });
-    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "draft.officePhotoFileIds": [B], "published.officePhotoFileIds": [B] });
-    expect(h.deleteMany).toEqual([{ _id: { $in: [A] }, kind: "showcase-photo" }]);
+    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "draft.officePhotoFileIds": [], "published.officePhotoFileIds": [] });
+    expect(h.deleteMany).toEqual([{ _id: { $in: [A, B] }, kind: "showcase-photo" }]);
 
     // An admin removing it from the draft of a live page: the public copy still shows it until they publish.
     h.findOneAndUpdate = [];
     h.deleteMany = [];
-    h.page = page({ status: "published", draft: { ...completeDraft, officePhotoFileIds: [A, B] }, published: { ...completeDraft, officePhotoFileIds: [A, B] }, publishedRevision: 4 });
+    h.page = page({ status: "published", draft: { ...completeDraft, officePhotoFileIds: [A] }, published: { ...completeDraft, officePhotoFileIds: [A] }, publishedRevision: 4 });
     await removeShowcaseOfficePhoto({ userId: PRO, fileId: A, actor: "admin" });
-    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "draft.officePhotoFileIds": [B] });
+    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "draft.officePhotoFileIds": [] });
     expect(h.deleteMany).toEqual([]);
   });
 
-  it("moves one place, does nothing at either end, and refuses an unknown photo or direction", async () => {
-    h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [A, B, C] }, published: { ...completeDraft, officePhotoFileIds: [A, B, C] } });
-    await moveShowcaseOfficePhoto({ userId: PRO, fileId: C, direction: "up", actor: "professional" });
-    expect(h.findOneAndUpdate[0][1].$set).toMatchObject({ "published.officePhotoFileIds": [A, C, B] });
-
-    h.findOneAndUpdate = [];
-    expect(await moveShowcaseOfficePhoto({ userId: PRO, fileId: A, direction: "up", actor: "professional" })).toMatchObject({
-      ok: true,
-      value: { officePhotos: [{ id: A }, { id: B }, { id: C }] },
-    });
-    expect(h.findOneAndUpdate).toEqual([]);
-    expect(await moveShowcaseOfficePhoto({ userId: PRO, fileId: "dddddddddddddddddddddddd", direction: "down", actor: "professional" })).toMatchObject({
-      status: 404,
-      code: "OFFICE_PHOTO_NOT_FOUND",
-    });
-    expect(await moveShowcaseOfficePhoto({ userId: PRO, fileId: A, direction: "left", actor: "professional" })).toMatchObject({
-      status: 400,
-      code: "INVALID_FIELD",
-    });
+  it("refuses to remove a photo the page does not have", async () => {
+    h.page = livePage({ draft: { ...completeDraft, officePhotoFileIds: [A] }, published: { ...completeDraft, officePhotoFileIds: [A] } });
     expect(await removeShowcaseOfficePhoto({ userId: PRO, fileId: "dddddddddddddddddddddddd", actor: "professional" })).toMatchObject({
+      status: 404,
       code: "OFFICE_PHOTO_NOT_FOUND",
     });
     expect(h.findOneAndUpdate).toEqual([]);

@@ -5,7 +5,7 @@ import { requireProfessionalsAdmin } from "@/lib/professional-admin";
 import { SHOWCASE_PHOTO } from "@/lib/showcase-constants";
 import { respondShowcase } from "@/lib/showcase-http";
 import { storeShowcasePhoto } from "@/lib/showcase-photo";
-import { addShowcaseOfficePhoto } from "@/lib/showcase-service";
+import { setShowcaseOfficePhoto } from "@/lib/showcase-service";
 
 /** An admin adds a photo of the office to a professional's draft page (multipart `file`). */
 type Params = { params: Promise<{ userId: string }> };
@@ -23,6 +23,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   const form = await req.formData().catch(() => null);
   const stored = await storeShowcasePhoto(form?.get("file") ?? null, gate.session.user.id);
   if (!stored.ok) return NextResponse.json({ error: stored.code }, { status: stored.status });
-  const result = await addShowcaseOfficePhoto({ userId, fileId: stored.fileId, actor: "admin" });
+  const result = await setShowcaseOfficePhoto({ userId, fileId: stored.fileId, actor: "admin" });
   return respondShowcase(result, (value) => value);
 }

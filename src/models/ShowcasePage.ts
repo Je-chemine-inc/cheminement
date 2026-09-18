@@ -51,6 +51,10 @@ export interface IShowcaseContent {
   /** Plain text; paragraphs separated by a blank line. Never HTML. */
   bio: ILocalizedText;
   approach: ILocalizedText;
+  /**
+   * Retired on 2026-09-18 (owner: « Remove those inputs »): no page shows values since 2026-09-17,
+   * and nothing edits them. Stored values are kept as they are.
+   */
   values: IShowcaseValue[];
   /** One sentence the page quotes, signed with the display name. */
   quote: ILocalizedText;

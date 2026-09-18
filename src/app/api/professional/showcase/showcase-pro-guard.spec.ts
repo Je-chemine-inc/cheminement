@@ -50,9 +50,8 @@ vi.mock("@/lib/showcase-service", () => ({
   republishShowcase: () => h.touched(),
   updateShowcaseServices: () => h.touched(),
   setShowcasePhoto: () => h.touched(),
-  addShowcaseOfficePhoto: () => h.touched(),
+  setShowcaseOfficePhoto: () => h.touched(),
   removeShowcaseOfficePhoto: () => h.touched(),
-  moveShowcaseOfficePhoto: () => h.touched(),
 }));
 
 const ROOT = path.join(process.cwd(), "src/app/api/professional/showcase");

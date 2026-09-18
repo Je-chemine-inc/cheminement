@@ -81,16 +81,12 @@ export const SHOWCASE_LIMITS = {
   /** A presentation shorter than this is not ready to publish. */
   bioMin: 200,
   approach: 600,
-  valueLength: 40,
-  values: 5,
   expertisesMin: 3,
   expertisesMax: 12,
   insuranceNote: 300,
   orderLabel: 80,
-  /** A short description under each value. */
-  valueDescription: 120,
-  /** Photos of the office, the only photography a page shows besides the portrait. */
-  officePhotos: 6,
+  /** One photo of the office (owner, 2026-09-18), shown in « À propos »: the page never showed more. */
+  officePhotos: 1,
   /** One sentence the page quotes, signed with the professional's name. */
   quote: 240,
   /** Short mentions under the introduction (« Reçus pour assurances »). */

@@ -25,8 +25,6 @@ export interface ShowcaseContentJson {
   bio: LocalizedTextJson;
   approach: LocalizedTextJson;
   insuranceNote: LocalizedTextJson;
-  /** Each value with its description (empty when none). */
-  values: (LocalizedTextJson & { details: LocalizedTextJson })[];
   quote: LocalizedTextJson;
   highlights: LocalizedTextJson[];
   credentials: LocalizedTextJson[];
@@ -134,9 +132,7 @@ export const SHOWCASE_ERROR_CODES = [
   "INVALID_FIELD",
   "UNKNOWN_EXPERTISE",
   "TOO_MANY_EXPERTISES",
-  "TOO_MANY_VALUES",
   "TOO_MANY_ITEMS",
-  "OFFICE_PHOTO_LIMIT",
   "OFFICE_PHOTO_NOT_FOUND",
   "INVALID_ORDER",
   "NOTHING_TO_SAVE",

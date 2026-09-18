@@ -4,13 +4,13 @@ import { rateLimit } from "@/lib/rate-limit";
 import { SHOWCASE_PHOTO } from "@/lib/showcase-constants";
 import { requireShowcaseProfessional, respondShowcase } from "@/lib/showcase-http";
 import { storeShowcasePhoto } from "@/lib/showcase-photo";
-import { addShowcaseOfficePhoto } from "@/lib/showcase-service";
+import { setShowcaseOfficePhoto } from "@/lib/showcase-service";
 
 /**
- * Adds a photo of the office to the professional's published page (multipart
- * `file`), live at once. Same file rules as the portrait; at most
- * SHOWCASE_LIMITS.officePhotos (409 OFFICE_PHOTO_LIMIT); refused while the page
- * is in preparation. A file that cannot be added is deleted.
+ * Sets the photo of the office on the professional's published page (multipart
+ * `file`), live at once, replacing the one shown: a page has one. Same file
+ * rules as the portrait; refused while the page is in preparation. A file that
+ * cannot be set is deleted.
  */
 export async function POST(req: NextRequest) {
   const gate = await requireShowcaseProfessional();
@@ -28,6 +28,6 @@ export async function POST(req: NextRequest) {
   const form = await req.formData().catch(() => null);
   const stored = await storeShowcasePhoto(form?.get("file") ?? null, gate.userId);
   if (!stored.ok) return NextResponse.json({ error: stored.code }, { status: stored.status });
-  const result = await addShowcaseOfficePhoto({ userId: gate.userId, fileId: stored.fileId, actor: "professional" });
+  const result = await setShowcaseOfficePhoto({ userId: gate.userId, fileId: stored.fileId, actor: "professional" });
   return respondShowcase(result, (value) => value);
 }

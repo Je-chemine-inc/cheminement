@@ -88,7 +88,7 @@ type Localized = { fr?: string; en?: string };
 type ContentLean = Partial<
   Omit<
     IShowcaseContent,
-    "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "values" | "quote" | "highlights" | "credentials" | "focusAreas" | "methods"
+    "headline" | "intro" | "bio" | "approach" | "insuranceNote" | "quote" | "highlights" | "credentials" | "focusAreas" | "methods"
   >
 > & {
   headline?: Localized;
@@ -96,7 +96,6 @@ type ContentLean = Partial<
   bio?: Localized;
   approach?: Localized;
   insuranceNote?: Localized;
-  values?: (Localized & { details?: Localized })[];
   quote?: Localized;
   highlights?: Localized[];
   credentials?: Localized[];
@@ -233,7 +232,6 @@ function contentView(content: ContentLean | undefined) {
     bio: text(content?.bio),
     approach: text(content?.approach),
     insuranceNote: text(content?.insuranceNote),
-    values: (content?.values ?? []).map((value) => ({ ...text(value), details: text(value.details) })),
     quote: text(content?.quote),
     highlights: (content?.highlights ?? []).map(text),
     credentials: (content?.credentials ?? []).map(text),
@@ -779,8 +777,12 @@ async function officePhotoPage(userId: string, actor: ShowcaseActor): Promise<{ 
   return { ok: true, page };
 }
 
-/** Adds an uploaded office photo at the end. The file is deleted when it cannot be added. */
-export async function addShowcaseOfficePhoto(input: {
+/**
+ * Sets the page's office photo from an upload. A page has one since 2026-09-18 (owner): a new photo
+ * takes the place of the one shown, and of any older extras the page still stored. The file is
+ * deleted when it cannot be set.
+ */
+export async function setShowcaseOfficePhoto(input: {
   userId: string;
   fileId: string;
   actor: ShowcaseActor;
@@ -791,12 +793,11 @@ export async function addShowcaseOfficePhoto(input: {
   };
   const found = await officePhotoPage(input.userId, input.actor);
   if (!found.ok) return discard(found);
-  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
-  if (current.length >= SHOWCASE_LIMITS.officePhotos) return discard(fail(409, "OFFICE_PHOTO_LIMIT"));
-  const result = await writeOfficePhotos(found.page, input.actor, [...current, input.fileId]);
+  const result = await writeOfficePhotos(found.page, input.actor, [input.fileId]);
   return result.ok ? result : discard(result);
 }
 
+/** Removes the page's office photo, and any older extras stored with it: the page then shows none. */
 export async function removeShowcaseOfficePhoto(input: {
   userId: string;
   fileId: string;
@@ -806,29 +807,7 @@ export async function removeShowcaseOfficePhoto(input: {
   if (!found.ok) return found;
   const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
   if (!current.includes(input.fileId)) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
-  return writeOfficePhotos(found.page, input.actor, current.filter((id) => id !== input.fileId));
-}
-
-/** Moves an office photo one place earlier (`up`) or later (`down`). At either end, nothing changes. */
-export async function moveShowcaseOfficePhoto(input: {
-  userId: string;
-  fileId: string;
-  direction: unknown;
-  actor: ShowcaseActor;
-}): Promise<ServiceResult<{ officePhotos: OfficePhotoView[] }>> {
-  if (input.direction !== "up" && input.direction !== "down") return fail(400, "INVALID_FIELD", { field: "direction" });
-  const found = await officePhotoPage(input.userId, input.actor);
-  if (!found.ok) return found;
-  const current = (found.page.draft?.officePhotoFileIds ?? []).map(String);
-  const index = current.indexOf(input.fileId);
-  if (index < 0) return fail(404, "OFFICE_PHOTO_NOT_FOUND");
-  const target = input.direction === "up" ? index - 1 : index + 1;
-  if (target < 0 || target >= current.length) {
-    return success({ officePhotos: current.map((id) => ({ id, url: photoUrl(id) as string })) });
-  }
-  const next = [...current];
-  [next[index], next[target]] = [next[target], next[index]];
-  return writeOfficePhotos(found.page, input.actor, next);
+  return writeOfficePhotos(found.page, input.actor, []);
 }
 
 export async function updateShowcaseServices(input: {

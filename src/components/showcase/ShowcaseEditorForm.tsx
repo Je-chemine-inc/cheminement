@@ -59,7 +59,6 @@ interface DraftState {
   approach: Localized;
   insuranceNote: Localized;
   quote: Localized;
-  values: (Localized & { details: Localized })[];
   highlights: Localized[];
   credentials: Localized[];
   focusAreas: Card[];
@@ -122,7 +121,6 @@ function toDraftState(
     approach: copy(content.approach),
     insuranceNote: copy(content.insuranceNote),
     quote: copy(content.quote),
-    values: content.values.map((value) => ({ ...copy(value), details: copy(value.details) })),
     highlights: content.highlights.map(copy),
     credentials: content.credentials.map(copy),
     focusAreas: content.focusAreas.map((card) => ({ title: copy(card.title), body: copy(card.body) })),
@@ -175,6 +173,7 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   const [officeBusy, setOfficeBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const officeInput = useRef<HTMLInputElement>(null);
+  const officePhoto = view.page.draft.officePhotos[0] ?? null;
 
   const errorText = (code: unknown) => t(`errors.${showcaseErrorKey(code)}`);
 
@@ -204,7 +203,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           bio: draft.bio,
           approach: draft.approach,
           insuranceNote: draft.insuranceNote,
-          values: draft.values.filter((value) => filled(value) || filled(value.details)),
           quote: draft.quote,
           highlights: draft.highlights.filter(filled),
           credentials: draft.credentials.filter(filled),
@@ -296,15 +294,11 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
     }
   };
 
-  const changeOfficePhoto = async (fileId: string, change: "remove" | "up" | "down") => {
+  const removeOfficePhoto = async (fileId: string) => {
     setOfficeBusy(true);
     setNotice(null);
     try {
-      const res = await fetch(`${apiBase}/office-photos/${fileId}`, {
-        method: change === "remove" ? "DELETE" : "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: change === "remove" ? undefined : JSON.stringify({ direction: change }),
-      });
+      const res = await fetch(`${apiBase}/office-photos/${fileId}`, { method: "DELETE" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setNotice({ kind: "error", text: errorText(body?.error) });
@@ -586,49 +580,24 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
           {t("officePhotos.title")}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("officePhotos.hint")}</p>
-        {view.page.draft.officePhotos.length > 0 ? (
-          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {view.page.draft.officePhotos.map((photo, index, all) => (
-              <li key={photo.id} data-office-photo={photo.id} className="space-y-2">
-                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt={t("officePhotos.alt", { number: index + 1 })} className="h-full w-full object-cover" />
-                </div>
-                <div className="flex flex-wrap items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("officePhotos.moveUp")}
-                    disabled={officeBusy || index === 0}
-                    onClick={() => void changeOfficePhoto(photo.id, "up")}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t("officePhotos.moveDown")}
-                    disabled={officeBusy || index === all.length - 1}
-                    onClick={() => void changeOfficePhoto(photo.id, "down")}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={officeBusy}
-                    onClick={() => void changeOfficePhoto(photo.id, "remove")}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("officePhotos.remove")}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {/* One photo: a page that still stores older extras shows, and is edited through, the first. */}
+        {officePhoto ? (
+          <div data-office-photo={officePhoto.id} className="mt-4 max-w-sm space-y-2">
+            <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={officePhoto.url} alt={t("officePhotos.alt")} className="h-full w-full object-cover" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" disabled={officeBusy} onClick={() => officeInput.current?.click()}>
+                {officeBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                {t("officePhotos.replace")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" disabled={officeBusy} onClick={() => void removeOfficePhoto(officePhoto.id)}>
+                <Trash2 className="h-4 w-4" />
+                {t("officePhotos.remove")}
+              </Button>
+            </div>
+          </div>
         ) : null}
         <input
           ref={officeInput}
@@ -642,13 +611,11 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             if (file) void uploadOfficePhoto(file);
           }}
         />
-        {view.page.draft.officePhotos.length < SHOWCASE_LIMITS.officePhotos ? (
+        {officePhoto ? null : (
           <Button type="button" variant="outline" className="mt-4" onClick={() => officeInput.current?.click()} disabled={officeBusy}>
             {officeBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
             {t("officePhotos.add")}
           </Button>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">{t("officePhotos.full")}</p>
         )}
       </section>
 
@@ -683,64 +650,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         {renderLocalized("approach", 4)}
         {renderCardList("methods")}
         {renderCardList("focusAreas")}
-
-        <div className="space-y-2">
-          <Label>{t("fields.values")}</Label>
-          <p className="text-xs text-muted-foreground">{t("fields.valuesHint")}</p>
-          <ul className="space-y-2">
-            {draft.values.map((value, index) => (
-              <li key={index} className="flex items-start gap-2">
-                <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                  <Input
-                    aria-label={`${t("fields.values")} ${index + 1}`}
-                    value={value[lang]}
-                    maxLength={SHOWCASE_LIMITS.valueLength}
-                    onChange={(event) =>
-                      update({
-                        values: draft.values.map((current, i) =>
-                          i === index ? { ...current, [lang]: event.target.value } : current,
-                        ),
-                      })
-                    }
-                  />
-                  <Input
-                    aria-label={`${t("fields.valueDescription")} ${index + 1}`}
-                    placeholder={t("fields.valueDescription")}
-                    value={value.details[lang]}
-                    maxLength={SHOWCASE_LIMITS.valueDescription}
-                    onChange={(event) =>
-                      update({
-                        values: draft.values.map((current, i) =>
-                          i === index ? { ...current, details: { ...current.details, [lang]: event.target.value } } : current,
-                        ),
-                      })
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("fields.removeValue")}
-                  onClick={() => update({ values: draft.values.filter((_, i) => i !== index) })}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-          {draft.values.length < SHOWCASE_LIMITS.values ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => update({ values: [...draft.values, { fr: "", en: "", details: { fr: "", en: "" } }] })}
-            >
-              <Plus className="h-4 w-4" />
-              {t("fields.addValue")}
-            </Button>
-          ) : null}
-        </div>
 
         {renderLocalized("insuranceNote", 3)}
       </section>
