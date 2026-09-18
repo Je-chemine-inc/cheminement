@@ -8045,6 +8045,8 @@
       "eyebrow": "Créneau choisi sur la page du professionnel",
       "minutes": "{minutes} min",
       "holdNote": "Le créneau vous est réservé dès l'envoi de votre demande, jusqu'à la réponse du professionnel.",
+      "fallbackLabel": "Si {name} ne peut pas me recevoir, transmettre ma demande à la liste générale de Je chemine",
+      "fallbackHint": "Nous vous proposerons alors le professionnel disponible le plus rapidement. Sans cette case, nous vous écrirons pour vous laisser choisir.",
       "changeSlot": "Choisir un autre créneau",
       "reviewLabel": "Demande de rendez-vous",
       "reviewValue": "{name}, {slot}",

@@ -9,8 +9,21 @@ import type { ShowcaseDirectRequestState } from "@/components/appointments/useSh
  * On the booking funnel, the professional and the time a visitor chose on a
  * showcase page (spec 003 phase 3), or why that time cannot be requested
  * online anymore.
+ *
+ * It also carries the client's consent to the general list (phase 3b): if that
+ * professional declines or doesn't answer in time, the request goes on to Je
+ * chemine's matching instead of waiting for the client to choose. Unchecked
+ * unless ticked — a pre-ticked box would not be a choice.
  */
-export function DirectRequestBanner({ state }: { state: ShowcaseDirectRequestState }) {
+export function DirectRequestBanner({
+  state,
+  fallback = false,
+  onFallbackChange,
+}: {
+  state: ShowcaseDirectRequestState;
+  fallback?: boolean;
+  onFallbackChange?: (next: boolean) => void;
+}) {
   const t = useTranslations("DirectRequests");
   const tTitles = useTranslations("Showcase.titles");
   const locale = useLocale();
@@ -78,6 +91,21 @@ export function DirectRequestBanner({ state }: { state: ShowcaseDirectRequestSta
           </a>
         </div>
       </div>
+      {onFallbackChange ? (
+        <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-primary/15 pt-4 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+            checked={fallback}
+            onChange={(event) => onFallbackChange(event.target.checked)}
+            data-direct-fallback=""
+          />
+          <span>
+            {t("funnel.fallbackLabel", { name: summary.displayName })}
+            <span className="mt-1 block text-xs text-muted-foreground">{t("funnel.fallbackHint")}</span>
+          </span>
+        </label>
+      ) : null}
     </div>
   );
 }

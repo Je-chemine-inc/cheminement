@@ -8046,6 +8046,8 @@
       "eyebrow": "Time chosen on the professional's page",
       "minutes": "{minutes} min",
       "holdNote": "The time is held for you as soon as you send your request, until the professional answers.",
+      "fallbackLabel": "If {name} can't see me, pass my request to Je chemine's general list",
+      "fallbackHint": "We will then offer you the professional available soonest. Without it, we will email you so you can choose.",
       "changeSlot": "Choose another time",
       "reviewLabel": "Appointment request",
       "reviewValue": "{name}, {slot}",

@@ -309,6 +309,8 @@ export default function BookAppointmentPage() {
   // request is sent for that time — no availability grid — and the server holds
   // the slot until the professional answers. Otherwise it is an ordinary request.
   const directRequest = useShowcaseDirectRequest(searchParams);
+  // « Transmettre ma demande à la liste générale » — unchecked unless the client ticks it (phase 3b).
+  const [directFallback, setDirectFallback] = useState(false);
   const direct = directRequest.status === "ready" ? directRequest.intent : null;
   const directLoading = directRequest.status === "loading";
   const tDirect = useTranslations("DirectRequests.funnel");
@@ -794,7 +796,7 @@ export default function BookAppointmentPage() {
 
       if (direct) {
         // The chosen slot decides; the server re-checks and holds it.
-        appointmentData.direct = direct;
+        appointmentData.direct = directFallback ? { ...direct, fallbackToGeneral: true } : direct;
         appointmentData.therapyType = requestTherapyType;
       } else if (emergency) {
         appointmentData.emergency = true;
@@ -918,7 +920,7 @@ export default function BookAppointmentPage() {
 
       if (direct) {
         // The chosen slot decides; the server re-checks and holds it.
-        appointmentData.direct = direct;
+        appointmentData.direct = directFallback ? { ...direct, fallbackToGeneral: true } : direct;
         appointmentData.therapyType = requestTherapyType;
       } else {
         if (changeProfessional) {
@@ -1216,7 +1218,9 @@ export default function BookAppointmentPage() {
           {/* Main Content */}
           <div className="lg:col-span-8 xl:col-span-9">
             {/* A time chosen on a showcase page (spec 003) */}
-            {currentStep !== 5 ? <DirectRequestBanner state={directRequest} /> : null}
+            {currentStep !== 5 ? (
+              <DirectRequestBanner state={directRequest} fallback={directFallback} onFallbackChange={setDirectFallback} />
+            ) : null}
 
             {/* Error Display — step 4 submits too, so its errors show here */}
             {error && currentStep <= 4 && (
