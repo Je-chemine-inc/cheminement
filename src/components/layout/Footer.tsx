@@ -23,7 +23,8 @@ export async function Footer() {
 
   return (
     <footer className="bg-primary text-primary-foreground pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Never a search snippet, like the header: links and legal lines describe no page. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" data-nosnippet="">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
           <div className="col-span-1">
