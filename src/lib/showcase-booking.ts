@@ -25,6 +25,7 @@ import {
   SHOWCASE_SLOT_LEAD_MINUTES,
   SHOWCASE_SLOT_WINDOW_DAYS,
   type ShowcaseSlotsResponse,
+  type ShowcaseBookingOption,
 } from "@/lib/showcase-booking-types";
 
 /**
@@ -207,4 +208,30 @@ export async function isShowcaseSlotFree(
     busy,
   });
   return day?.slots.includes(time) ?? false;
+}
+
+/**
+ * The consultations a page can offer a time for right now (spec 003 phase 3b): offered on the page,
+ * and with at least one free time anywhere in the horizon — a professional fully booked for the next
+ * two weeks but free after that still has her section. An empty list means the page shows no
+ * « Disponibilités » at all, and « Demander un rendez-vous » stays the only way in: the general list.
+ *
+ * Hours she never saved herself are none (`loadBookableShowcase`), so a signup default never gets here.
+ */
+export async function showcaseBookingOptions(slug: string, now: Date = new Date()): Promise<ShowcaseBookingOption[]> {
+  const bookable = await loadBookableShowcase(slug);
+  if (!bookable) return [];
+  const options: ShowcaseBookingOption[] = [];
+  for (const service of ["standard", "quick"] as const) {
+    if (!bookable.services[service].offered) continue;
+    let from: string | null = null;
+    let window = await listShowcaseSlots(bookable, service, from, now);
+    // Two weeks at a time, to the end of the horizon, until one has a free time.
+    for (let tries = 0; window.days.length === 0 && window.nextFrom && tries < 3; tries++) {
+      from = window.nextFrom;
+      window = await listShowcaseSlots(bookable, service, from, now);
+    }
+    if (window.days.length > 0) options.push({ service, minutes: window.durationMinutes, price: window.price });
+  }
+  return options;
 }

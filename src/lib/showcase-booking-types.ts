@@ -37,6 +37,14 @@ export interface ShowcaseSlotsResponse {
   nextFrom: string | null;
 }
 
+/** A consultation a page can offer a time for, as its « Disponibilités » section lists it. */
+export interface ShowcaseBookingOption {
+  service: DirectRequestService;
+  minutes: number;
+  /** What the client pays, or null when the price is set at confirmation. */
+  price: number | null;
+}
+
 /** GET /api/showcase/<slug>/summary — what the booking funnel shows about the professional. */
 export interface ShowcaseBookingSummary {
   slug: string;

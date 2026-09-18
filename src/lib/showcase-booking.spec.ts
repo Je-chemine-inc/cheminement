@@ -42,7 +42,7 @@ vi.mock("@/lib/slot-occupancy", () => ({
   },
 }));
 
-import { isShowcaseSlotFree, listShowcaseSlots, loadBookableShowcase } from "@/lib/showcase-booking";
+import { isShowcaseSlotFree, listShowcaseSlots, loadBookableShowcase, showcaseBookingOptions } from "@/lib/showcase-booking";
 
 const PRO = "0123456789abcdef01234567";
 // Monday 14 September 2026, 09:00 in Montréal.
@@ -221,5 +221,35 @@ describe("hours the professional never confirmed", () => {
     const bookable = (await loadBookableShowcase("sassi"))!;
     const slots = await listShowcaseSlots(bookable, "standard", null, now);
     expect(slots.days.length).toBeGreaterThan(0);
+  });
+});
+
+describe("showcaseBookingOptions (spec 003 phase 3b)", () => {
+  it("offers each consultation that has a free time, with its length and fee", async () => {
+    const options = await showcaseBookingOptions("sassi", now);
+    expect(options.map((option) => option.service)).toEqual(["standard", "quick"]);
+    expect(options[0]).toMatchObject({ service: "standard", minutes: 60 });
+  });
+
+  it("offers nothing on hours the professional never saved herself — no section at all", async () => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: undefined };
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
+  });
+
+  it("offers nothing when the page has booking switched off", async () => {
+    h.page = { ...(h.page as Record<string, unknown>), services: { standard: false, quick: false } };
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
+  });
+
+  it("still offers a consultation fully booked for two weeks but free after that", async () => {
+    // Everything busy until the 29th, free again from the 30th.
+    h.busy = [{ startsAt: new Date("2026-09-14T00:00:00Z"), endsAt: new Date("2026-09-30T00:00:00Z") }];
+    const options = await showcaseBookingOptions("sassi", now);
+    expect(options.map((option) => option.service)).toContain("standard");
+  });
+
+  it("offers nothing for a page that is not bookable", async () => {
+    h.user = null;
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
   });
 });

@@ -1,25 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
 import type { DirectRequestService } from "@/lib/direct-request-rules";
-import type { ShowcaseSlotsResponse } from "@/lib/showcase-booking-types";
+import type { ShowcaseBookingOption, ShowcaseSlotsResponse } from "@/lib/showcase-booking-types";
 import { VITRINE_DAYS_PER_VIEW, canShowNextDays, daysInView, formatShowcasePrice, groupSlotsByPeriod } from "@/lib/showcase-vitrine";
 
-export type VitrineBookingOption = {
-  service: DirectRequestService;
-  minutes: number;
-  price: number | null;
-};
+export type VitrineBookingOption = ShowcaseBookingOption;
 
 /**
  * The booking panel of a professional's page (spec 003, « vitrine » design), in
  * three steps side by side: the consultation, the time (five days at a time,
  * free times grouped by period), and « Votre demande », a summary with the
  * request button. The request itself is made in the booking funnel on www,
- * which holds the time until the professional answers; nothing is booked on
- * the city host. `aside` goes under the panel (the waitlist).
+ * which holds the time until the professional answers; nothing is booked here.
+ *
+ * Shown only while the professional publishes real hours with a free time in the
+ * horizon (phase 3b, `showcaseBookingOptions`), so it carries no waitlist: with
+ * nothing free there is no panel, and the page's own button goes to the general list.
  */
 export function VitrineBooking({
   slug,
@@ -27,8 +26,6 @@ export function VitrineBooking({
   options,
   modes,
   bookingBaseUrl,
-  waitlistAnchor,
-  aside,
 }: {
   slug: string;
   name: string;
@@ -38,8 +35,6 @@ export function VitrineBooking({
   modes: string;
   /** The funnel's URL on www, without the service and time parameters. */
   bookingBaseUrl: string;
-  waitlistAnchor?: string;
-  aside?: ReactNode;
 }) {
   const t = useTranslations("ShowcaseBooking");
   const locale = useLocale();
@@ -174,13 +169,9 @@ export function VitrineBooking({
     </p>
   );
 
+  // When the times ran out between the page and this panel: the general list, as the page's own button.
   const fallbackLinks = (
     <span className="mt-5 flex flex-wrap gap-2.5">
-      {waitlistAnchor ? (
-        <a href={`#${waitlistAnchor}`} className="rounded-full bg-[color:var(--vt-accent,#17505F)] px-5 py-3 vt-sm font-semibold text-white transition-colors hover:bg-[color:var(--vt-accent-dark,#0E3A46)] hover:text-white">
-          {t("joinWaitlist")}
-        </a>
-      ) : null}
       <a href={bookingBaseUrl} data-showcase-cta="" className="rounded-full border border-[#D9D4CA] bg-white px-5 py-3 vt-sm font-semibold text-[color:var(--vt-accent,#17505F)] transition-colors hover:border-[color:var(--vt-accent,#17505F)]">
         {t("matchInstead")}
       </a>
@@ -380,7 +371,7 @@ export function VitrineBooking({
                   data-showcase-cta=""
                   className="flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-6 py-4 vt-md font-semibold text-[color:var(--vt-accent,#17505F)] shadow-[0_18px_36px_-18px_rgba(0,0,0,0.5)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[color:var(--vt-accent-soft,#E6EFEA)] hover:text-[color:var(--vt-accent-dark,#0E3A46)] motion-reduce:hover:translate-y-0"
                 >
-                  {t("requestCta")}
+                  {t("requestCta", { name })}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
               ) : (
@@ -393,7 +384,6 @@ export function VitrineBooking({
           </div>
         </div>
       </div>
-      {aside}
     </div>
   );
 }

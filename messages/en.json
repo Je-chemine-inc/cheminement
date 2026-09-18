@@ -7425,6 +7425,7 @@
         "about": "About",
         "brief": "At a glance",
         "credentials": "Background",
+        "availability": "Availability",
         "approach": "Approach",
         "focus": "What I help with",
         "products": "Resources",
@@ -7477,6 +7478,13 @@
       "themes": {
         "title": "Reasons for consulting"
       },
+      "availability": {
+        "eyebrow": "Availability",
+        "title": "Book directly with {name}",
+        "intro": "These times come from {name}'s own schedule. Your request goes straight to {name}, and the time is held for you until you get an answer."
+      },
+      "centralNote": "Your request goes to our general list: we offer you the professional available soonest.",
+      "seeTimes": "See {name}'s availability",
       "emergencyTitle": "Need help quickly?",
       "expertisesTitle": "What I help with",
       "expertisesIntro": "The difficulties and life situations {name} can help you with.",
@@ -7951,7 +7959,7 @@
     "noSlotBody": "Pick a day, then a time. The time is held for you while {name} reviews your request.",
     "chosenMeta": "{service} · {minutes} min · {price}",
     "chosenMetaNoPrice": "{service} · {minutes} min",
-    "requestCta": "Request this appointment",
+    "requestCta": "Request this appointment with {name}",
     "stepService": "The consultation",
     "stepTime": "The time",
     "stepRequest": "Your request",

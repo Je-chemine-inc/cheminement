@@ -7424,6 +7424,7 @@
         "about": "À propos",
         "brief": "En bref",
         "credentials": "Parcours",
+        "availability": "Disponibilités",
         "approach": "Approche",
         "focus": "Accompagnement",
         "products": "Ressources",
@@ -7476,6 +7477,13 @@
       "themes": {
         "title": "Motifs de consultation"
       },
+      "availability": {
+        "eyebrow": "Disponibilités",
+        "title": "Prendre rendez-vous directement avec {name}",
+        "intro": "Ces plages viennent directement de son horaire. Votre demande est envoyée à {name}, et la plage vous est réservée jusqu'à sa réponse."
+      },
+      "centralNote": "Votre demande est transmise à notre liste générale : nous vous proposons le professionnel disponible le plus rapidement.",
+      "seeTimes": "Voir ses disponibilités",
       "emergencyTitle": "Besoin d'aide rapidement ?",
       "expertisesTitle": "Ce que j'accompagne",
       "expertisesIntro": "Les difficultés et les situations de vie pour lesquelles {name} peut vous accompagner.",
@@ -7950,7 +7958,7 @@
     "noSlotBody": "Choisissez une journée puis une heure. Le créneau vous est réservé pendant que {name} étudie votre demande.",
     "chosenMeta": "{service} · {minutes} min · {price}",
     "chosenMetaNoPrice": "{service} · {minutes} min",
-    "requestCta": "Demander ce rendez-vous",
+    "requestCta": "Demander ce rendez-vous avec {name}",
     "stepService": "La consultation",
     "stepTime": "Le moment",
     "stepRequest": "Votre demande",
