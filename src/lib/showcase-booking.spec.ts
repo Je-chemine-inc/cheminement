@@ -115,12 +115,24 @@ describe("loadBookableShowcase", () => {
     expect(await loadBookableShowcase("sassi")).toBeNull();
   });
 
-  it("closes a consultation the page or the professional does not offer", async () => {
-    h.page = { ...publishedPage, services: { standard: true, quick: false } };
-    h.profile = { ...h.profile!, acceptingNewClients: false };
+  it("closes a consultation the professional has not switched on for the page", async () => {
+    h.page = { ...publishedPage, services: { standard: false, quick: false } };
     const closed = await bookable();
     expect(closed.services.standard.offered).toBe(false);
     expect(closed.services.quick.offered).toBe(false);
+    h.page = { ...publishedPage, services: undefined };
+    const never = await bookable();
+    expect(never.services.standard.offered).toBe(false);
+    expect(never.services.quick.offered).toBe(false);
+  });
+
+  it("keeps a switched-on page open whatever the profile says about automatic matching (phase 3b)", async () => {
+    // « Je n'accepte pas de nouveaux clients » stops Je chemine's matching; the hours a professional
+    // opens on their own page stay open.
+    h.profile = { ...h.profile!, acceptingNewClients: false, acceptingEmergencyConsultations: false };
+    const open = await bookable();
+    expect(open.services.standard.offered).toBe(true);
+    expect(open.services.quick.offered).toBe(true);
   });
 });
 
@@ -225,10 +237,11 @@ describe("hours the professional never confirmed", () => {
 });
 
 describe("showcaseBookingOptions (spec 003 phase 3b)", () => {
-  it("offers each consultation that has a free time, with its length and fee", async () => {
+  it("offers each consultation that has a free time, with its length, fee and first free time", async () => {
     const options = await showcaseBookingOptions("sassi", now);
     expect(options.map((option) => option.service)).toEqual(["standard", "quick"]);
-    expect(options[0]).toMatchObject({ service: "standard", minutes: 60 });
+    // Monday 09:00 in Montréal, nothing sooner than two hours: today's last time (10:15) is too close.
+    expect(options[0]).toEqual({ service: "standard", minutes: 60, price: 130, first: { day: "2026-09-15", time: "09:00" } });
   });
 
   it("offers nothing on hours the professional never saved themselves — no section at all", async () => {
@@ -246,6 +259,7 @@ describe("showcaseBookingOptions (spec 003 phase 3b)", () => {
     h.busy = [{ startsAt: new Date("2026-09-14T00:00:00Z"), endsAt: new Date("2026-09-30T00:00:00Z") }];
     const options = await showcaseBookingOptions("sassi", now);
     expect(options.map((option) => option.service)).toContain("standard");
+    expect(options[0].first).toEqual({ day: "2026-09-30", time: "09:00" });
   });
 
   it("offers nothing for a page that is not bookable", async () => {

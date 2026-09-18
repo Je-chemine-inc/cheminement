@@ -66,8 +66,6 @@ type PageRow = {
 type ProfileRow = {
   availability?: WeeklyAvailability | null;
   availabilityConfirmedAt?: Date | null;
-  acceptingNewClients?: boolean | null;
-  acceptingEmergencyConsultations?: boolean | null;
   quickConsultation?: { durationMinutes?: number | null } | null;
 };
 
@@ -91,7 +89,7 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
       .select("firstName lastName")
       .lean(),
     Profile.findOne({ userId: professionalId })
-      .select("availability availabilityConfirmedAt acceptingNewClients acceptingEmergencyConsultations quickConsultation")
+      .select("availability availabilityConfirmedAt quickConsultation")
       .lean() as unknown as Promise<ProfileRow | null>,
   ]);
   if (!user) return null;
@@ -113,12 +111,12 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
     availability: profile?.availabilityConfirmedAt ? (profile.availability ?? null) : null,
     services: {
       standard: {
-        offered: showcaseServiceOffered("standard", page.services, profile),
+        offered: showcaseServiceOffered("standard", page.services),
         durationMinutes: slotGridOf(profile?.availability).sessionMinutes,
         price: usablePrice(standardPricing.sessionPrice),
       },
       quick: {
-        offered: showcaseServiceOffered("quick", page.services, profile),
+        offered: showcaseServiceOffered("quick", page.services),
         durationMinutes: quickConsultationMinutes(profile?.quickConsultation?.durationMinutes),
         price: usablePrice(quickPricing.sessionPrice),
       },
@@ -231,7 +229,8 @@ export async function showcaseBookingOptions(slug: string, now: Date = new Date(
       from = window.nextFrom;
       window = await listShowcaseSlots(bookable, service, from, now);
     }
-    if (window.days.length > 0) options.push({ service, minutes: window.durationMinutes, price: window.price });
+    const [day] = window.days;
+    if (day) options.push({ service, minutes: window.durationMinutes, price: window.price, first: { day: day.day, time: day.slots[0] } });
   }
   return options;
 }

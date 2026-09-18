@@ -120,7 +120,11 @@ export interface IShowcasePage extends Document {
   publishedBy?: mongoose.Types.ObjectId;
   unpublishedAt?: Date;
   unpublishedBy?: ShowcaseActor;
-  /** Offered on the page. Live settings: they apply without a new review. */
+  /**
+   * The consultations the professional opens on their page (spec 003 phase 3b, « Afficher mes
+   * disponibilités sur ma page »): both off until switched on. Live settings: they apply without a
+   * new review.
+   */
   services: { standard: boolean; quick: boolean };
   /**
    * The professional's agreement to publication (Loi 25), versioned. Since
@@ -249,7 +253,7 @@ const ShowcasePageSchema = new Schema<IShowcasePage>(
     unpublishedAt: Date,
     unpublishedBy: { type: String, enum: ["professional", "admin"] },
     services: {
-      standard: { type: Boolean, default: true },
+      standard: { type: Boolean, default: false },
       quick: { type: Boolean, default: false },
     },
     consent: {

@@ -26,7 +26,7 @@ export interface ShowcaseSlotDay {
 /** GET /api/showcase/<slug>/slots?service=&from= */
 export interface ShowcaseSlotsResponse {
   service: DirectRequestService;
-  /** False when this consultation is not offered or the professional takes no new requests. */
+  /** False when the professional has not switched this consultation on for their page. */
   available: boolean;
   durationMinutes: number;
   /** What the client pays, or null when the price is set at confirmation. */
@@ -43,6 +43,8 @@ export interface ShowcaseBookingOption {
   minutes: number;
   /** What the client pays, or null when the price is set at confirmation. */
   price: number | null;
+  /** Its first free time: Montréal day "YYYY-MM-DD" and wall-clock "HH:mm". */
+  first: { day: string; time: string };
 }
 
 /** GET /api/showcase/<slug>/summary — what the booking funnel shows about the professional. */

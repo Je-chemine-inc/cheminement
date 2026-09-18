@@ -46,8 +46,6 @@ function input(over: Partial<BuildShowcaseInput> = {}): BuildShowcaseInput {
       sessionTypes: ["Individual", "Couple", "Coaching"],
       officeAddress: { city: "Mascouche" },
       yearsOfExperience: 12,
-      acceptingNewClients: true,
-      acceptingEmergencyConsultations: true,
       availability: { sessionDurationMinutes: 50 },
       quickConsultation: { durationMinutes: 25 },
     },
@@ -200,27 +198,30 @@ describe("buildShowcasePublicProfile", () => {
     expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({ approachTitle: "How I work" });
   });
 
-  it("offers a service only when the page and the professional both do", () => {
+  it("offers a consultation only when the professional switched it on (phase 3b)", () => {
     const services = (over: Parameters<typeof input>[0]) => buildShowcasePublicProfile(input(over))!.services;
     expect(services({ page: { slug: "s", cityKey: "mascouche", services: { standard: false, quick: false } } })).toMatchObject({
       standard: { offered: false },
       quick: { offered: false },
     });
-    const base = input();
-    expect(
-      services({ profile: { ...base.profile!, acceptingNewClients: false, acceptingEmergencyConsultations: false } }),
-    ).toMatchObject({ standard: { offered: false }, quick: { offered: false } });
+    // Never switched on is off: a page opens its hours only when its professional does.
     expect(services({ page: { slug: "s", cityKey: "mascouche", services: null } })).toMatchObject({
+      standard: { offered: false },
+      quick: { offered: false },
+    });
+    expect(services({ page: { slug: "s", cityKey: "mascouche", services: { standard: true } } })).toMatchObject({
       standard: { offered: true },
       quick: { offered: false },
     });
   });
 
-  it("applies the same rule to the booking routes", () => {
-    expect(showcaseServiceOffered("standard", undefined, null)).toBe(true);
-    expect(showcaseServiceOffered("quick", undefined, null)).toBe(false);
-    expect(showcaseServiceOffered("quick", { quick: true }, { acceptingEmergencyConsultations: false })).toBe(false);
-    expect(showcaseServiceOffered("standard", { standard: true }, { acceptingNewClients: false })).toBe(false);
+  it("applies the same rule to the booking routes: the switch, and only an explicit true", () => {
+    expect(showcaseServiceOffered("standard", undefined)).toBe(false);
+    expect(showcaseServiceOffered("quick", undefined)).toBe(false);
+    expect(showcaseServiceOffered("standard", { standard: null })).toBe(false);
+    expect(showcaseServiceOffered("standard", { standard: true })).toBe(true);
+    expect(showcaseServiceOffered("quick", { quick: true })).toBe(true);
+    expect(showcaseServiceOffered("quick", { standard: true })).toBe(false);
   });
 
   it("gives the quick consultation its own length and price, or the defaults", () => {

@@ -1,6 +1,8 @@
 import type { ProfessionalOrderCode, ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
 import type { ShowcaseLanguageKey, ShowcaseModalityKey } from "@/lib/showcase-public";
 import type { ShowcaseRequirement } from "@/lib/showcase-workflow";
+import type { ShowcaseWorkDay } from "@/lib/showcase-availability";
+import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
 import type {
   ShowcaseAccentKey,
   ShowcaseSectionKey,
@@ -85,6 +87,20 @@ export interface ShowcaseEditorJson {
   expertiseOptions: { id: string; labelFr: string; labelEn: string }[];
   consentVersion: string;
   showcaseEnabled: boolean;
+  /**
+   * « Disponibilités » on the page (spec 003 phase 3b), for the card that switches it on
+   * (`page.services`): the professional's weekly hours, and what the page shows right now.
+   */
+  availability: {
+    /** When the professional last saved their hours from their own account; null: never, so no times. */
+    hoursConfirmedAt: string | null;
+    /** The days they work, Monday first. */
+    week: ShowcaseWorkDay[];
+    sessionMinutes: number;
+    quickMinutes: number;
+    /** The consultations the page shows a time for now, each with its first free time. */
+    options: ShowcaseBookingOption[];
+  };
   /** Anonymous counts over the last `days` days. */
   stats: { days: number; views: number; ctaClicks: number };
 }

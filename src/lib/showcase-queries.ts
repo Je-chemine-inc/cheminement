@@ -35,8 +35,6 @@ export const SHOWCASE_PROFILE_SELECT = [
   "sessionTypes",
   "officeAddress.city",
   "yearsOfExperience",
-  "acceptingNewClients",
-  "acceptingEmergencyConsultations",
   "availability.sessionDurationMinutes",
   "quickConsultation.durationMinutes",
 ].join(" ");
