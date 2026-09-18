@@ -309,6 +309,8 @@ export default function BookAppointmentPage() {
   // request is sent for that time — no availability grid — and the server holds
   // the slot until the professional answers. Otherwise it is an ordinary request.
   const directRequest = useShowcaseDirectRequest(searchParams);
+  // « Transmettre ma demande à la liste générale » — unchecked unless the client ticks it (phase 3b).
+  const [directFallback, setDirectFallback] = useState(false);
   const direct = directRequest.status === "ready" ? directRequest.intent : null;
   const directLoading = directRequest.status === "loading";
   const tDirect = useTranslations("DirectRequests.funnel");
@@ -794,7 +796,7 @@ export default function BookAppointmentPage() {
 
       if (direct) {
         // The chosen slot decides; the server re-checks and holds it.
-        appointmentData.direct = direct;
+        appointmentData.direct = directFallback ? { ...direct, fallbackToGeneral: true } : direct;
         appointmentData.therapyType = requestTherapyType;
       } else if (emergency) {
         appointmentData.emergency = true;
@@ -918,7 +920,7 @@ export default function BookAppointmentPage() {
 
       if (direct) {
         // The chosen slot decides; the server re-checks and holds it.
-        appointmentData.direct = direct;
+        appointmentData.direct = directFallback ? { ...direct, fallbackToGeneral: true } : direct;
         appointmentData.therapyType = requestTherapyType;
       } else {
         if (changeProfessional) {
@@ -1145,6 +1147,13 @@ export default function BookAppointmentPage() {
             </h1>
           </div>
 
+          {/* A time chosen on a showcase page (spec 003) stays in sight from the very first screen. */}
+          {directRequest.status !== "none" ? (
+            <div className="mx-auto mb-10 max-w-3xl" data-direct-first-screen="">
+              <DirectRequestBanner state={directRequest} />
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <ProfileSelectionCard
               href={withFor("self")}
@@ -1216,7 +1225,9 @@ export default function BookAppointmentPage() {
           {/* Main Content */}
           <div className="lg:col-span-8 xl:col-span-9">
             {/* A time chosen on a showcase page (spec 003) */}
-            {currentStep !== 5 ? <DirectRequestBanner state={directRequest} /> : null}
+            {currentStep !== 5 ? (
+              <DirectRequestBanner state={directRequest} fallback={directFallback} onFallbackChange={setDirectFallback} />
+            ) : null}
 
             {/* Error Display — step 4 submits too, so its errors show here */}
             {error && currentStep <= 4 && (

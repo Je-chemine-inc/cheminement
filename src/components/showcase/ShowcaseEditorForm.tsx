@@ -143,15 +143,12 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   view,
   onView,
   reload,
-  profileHint,
   audience = "professional",
 }: {
   apiBase: string;
   view: V;
   onView: (next: V) => void;
   reload: () => Promise<void>;
-  /** Where the facts that come from the profile are changed (shown under services). */
-  profileHint?: string;
   /** Who is editing: the city notes speak to the professional, or about them to an admin. */
   audience?: "professional" | "admin";
 }) {
@@ -174,7 +171,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [servicesBusy, setServicesBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [officeBusy, setOfficeBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -337,28 +333,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
       setNotice({ kind: "error", text: t("errors.network") });
     } finally {
       setPhotoBusy(false);
-    }
-  };
-
-  const toggleService = async (key: "standard" | "quick") => {
-    setServicesBusy(true);
-    setNotice(null);
-    try {
-      const res = await fetch(`${apiBase}/services`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: !view.page.services[key] }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setNotice({ kind: "error", text: errorText(body?.error) });
-        return;
-      }
-      onView({ ...view, page: { ...view.page, services: body.services } });
-    } catch {
-      setNotice({ kind: "error", text: t("errors.network") });
-    } finally {
-      setServicesBusy(false);
     }
   };
 
@@ -983,47 +957,6 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         ) : null}
       </section>
       ) : null}
-
-      <section className={`${cardClass} space-y-4`} aria-labelledby="showcase-services-title">
-        <div>
-          <h2 id="showcase-services-title" className="font-serif text-xl font-light text-foreground">
-            {t("services.title")}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("services.hint")}</p>
-        </div>
-        {(["standard", "quick"] as const).map((key) => {
-          const on = view.page.services[key];
-          const blocked =
-            key === "standard"
-              ? !view.profileFacts.acceptingNewClients
-              : !view.profileFacts.acceptingEmergencyConsultations;
-          return (
-            <div key={key} className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">{t(`services.${key}`)}</p>
-                <p className="text-sm text-muted-foreground">{t(`services.${key}Hint`)}</p>
-                {on && blocked ? (
-                  <p className="mt-1 text-xs text-amber-700">
-                    {key === "standard" ? t("services.notAcceptingClients") : t("services.notAcceptingQuick")}
-                    {profileHint ? ` ${profileHint}` : ""}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                aria-label={t(`services.${key}`)}
-                disabled={servicesBusy}
-                onClick={() => void toggleService(key)}
-                className={switchClass(on)}
-              >
-                <span className={knobClass(on)} />
-              </button>
-            </div>
-          );
-        })}
-      </section>
 
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t border-border/40 bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         {notice ? (

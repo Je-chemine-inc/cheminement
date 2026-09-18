@@ -1,4 +1,5 @@
 import type { ShowcasePrice } from "@/lib/showcase-public";
+import { SHOWCASE_SLOTS_ANCHOR } from "@/lib/showcase-booking-types";
 
 /**
  * The rules of a professional's page layout (the « vitrine » design, spec 003):
@@ -26,13 +27,14 @@ export const VITRINE_ANCHORS = {
   about: "a-propos",
   brief: "en-bref",
   credentials: "parcours",
+  availability: SHOWCASE_SLOTS_ANCHOR,
   approach: "approche",
   focus: "accompagnement",
   products: "formations",
   articles: "articles",
 } as const;
 
-export type VitrineSection = "about" | "brief" | "credentials" | "approach" | "focus" | "products" | "articles";
+export type VitrineSection = "about" | "brief" | "credentials" | "availability" | "approach" | "focus" | "products" | "articles";
 
 /** Days shown at a time in the booking panel. */
 export const VITRINE_DAYS_PER_VIEW = 5;
@@ -54,6 +56,8 @@ export function vitrineSections(input: {
   hasProducts: boolean;
   /** The professional's live articles. */
   hasArticles?: boolean;
+  /** « Disponibilités »: real hours the professional published, with a free time in the horizon (phase 3b). */
+  hasAvailability?: boolean;
   /** The sections the page draws, in the professional's order: the links follow it and skip what is not drawn. */
   order?: readonly string[];
 }): VitrineSection[] {
@@ -67,7 +71,20 @@ export function vitrineSections(input: {
     ...(input.hasArticles ? (["articles"] as const) : []),
   ];
   const order = input.order;
-  if (!order) return sections;
+  const ordered = order ? inOrder(sections, order) : sections;
+  if (!input.hasAvailability) return ordered;
+  // « Disponibilités » is not a section a professional orders or hides: it exists only while they
+  // publish real hours, and it follows « À propos » (with « En bref » and « Parcours ») wherever
+  // they put it, or opens the page when there is none (owner, 2026-09-18).
+  const ABOUT = new Set<VitrineSection>(["about", "brief", "credentials"]);
+  let at = 0;
+  ordered.forEach((section, index) => {
+    if (ABOUT.has(section)) at = index + 1;
+  });
+  return [...ordered.slice(0, at), "availability", ...ordered.slice(at)];
+}
+
+function inOrder(sections: VitrineSection[], order: readonly string[]): VitrineSection[] {
   // Some headings are blocks inside a section rather than sections of their own: « En bref » and
   // « Parcours » sit in « À propos », « Ce que j’accompagne » comes from « expertises ». Each follows
   // the place the professional gave the section it belongs to.

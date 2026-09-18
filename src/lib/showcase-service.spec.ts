@@ -40,6 +40,8 @@ const h = vi.hoisted(() => {
     sendUpdated: vi.fn<[Record<string, unknown>], Promise<undefined>>(async () => undefined),
     sendPublished: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
     sendUnpublished: vi.fn<[Record<string, unknown>], Promise<boolean>>(async () => true),
+    bookingReads: [] as string[],
+    bookingOptions: [] as unknown[] | Error,
   };
 });
 
@@ -102,6 +104,13 @@ vi.mock("@/models/StoredFile", async (importOriginal) => ({
     },
   },
 }));
+vi.mock("@/lib/showcase-booking", () => ({
+  showcaseBookingOptions: async (slug: string) => {
+    h.bookingReads.push(slug);
+    if (h.bookingOptions instanceof Error) throw h.bookingOptions;
+    return h.bookingOptions;
+  },
+}));
 vi.mock("@/lib/notifications", () => ({
   sendAdminShowcaseUpdatedAlert: h.sendUpdated,
   sendShowcasePublishedEmail: h.sendPublished,
@@ -111,6 +120,7 @@ vi.mock("@/lib/notifications", () => ({
 import {
   activateShowcase,
   addShowcaseOfficePhoto,
+  loadShowcaseEditor,
   moveShowcase,
   moveShowcaseOfficePhoto,
   removeShowcaseOfficePhoto,
@@ -773,5 +783,77 @@ describe("updateShowcaseServices", () => {
       value: { standard: false, quick: true },
     });
     expect(h.findOneAndUpdate[0][1]).toEqual({ $set: { "services.standard": false, "services.quick": true } });
+  });
+});
+
+/**
+ * Phase 3b: « Ma page vitrine » says what the page's « Disponibilités » shows, read the way the page
+ * reads it — and reads nothing until the professional switched it on, the page is online and their
+ * hours are their own.
+ */
+describe("loadShowcaseEditor — « Disponibilités »", () => {
+  const STANDARD = { service: "standard", minutes: 50, price: 195, first: { day: "2026-09-22", time: "13:00" } };
+  const hours = {
+    days: [
+      { day: "Thursday", isWorkDay: true, startTime: "13:00", endTime: "17:00" },
+      { day: "Monday", isWorkDay: false, startTime: "09:00", endTime: "17:00" },
+      { day: "Tuesday", isWorkDay: true, startTime: "13:00", endTime: "17:00" },
+    ],
+    sessionDurationMinutes: 50,
+    breakDurationMinutes: 10,
+  };
+
+  beforeEach(() => {
+    h.enabled = true;
+    h.page = page({ status: "published", published: completeDraft, publishedRevision: 4, services: { standard: true, quick: false } });
+    h.profile = { availability: hours, availabilityConfirmedAt: new Date("2026-09-18T12:00:00Z"), quickConsultation: { durationMinutes: 30 } };
+    h.bookingReads = [];
+    h.bookingOptions = [STANDARD];
+  });
+
+  it("shows what the page offers, with the hours the professional saved", async () => {
+    const view = (await loadShowcaseEditor(PRO))!;
+    expect(h.bookingReads).toEqual(["sassi"]);
+    expect(view.page.services).toEqual({ standard: true, quick: false });
+    expect(view.availability).toEqual({
+      hoursConfirmedAt: new Date("2026-09-18T12:00:00Z"),
+      week: [
+        { day: "Tuesday", start: "13:00", end: "17:00" },
+        { day: "Thursday", start: "13:00", end: "17:00" },
+      ],
+      sessionMinutes: 50,
+      quickMinutes: 30,
+      options: [STANDARD],
+    });
+  });
+
+  it("reads no time while switched off, and calls a page never switched on off", async () => {
+    h.page = page({ status: "published", published: completeDraft, services: undefined });
+    const view = (await loadShowcaseEditor(PRO))!;
+    expect(view.page.services).toEqual({ standard: false, quick: false });
+    expect(view.availability.options).toEqual([]);
+    expect(h.bookingReads).toEqual([]);
+  });
+
+  it("reads no time on hours the professional never saved themselves", async () => {
+    h.profile = { availability: hours };
+    const view = (await loadShowcaseEditor(PRO))!;
+    expect(view.availability).toMatchObject({ hoursConfirmedAt: null, options: [] });
+    expect(h.bookingReads).toEqual([]);
+  });
+
+  it("reads no time for a page that is not online", async () => {
+    h.page = page({ status: "unpublished", published: completeDraft, services: { standard: true, quick: false } });
+    expect((await loadShowcaseEditor(PRO))!.availability.options).toEqual([]);
+    h.page = page({ status: "published", published: completeDraft, services: { standard: true, quick: false } });
+    h.enabled = false;
+    expect((await loadShowcaseEditor(PRO))!.availability.options).toEqual([]);
+    expect(h.bookingReads).toEqual([]);
+  });
+
+  it("still opens the editor when the times cannot be read", async () => {
+    h.bookingOptions = new Error("database down");
+    const view = await loadShowcaseEditor(PRO);
+    expect(view?.availability.options).toEqual([]);
   });
 });

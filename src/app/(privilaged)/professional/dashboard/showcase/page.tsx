@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { AlertCircle, Loader2, Store } from "lucide-react";
+import { ShowcaseAvailabilityCard } from "@/components/showcase/ShowcaseAvailabilityCard";
 import { ShowcaseEditorForm } from "@/components/showcase/ShowcaseEditorForm";
 import { ShowcaseFactsCard } from "@/components/showcase/ShowcaseFactsCard";
 import { ShowcaseProStatus } from "@/components/showcase/ShowcaseProStatus";
 import type { ShowcaseEditorJson } from "@/lib/showcase-editor-types";
+import { profileAPI } from "@/lib/api-client";
+import type { IProfile } from "@/models/Profile";
+import AvailabilitySchedule from "../profile/AvailabilitySchedule";
 
 type State =
   | { kind: "loading" }
@@ -28,17 +33,31 @@ async function fetchShowcase(): Promise<Exclude<State, { kind: "loading" }>> {
 
 /**
  * « Ma page vitrine » (spec 003): while the team prepares the page, a notice;
- * once it is published, its status and the editor, whose saves go live.
+ * once it is published, its status, « Disponibilités sur ma page » with the
+ * professional's own hours (phase 3b), and the editor, whose saves go live.
  */
 export default function ProfessionalShowcasePage() {
   const t = useTranslations("ShowcasePro");
   const [state, setState] = useState<State>({ kind: "loading" });
+  // The professional's weekly hours, edited here as in Profil: their own save is what makes times appear.
+  const [profile, setProfile] = useState<IProfile | null>(null);
+  const [profileFailed, setProfileFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     void fetchShowcase().then((next) => {
       if (active) setState(next);
     });
+    profileAPI
+      .get()
+      .then((loaded) => {
+        if (!active) return;
+        if (loaded) setProfile(loaded as IProfile);
+        else setProfileFailed(true);
+      })
+      .catch(() => {
+        if (active) setProfileFailed(true);
+      });
     return () => {
       active = false;
     };
@@ -83,6 +102,32 @@ export default function ProfessionalShowcasePage() {
       ) : (
         <>
           <ShowcaseProStatus view={state.view} onView={setView} />
+          <ShowcaseAvailabilityCard
+            apiBase="/api/professional/showcase"
+            view={state.view}
+            onView={setView}
+            reload={reload}
+            hours={
+              profile ? (
+                <AvailabilitySchedule
+                  embedded
+                  profile={profile}
+                  setProfile={setProfile}
+                  isEditable
+                  onSaved={() => void reload()}
+                />
+              ) : profileFailed ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("availability.hoursElsewhere")}{" "}
+                  <Link href="/professional/dashboard/profile" className="text-primary hover:underline">
+                    {t("availability.hoursElsewhereLink")}
+                  </Link>
+                </p>
+              ) : (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+              )
+            }
+          />
           <ShowcaseFactsCard view={state.view} profileHref="/professional/dashboard/profile" />
           <ShowcaseEditorForm
             key={state.view.page.slug}

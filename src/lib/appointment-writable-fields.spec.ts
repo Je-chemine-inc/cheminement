@@ -121,6 +121,17 @@ describe("pickBookingIntake", () => {
     }
   });
 
+  it("carries the client's consent to the general list only when it is an explicit true (phase 3b)", () => {
+    const direct = { slug: "dre-sassi", service: "standard", date: "2026-10-01", time: "10:00" };
+    expect(parseDirectIntent({ ...direct, fallbackToGeneral: true })).toEqual({
+      ok: true,
+      intent: { ...direct, fallbackToGeneral: true },
+    });
+    for (const notConsent of [false, "true", 1, "on", null, {}]) {
+      expect(parseDirectIntent({ ...direct, fallbackToGeneral: notConsent })).toEqual({ ok: true, intent: direct });
+    }
+  });
+
   it("returns nothing for a non-object body", () => {
     expect(pickBookingIntake([] as unknown as object).data).toEqual({});
   });

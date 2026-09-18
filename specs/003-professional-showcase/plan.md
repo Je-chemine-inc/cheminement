@@ -590,3 +590,57 @@ chrome with absolute www links.
 4. ~~Which cities get a host at launch~~ — every official « Ville » (2026-09-13). Still open:
    whether boroughs and former cities (Plateau-Mont-Royal, Verdun, Sainte-Foy, Chicoutimi, Hull…)
    get their own host, and whether smaller municipalities are added up front or one by one.
+
+## Phase 3b — Availability back on the page, on real hours only (2026-09-18)
+
+The owner's model: « Demander un rendez-vous » stays centralised (the general list) on every page,
+and says so. A section « Disponibilités » appears **only** when the professional publishes real
+hours; picking a time there is a direct request to them, as phase 3 built it. On 2026-09-16 the
+section had been removed outright because a page with no real hours was advertising booking.
+
+**Owner's decisions (2026-09-18):** the section sits after « À propos »; the fallback checkbox is
+unchecked by default; only hours the professional saved themselves count; both the standard session
+and the quick consultation are offered.
+
+**Why « saved by them »:** in production 5 of the 6 active professionals have exactly Monday–Friday
+9:00–17:00 — the signup default. Showing « the schedule » would advertise slots nobody chose.
+
+Steps, reusing phase 3 throughout (slots, holds, `directRequest`, accept/decline, timeouts):
+1. `Profile.availabilityConfirmedAt`, set only when the professional saves their own schedule.
+   `loadBookableShowcase` treats unconfirmed availability as none — the one choke point for the
+   page, the slots API, the direct intake and the waitlist runner.
+2. The page renders « Disponibilités » (restyled `VitrineBooking`, no waitlist) after « À propos »
+   only when a service is offered **and** its first window has a free time; dock entry
+   « Disponibilités ». Nothing rendered otherwise.
+3. `directRequest.fallbackToGeneral` (unchecked by default, set in the funnel): on a decline or an
+   expiry the request goes straight to matching (`state: rerouted`, `routingStatus: pending`,
+   matcher run) and the client is told; without it, phase 3's email with the choice.
+4. One line under the centralised button: the request goes to the general list.
+5. Walked end to end in a browser, with and without hours, with and without the checkbox.
+
+Legacy contact: `appointment/page.tsx` (checkbox + copy), the direct-request state machine and the
+matcher hand-off, email templates — each behind a spec first.
+
+### Phase 3b addendum — the professional turns it on (2026-09-18)
+
+The owner, after seeing it locally: « make it work so Hélène, from her account, can activate it and
+set her hours — the form 100 % working with our platform ».
+
+- **One switch, the professional's:** « Afficher mes disponibilités sur ma page » is the page's
+  consultation switches (`services.standard` / `services.quick`). Both are now **off until switched
+  on** (schema default and every reader: only `true` counts), so no page opens times its
+  professional did not open. In production all three pages already had both off.
+- **Decoupled from the profile's intake flags:** « Accepte de nouveaux clients » and « consultations
+  ponctuelles rapides » now govern automatic matching only, as their own copy always said. Hélène
+  takes no new clients through the general list and still wants her free hours on her page.
+- **One place:** a « Disponibilités sur ma page » card opens « Ma page vitrine » — the switch, the
+  consultations, her hours editor (the same one as in Profil; her save confirms the hours), and a
+  state line (`showcaseAvailabilityState`: off / page not online / needs hours / no free time /
+  live with the first free time). The admin's page screen shows the same card, worded about the
+  professional, without the editor. The old « Services offerts sur la page » card is gone.
+- **The form, end to end:** its first screen names the professional and the time chosen; the
+  professional's request card and decline dialog say when a decline hands the request to the
+  general list (the client's consent) instead of promising another time.
+- **Verified** in two browsers against the local server: sign in as the professional, switch on,
+  save hours, a client asks through the form and is accepted, another ticks the box and is declined
+  to the general list, switch off and on — 50 checks on screen, in the database and in the emails.

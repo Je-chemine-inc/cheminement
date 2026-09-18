@@ -34,6 +34,10 @@ interface AvailabilityScheduleProps {
   setProfile: (profile: IProfile) => void;
   isEditable?: boolean;
   onSaveOverride?: (data: Partial<IProfile>) => Promise<IProfile | null>;
+  /** Inside another card (« Ma page vitrine », spec 003 phase 3b): no card of its own. */
+  embedded?: boolean;
+  /** After a save went through, e.g. to read again what the professional's page shows. */
+  onSaved?: (profile: IProfile) => void;
 }
 
 const WEEK_ORDER = [
@@ -83,6 +87,8 @@ const AvailabilitySchedule = ({
   setProfile,
   isEditable = false,
   onSaveOverride,
+  embedded = false,
+  onSaved,
 }: AvailabilityScheduleProps) => {
   const t = useTranslations("Dashboard.profile");
   const tSchedule = useTranslations("Dashboard.schedule");
@@ -91,6 +97,8 @@ const AvailabilitySchedule = ({
   const [breakBetweenSessions, setBreakBetweenSessions] = useState("15");
   const [isScheduleEditable, setIsScheduleEditable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const Heading = embedded ? "h3" : "h2";
 
   useEffect(() => {
     if (profile?.availability) {
@@ -172,9 +180,11 @@ const AvailabilitySchedule = ({
     setProfile(updatedProfile);
   };
 
-  const handleSave = async () => {
-    if (!profile) return;
+  /** True once saved; false leaves the editor open, with what was typed and a message. */
+  const handleSave = async (): Promise<boolean> => {
+    if (!profile) return false;
     setIsSaving(true);
+    setSaveFailed(false);
     try {
       const availability = {
         days: currentSchedule,
@@ -190,35 +200,41 @@ const AvailabilitySchedule = ({
           // If no profile returned but no error thrown, we assume success and update locally
           setProfile({ ...profile, availability } as IProfile);
         }
+        onSaved?.(updated ?? ({ ...profile, availability } as IProfile));
       } else {
         // Use the server's full updated doc as the source of truth. Rebuilding
         // from a stale local `profile` spread could push an outdated value of a
         // sibling-owned field (e.g. acceptingNewClients, just toggled elsewhere)
         // back into shared page state and visually revert it. Fall back to the
         // local spread only if the PUT returns nothing.
-        const updated = await profileAPI.update({ availability });
-        setProfile(
-          (updated as IProfile) ?? ({ ...profile, availability } as IProfile),
-        );
+        // The professional's own save confirms the hours: only confirmed hours become bookable times on their page.
+        const updated = await profileAPI.update({ availability, confirmAvailability: true });
+        const saved = (updated as IProfile) ?? ({ ...profile, availability } as IProfile);
+        setProfile(saved);
+        onSaved?.(saved);
       }
+      return true;
     } catch (error) {
       console.error("Error updating profile:", error);
+      setSaveFailed(true);
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="rounded-xl bg-card p-6">
+    <div className={embedded ? "" : "rounded-xl bg-card p-6"} data-availability-schedule="">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-serif font-light text-foreground">
+        <Heading className={`${embedded ? "text-lg" : "text-xl"} font-serif font-light text-foreground`}>
           {tSchedule("title")}
-        </h2>
+        </Heading>
         {isEditable && (
           <Button
             onClick={async () => {
               if (isScheduleEditable) {
-                await handleSave();
+                // A failed save keeps the editor open, with what was typed.
+                if (!(await handleSave())) return;
               }
               setIsScheduleEditable(!isScheduleEditable);
             }}
@@ -235,6 +251,12 @@ const AvailabilitySchedule = ({
           </Button>
         )}
       </div>
+
+      {saveFailed ? (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {tSchedule("saveError")}
+        </p>
+      ) : null}
 
       {/* Session Settings */}
       <div className="mb-6">

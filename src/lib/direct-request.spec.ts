@@ -28,6 +28,7 @@ const h = vi.hoisted(() => ({
   waitlistModified: 1,
   waitlistThrows: null as unknown,
   waitlistOpen: false,
+  matched: [] as string[],
 }));
 
 vi.mock("server-only", () => ({}));
@@ -84,6 +85,11 @@ vi.mock("@/models/WaitlistEntry", () => ({
     exists: async () => (h.waitlistOpen ? { _id: "entry" } : null),
   },
 }));
+vi.mock("@/lib/appointment-routing", () => ({
+  routeAppointmentToProfessionals: async (id: string) => {
+    h.matched.push(id);
+  },
+}));
 vi.mock("@/models/User", () => ({
   default: { findById: () => ({ select: () => ({ lean: async () => h.professional }) }) },
 }));
@@ -102,13 +108,16 @@ vi.mock("@/lib/notifications", () => {
     sendDirectRequestReceivedEmail: record("received"),
     sendDirectRequestConfirmationEmail: record("confirmation"),
     sendDirectRequestUnavailableEmail: record("unavailable"),
+    sendDirectRequestHandedOnEmail: record("handedOn"),
     sendAdminDirectRequestReturnedAlert: record("admin"),
   };
 });
 
 import {
   abandonDirectRequest,
+  matchHandedOnRequest,
   notifyDirectRequestCreated,
+  notifyDirectRequestHandedOn,
   notifyDirectRequestReleased,
   prepareDirectRequest,
   releaseDirectRequest,
@@ -481,5 +490,110 @@ describe("rerouteDirectRequest", () => {
     expect(h.claims).toEqual([]);
     h.claimed = null;
     expect(await rerouteDirectRequest(token, now)).toEqual({ ok: false });
+  });
+});
+
+/**
+ * Phase 3b: « if this professional can't see me, send my request to the general list », unchecked by
+ * default. Consented, a decline or an expiry hands the request straight to matching; otherwise
+ * nothing changes.
+ */
+describe("a request the client agreed to send on to the general list", () => {
+  beforeEach(() => {
+    h.current = { directRequest: { state: "pending", professionalId: PRO, holdId: HOLD, source: "showcase", fallbackToGeneral: true } };
+    h.claimed = { _id: APPT };
+    h.claims = [];
+    h.releases = [];
+    h.emails = [];
+    h.matched = [];
+  });
+
+  it("goes straight to matching when the professional declines, with no link to send", async () => {
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, reason: "not_a_fit", now });
+    expect(released).toMatchObject({ handedToMatching: true, rerouteToken: null });
+    const [, update] = h.claims[0];
+    expect(update.$set).toEqual({
+      routingStatus: "pending",
+      "directRequest.state": "rerouted",
+      "directRequest.answeredAt": now,
+      "directRequest.declineReason": "not_a_fit",
+    });
+    expect(update.$unset).toEqual({ date: "", time: "", proposedTo: "", proposedAt: "" });
+    // Declined as not a fit: that professional is not proposed again.
+    expect(String(update.$addToSet.refusedBy)).toBe(PRO);
+    expect(h.releases).toEqual([[HOLD, { appointmentId: APPT }]]);
+  });
+
+  it("goes straight to matching when the professional does not answer in time", async () => {
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "expired", now });
+    expect(released).toMatchObject({ handedToMatching: true, rerouteToken: null });
+    expect(h.claims[0][1].$set).toMatchObject({ routingStatus: "pending", "directRequest.state": "rerouted" });
+  });
+
+  it("is still just withdrawn when the client withdraws it", async () => {
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "withdrawn", now });
+    expect(released?.handedToMatching).toBe(false);
+    expect(h.claims[0][1].$set).toMatchObject({ "directRequest.state": "withdrawn", status: "cancelled" });
+  });
+
+  it("never sends a waitlist offer's person to someone else: they go back to their place", async () => {
+    h.current = { directRequest: { state: "pending", professionalId: PRO, holdId: HOLD, source: "waitlist", fallbackToGeneral: true } };
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, reason: "slot_unavailable", now });
+    expect(released?.handedToMatching).toBe(false);
+    expect(h.claims[0][1].$set).toMatchObject({ routingStatus: "awaiting_admin", "directRequest.state": "declined" });
+  });
+
+  it("changes nothing for a client who did not agree", async () => {
+    h.current = { directRequest: { state: "pending", professionalId: PRO, holdId: HOLD, source: "showcase" } };
+    const released = await releaseDirectRequest({ appointmentId: APPT, outcome: "declined", professionalId: PRO, reason: "not_a_fit", now });
+    expect(released?.handedToMatching).toBe(false);
+    expect(released?.rerouteToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(h.claims[0][1].$set).toMatchObject({ routingStatus: "awaiting_admin", "directRequest.state": "declined" });
+  });
+
+  it("is matched, then the client told, when the timeout runner expires it", async () => {
+    h.due = [{ _id: APPT }];
+    expect(await runDirectRequestTimeouts(now)).toEqual({ expired: 1 });
+    expect(h.matched).toEqual([APPT]);
+    // Nothing offering a link: the request is already on its way.
+    expect(h.emails.map(([name]) => name)).not.toContain("unavailable");
+  });
+
+  it("runs the same matcher as the emailed link", async () => {
+    await matchHandedOnRequest(APPT);
+    expect(h.matched).toEqual([APPT]);
+  });
+
+  it("tells the client nothing is expected of them, and the team where it went", async () => {
+    h.populated = {
+      bookingFor: "self",
+      clientId: { firstName: "Léa", lastName: "Tremblay", email: "lea@example.test", language: "fr" },
+      directRequest: {
+        state: "rerouted",
+        professionalName: "Hélène Belzil",
+        service: "standard",
+        dayKey: "2026-09-22",
+        time: "13:00",
+        declineReason: "not_a_fit",
+      },
+    };
+    await notifyDirectRequestHandedOn(APPT, "declined");
+    const names = h.emails.map(([name]) => name);
+    expect(names).toContain("handedOn");
+    expect(names).not.toContain("unavailable");
+    const client = h.emails.find(([name]) => name === "handedOn")![1];
+    expect(client).toMatchObject({ clientEmail: "lea@example.test", professionalName: "Hélène Belzil", outcome: "declined" });
+    const team = h.emails.find(([name]) => name === "admin")![1];
+    expect(team).toMatchObject({ handedToMatching: true, outcome: "declined" });
+  });
+
+  it("sends nothing for a request that was not handed on", async () => {
+    h.populated = {
+      bookingFor: "self",
+      clientId: { firstName: "Léa", lastName: "Tremblay", email: "lea@example.test", language: "fr" },
+      directRequest: { state: "declined", professionalName: "Hélène Belzil", service: "standard", dayKey: "2026-09-22", time: "13:00" },
+    };
+    await notifyDirectRequestHandedOn(APPT, "declined");
+    expect(h.emails).toEqual([]);
   });
 });

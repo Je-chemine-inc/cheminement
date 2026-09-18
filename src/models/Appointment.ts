@@ -403,6 +403,11 @@ export interface IDirectRequest {
   rerouteTokenExpiresAt?: Date;
   /** The waitlist entry whose offer became this request (phase 4). */
   waitlistEntryId?: mongoose.Types.ObjectId;
+  /**
+   * The client agreed, when asking, that the request goes to Je chemine's general list if this
+   * professional declines or doesn't answer in time (spec 003 phase 3b). Never set by default.
+   */
+  fallbackToGeneral?: boolean;
 }
 
 const PayerDeclarationSchema = new Schema<IPayerDeclaration>(
@@ -806,6 +811,7 @@ const AppointmentSchema = new Schema<IAppointment>(
           rerouteTokenHash: { type: String },
           rerouteTokenExpiresAt: Date,
           waitlistEntryId: { type: Schema.Types.ObjectId },
+          fallbackToGeneral: { type: Boolean },
         },
         { _id: false },
       ),

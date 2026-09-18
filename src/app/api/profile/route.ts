@@ -9,6 +9,7 @@ import { sendProfessionalProfileCompletedEmail } from "@/lib/notifications";
 import { rematchWaitingDemandesForReenabledPro } from "@/lib/intake-rematch";
 import {
   PROFILE_SELF_WRITABLE,
+  availabilityConfirmationFor,
   pickWritable,
 } from "@/lib/profile-writable-fields";
 
@@ -54,7 +55,7 @@ export async function PUT(req: NextRequest) {
 
     await connectToDatabase();
 
-    const { acceptProfessionalTerms, ...data } = await req.json();
+    const { acceptProfessionalTerms, confirmAvailability, ...data } = await req.json();
 
     const existing = await Profile.findOne({ userId: session.user.id });
     const now = new Date();
@@ -80,6 +81,15 @@ export async function PUT(req: NextRequest) {
     ] as const) {
       if (key in update) update[key] = update[key] === true;
     }
+
+    // The professional's own schedule editor confirms the hours it saves; nothing else can (spec 003 phase 3b).
+    const confirmedAt = availabilityConfirmationFor({
+      confirm: confirmAvailability,
+      update,
+      role: session.user.role,
+      now,
+    });
+    if (confirmedAt) update.availabilityConfirmedAt = confirmedAt;
 
     if (acceptProfessionalTerms === true) {
       update.professionalTermsAcceptedAt = now;

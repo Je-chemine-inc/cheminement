@@ -81,8 +81,6 @@ export interface ShowcaseProfileSource {
   sessionTypes?: readonly string[] | null;
   officeAddress?: { city?: string | null } | null;
   yearsOfExperience?: number | null;
-  acceptingNewClients?: boolean | null;
-  acceptingEmergencyConsultations?: boolean | null;
   availability?: { sessionDurationMinutes?: number | null } | null;
   quickConsultation?: { durationMinutes?: number | null } | null;
 }
@@ -194,19 +192,15 @@ export const SHOWCASE_PUBLIC_KEYS = [
 ] as const;
 
 /**
- * Whether a page offers a consultation right now: the page's own switch and
- * the professional's. Standard is on unless switched off, quick only when
- * switched on; a professional who takes no new clients (or no quick requests)
- * closes it. The booking routes apply the same rule.
+ * Whether a page offers a consultation: the professional switched it on, and nothing else decides
+ * (spec 003 phase 3b, « Afficher mes disponibilités sur ma page »). Both are off until switched on.
+ *
+ * The profile's « nouveaux clients » and « consultations ponctuelles rapides » choices are about Je
+ * chemine's automatic matching; the free hours a professional opens on their own page are theirs to
+ * open. The booking routes apply the same rule.
  */
-export function showcaseServiceOffered(
-  service: "standard" | "quick",
-  switches: ShowcaseServiceSwitches,
-  profile: Pick<ShowcaseProfileSource, "acceptingNewClients" | "acceptingEmergencyConsultations"> | null | undefined,
-): boolean {
-  return service === "standard"
-    ? switches?.standard !== false && profile?.acceptingNewClients !== false
-    : switches?.quick === true && profile?.acceptingEmergencyConsultations !== false;
+export function showcaseServiceOffered(service: "standard" | "quick", switches: ShowcaseServiceSwitches): boolean {
+  return switches?.[service] === true;
 }
 
 function hasFrench(text: LocalizedSource): boolean {
@@ -368,12 +362,12 @@ export function buildShowcasePublicProfile(input: BuildShowcaseInput): ShowcaseP
       typeof years === "number" && Number.isInteger(years) && years >= 0 && years <= 70 ? years : null,
     services: {
       standard: {
-        offered: showcaseServiceOffered("standard", input.page.services, profile),
+        offered: showcaseServiceOffered("standard", input.page.services),
         durationMinutes: slotGridOf(profile?.availability).sessionMinutes,
         prices,
       },
       quick: {
-        offered: showcaseServiceOffered("quick", input.page.services, profile),
+        offered: showcaseServiceOffered("quick", input.page.services),
         durationMinutes: quickConsultationMinutes(profile?.quickConsultation?.durationMinutes),
         price: priceOf(input.quickPrice),
       },

@@ -42,7 +42,7 @@ vi.mock("@/lib/slot-occupancy", () => ({
   },
 }));
 
-import { isShowcaseSlotFree, listShowcaseSlots, loadBookableShowcase } from "@/lib/showcase-booking";
+import { isShowcaseSlotFree, listShowcaseSlots, loadBookableShowcase, showcaseBookingOptions } from "@/lib/showcase-booking";
 
 const PRO = "0123456789abcdef01234567";
 // Monday 14 September 2026, 09:00 in Montréal.
@@ -68,6 +68,7 @@ beforeEach(() => {
   h.user = { _id: PRO, firstName: "Amel", lastName: "Sassi" };
   h.profile = {
     availability,
+    availabilityConfirmedAt: new Date("2026-09-01T12:00:00Z"),
     acceptingNewClients: true,
     acceptingEmergencyConsultations: true,
     quickConsultation: { durationMinutes: 30 },
@@ -114,12 +115,24 @@ describe("loadBookableShowcase", () => {
     expect(await loadBookableShowcase("sassi")).toBeNull();
   });
 
-  it("closes a consultation the page or the professional does not offer", async () => {
-    h.page = { ...publishedPage, services: { standard: true, quick: false } };
-    h.profile = { ...h.profile!, acceptingNewClients: false };
+  it("closes a consultation the professional has not switched on for the page", async () => {
+    h.page = { ...publishedPage, services: { standard: false, quick: false } };
     const closed = await bookable();
     expect(closed.services.standard.offered).toBe(false);
     expect(closed.services.quick.offered).toBe(false);
+    h.page = { ...publishedPage, services: undefined };
+    const never = await bookable();
+    expect(never.services.standard.offered).toBe(false);
+    expect(never.services.quick.offered).toBe(false);
+  });
+
+  it("keeps a switched-on page open whatever the profile says about automatic matching (phase 3b)", async () => {
+    // « Je n'accepte pas de nouveaux clients » stops Je chemine's matching; the hours a professional
+    // opens on their own page stay open.
+    h.profile = { ...h.profile!, acceptingNewClients: false, acceptingEmergencyConsultations: false };
+    const open = await bookable();
+    expect(open.services.standard.offered).toBe(true);
+    expect(open.services.quick.offered).toBe(true);
   });
 });
 
@@ -191,5 +204,66 @@ describe("isShowcaseSlotFree", () => {
     expect(await isShowcaseSlotFree(page, "standard", "2026-09-15", "9:00", now)).toBe(false); // not HH:mm
     h.busy = [{ startsAt: new Date("2026-09-15T13:00:00Z"), endsAt: new Date("2026-09-15T14:00:00Z") }];
     expect(await isShowcaseSlotFree(page, "standard", "2026-09-15", "09:00", now)).toBe(false); // taken
+  });
+});
+
+/**
+ * Phase 3b: a page offers times only on hours the professional saved themselves. In production 5 of
+ * the 6 active professionals still carried the signup default, Monday–Friday 9:00–17:00.
+ */
+describe("hours the professional never confirmed", () => {
+  beforeEach(() => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: undefined };
+  });
+
+  it("offer no time on the page, even with the service switched on", async () => {
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    expect(bookable.services.standard.offered).toBe(true);
+    const slots = await listShowcaseSlots(bookable, "standard", null, now);
+    expect(slots.days).toEqual([]);
+  });
+
+  it("cannot be booked through the intake either", async () => {
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    expect(await isShowcaseSlotFree(bookable, "standard", "2026-09-15", "09:00", now)).toBe(false);
+  });
+
+  it("start offering times the moment they confirm them", async () => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: new Date("2026-09-18T12:00:00Z") };
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    const slots = await listShowcaseSlots(bookable, "standard", null, now);
+    expect(slots.days.length).toBeGreaterThan(0);
+  });
+});
+
+describe("showcaseBookingOptions (spec 003 phase 3b)", () => {
+  it("offers each consultation that has a free time, with its length, fee and first free time", async () => {
+    const options = await showcaseBookingOptions("sassi", now);
+    expect(options.map((option) => option.service)).toEqual(["standard", "quick"]);
+    // Monday 09:00 in Montréal, nothing sooner than two hours: today's last time (10:15) is too close.
+    expect(options[0]).toEqual({ service: "standard", minutes: 60, price: 130, first: { day: "2026-09-15", time: "09:00" } });
+  });
+
+  it("offers nothing on hours the professional never saved themselves — no section at all", async () => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: undefined };
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
+  });
+
+  it("offers nothing when the page has booking switched off", async () => {
+    h.page = { ...(h.page as Record<string, unknown>), services: { standard: false, quick: false } };
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
+  });
+
+  it("still offers a consultation fully booked for two weeks but free after that", async () => {
+    // Everything busy until the 29th, free again from the 30th.
+    h.busy = [{ startsAt: new Date("2026-09-14T00:00:00Z"), endsAt: new Date("2026-09-30T00:00:00Z") }];
+    const options = await showcaseBookingOptions("sassi", now);
+    expect(options.map((option) => option.service)).toContain("standard");
+    expect(options[0].first).toEqual({ day: "2026-09-30", time: "09:00" });
+  });
+
+  it("offers nothing for a page that is not bookable", async () => {
+    h.user = null;
+    expect(await showcaseBookingOptions("sassi", now)).toEqual([]);
   });
 });

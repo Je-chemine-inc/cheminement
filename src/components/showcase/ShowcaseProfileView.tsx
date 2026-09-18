@@ -32,6 +32,8 @@ import type { ShowcaseProductCard } from "@/lib/products";
 import type { ShowcaseArticleCard } from "@/lib/articles";
 import { Footer, Header } from "@/components/layout";
 import { VitrineSectionDock } from "@/components/showcase/vitrine/VitrineSectionDock";
+import { VitrineBooking } from "@/components/showcase/vitrine/VitrineBooking";
+import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
 import { VitrineMotion } from "@/components/showcase/vitrine/VitrineMotion";
 import { vitrineSans, vitrineSerif } from "@/components/showcase/vitrine/fonts";
 
@@ -153,9 +155,15 @@ export async function ShowcaseProfileView({
   preview = false,
   products = [],
   articles = [],
+  bookingOptions = [],
 }: {
   profile: ShowcasePublicProfile;
   preview?: boolean;
+  /**
+   * The consultations the page can offer a time for (spec 003 phase 3b). Empty — the usual case —
+   * means no « Disponibilités » at all: the page's button goes to the general list.
+   */
+  bookingOptions?: ShowcaseBookingOption[];
   /** The professional's live trainings and products (spec 003 phase 5), sold on www. */
   products?: ShowcaseProductCard[];
   /** The professional's live articles, read at /nouveautes/<slug>. */
@@ -238,6 +246,18 @@ export async function ShowcaseProfileView({
       })),
   ];
 
+  // « Disponibilités »: only on real hours with a free time ahead, and never in a preview, which has no times.
+  const hasAvailability = !preview && bookingOptions.length > 0;
+  const shownModes = profile.modalities.filter((modality) => BRIEF_MODALITIES.includes(modality));
+  const modesPhrase =
+    shownModes.includes("inPerson") && shownModes.includes("video")
+      ? t("vitrine.placeBoth", { city: officeCity })
+      : shownModes.includes("video")
+        ? t("vitrine.placeVideo")
+        : shownModes.includes("inPerson")
+          ? t("vitrine.chips.inPerson", { city: officeCity })
+          : "";
+
   const sections = vitrineSections({
     hasAbout,
     hasBrief: briefFacts.length > 0,
@@ -245,12 +265,37 @@ export async function ShowcaseProfileView({
     hasFocusAreas: profile.focusAreas.length > 0,
     hasProducts: products.length > 0,
     hasArticles: articles.length > 0,
+    hasAvailability,
     order: shownSections,
   });
   const navLinks = sections.map((section: VitrineSection) => ({
     href: `#${VITRINE_ANCHORS[section]}`,
     label: t(`vitrine.nav.${section}`),
   }));
+
+  // « Disponibilités » (spec 003 phase 3b): not a section a professional orders or hides — it exists
+  // only while they publish real hours, and it follows « À propos ». Picking a time is a request to
+  // them directly, made in the booking funnel, which holds the time until they answer.
+  const availabilityBlock = hasAvailability ? (
+    <section id={VITRINE_ANCHORS.availability} className={SECTION} data-availability="">
+      <div className={WRAP}>
+        <div className={HEAD} data-head="" data-appear="">
+          <p className={LABEL}>{t("vitrine.availability.eyebrow")}</p>
+          <h2 className={`${H2} mt-5`}>{t("vitrine.availability.title", { name })}</h2>
+          <p className={`${BODY} mx-auto mt-5 max-w-[72ch]`}>{t("vitrine.availability.intro", { name })}</p>
+        </div>
+        <div className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[1320px] text-left" data-reveal="0">
+          <VitrineBooking
+            slug={profile.slug}
+            name={name}
+            options={bookingOptions}
+            modes={modesPhrase}
+            bookingBaseUrl={bookingUrl}
+          />
+        </div>
+      </div>
+    </section>
+  ) : null;
 
   // Each section below the introduction on its own, so a professional can reorder or hide it (visibleSections).
   const sectionBlocks: Record<ShowcaseSectionKey, ReactNode> = {
@@ -735,13 +780,34 @@ export async function ShowcaseProfileView({
                 aria-hidden="true"
               />
             </a>
+            {/* Where that button's request goes; and when the professional has times, the way to them. */}
+            <p
+              className="vt-line mt-[clamp(14px,1.2vw,20px)] max-w-[46ch] vt-xs leading-[1.6] text-[#1F2A2E]/55 text-pretty"
+              style={{ animationDelay: `${afterName + 0.24}s` }}
+              data-central-note=""
+            >
+              {t("vitrine.centralNote")}
+              {hasAvailability ? (
+                <>
+                  {" "}
+                  <a href={`#${VITRINE_ANCHORS.availability}`} className="font-semibold text-[color:var(--vt-accent,#17505F)] underline-offset-4 hover:underline">
+                    {t("vitrine.seeTimes", { name })}
+                  </a>
+                </>
+              ) : null}
+            </p>
           </div>
         </div>
       </section>
 
+      {/* « Disponibilités » opens the page when there is no « À propos » to follow */}
+      {shownSections.includes("about") ? null : availabilityBlock}
       {/* The sections in the professional's order, without those hidden or with nothing to show */}
       {shownSections.map((key) => (
-        <Fragment key={key}>{sectionBlocks[key]}</Fragment>
+        <Fragment key={key}>
+          {sectionBlocks[key]}
+          {key === "about" ? availabilityBlock : null}
+        </Fragment>
       ))}
 
 

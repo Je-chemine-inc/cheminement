@@ -12,6 +12,7 @@ import { ShowcaseProfileJsonLd } from "@/components/showcase/ShowcaseJsonLd";
 import { ShowcaseBeacon } from "@/components/showcase/ShowcaseBeacon";
 import { listShowcaseProducts } from "@/lib/products";
 import { listShowcaseArticles } from "@/lib/articles";
+import { showcaseBookingOptions } from "@/lib/showcase-booking";
 
 /**
  * www.jechemine.ca/<slug> — a professional's published page (spec 003).
@@ -90,7 +91,9 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
 
   // Trainings and products the professional sells (spec 003 phase 5), and the articles they wrote.
   const locale = await currentLocale();
-  const [products, articles] = await Promise.all([
+  // And the consultations the page can offer a time for: none unless the professional publishes
+  // real hours with a free time ahead (spec 003 phase 3b) — then « Disponibilités » appears.
+  const [products, articles, bookingOptions] = await Promise.all([
     listShowcaseProducts(result.profile.slug, locale).catch((error) => {
       console.error("[showcase] products could not be listed:", error);
       return [];
@@ -99,13 +102,17 @@ export default async function ShowcaseProfessionalPage({ params }: Params) {
       console.error("[showcase] articles could not be listed:", error);
       return [];
     }),
+    showcaseBookingOptions(result.profile.slug).catch((error) => {
+      console.error("[showcase] free times could not be read:", error);
+      return [];
+    }),
   ]);
 
   return (
     <>
       <ShowcaseProfileJsonLd profile={result.profile} />
       <ShowcaseBeacon city={result.profile.city.key} slug={result.profile.slug} />
-      <ShowcaseProfileView profile={result.profile} products={products} articles={articles} />
+      <ShowcaseProfileView profile={result.profile} products={products} articles={articles} bookingOptions={bookingOptions} />
     </>
   );
 }

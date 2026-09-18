@@ -25,6 +25,7 @@ import {
   SHOWCASE_SLOT_LEAD_MINUTES,
   SHOWCASE_SLOT_WINDOW_DAYS,
   type ShowcaseSlotsResponse,
+  type ShowcaseBookingOption,
 } from "@/lib/showcase-booking-types";
 
 /**
@@ -64,8 +65,7 @@ type PageRow = {
 
 type ProfileRow = {
   availability?: WeeklyAvailability | null;
-  acceptingNewClients?: boolean | null;
-  acceptingEmergencyConsultations?: boolean | null;
+  availabilityConfirmedAt?: Date | null;
   quickConsultation?: { durationMinutes?: number | null } | null;
 };
 
@@ -89,7 +89,7 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
       .select("firstName lastName")
       .lean(),
     Profile.findOne({ userId: professionalId })
-      .select("availability acceptingNewClients acceptingEmergencyConsultations quickConsultation")
+      .select("availability availabilityConfirmedAt quickConsultation")
       .lean() as unknown as Promise<ProfileRow | null>,
   ]);
   if (!user) return null;
@@ -106,15 +106,17 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
     cityKey: page.cityKey,
     displayName:
       page.published.displayName?.trim() || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-    availability: profile?.availability ?? null,
+    // Only hours the professional saved themselves count (spec 003 phase 3b): the signup default is what most
+    // professionals still carry, and every booking path reads the schedule from here.
+    availability: profile?.availabilityConfirmedAt ? (profile.availability ?? null) : null,
     services: {
       standard: {
-        offered: showcaseServiceOffered("standard", page.services, profile),
+        offered: showcaseServiceOffered("standard", page.services),
         durationMinutes: slotGridOf(profile?.availability).sessionMinutes,
         price: usablePrice(standardPricing.sessionPrice),
       },
       quick: {
-        offered: showcaseServiceOffered("quick", page.services, profile),
+        offered: showcaseServiceOffered("quick", page.services),
         durationMinutes: quickConsultationMinutes(profile?.quickConsultation?.durationMinutes),
         price: usablePrice(quickPricing.sessionPrice),
       },
@@ -204,4 +206,31 @@ export async function isShowcaseSlotFree(
     busy,
   });
   return day?.slots.includes(time) ?? false;
+}
+
+/**
+ * The consultations a page can offer a time for right now (spec 003 phase 3b): offered on the page,
+ * and with at least one free time anywhere in the horizon — a professional fully booked for the next
+ * two weeks but free after that still has their section. An empty list means the page shows no
+ * « Disponibilités » at all, and « Demander un rendez-vous » stays the only way in: the general list.
+ *
+ * Hours the professional never saved themselves are none (`loadBookableShowcase`), so a signup default never gets here.
+ */
+export async function showcaseBookingOptions(slug: string, now: Date = new Date()): Promise<ShowcaseBookingOption[]> {
+  const bookable = await loadBookableShowcase(slug);
+  if (!bookable) return [];
+  const options: ShowcaseBookingOption[] = [];
+  for (const service of ["standard", "quick"] as const) {
+    if (!bookable.services[service].offered) continue;
+    let from: string | null = null;
+    let window = await listShowcaseSlots(bookable, service, from, now);
+    // Two weeks at a time, to the end of the horizon, until one has a free time.
+    for (let tries = 0; window.days.length === 0 && window.nextFrom && tries < 3; tries++) {
+      from = window.nextFrom;
+      window = await listShowcaseSlots(bookable, service, from, now);
+    }
+    const [day] = window.days;
+    if (day) options.push({ service, minutes: window.durationMinutes, price: window.price, first: { day: day.day, time: day.slots[0] } });
+  }
+  return options;
 }

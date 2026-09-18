@@ -3497,6 +3497,7 @@
     },
     "schedule": {
       "title": "Horaire de disponibilité",
+      "saveError": "L'horaire n'a pas pu être enregistré. Vérifiez votre connexion et réessayez.",
       "subtitle": "Définissez vos heures de travail et votre disponibilité pour les réservations de clients",
       "sessionSettings": "Paramètres de séance",
       "defaultDuration": "Durée de séance par défaut (minutes)",
@@ -7424,6 +7425,7 @@
         "about": "À propos",
         "brief": "En bref",
         "credentials": "Parcours",
+        "availability": "Disponibilités",
         "approach": "Approche",
         "focus": "Accompagnement",
         "products": "Ressources",
@@ -7476,6 +7478,13 @@
       "themes": {
         "title": "Motifs de consultation"
       },
+      "availability": {
+        "eyebrow": "Disponibilités",
+        "title": "Prendre rendez-vous directement avec {name}",
+        "intro": "Ces plages viennent directement de son horaire. Votre demande est envoyée à {name}, et la plage vous est réservée jusqu'à sa réponse."
+      },
+      "centralNote": "Votre demande est transmise à notre liste générale : nous vous proposons le professionnel disponible le plus rapidement.",
+      "seeTimes": "Voir ses disponibilités",
       "emergencyTitle": "Besoin d'aide rapidement ?",
       "expertisesTitle": "Ce que j'accompagne",
       "expertisesIntro": "Les difficultés et les situations de vie pour lesquelles {name} peut vous accompagner.",
@@ -7685,15 +7694,26 @@
       "title": "Ordre professionnel et ville de la page",
       "hint": "L'ordre est géré par l'équipe Je chemine : écrivez-nous pour le changer. La ville suit l'adresse du bureau de votre profil."
     },
-    "services": {
-      "title": "Services offerts sur la page",
-      "hint": "Ces choix s'appliquent tout de suite. Les tarifs viennent de la grille tarifaire.",
-      "standard": "Consultation standard",
-      "standardHint": "Les séances habituelles, aux tarifs de la grille.",
-      "quick": "Consultation ponctuelle rapide",
-      "quickHint": "Une rencontre ponctuelle pour un besoin précis.",
-      "notAcceptingClients": "Le profil indique que les nouveaux clients ne sont pas acceptés : ce service n'apparaît pas sur la page.",
-      "notAcceptingQuick": "Le profil indique que les consultations ponctuelles rapides ne sont pas acceptées : ce service n'apparaît pas sur la page."
+    "availability": {
+      "title": "Disponibilités sur ma page",
+      "intro": "Vos plages libres, tirées de votre horaire, apparaissent sur votre page dans une section « Disponibilités ». Un client y choisit une plage et vous envoie sa demande ; la plage lui est réservée jusqu'à votre réponse.",
+      "switchLabel": "Afficher mes disponibilités sur ma page",
+      "consultations": "Consultations proposées",
+      "standard": "Consultation standard · {minutes} min",
+      "standardHint": "La séance habituelle, à votre tarif.",
+      "quick": "Consultation ponctuelle rapide · {minutes} min",
+      "quickHint": "Une rencontre ponctuelle pour un besoin précis, à votre tarif de consultation rapide.",
+      "requests": "Chaque demande vous arrive par courriel et dans « Propositions de clients ». Vous avez jusqu'à 24 h pour répondre (12 h pour une consultation rapide) ; sans réponse, la plage est libérée.",
+      "viewOnPage": "Voir sur ma page",
+      "hoursElsewhere": "Votre horaire n'a pas pu être chargé ici.",
+      "hoursElsewhereLink": "Le modifier dans Profil",
+      "state": {
+        "off": "Section cachée. Le bouton « Demander un rendez-vous » de votre page envoie les demandes à la liste générale de Je chemine.",
+        "pageHidden": "Votre page n'est pas en ligne : vos disponibilités apparaîtront quand elle le sera.",
+        "needsHours": "Dernière étape : enregistrez votre horaire ci-dessous (« Modifier », puis « Enregistrer »). Aucune plage n'apparaît sur votre page avant que vous l'ayez enregistré vous-même.",
+        "noFreeTime": "Aucune plage libre dans les six prochaines semaines selon votre horaire : la section reste cachée jusqu'à ce qu'une plage se libère.",
+        "live": "En ligne : votre page affiche vos disponibilités. Première plage libre : {when}."
+      }
     },
     "editor": {
       "save": "Enregistrer",
@@ -7791,6 +7811,26 @@
     }
   },
   "ShowcaseAdmin": {
+    "availability": {
+      "title": "Disponibilités sur la page",
+      "intro": "Les plages libres du professionnel, tirées de son horaire, apparaissent sur sa page dans une section « Disponibilités ». Un client y choisit une plage et lui envoie sa demande ; la plage est réservée jusqu'à la réponse.",
+      "switchLabel": "Afficher ses disponibilités sur sa page",
+      "standardHint": "La séance habituelle, à son tarif.",
+      "quickHint": "Une rencontre ponctuelle pour un besoin précis, à son tarif de consultation rapide.",
+      "viewOnPage": "Voir sur la page",
+      "hoursTitle": "Son horaire",
+      "hoursNone": "Aucune journée de travail.",
+      "sessions": "Séances de {minutes} min",
+      "hoursConfirmed": "Enregistré depuis le compte du professionnel le {date}.",
+      "hoursNever": "Jamais enregistré depuis le compte du professionnel : aucune plage n'apparaît avant cet enregistrement.",
+      "state": {
+        "off": "Section cachée. Le bouton « Demander un rendez-vous » de la page envoie les demandes à la liste générale.",
+        "pageHidden": "La page n'est pas en ligne : ses disponibilités apparaîtront quand elle le sera.",
+        "needsHours": "En attente de l'horaire, à enregistrer depuis le compte du professionnel : aucune plage n'apparaît avant.",
+        "noFreeTime": "Aucune plage libre dans les six prochaines semaines selon son horaire : la section reste cachée.",
+        "live": "En ligne : la page affiche ses disponibilités. Première plage libre : {when}."
+      }
+    },
     "editor": {
       "fields": {
         "introPlaceholder": "Quelques phrases pour présenter le professionnel.",
@@ -7950,7 +7990,7 @@
     "noSlotBody": "Choisissez une journée puis une heure. Le créneau vous est réservé pendant que {name} étudie votre demande.",
     "chosenMeta": "{service} · {minutes} min · {price}",
     "chosenMetaNoPrice": "{service} · {minutes} min",
-    "requestCta": "Demander ce rendez-vous",
+    "requestCta": "Demander ce rendez-vous avec {name}",
     "stepService": "La consultation",
     "stepTime": "Le moment",
     "stepRequest": "Votre demande",
@@ -7991,6 +8031,7 @@
       "reason": "Motif",
       "for": "Pour",
       "minutes": "{minutes} min",
+      "fallback": "Si vous déclinez, la demande passe à la liste générale de Je chemine, comme la personne l'a accepté.",
       "answerBy": "Répondre avant le {time}",
       "view": "Voir la demande",
       "accept": "Accepter",
@@ -8000,6 +8041,7 @@
       "acceptTitle": "Accepter la demande",
       "acceptBody": "Le rendez-vous avec {name} sera confirmé pour le {slot}.",
       "acceptWhatNext": "La personne reçoit aussitôt la confirmation du rendez-vous et les instructions de paiement.",
+      "declineBodyHandedOn": "{name} a accepté que sa demande passe à la liste générale de Je chemine si vous ne pouvez pas y donner suite. En déclinant, vous l'y transmettez aussitôt ; un courriel en informe {name}. Le motif n'est pas communiqué.",
       "declineTitle": "Décliner la demande",
       "declineBody": "Un courriel informe {name} que le créneau du {slot} n'est pas disponible et lui propose un autre créneau ou le jumelage. Le motif ne lui est pas communiqué.",
       "address": "Adresse de la séance",
@@ -8037,6 +8079,8 @@
       "eyebrow": "Créneau choisi sur la page du professionnel",
       "minutes": "{minutes} min",
       "holdNote": "Le créneau vous est réservé dès l'envoi de votre demande, jusqu'à la réponse du professionnel.",
+      "fallbackLabel": "Si {name} ne peut pas me recevoir, transmettre ma demande à la liste générale de Je chemine",
+      "fallbackHint": "Nous vous proposerons alors le professionnel disponible le plus rapidement. Sans cette case, nous vous écrirons pour vous laisser choisir.",
       "changeSlot": "Choisir un autre créneau",
       "reviewLabel": "Demande de rendez-vous",
       "reviewValue": "{name}, {slot}",

@@ -54,3 +54,35 @@ describe("vitrineSections", () => {
     expect(new Set(Object.values(VITRINE_ANCHORS)).size).toBe(Object.values(VITRINE_ANCHORS).length);
   });
 });
+
+describe("vitrineSections with availability (spec 003 phase 3b)", () => {
+  it("puts « Disponibilités » right after « À propos » and its blocks", () => {
+    expect(
+      vitrineSections({ hasAbout: true, hasBrief: true, hasCredentials: true, hasProducts: true, hasAvailability: true }),
+    ).toEqual(["about", "brief", "credentials", "availability", "approach", "products"]);
+  });
+
+  it("follows « À propos » wherever the professional put it", () => {
+    expect(
+      vitrineSections({ hasAbout: true, hasProducts: false, hasAvailability: true, order: ["approach", "about"] }),
+    ).toEqual(["approach", "about", "availability"]);
+  });
+
+  it("opens the page when there is no « À propos »", () => {
+    expect(vitrineSections({ hasAbout: false, hasProducts: false, hasAvailability: true })).toEqual([
+      "availability",
+      "approach",
+    ]);
+  });
+
+  it("is never listed without real hours, and cannot be hidden or reordered away", () => {
+    expect(vitrineSections({ hasAbout: true, hasProducts: false })).not.toContain("availability");
+    expect(vitrineSections({ hasAbout: true, hasProducts: false, hasAvailability: true, order: ["about"] })).toContain(
+      "availability",
+    );
+  });
+
+  it("anchors on the address the booking funnel already sends people back to", () => {
+    expect(VITRINE_ANCHORS.availability).toBe("disponibilites");
+  });
+});

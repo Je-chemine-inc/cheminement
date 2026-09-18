@@ -44,6 +44,11 @@ import {
 import { deleteUnreferencedShowcasePhotos } from "@/lib/showcase-photo";
 import { isShowcaseEnabled } from "@/lib/showcase-settings";
 import { SHOWCASE_STATS_DAYS, loadShowcaseStats } from "@/lib/showcase-stats";
+import { showcaseBookingOptions } from "@/lib/showcase-booking";
+import { showcaseWorkDays } from "@/lib/showcase-availability";
+import { slotGridOf } from "@/lib/available-slots";
+import { quickConsultationMinutes } from "@/lib/professional-pricing";
+import type { ShowcaseBookingOption } from "@/lib/showcase-booking-types";
 import {
   sendAdminShowcaseUpdatedAlert,
   sendShowcasePublishedEmail,
@@ -123,7 +128,7 @@ type PageLean = {
 };
 
 const PROFILE_FACTS_SELECT =
-  "specialty license modalities languages officeAddress.city yearsOfExperience acceptingNewClients acceptingEmergencyConsultations";
+  "specialty license modalities languages officeAddress.city yearsOfExperience acceptingNewClients acceptingEmergencyConsultations availability availabilityConfirmedAt quickConsultation";
 
 function isDuplicateKey(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
@@ -267,6 +272,21 @@ export async function loadShowcaseEditor(userId: string) {
     profile,
     cityKey: officeKey,
   });
+  const services = {
+    standard: page.services?.standard === true,
+    quick: page.services?.quick === true,
+  };
+  // « Disponibilités » (spec 003 phase 3b): what the page shows right now, read the way the page
+  // reads it — only worth reading once switched on, online, and on hours the professional saved.
+  const hoursConfirmedAt = profile?.availabilityConfirmedAt ?? null;
+  const pageLive = page.status === "published" && showcaseEnabled;
+  const bookingOptions: ShowcaseBookingOption[] =
+    (services.standard || services.quick) && pageLive && hoursConfirmedAt
+      ? await showcaseBookingOptions(page.slug).catch((error) => {
+          console.error("[showcase] free times could not be read for the editor:", error);
+          return [];
+        })
+      : [];
   return {
     page: {
       slug: page.slug,
@@ -284,10 +304,7 @@ export async function loadShowcaseEditor(userId: string) {
       hasUnpublishedChanges:
         Boolean(page.published) && (page.draftRevision ?? 0) !== (page.publishedRevision ?? -1),
       unpublishedBy: page.unpublishedBy ?? null,
-      services: {
-        standard: page.services?.standard !== false,
-        quick: page.services?.quick === true,
-      },
+      services,
       consent: {
         version: page.consent?.version ?? null,
         acceptedAt: page.consent?.acceptedAt ?? null,
@@ -319,6 +336,13 @@ export async function loadShowcaseEditor(userId: string) {
     })),
     consentVersion: SHOWCASE_CONSENT_VERSION,
     showcaseEnabled,
+    availability: {
+      hoursConfirmedAt,
+      week: showcaseWorkDays(profile?.availability?.days),
+      sessionMinutes: slotGridOf(profile?.availability).sessionMinutes,
+      quickMinutes: quickConsultationMinutes(profile?.quickConsultation?.durationMinutes),
+      options: bookingOptions,
+    },
     stats: {
       days: SHOWCASE_STATS_DAYS,
       ...(stats.get(String(page._id)) ?? { views: 0, ctaClicks: 0 }),
@@ -829,7 +853,7 @@ export async function updateShowcaseServices(input: {
     .lean();
   if (!updated) return fail(404, "NOT_FOUND");
   return success({
-    standard: updated.services?.standard !== false,
+    standard: updated.services?.standard === true,
     quick: updated.services?.quick === true,
   });
 }
