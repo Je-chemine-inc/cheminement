@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  PROFILE_ADMIN_WRITABLE,
   PROFILE_SELF_WRITABLE,
   availabilityConfirmationFor,
   pickWritable,
@@ -140,5 +141,30 @@ describe("PROFILE_SELF_WRITABLE — fields a professional must NOT be able to fo
     );
 
     expect(out).toEqual({ bio: "legitimate change" });
+  });
+});
+
+describe("PROFILE_ADMIN_WRITABLE — what an admin saves from a professional's file", () => {
+  it.each(["officeAddress", "officeNotes"])(
+    "%s is saved — the profile form sends it (dropped behind a success message until 2026-09-18)",
+    (field) => {
+      expect(PROFILE_ADMIN_WRITABLE).toContain(field);
+    },
+  );
+
+  it.each([
+    // Re-pointing the profile at another account.
+    "userId",
+    // Server-generated secret for the read-only iCal feed.
+    "calendarFeedToken",
+    // The professional's own acceptance, stamped by PUT /api/profile.
+    "professionalTermsAcceptedAt",
+    "professionalTermsVersion",
+    // Only the professional's own save confirms hours (spec 003 phase 3b).
+    "availabilityConfirmedAt",
+    // Owned by the admin pricing editor, PATCH /api/admin/professionals/[id]/pricing.
+    "rates",
+  ])("%s is not written through the professional's file", (field) => {
+    expect(PROFILE_ADMIN_WRITABLE as readonly string[]).not.toContain(field);
   });
 });

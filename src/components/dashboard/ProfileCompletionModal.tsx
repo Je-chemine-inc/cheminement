@@ -11,6 +11,7 @@ import { ProfessionalCatalogPicker } from "@/components/appointments/Professiona
 import { useTranslations, useLocale } from "next-intl";
 import { IProfile } from "@/models/Profile";
 import { profileAPI } from "@/lib/api-client";
+import type { ProfileAdminWritableField } from "@/lib/profile-writable-fields";
 import { APPROACHES_ET_THERAPIES } from "@/data/approaches";
 import {
   CHILD_PROBLEMATICS,
@@ -94,6 +95,9 @@ export default function ProfileCompletionModal({
     },
   ];
 
+  // An admin edits a professional with this same form, and PUT /api/admin/users/[id] saves only
+  // PROFILE_ADMIN_WRITABLE: a field missing there is dropped behind a success message (the office
+  // address was, until 2026-09-18). `satisfies` fails the build on such a field.
   const [formData, setFormData] = useState<ProfileData>({
     problematics: profile?.problematics || [],
     approaches: profile?.approaches || [],
@@ -122,7 +126,7 @@ export default function ProfileCompletionModal({
     certifications: profile?.certifications || [],
     specialty: profile?.specialty || "",
     license: profile?.license || "",
-  });
+  } satisfies Partial<Record<ProfileAdminWritableField, unknown>>);
 
   const problematics = [
     "Intervention auprès des employés des services d'urgence (ambulanciers, policiers, pompiers…)",
