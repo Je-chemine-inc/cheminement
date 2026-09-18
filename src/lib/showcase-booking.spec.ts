@@ -68,6 +68,7 @@ beforeEach(() => {
   h.user = { _id: PRO, firstName: "Amel", lastName: "Sassi" };
   h.profile = {
     availability,
+    availabilityConfirmedAt: new Date("2026-09-01T12:00:00Z"),
     acceptingNewClients: true,
     acceptingEmergencyConsultations: true,
     quickConsultation: { durationMinutes: 30 },
@@ -191,5 +192,34 @@ describe("isShowcaseSlotFree", () => {
     expect(await isShowcaseSlotFree(page, "standard", "2026-09-15", "9:00", now)).toBe(false); // not HH:mm
     h.busy = [{ startsAt: new Date("2026-09-15T13:00:00Z"), endsAt: new Date("2026-09-15T14:00:00Z") }];
     expect(await isShowcaseSlotFree(page, "standard", "2026-09-15", "09:00", now)).toBe(false); // taken
+  });
+});
+
+/**
+ * Phase 3b: a page offers times only on hours the professional saved herself. In production 5 of
+ * the 6 active professionals still carried the signup default, Monday–Friday 9:00–17:00.
+ */
+describe("hours the professional never confirmed", () => {
+  beforeEach(() => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: undefined };
+  });
+
+  it("offer no time on the page, even with the service switched on", async () => {
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    expect(bookable.services.standard.offered).toBe(true);
+    const slots = await listShowcaseSlots(bookable, "standard", null, now);
+    expect(slots.days).toEqual([]);
+  });
+
+  it("cannot be booked through the intake either", async () => {
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    expect(await isShowcaseSlotFree(bookable, "standard", "2026-09-15", "09:00", now)).toBe(false);
+  });
+
+  it("start offering times the moment she confirms them", async () => {
+    h.profile = { ...(h.profile as Record<string, unknown>), availabilityConfirmedAt: new Date("2026-09-18T12:00:00Z") };
+    const bookable = (await loadBookableShowcase("sassi"))!;
+    const slots = await listShowcaseSlots(bookable, "standard", null, now);
+    expect(slots.days.length).toBeGreaterThan(0);
   });
 });

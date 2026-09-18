@@ -64,6 +64,7 @@ type PageRow = {
 
 type ProfileRow = {
   availability?: WeeklyAvailability | null;
+  availabilityConfirmedAt?: Date | null;
   acceptingNewClients?: boolean | null;
   acceptingEmergencyConsultations?: boolean | null;
   quickConsultation?: { durationMinutes?: number | null } | null;
@@ -89,7 +90,7 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
       .select("firstName lastName")
       .lean(),
     Profile.findOne({ userId: professionalId })
-      .select("availability acceptingNewClients acceptingEmergencyConsultations quickConsultation")
+      .select("availability availabilityConfirmedAt acceptingNewClients acceptingEmergencyConsultations quickConsultation")
       .lean() as unknown as Promise<ProfileRow | null>,
   ]);
   if (!user) return null;
@@ -106,7 +107,9 @@ export async function loadBookableShowcase(slug: string): Promise<BookableShowca
     cityKey: page.cityKey,
     displayName:
       page.published.displayName?.trim() || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-    availability: profile?.availability ?? null,
+    // Only hours she saved herself are hers (spec 003 phase 3b): the signup default is what most
+    // professionals still carry, and every booking path reads the schedule from here.
+    availability: profile?.availabilityConfirmedAt ? (profile.availability ?? null) : null,
     services: {
       standard: {
         offered: showcaseServiceOffered("standard", page.services, profile),

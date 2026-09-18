@@ -1,8 +1,39 @@
 import { describe, it, expect } from "vitest";
 import {
   PROFILE_SELF_WRITABLE,
+  availabilityConfirmationFor,
   pickWritable,
 } from "./profile-writable-fields";
+
+describe("availabilityConfirmationFor", () => {
+  const now = new Date("2026-09-18T15:00:00Z");
+  const hours = { availability: { days: [{ day: "Monday", isWorkDay: true, startTime: "09:00", endTime: "12:00" }] } };
+
+  it("confirms the hours a professional saves from her own schedule editor", () => {
+    expect(availabilityConfirmationFor({ confirm: true, update: hours, role: "professional", now })).toBe(now);
+  });
+
+  it("never confirms without the editor saying so — a signup or any other save leaves it unset", () => {
+    expect(availabilityConfirmationFor({ confirm: undefined, update: hours, role: "professional", now })).toBeNull();
+    expect(availabilityConfirmationFor({ confirm: "true", update: hours, role: "professional", now })).toBeNull();
+  });
+
+  it("never confirms for anyone but the professional herself", () => {
+    for (const role of ["admin", "client", "employee", undefined]) {
+      expect(availabilityConfirmationFor({ confirm: true, update: hours, role, now })).toBeNull();
+    }
+  });
+
+  it("never confirms a save that carries no hours", () => {
+    expect(availabilityConfirmationFor({ confirm: true, update: { bio: "x" }, role: "professional", now })).toBeNull();
+    expect(availabilityConfirmationFor({ confirm: true, update: { availability: { days: "x" } }, role: "professional", now })).toBeNull();
+  });
+
+  it("is not something a professional can write herself", () => {
+    expect(PROFILE_SELF_WRITABLE as readonly string[]).not.toContain("availabilityConfirmedAt");
+    expect(pickWritable({ availabilityConfirmedAt: "2020-01-01" }, PROFILE_SELF_WRITABLE)).toEqual({});
+  });
+});
 
 describe("pickWritable", () => {
   it("keeps allowlisted keys", () => {

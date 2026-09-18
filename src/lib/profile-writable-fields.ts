@@ -20,6 +20,8 @@
  *   route from the `acceptProfessionalTerms` flag + `LEGAL_VERSIONS`, never
  *   from client input.
  * - `calendarFeedToken` — server-generated secret for the iCal feed.
+ * - `availabilityConfirmedAt` — stamped by the route when the professional saves her own hours
+ *   (`availabilityConfirmationFor`); a forged date would put invented times on a public page.
  * - `createdAt` / `updatedAt` — mongoose timestamps.
  */
 export const PROFILE_SELF_WRITABLE = [
@@ -64,6 +66,27 @@ export const PROFILE_SELF_WRITABLE = [
 ] as const;
 
 export type ProfileSelfWritableField = (typeof PROFILE_SELF_WRITABLE)[number];
+
+/**
+ * When a save confirms a professional's weekly hours: only when she saves them herself, from her
+ * own schedule editor, which says so with `confirmAvailability: true`, and the request really
+ * carries hours. Null otherwise — a save of anything else, a signup, or any other role leaves the
+ * stamp as it was.
+ *
+ * Showcase pages offer times only on confirmed hours (spec 003 phase 3b), because the signup
+ * default (Monday–Friday 9:00–17:00) is what most professionals still have.
+ */
+export function availabilityConfirmationFor(input: {
+  confirm: unknown;
+  update: Record<string, unknown>;
+  role: string | null | undefined;
+  now: Date;
+}): Date | null {
+  if (input.confirm !== true || input.role !== "professional") return null;
+  const availability = input.update.availability as { days?: unknown } | null | undefined;
+  if (!availability || typeof availability !== "object" || !Array.isArray(availability.days)) return null;
+  return input.now;
+}
 
 /**
  * Copy only the allowlisted keys out of an untrusted request body.

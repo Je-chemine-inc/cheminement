@@ -31,6 +31,12 @@ export interface IProfile extends Document {
     breakDurationMinutes: number;
     firstDayOfWeek: string;
   };
+  /**
+   * When the professional last saved her weekly hours herself, from her own dashboard (spec 003
+   * phase 3b). Unset means the hours were never confirmed — typically the signup default — and a
+   * showcase page offers no times on them. Set only by PUT /api/profile; never self-writable.
+   */
+  availabilityConfirmedAt?: Date;
   clinicalAvailability?: string[];
   languages?: string[];
   sessionTypes?: string[];
@@ -203,6 +209,7 @@ const ProfileSchema = new Schema<IProfile>(
         ],
       },
     },
+    availabilityConfirmedAt: { type: Date },
     clinicalAvailability: [String],
     languages: [String],
     sessionTypes: [String],

@@ -590,3 +590,33 @@ chrome with absolute www links.
 4. ~~Which cities get a host at launch~~ — every official « Ville » (2026-09-13). Still open:
    whether boroughs and former cities (Plateau-Mont-Royal, Verdun, Sainte-Foy, Chicoutimi, Hull…)
    get their own host, and whether smaller municipalities are added up front or one by one.
+
+## Phase 3b — Availability back on the page, on real hours only (2026-09-18)
+
+The owner's model: « Demander un rendez-vous » stays centralised (the general list) on every page,
+and says so. A section « Disponibilités » appears **only** when the professional publishes real
+hours; picking a time there is a direct request to her, as phase 3 built it. On 2026-09-16 the
+section had been removed outright because a page with no real hours was advertising booking.
+
+**Owner's decisions (2026-09-18):** the section sits after « À propos »; the fallback checkbox is
+unchecked by default; only hours the professional saved herself count; both the standard session
+and the quick consultation are offered.
+
+**Why « saved by her »:** in production 5 of the 6 active professionals have exactly Monday–Friday
+9:00–17:00 — the signup default. Showing « the schedule » would advertise slots nobody chose.
+
+Steps, reusing phase 3 throughout (slots, holds, `directRequest`, accept/decline, timeouts):
+1. `Profile.availabilityConfirmedAt`, set only when the professional saves her own schedule.
+   `loadBookableShowcase` treats unconfirmed availability as none — the one choke point for the
+   page, the slots API, the direct intake and the waitlist runner.
+2. The page renders « Disponibilités » (restyled `VitrineBooking`, no waitlist) after « À propos »
+   only when a service is offered **and** its first window has a free time; dock entry
+   « Disponibilités ». Nothing rendered otherwise.
+3. `directRequest.fallbackToGeneral` (unchecked by default, set in the funnel): on a decline or an
+   expiry the request goes straight to matching (`state: rerouted`, `routingStatus: pending`,
+   matcher run) and the client is told; without it, phase 3's email with the choice.
+4. One line under the centralised button: the request goes to the general list.
+5. Walked end to end in a browser, with and without hours, with and without the checkbox.
+
+Legacy contact: `appointment/page.tsx` (checkbox + copy), the direct-request state machine and the
+matcher hand-off, email templates — each behind a spec first.
