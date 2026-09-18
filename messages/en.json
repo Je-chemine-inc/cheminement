@@ -7701,6 +7701,7 @@
       "standardHint": "The usual sessions, at the grid's fees.",
       "quick": "Quick one-time consultation",
       "quickHint": "A one-time meeting for a specific need.",
+      "hoursHint": "Times appear on the page, under « Availability », only when the service is switched on here and the professional has saved their own schedule in Profile → Availability. Otherwise the page keeps only the button to the general list.",
       "notAcceptingClients": "The profile says new clients are not accepted: this service does not appear on the page.",
       "notAcceptingQuick": "The profile says quick one-time consultations are not accepted: this service does not appear on the page."
     },

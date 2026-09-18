@@ -7700,6 +7700,7 @@
       "standardHint": "Les séances habituelles, aux tarifs de la grille.",
       "quick": "Consultation ponctuelle rapide",
       "quickHint": "Une rencontre ponctuelle pour un besoin précis.",
+      "hoursHint": "Des plages apparaissent sur la page, dans « Disponibilités », seulement si le service est activé ici et que l'horaire a été enregistré depuis le compte du professionnel, dans Profil → Disponibilités. Sinon, la page garde seulement le bouton vers la liste générale.",
       "notAcceptingClients": "Le profil indique que les nouveaux clients ne sont pas acceptés : ce service n'apparaît pas sur la page.",
       "notAcceptingQuick": "Le profil indique que les consultations ponctuelles rapides ne sont pas acceptées : ce service n'apparaît pas sur la page."
     },

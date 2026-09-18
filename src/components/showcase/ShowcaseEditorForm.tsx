@@ -990,6 +990,8 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             {t("services.title")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("services.hint")}</p>
+          {/* What it takes for times to appear on the page (spec 003 phase 3b). */}
+          <p className="mt-2 text-sm text-muted-foreground">{t("services.hoursHint")}</p>
         </div>
         {(["standard", "quick"] as const).map((key) => {
           const on = view.page.services[key];
