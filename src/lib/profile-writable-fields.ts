@@ -68,6 +68,52 @@ export const PROFILE_SELF_WRITABLE = [
 export type ProfileSelfWritableField = (typeof PROFILE_SELF_WRITABLE)[number];
 
 /**
+ * Which `Profile` fields an admin may set on a professional via `PUT /api/admin/users/[id]`: the
+ * professional's file (« Informations de base », the profile form, the hours, the intake switches).
+ *
+ * The profile form is the professional's own (`ProfileCompletionModal`), and the route used to keep
+ * its own shorter list: the office address and its directions were dropped while the admin read
+ * « Profil professionnel mis à jour avec succès » (2026-09-18). The form's initial state now
+ * `satisfies` this list, so a form field missing here fails the build.
+ *
+ * Fields intentionally NOT here:
+ * - `userId`, `calendarFeedToken`, the terms-acceptance stamp — same reasons as above.
+ * - `availabilityConfirmedAt` — only the professional's own save confirms hours (spec 003 phase 3b).
+ * - `rates` — the admin pricing editor owns it (PATCH /api/admin/professionals/[id]/pricing).
+ */
+export const PROFILE_ADMIN_WRITABLE = [
+  "specialty",
+  "license",
+  "bio",
+  "approaches",
+  "problematics",
+  "languages",
+  "yearsOfExperience",
+  "certifications",
+  "ageCategories",
+  "diagnosedConditions",
+  "skills",
+  "availability",
+  "sessionTypes",
+  "modalities",
+  // Where the professional receives clients: in-person reminders show it (with the notes) instead
+  // of « Adresse à confirmer avec votre professionnel ».
+  "officeAddress",
+  "officeNotes",
+  "paymentAgreement",
+  "paymentFrequency",
+  "pricing",
+  "education",
+  "profileCompleted",
+  // Intake toggles — let an admin pause/resume a pro's auto-matching on their
+  // behalf (same effect as the pro's own profile switches).
+  "acceptingNewClients",
+  "acceptingEmergencyConsultations",
+] as const;
+
+export type ProfileAdminWritableField = (typeof PROFILE_ADMIN_WRITABLE)[number];
+
+/**
  * When a save confirms a professional's weekly hours: only when they save them themselves, from
  * their own schedule editor, which says so with `confirmAvailability: true`, and the request really
  * carries hours. Null otherwise — a save of anything else, a signup, or any other role leaves the

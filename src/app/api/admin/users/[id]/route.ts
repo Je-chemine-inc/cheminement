@@ -18,6 +18,7 @@ import Message from "@/models/Message";
 import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import { syncProfessionalProducts } from "@/lib/products";
+import { PROFILE_ADMIN_WRITABLE } from "@/lib/profile-writable-fields";
 
 /** Payment states in which money was taken for a session. */
 const PAYMENT_TAKEN_STATUSES = ["paid", "processing", "refunded", "partially_refunded"] as const;
@@ -194,17 +195,9 @@ export async function PUT(
       "professionalLicenseStatus", "paymentGuaranteeStatus", "paymentGuaranteeSource",
       "image", "stripeCustomerId", "stripeConnectAccountId"
     ];
-    // Allowed profile fields
-    const allowedProfileFields = [
-      "specialty", "license", "bio", "approaches", "problematics",
-      "languages", "yearsOfExperience", "certifications",
-      "ageCategories", "diagnosedConditions", "skills", "availability",
-      "sessionTypes", "modalities", "paymentAgreement", "paymentFrequency",
-      "pricing", "education", "profileCompleted",
-      // Intake toggles — let an admin pause/resume a pro's auto-matching on their
-      // behalf (same effect as the pro's own profile switches).
-      "acceptingNewClients", "acceptingEmergencyConsultations",
-    ];
+    // Allowed profile fields — shared with the profile form, which must not send a field this
+    // route drops (see src/lib/profile-writable-fields.ts).
+    const allowedProfileFields: readonly string[] = PROFILE_ADMIN_WRITABLE;
     // Allowed medical profile fields
     const allowedMedicalProfileFields = [
       "concernedPerson", "accountFor", "childFirstName", "childLastName",
