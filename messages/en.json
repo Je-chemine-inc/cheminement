@@ -7449,9 +7449,9 @@
       },
       "about": {
         "eyebrow": "About",
-        "heading": "{title} in {city}",
-        "headingYears": "{title} for {years, plural, one {# year} other {# years}}, in {city}",
-        "headingNoTitle": "{name}, in {city}",
+        "heading": "{title}",
+        "headingYears": "{title} for {years, plural, one {# year} other {# years}}",
+        "headingNoTitle": "{name}",
         "factsTitle": "At a glance",
         "credentialsTitle": "Background",
         "quoteBy": "— {name}",

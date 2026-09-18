@@ -529,13 +529,12 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
         : [...draft.hiddenSections, key],
     });
   // The wording a blank text keeps, as the page would show it.
-  // The « À propos » title follows the page's rule (title, years, office city), the others take the name and city.
-  const officeCityName = view.profileFacts.officeCity?.trim().slice(0, 80) || view.page.cityName;
+  // The « À propos » title follows the page's rule (title and years), the others take the name and city.
   const defaultText = (key: ShowcaseTextKey) => {
     if (key !== "aboutTitle") return tLabels(SHOWCASE_TEXT_DEFAULTS[key], { name: draft.displayName || "…", city: view.page.cityName });
     const { titleKey, titleLabel, yearsOfExperience } = view.profileFacts;
     const title = titleKey ? tLabels(`titles.${titleKey}`) : titleLabel;
-    const about = aboutHeadingMessage({ title, years: yearsOfExperience, name: draft.displayName || "…", city: officeCityName });
+    const about = aboutHeadingMessage({ title, years: yearsOfExperience, name: draft.displayName || "…" });
     return tLabels(about.key, about.values);
   };
 

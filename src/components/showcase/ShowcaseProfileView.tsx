@@ -218,7 +218,7 @@ export async function ShowcaseProfileView({
   const languages = profile.languages.map((language) => t(`languages.${language}`)).join(", ");
   const standardPrice = headlinePrice(standard.prices);
   const years = profile.yearsOfExperience;
-  const aboutDefault = aboutHeadingMessage({ title, years, name, city: officeCity });
+  const aboutDefault = aboutHeadingMessage({ title, years, name });
   const aboutHeading = t(aboutDefault.key, aboutDefault.values);
 
   // What the professional wrote about insurance receipts, on one line.
