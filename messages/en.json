@@ -7646,7 +7646,7 @@
       "quote": "Quote",
       "quotePlaceholder": "One sentence that sums up the way of working, signed with the display name.",
       "highlights": "Highlights",
-      "highlightsHint": "Up to 4 short mentions shown under the presentation, for example \"Receipts for group insurance\".",
+      "highlightsHint": "Up to 4 short mentions, shown in “At a glance”, within “About”: for example \"Receipts for group insurance\".",
       "highlightsAdd": "Add a highlight",
       "credentials": "Background",
       "credentialsHint": "Up to 6 lines: degrees, trainings and notable experience.",
@@ -7671,7 +7671,7 @@
     },
     "expertises": {
       "title": "Areas of expertise",
-      "hint": "Choose 3 to 12 areas. They help people find you by city and by need.",
+      "hint": "Choose 3 to 12 areas. They show in “What I help with”, under “Reasons for consulting”, and help people find you by need.",
       "count": "{count, plural, =0 {None selected} one {# selected} other {# selected}}",
       "none": "The team has not opened any areas of expertise for showcase pages yet."
     },
@@ -7756,7 +7756,7 @@
     },
     "customize": {
       "title": "Customize the page",
-      "hint": "Your colour, the order of the sections, their titles and your ambience photos. Changes go live when you save.",
+      "hint": "Your colour, the order of the sections, their names and their titles. Changes go live when you save.",
       "accentTitle": "Page colour",
       "accents": {
         "teal": "Teal",
@@ -7769,7 +7769,7 @@
       "sectionsHint": "Move sections and hide the ones you do not want to show. A section with no content stays hidden.",
       "sections": {
         "about": "About",
-        "approach": "Approach and how a request works",
+        "approach": "Approach",
         "expertises": "What I help with",
         "products": "Resources",
         "articles": "Articles"
@@ -7777,28 +7777,36 @@
       "show": "Show “{section}”",
       "moveUp": "Move “{section}” up",
       "moveDown": "Move “{section}” down",
-      "required": "Services and fees and Availability are always shown.",
-      "textsTitle": "Section titles and texts",
-      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A text replaces the page’s own only when it is written in French.",
+      "required": "“Availability” does not move: it follows “About” when you show your availability.",
+      "textsTitle": "Section names, titles and texts",
+      "textsHint": "Leave a field empty to keep the suggested text, shown in grey. A section’s name also appears in the navigation bar at the bottom of the page. A text replaces the page’s own only when it is written in French.",
       "texts": {
-        "aboutTitle": "“About” title",
-        "approachTitle": "“Approach” title",
+        "aboutLabel": "Section name",
+        "aboutTitle": "Title",
+        "factsTitle": "“At a glance” title",
+        "credentialsTitle": "“Background” title",
+        "availabilityLabel": "Section name",
+        "availabilityTitle": "Title",
+        "availabilityIntro": "Text under the title",
+        "approachLabel": "Section name",
+        "approachTitle": "Title",
         "methodsTitle": "Methods title",
-        "stepsTitle": "“How a request works” title",
-        "valuesTitle": "“Values” title",
-        "valuesIntro": "Text under “Values”",
-        "servicesTitle": "“Services and fees” title",
-        "servicesIntro": "Text under “Services and fees”",
-        "standardPoint": "Standard consultation description",
-        "quickPoint": "Quick consultation description",
-        "disposTitle": "“Availability” title",
-        "disposIntro": "Text under “Availability”",
-        "expertisesTitle": "“What I help with” title",
-        "expertisesIntro": "Text under “What I help with”",
-        "productsTitle": "“Trainings and products” title",
-        "articlesTitle": "“Articles” title",
-        "ctaTitle": "Closing band title",
-        "ctaBody": "Closing band text"
+        "expertisesLabel": "Section name",
+        "expertisesTitle": "Title",
+        "expertisesIntro": "Text under the title",
+        "themesTitle": "Reasons for consulting title",
+        "productsLabel": "Section name",
+        "productsTitle": "Title",
+        "articlesLabel": "Section name",
+        "articlesTitle": "Title"
+      },
+      "groups": {
+        "about": "About",
+        "availability": "Availability",
+        "approach": "Approach",
+        "expertises": "What I help with",
+        "products": "Resources",
+        "articles": "Articles"
       }
     }
   },
@@ -7830,7 +7838,7 @@
         "approachPlaceholder": "How their sessions go and what their approach is based on."
       },
       "expertises": {
-        "hint": "Choose 3 to 12 areas. They help people find this professional by city and by need."
+        "hint": "Choose 3 to 12 areas. They show in “What I help with”, under “Reasons for consulting”, and help people find this professional by need."
       }
     },
     "title": "Showcase pages",

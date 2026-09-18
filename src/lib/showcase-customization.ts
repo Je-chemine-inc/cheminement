@@ -1,50 +1,97 @@
 
 /**
- * What a professional makes their own on their page (spec 003, 2026-09-15),
- * beyond the content: section titles and intros, which optional sections show
- * and in which order, an accent colour from an approved palette, and the
- * ambience photos. Constants and pure helpers, client-safe: the draft rules
- * (showcase-workflow) clean what is saved, showcase-public reads it back, and
- * anything unknown falls back to the page's default.
+ * What a professional makes their own on their page (spec 003, 2026-09-15), beyond the content: each
+ * section's name, titles and intros (2026-09-18: every heading a page shows, « Disponibilités »
+ * included), which optional sections show and in which order, and an accent colour from an approved
+ * palette. Constants and pure helpers, client-safe: the draft rules (showcase-workflow) clean what is
+ * saved, showcase-public reads it back, and anything unknown falls back to the page's default.
  */
 
 // ------------------------------------------------------------------- texts
 
 export const SHOWCASE_TEXT_KEYS = [
+  "aboutLabel",
   "aboutTitle",
+  "factsTitle",
+  "credentialsTitle",
+  "availabilityLabel",
+  "availabilityTitle",
+  "availabilityIntro",
+  "approachLabel",
   "approachTitle",
   "methodsTitle",
+  "expertisesLabel",
   "expertisesTitle",
   "expertisesIntro",
+  "themesTitle",
+  "productsLabel",
   "productsTitle",
+  "articlesLabel",
   "articlesTitle",
 ] as const;
 export type ShowcaseTextKey = (typeof SHOWCASE_TEXT_KEYS)[number];
 
+/** A section's name, also its entry in the dock at the bottom of the page: short enough to fit. */
+const LABEL = 30;
 const TITLE = 90;
 const INTRO = 300;
 
-/** Each text is a single line; titles are short, intros a sentence or two. */
+/** Each text is a single line; names are a few words, titles short, intros a sentence or two. */
 export const SHOWCASE_TEXT_LIMITS: Readonly<Record<ShowcaseTextKey, number>> = {
+  aboutLabel: LABEL,
   aboutTitle: TITLE,
+  factsTitle: LABEL,
+  credentialsTitle: LABEL,
+  availabilityLabel: LABEL,
+  availabilityTitle: TITLE,
+  availabilityIntro: INTRO,
+  approachLabel: LABEL,
   approachTitle: TITLE,
   methodsTitle: TITLE,
+  expertisesLabel: LABEL,
   expertisesTitle: TITLE,
   expertisesIntro: INTRO,
+  // A small heading inside the section, not in the dock.
+  themesTitle: 60,
+  productsLabel: LABEL,
   productsTitle: TITLE,
+  articlesLabel: LABEL,
   articlesTitle: TITLE,
 };
 
 /** The page's own wording a blank text keeps (Showcase messages), shown as the editor's placeholder. */
 export const SHOWCASE_TEXT_DEFAULTS: Readonly<Record<ShowcaseTextKey, string>> = {
+  aboutLabel: "vitrine.about.eyebrow",
   aboutTitle: "vitrine.about.headingNoTitle",
+  factsTitle: "vitrine.about.factsTitle",
+  credentialsTitle: "vitrine.about.credentialsTitle",
+  availabilityLabel: "vitrine.availability.eyebrow",
+  availabilityTitle: "vitrine.availability.title",
+  availabilityIntro: "vitrine.availability.intro",
+  approachLabel: "vitrine.approach.eyebrow",
   approachTitle: "vitrine.approach.title",
   methodsTitle: "vitrine.approach.methodsTitle",
+  expertisesLabel: "vitrine.focus.eyebrow",
   expertisesTitle: "vitrine.expertisesTitle",
   expertisesIntro: "vitrine.expertisesIntro",
+  themesTitle: "vitrine.themes.title",
+  productsLabel: "vitrine.products.eyebrow",
   productsTitle: "vitrine.products.title",
+  articlesLabel: "vitrine.articles.eyebrow",
   articlesTitle: "vitrine.articles.title",
 };
+
+export type ShowcaseTextGroup = "about" | "availability" | "approach" | "expertises" | "products" | "articles";
+
+/** The texts as the editor lists them: section by section, in the page's default order. */
+export const SHOWCASE_TEXT_GROUPS: readonly { group: ShowcaseTextGroup; keys: readonly ShowcaseTextKey[] }[] = [
+  { group: "about", keys: ["aboutLabel", "aboutTitle", "factsTitle", "credentialsTitle"] },
+  { group: "availability", keys: ["availabilityLabel", "availabilityTitle", "availabilityIntro"] },
+  { group: "approach", keys: ["approachLabel", "approachTitle", "methodsTitle"] },
+  { group: "expertises", keys: ["expertisesLabel", "expertisesTitle", "expertisesIntro", "themesTitle"] },
+  { group: "products", keys: ["productsLabel", "productsTitle"] },
+  { group: "articles", keys: ["articlesLabel", "articlesTitle"] },
+];
 
 // ---------------------------------------------------------------- sections
 

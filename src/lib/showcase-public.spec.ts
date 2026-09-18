@@ -190,6 +190,22 @@ describe("buildShowcasePublicProfile", () => {
     expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({ approachTitle: "How I work" });
   });
 
+  it("reads the section names and « Disponibilités » texts a professional wrote, French where no English was", () => {
+    const base = input();
+    const content = {
+      ...base.content,
+      texts: { aboutLabel: { fr: "Qui suis-je", en: "Who I am" }, availabilityIntro: { fr: "Écrivez-moi.", en: "" } },
+    };
+    expect(buildShowcasePublicProfile(input({ content }))!.customization.texts).toEqual({
+      aboutLabel: "Qui suis-je",
+      availabilityIntro: "Écrivez-moi.",
+    });
+    expect(buildShowcasePublicProfile(input({ locale: "en", content }))!.customization.texts).toEqual({
+      aboutLabel: "Who I am",
+      availabilityIntro: "Écrivez-moi.",
+    });
+  });
+
   it("offers a consultation only when the professional switched it on (phase 3b)", () => {
     const services = (over: Parameters<typeof input>[0]) => buildShowcasePublicProfile(input(over))!.services;
     expect(services({ page: { slug: "s", cityKey: "mascouche", services: { standard: false, quick: false } } })).toMatchObject({

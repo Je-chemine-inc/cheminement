@@ -20,7 +20,15 @@ import {
 } from "lucide-react";
 import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
-import { VITRINE_ANCHORS, formatShowcasePrice, headlinePrice, vitrineSections, type VitrineSection } from "@/lib/showcase-vitrine";
+import {
+  VITRINE_ANCHORS,
+  VITRINE_NAV_TEXT,
+  focusSectionParts,
+  formatShowcasePrice,
+  headlinePrice,
+  vitrineSections,
+  type VitrineSection,
+} from "@/lib/showcase-vitrine";
 import {
   SHOWCASE_ACCENTS,
   aboutHeadingMessage,
@@ -40,9 +48,9 @@ import { vitrineSans, vitrineSerif } from "@/components/showcase/vitrine/fonts";
 /**
  * A professional's showcase page (spec 003): a wide, airy layout with soft
  * shapes — rounded images and cards, pill buttons and tags — a large portrait,
- * a rounded serif (Fraunces, SOFT axis) over Plus Jakarta Sans, and large
- * images: the professional's office photos when they add some, else Je
- * chemine's ambience photos (`lib/showcase-imagery.ts`). Built from the public
+ * a rounded serif (Fraunces, SOFT axis) over Plus Jakarta Sans, and the
+ * professional's own images only: the portrait, and one office photo in
+ * « À propos » when they add it. Built from the public
  * data object only; a section with nothing to show is left out. Rendered on
  * the city host, and in the professional's and the admin's preview (`preview`:
  * a banner, the photo loaded without Next's optimizer, which cannot see an
@@ -203,7 +211,8 @@ export async function ShowcaseProfileView({
   const officePhoto = profile.officePhotoUrls[0] ?? null;
   const officeAlt = t("vitrine.about.officePhotoAlt", { name });
 
-  // The introduction opens the page beside the portrait; the longer biography is « À propos ».
+  // The hero keeps the portrait, the name and the profession; the headline, the introduction and the
+  // biography are « À propos ».
   const about = profile.bio;
   const hasAbout =
     about.length > 0 ||
@@ -212,6 +221,7 @@ export async function ShowcaseProfileView({
     Boolean(profile.quote) ||
     profile.credentials.length > 0;
   const hasApproachText = profile.approach.length > 0 || profile.methods.length > 0;
+  const focus = focusSectionParts({ focusAreas: profile.focusAreas.length, themes: profile.expertises.length });
   // The name arrives word by word; whatever follows waits for the last one.
   const nameWords = name.split(/\s+/).filter(Boolean);
   const afterName = 0.18 + Math.max(0, nameWords.length - 1) * 0.11 + 0.26;
@@ -232,7 +242,7 @@ export async function ShowcaseProfileView({
   // What the professional wrote about insurance receipts, on one line.
   const insuranceNote = profile.insuranceNote.join(" ").trim();
 
-  // « En bref », under the presentation: the order and permit already sit under the name.
+  // « En bref », inside « À propos », under the presentation; the order and permit line opens « À propos ».
   const briefFacts: { icon: LucideIcon; text: string }[] = [
     ...profile.highlights.map((text) => ({ icon: Check, text })),
     ...(insuranceNote ? [{ icon: ReceiptText, text: insuranceNote }] : []),
@@ -262,7 +272,7 @@ export async function ShowcaseProfileView({
     hasAbout,
     hasBrief: briefFacts.length > 0,
     hasCredentials: profile.credentials.length > 0,
-    hasFocusAreas: profile.focusAreas.length > 0,
+    hasFocusAreas: focus.show,
     hasProducts: products.length > 0,
     hasArticles: articles.length > 0,
     hasAvailability,
@@ -270,7 +280,7 @@ export async function ShowcaseProfileView({
   });
   const navLinks = sections.map((section: VitrineSection) => ({
     href: `#${VITRINE_ANCHORS[section]}`,
-    label: t(`vitrine.nav.${section}`),
+    label: text(VITRINE_NAV_TEXT[section], t(`vitrine.nav.${section}`)),
   }));
 
   // « Disponibilités » (spec 003 phase 3b): not a section a professional orders or hides — it exists
@@ -280,9 +290,9 @@ export async function ShowcaseProfileView({
     <section id={VITRINE_ANCHORS.availability} className={SECTION} data-availability="">
       <div className={WRAP}>
         <div className={HEAD} data-head="" data-appear="">
-          <p className={LABEL}>{t("vitrine.availability.eyebrow")}</p>
-          <h2 className={`${H2} mt-5`}>{t("vitrine.availability.title", { name })}</h2>
-          <p className={`${BODY} mx-auto mt-5 max-w-[72ch]`}>{t("vitrine.availability.intro", { name })}</p>
+          <p className={LABEL}>{text("availabilityLabel", t("vitrine.availability.eyebrow"))}</p>
+          <h2 className={`${H2} mt-5`}>{text("availabilityTitle", t("vitrine.availability.title", { name }))}</h2>
+          <p className={`${BODY} mx-auto mt-5 max-w-[72ch]`}>{text("availabilityIntro", t("vitrine.availability.intro", { name }))}</p>
         </div>
         <div className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[1320px] text-left" data-reveal="0">
           <VitrineBooking
@@ -306,7 +316,7 @@ export async function ShowcaseProfileView({
         <section id={VITRINE_ANCHORS.about} className={SECTION}>
           <div className={`${WRAP} grid items-start gap-x-[clamp(40px,6vw,120px)] gap-y-12 ${officePhoto ? "lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] text-left" : "text-center"}`}>
             <div className="min-w-0" data-reveal="0">
-              <p className={LABEL}>{t("vitrine.about.eyebrow")}</p>
+              <p className={LABEL}>{text("aboutLabel", t("vitrine.about.eyebrow"))}</p>
               <h2 className={`${H2} mt-5`}>{text("aboutTitle", aboutHeading)}</h2>
               {credential ? (
                 <p className="mt-4 inline-flex items-center gap-2 vt-sm text-[#5B6566]">
@@ -339,7 +349,7 @@ export async function ShowcaseProfileView({
                     <span aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(200deg,transparent_42%,rgba(0,0,0,0.3)_100%)]" />
                     {/* A light crosses the block once, as it arrives */}
                     <span aria-hidden="true" className="vt-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/14 to-transparent opacity-0" />
-                    <p className={`relative ${LABEL_ON_DARK}`}>{t("vitrine.about.factsTitle")}</p>
+                    <p className={`relative ${LABEL_ON_DARK}`}>{text("factsTitle", t("vitrine.about.factsTitle"))}</p>
                     {/* Lines, not boxes: one fact a line, in two columns from sm up. */}
                     <ul className="relative mt-[clamp(22px,2.4vw,42px)] grid gap-x-[clamp(32px,4vw,80px)] border-t border-white/12 text-left sm:grid-cols-2">
                       {briefFacts.map((fact, index) => (
@@ -380,7 +390,7 @@ export async function ShowcaseProfileView({
                   data-steps=""
                   data-reveal="0"
                 >
-                  <p className={LABEL}>{t("vitrine.about.credentialsTitle")}</p>
+                  <p className={LABEL}>{text("credentialsTitle", t("vitrine.about.credentialsTitle"))}</p>
                   <ul className="mt-[clamp(20px,2vw,32px)] border-t border-[#E2DCD1] text-left">
                     {profile.credentials.map((line, index) => (
                       <li
@@ -418,7 +428,7 @@ export async function ShowcaseProfileView({
         <div className={WRAP}>
           {/* The approach text reads right under the title */}
           <div className={HEAD} data-approach-head="" data-head="" data-appear="">
-            <p className={`${LABEL}`}>{t("vitrine.approach.eyebrow")}</p>
+            <p className={LABEL}>{text("approachLabel", t("vitrine.approach.eyebrow"))}</p>
             <h2 className={`${H2} mt-5`}>{text("approachTitle", t("vitrine.approach.title"))}</h2>
             {profile.approach.length > 0 ? (
               <div className="mt-5 space-y-5 text-left" data-paras="" data-appear="">
@@ -471,24 +481,24 @@ export async function ShowcaseProfileView({
             </>
           ) : null}
 
-          {/* How a request unfolds: four connected steps, an arrow between cards on wide screens */}
         </div>
       </section>
       </>
     ),
     expertises: (
       <>
-      {/* Ce que j'accompagne: the professional's own cards */}
-      {profile.focusAreas.length > 0 ? (
+      {/* Ce que j'accompagne: the professional's own cards, then the catalogue themes — either alone is enough */}
+      {focus.show ? (
         <section id={VITRINE_ANCHORS.focus} className={SECTION}>
           <div className={WRAP}>
             {/* The intro reads as the title's subtitle, right under it */}
             <div className={HEAD} data-expertises-head="" data-head="" data-appear="">
-              <p className={LABEL}>{t("vitrine.focus.eyebrow")}</p>
+              <p className={LABEL}>{text("expertisesLabel", t("vitrine.focus.eyebrow"))}</p>
               <h2 className={`${H2} mt-5`}>{text("expertisesTitle", t("vitrine.expertisesTitle"))}</h2>
               <p className={`${BODY} mx-auto mt-5 max-w-[84ch]`}>{text("expertisesIntro", t("vitrine.expertisesIntro", { name }))}</p>
             </div>
             {/* Lines, not cards: the area's name, then what it covers, a hairline between each. */}
+            {focus.cards ? (
             <ul
               className="mx-auto mt-[clamp(28px,3vw,48px)] max-w-[100ch] border-t border-[#E2DCD1] text-left"
               data-steps=""
@@ -517,16 +527,17 @@ export async function ShowcaseProfileView({
                 </li>
               ))}
             </ul>
+            ) : null}
             {/* The catalogue themes close the section: one a line, opened to read what it covers.
                 A theme nobody has written about is a line, not an empty thing to open. */}
-            {profile.expertises.length > 0 ? (
+            {focus.themes ? (
               <div
                 className="mx-auto mt-[clamp(36px,4vw,64px)] max-w-[100ch]"
                 data-expertise-themes=""
                 data-steps=""
                 data-reveal="0"
               >
-                <p className={LABEL}>{t("vitrine.themes.title")}</p>
+                <p className={LABEL}>{text("themesTitle", t("vitrine.themes.title"))}</p>
                 <ul className="mt-[clamp(18px,2vw,32px)] border-t border-[#E2DCD1] text-left">
                   {profile.expertises.map((expertise, index) => (
                     <li
@@ -577,7 +588,7 @@ export async function ShowcaseProfileView({
         <section id={VITRINE_ANCHORS.products} className={SECTION}>
           <div className={WRAP}>
             <div className={HEAD} data-head="" data-appear="">
-              <p className={LABEL}>{t("vitrine.products.eyebrow")}</p>
+              <p className={LABEL}>{text("productsLabel", t("vitrine.products.eyebrow"))}</p>
               <h2 className={`${H2} mt-5`}>{text("productsTitle", t("vitrine.products.title"))}</h2>
             </div>
             <ul
@@ -653,7 +664,7 @@ export async function ShowcaseProfileView({
         <section id={VITRINE_ANCHORS.articles} className={SECTION} data-articles="">
           <div className={WRAP}>
             <div className={HEAD} data-head="" data-appear="">
-              <p className={LABEL}>{t("vitrine.articles.eyebrow")}</p>
+              <p className={LABEL}>{text("articlesLabel", t("vitrine.articles.eyebrow"))}</p>
               <h2 className={`${H2} mt-5`}>{text("articlesTitle", t("vitrine.articles.title"))}</h2>
             </div>
             <ul className={`mt-[clamp(40px,4.5vw,64px)] grid gap-[clamp(20px,2.2vw,32px)] md:grid-cols-2 ${articles.length >= 3 ? "xl:grid-cols-3" : ""}`}>

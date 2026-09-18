@@ -42,7 +42,6 @@ export interface ShowcaseContentJson {
   sectionOrder: ShowcaseSectionKey[];
   hiddenSections: ShowcaseSectionKey[];
   accent: ShowcaseAccentKey;
-  /** The library photo chosen per slot, empty for the automatic one. */
 }
 
 export interface ShowcaseEditorJson {

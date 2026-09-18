@@ -26,6 +26,7 @@ import {
   SHOWCASE_ACCENTS,
   SHOWCASE_ACCENT_KEYS,
   SHOWCASE_TEXT_DEFAULTS,
+  SHOWCASE_TEXT_GROUPS,
   SHOWCASE_TEXT_KEYS,
   SHOWCASE_TEXT_LIMITS,
   type ShowcaseAccentKey,
@@ -742,24 +743,32 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             {languageTabs}
           </div>
           <p className="text-xs text-muted-foreground">{t("customize.textsHint")}</p>
-          <div className="grid gap-4 md:grid-cols-2">
-            {SHOWCASE_TEXT_KEYS.map((key) => {
-              const id = `showcase-text-${key}-${lang}`;
-              return (
-                <div key={key} className="space-y-1">
-                  <Label htmlFor={id} className="text-xs">
-                    {t(`customize.texts.${key}`)}
-                  </Label>
-                  <Input
-                    id={id}
-                    value={draft.texts[key][lang]}
-                    maxLength={SHOWCASE_TEXT_LIMITS[key]}
-                    placeholder={lang === "fr" ? defaultText(key) : ""}
-                    onChange={(event) => setText(key, event.target.value)}
-                  />
+          {/* Section by section, in the page's order: its name (also in the dock), then its headings. */}
+          <div className="space-y-6">
+            {SHOWCASE_TEXT_GROUPS.map(({ group, keys }) => (
+              <fieldset key={group} className="space-y-3" data-text-group={group}>
+                <legend className="text-sm font-medium text-foreground">{t(`customize.groups.${group}`)}</legend>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {keys.map((key) => {
+                    const id = `showcase-text-${key}-${lang}`;
+                    return (
+                      <div key={key} className="space-y-1">
+                        <Label htmlFor={id} className="text-xs">
+                          {t(`customize.texts.${key}`)}
+                        </Label>
+                        <Input
+                          id={id}
+                          value={draft.texts[key][lang]}
+                          maxLength={SHOWCASE_TEXT_LIMITS[key]}
+                          placeholder={lang === "fr" ? defaultText(key) : ""}
+                          onChange={(event) => setText(key, event.target.value)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </fieldset>
+            ))}
           </div>
         </div>
 

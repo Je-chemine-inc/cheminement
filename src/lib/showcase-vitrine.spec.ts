@@ -3,6 +3,7 @@ import {
   VITRINE_ANCHORS,
   canShowNextDays,
   daysInView,
+  focusSectionParts,
   formatShowcasePrice,
   groupSlotsByPeriod,
   headlinePrice,
@@ -84,5 +85,20 @@ describe("vitrineSections with availability (spec 003 phase 3b)", () => {
 
   it("anchors on the address the booking funnel already sends people back to", () => {
     expect(VITRINE_ANCHORS.availability).toBe("disponibilites");
+  });
+});
+
+describe("focusSectionParts (« Ce que j'accompagne »)", () => {
+  it("shows the themes of a page that has no card of its own", () => {
+    expect(focusSectionParts({ focusAreas: 0, themes: 5 })).toEqual({ show: true, cards: false, themes: true });
+  });
+
+  it("shows the cards alone, and both when there are both", () => {
+    expect(focusSectionParts({ focusAreas: 2, themes: 0 })).toEqual({ show: true, cards: true, themes: false });
+    expect(focusSectionParts({ focusAreas: 2, themes: 5 })).toEqual({ show: true, cards: true, themes: true });
+  });
+
+  it("is not there with neither", () => {
+    expect(focusSectionParts({ focusAreas: 0, themes: 0 })).toEqual({ show: false, cards: false, themes: false });
   });
 });

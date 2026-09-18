@@ -88,7 +88,6 @@ export interface IShowcaseContent {
   hiddenSections: string[];
   /** A SHOWCASE_ACCENTS key; empty for the default colour. */
   accent: string;
-  /** Library photos chosen per image slot (paths under /showcase/ambiance). */
 }
 
 export interface IShowcaseHistoryEntry {
@@ -178,11 +177,6 @@ const MethodSchema = new Schema<IShowcaseMethod>({ name: localized(), title: loc
 
 const TextsSchema = new Schema(
   Object.fromEntries(SHOWCASE_TEXT_KEYS.map((key) => [key, { type: LocalizedTextSchema, default: undefined }])),
-  { _id: false },
-);
-
-const AmbienceSchema = new Schema(
-  { band: { type: String, trim: true }, about: { type: String, trim: true }, closing: { type: String, trim: true } },
   { _id: false },
 );
 

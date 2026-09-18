@@ -7645,7 +7645,7 @@
       "quote": "Citation",
       "quotePlaceholder": "Une phrase qui résume la façon d'accompagner, signée du nom affiché.",
       "highlights": "Points forts",
-      "highlightsHint": "Jusqu'à 4 courtes mentions affichées sous la présentation, par exemple « Reçus pour assurances collectives ».",
+      "highlightsHint": "Jusqu'à 4 courtes mentions, affichées dans « En bref », dans « À propos » : par exemple « Reçus pour assurances collectives ».",
       "highlightsAdd": "Ajouter un point fort",
       "credentials": "Parcours",
       "credentialsHint": "Jusqu'à 6 lignes : diplômes, formations et expériences marquantes.",
@@ -7670,7 +7670,7 @@
     },
     "expertises": {
       "title": "Champs d'expertise",
-      "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à vous trouver selon leur ville et leur besoin.",
+      "hint": "Choisissez de 3 à 12 champs. Ils s'affichent dans « Ce que j'accompagne », sous « Motifs de consultation », et aident les personnes à vous trouver selon leur besoin.",
       "count": "{count, plural, =0 {Aucun champ choisi} one {# champ choisi} other {# champs choisis}}",
       "none": "L'équipe n'a pas encore ouvert de champs d'expertise pour les pages vitrines."
     },
@@ -7755,7 +7755,7 @@
     },
     "customize": {
       "title": "Personnaliser la page",
-      "hint": "Votre couleur, l’ordre des sections, leurs titres et vos photos d’ambiance. Les changements sont en ligne dès l’enregistrement.",
+      "hint": "Votre couleur, l’ordre des sections, leurs noms et leurs titres. Les changements sont en ligne dès l’enregistrement.",
       "accentTitle": "Couleur de la page",
       "accents": {
         "teal": "Sarcelle",
@@ -7768,7 +7768,7 @@
       "sectionsHint": "Déplacez les sections et masquez celles que vous ne voulez pas afficher. Une section sans contenu reste masquée.",
       "sections": {
         "about": "À propos",
-        "approach": "Approche et déroulement d’une demande",
+        "approach": "Approche",
         "expertises": "Ce que j’accompagne",
         "products": "Ressources",
         "articles": "Articles"
@@ -7776,28 +7776,36 @@
       "show": "Afficher « {section} »",
       "moveUp": "Monter « {section} »",
       "moveDown": "Descendre « {section} »",
-      "required": "Services et tarifs et Disponibilités restent toujours affichés.",
-      "textsTitle": "Titres et textes des sections",
-      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Un texte remplace celui de la page seulement s’il est écrit en français.",
+      "required": "« Disponibilités » ne se déplace pas : elle suit « À propos » quand vous affichez vos disponibilités.",
+      "textsTitle": "Noms, titres et textes des sections",
+      "textsHint": "Laissez un champ vide pour garder le texte proposé, affiché en gris. Le nom d’une section apparaît aussi dans la barre de navigation en bas de la page. Un texte remplace celui de la page seulement s’il est écrit en français.",
       "texts": {
-        "aboutTitle": "Titre « À propos »",
-        "approachTitle": "Titre « Approche »",
+        "aboutLabel": "Nom de la section",
+        "aboutTitle": "Titre",
+        "factsTitle": "Titre « En bref »",
+        "credentialsTitle": "Titre « Parcours »",
+        "availabilityLabel": "Nom de la section",
+        "availabilityTitle": "Titre",
+        "availabilityIntro": "Texte sous le titre",
+        "approachLabel": "Nom de la section",
+        "approachTitle": "Titre",
         "methodsTitle": "Titre des méthodes",
-        "stepsTitle": "Titre du déroulement d’une demande",
-        "valuesTitle": "Titre « Valeurs »",
-        "valuesIntro": "Texte sous « Valeurs »",
-        "servicesTitle": "Titre « Services et tarifs »",
-        "servicesIntro": "Texte sous « Services et tarifs »",
-        "standardPoint": "Description de la consultation standard",
-        "quickPoint": "Description de la consultation rapide",
-        "disposTitle": "Titre « Disponibilités »",
-        "disposIntro": "Texte sous « Disponibilités »",
-        "expertisesTitle": "Titre « Ce que j’accompagne »",
-        "expertisesIntro": "Texte sous « Ce que j’accompagne »",
-        "productsTitle": "Titre « Formations et produits »",
-        "articlesTitle": "Titre « Articles »",
-        "ctaTitle": "Titre du bandeau final",
-        "ctaBody": "Texte du bandeau final"
+        "expertisesLabel": "Nom de la section",
+        "expertisesTitle": "Titre",
+        "expertisesIntro": "Texte sous le titre",
+        "themesTitle": "Titre des motifs de consultation",
+        "productsLabel": "Nom de la section",
+        "productsTitle": "Titre",
+        "articlesLabel": "Nom de la section",
+        "articlesTitle": "Titre"
+      },
+      "groups": {
+        "about": "À propos",
+        "availability": "Disponibilités",
+        "approach": "Approche",
+        "expertises": "Ce que j’accompagne",
+        "products": "Ressources",
+        "articles": "Articles"
       }
     }
   },
@@ -7829,7 +7837,7 @@
         "approachPlaceholder": "Comment se déroulent ses rencontres et sur quoi repose son approche."
       },
       "expertises": {
-        "hint": "Choisissez de 3 à 12 champs. Ils aident les personnes à trouver ce professionnel selon leur ville et leur besoin."
+        "hint": "Choisissez de 3 à 12 champs. Ils s'affichent dans « Ce que j'accompagne », sous « Motifs de consultation », et aident les personnes à trouver ce professionnel selon leur besoin."
       }
     },
     "title": "Pages vitrines",
