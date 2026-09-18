@@ -21,7 +21,8 @@ import { AdminAccessRequired } from "@/components/admin/AdminAccessRequired";
 import { ShowcaseStatusBadge } from "@/components/showcase/ShowcaseStatusBadge";
 import { showcaseBadge } from "@/lib/showcase-badges";
 import type { ShowcaseActor, ShowcaseStatus } from "@/lib/showcase-constants";
-import { showcaseErrorKey } from "@/lib/showcase-editor-types";
+import { showcaseErrorKey, type ShowcaseCityOption } from "@/lib/showcase-editor-types";
+import { ShowcaseCitySelect } from "@/components/showcase/ShowcaseCityPicker";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import { isValidShowcaseSlug } from "@/lib/showcase-workflow";
 
@@ -47,8 +48,10 @@ interface Row {
   accountStatus: string;
   title: string | null;
   officeCity: string | null;
-  /** The listed city the office address names: the page's city, or null when it names none. */
-  officeCityName: string | null;
+  /** The city the activation dialog proposes: the listed one the office address names, else none. */
+  suggestedCityKey: string | null;
+  /** The address a new page would get, with the profession first when the title allows it. */
+  suggestedSlug: string | null;
   page: PageSummary | null;
 }
 
@@ -56,6 +59,7 @@ interface ListJson {
   rows: Row[];
   showcaseEnabled: boolean;
   statsDays: number;
+  cityOptions: ShowcaseCityOption[];
 }
 
 type Filter = "all" | "inProgress" | "published" | "unpublished" | "notInvited";
@@ -93,6 +97,7 @@ export default function AdminShowcasesPage() {
   const [search, setSearch] = useState("");
   const [activating, setActivating] = useState<Row | null>(null);
   const [activateSlug, setActivateSlug] = useState("");
+  const [activateCity, setActivateCity] = useState("");
   const [switchOpen, setSwitchOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
@@ -141,6 +146,7 @@ export default function AdminShowcasesPage() {
   const openActivate = (row: Row) => {
     setActivating(row);
     setActivateSlug("");
+    setActivateCity(row.suggestedCityKey ?? "");
     setDialogError(null);
   };
 
@@ -156,6 +162,7 @@ export default function AdminShowcasesPage() {
         body: JSON.stringify({
           userId: activating.userId,
           slug: activateSlug.trim() || undefined,
+          cityKey: activateCity,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -355,22 +362,19 @@ export default function AdminShowcasesPage() {
             <DialogDescription>{t("activate.body")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* The page's city comes from the office address; with none recognised, the profile is corrected first. */}
-            <p
-              data-activate-city=""
-              className={`text-sm ${activating?.officeCityName ? "text-muted-foreground" : "text-destructive"}`}
-            >
-              {activating?.officeCityName
-                ? t("activate.cityFromOffice", { city: activating.officeCityName })
-                : t("activate.noOfficeCity")}
-            </p>
+            {/* The page's city is the admin's choice (2026-09-18): the office address only proposes one. */}
+            <div className="space-y-2" data-activate-city="">
+              <Label htmlFor="activate-city">{t("activate.city")}</Label>
+              <ShowcaseCitySelect id="activate-city" value={activateCity} onChange={setActivateCity} options={data?.cityOptions ?? []} disabled={busy} />
+              <p className="text-xs text-muted-foreground">{t("activate.cityHint")}</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="activate-slug">{t("activate.slug")}</Label>
               <Input
                 id="activate-slug"
                 value={activateSlug}
                 onChange={(event) => setActivateSlug(event.target.value.toLowerCase())}
-                placeholder="amel-sassi"
+                placeholder={activating?.suggestedSlug ?? "prenom-nom"}
               />
               <p className="text-xs text-muted-foreground">{t("activate.slugHint")}</p>
               {isValidShowcaseSlug(activateSlug.trim()) ? (
@@ -385,7 +389,7 @@ export default function AdminShowcasesPage() {
             <Button type="button" variant="outline" onClick={() => setActivating(null)} disabled={busy}>
               {t("cancel")}
             </Button>
-            <Button type="button" onClick={() => void activate()} disabled={busy || !activating?.officeCityName}>
+            <Button type="button" onClick={() => void activate()} disabled={busy || !activateCity}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("activate.submit")}
             </Button>

@@ -7,7 +7,7 @@ import Profile from "@/models/Profile";
 import ProCatalogItem from "@/models/ProCatalogItem";
 import StoredFile from "@/models/StoredFile";
 import { slugify } from "@/lib/content-kind";
-import { findShowcaseCity, matchShowcaseCity } from "@/lib/showcase-cities";
+import { SHOWCASE_CITIES, findShowcaseCity, isShowcaseCityKey, matchShowcaseCity } from "@/lib/showcase-cities";
 import { showcaseTitleOf } from "@/lib/showcase-title";
 import { showcasePageUrl } from "@/lib/showcase-hosts";
 import {
@@ -173,11 +173,6 @@ async function profileFacts(userId: string) {
   return Profile.findOne({ userId }).select(PROFILE_FACTS_SELECT).lean();
 }
 
-/** The page's city: the listed city the profile's office address names, null when it names none. */
-function officeCityKey(profile: { officeAddress?: { city?: string | null } | null } | null | undefined): string | null {
-  return matchShowcaseCity(profile?.officeAddress?.city)?.key ?? null;
-}
-
 async function showcaseExpertiseOptions() {
   return ProCatalogItem.find({ category: "expertise", showcase: true, active: true })
     .sort({ labelFr: 1 })
@@ -268,13 +263,11 @@ export async function loadShowcaseEditor(userId: string) {
       return [];
     }),
   ]);
-  // The page's city is the office address's: what the next publication will use.
-  const officeKey = officeCityKey(profile);
-  const city = findShowcaseCity(officeKey ?? page.cityKey);
+  // The page's own city (2026-09-18): chosen at activation, changed by the admin or the professional.
+  const city = findShowcaseCity(page.cityKey);
   const missing: ShowcaseRequirement[] = missingShowcaseRequirements({
     draft: page.draft ?? {},
-    profile,
-    cityKey: officeKey,
+    cityKey: page.cityKey,
   });
   const services = {
     standard: page.services?.standard === true,
@@ -340,6 +333,7 @@ export async function loadShowcaseEditor(userId: string) {
     })),
     consentVersion: SHOWCASE_CONSENT_VERSION,
     showcaseEnabled,
+    cityOptions: showcaseCityOptions(),
     teamResources,
     availability: {
       hoursConfirmedAt,
@@ -397,15 +391,21 @@ export async function listShowcasesForAdmin() {
       .lean() as unknown as Promise<PageLean[]>,
     isShowcaseEnabled(),
   ]);
-  const [profiles, stats] = await Promise.all([
-    Profile.find({ userId: { $in: professionals.map((pro) => pro._id) } })
-      .select("userId specialty officeAddress.city")
-      .lean(),
-    loadShowcaseStats(
-      "page",
-      pages.map((page) => String(page._id)),
-    ),
-  ]);
+  const profiles = await Profile.find({ userId: { $in: professionals.map((pro) => pro._id) } })
+    .select("userId specialty officeAddress.city")
+    .lean();
+  // The address a new page would get: the first candidate nobody holds (one read for everyone).
+  const candidatesByUser = new Map(
+    professionals.map((pro) => [
+      String(pro._id),
+      showcaseSlugCandidates(pro.firstName, pro.lastName, profiles.find((p) => String(p.userId) === String(pro._id))?.specialty),
+    ]),
+  );
+  const taken = await takenSlugs([...new Set([...candidatesByUser.values()].flatMap((list) => list.slice(0, 3)))]);
+  const stats = await loadShowcaseStats(
+    "page",
+    pages.map((page) => String(page._id)),
+  );
   const pageByUser = new Map(pages.map((page) => [String(page.userId), page]));
   const profileByUser = new Map(profiles.map((profile) => [String(profile.userId), profile]));
 
@@ -420,7 +420,9 @@ export async function listShowcasesForAdmin() {
       accountStatus: pro.status,
       title: profile?.specialty ?? null,
       officeCity: profile?.officeAddress?.city ?? null,
-      officeCityName: matchShowcaseCity(profile?.officeAddress?.city)?.name ?? null,
+      // What the activation dialog proposes: the listed city the office address names, if any, and a free address.
+      suggestedCityKey: matchShowcaseCity(profile?.officeAddress?.city)?.key ?? null,
+      suggestedSlug: page ? null : pickShowcaseSlug((candidatesByUser.get(id) ?? []).slice(0, 3), taken),
       page: page
         ? {
             slug: page.slug,
@@ -444,6 +446,7 @@ export async function listShowcasesForAdmin() {
     rows,
     showcaseEnabled,
     statsDays: SHOWCASE_STATS_DAYS,
+    cityOptions: showcaseCityOptions(),
   };
 }
 
@@ -472,6 +475,8 @@ function suggestExpertiseIds(
 export async function activateShowcase(input: {
   userId: string;
   slug?: unknown;
+  /** The page's city, chosen by the admin from the list (the office address is not needed). */
+  cityKey?: unknown;
   adminId: string;
 }): Promise<ServiceResult<{ slug: string; cityKey: string }>> {
   if (!mongoose.Types.ObjectId.isValid(input.userId)) return fail(400, "INVALID_ID");
@@ -483,12 +488,12 @@ export async function activateShowcase(input: {
   if (user.status !== "active" || user.adminApproved !== true) {
     return fail(409, "PROFESSIONAL_NOT_ACTIVE");
   }
+  // The page's city is the admin's choice from the list (owner, 2026-09-18: the office address is not needed).
+  const city = typeof input.cityKey === "string" ? findShowcaseCity(input.cityKey) : null;
+  if (!city) return fail(400, "INVALID_CITY");
   const profile = await Profile.findOne({ userId: input.userId })
-    .select("specialty problematics bio officeAddress.city")
+    .select("specialty problematics bio")
     .lean();
-  // The page's city is the one the office address names: when it names none, the team corrects the profile.
-  const city = matchShowcaseCity(profile?.officeAddress?.city);
-  if (!city) return fail(409, "OFFICE_CITY_UNKNOWN");
   if (await ShowcasePage.exists({ userId: input.userId })) return fail(409, "ALREADY_INVITED");
 
   let slug: string | null;
@@ -498,7 +503,7 @@ export async function activateShowcase(input: {
     if ((await takenSlugs([requested])).has(requested)) return fail(409, "SLUG_TAKEN");
     slug = requested;
   } else {
-    const candidates = showcaseSlugCandidates(user.firstName, user.lastName);
+    const candidates = showcaseSlugCandidates(user.firstName, user.lastName, profile?.specialty);
     slug = pickShowcaseSlug(candidates, await takenSlugs(candidates));
     if (!slug) return fail(409, "SLUG_TAKEN");
   }
@@ -587,9 +592,7 @@ export async function saveShowcaseDraft(input: {
  */
 async function saveLiveEdit(page: PageLean, fields: Record<string, unknown>): Promise<ServiceResult<null>> {
   const published = page.published ?? {};
-  const profile = await profileFacts(String(page.userId));
-  const missingIn = (content: ContentLean) =>
-    missingShowcaseRequirements({ draft: content, profile, cityKey: page.cityKey });
+  const missingIn = (content: ContentLean) => missingShowcaseRequirements({ draft: content, cityKey: page.cityKey });
   const before = new Set(missingIn(published));
   const introduced = missingIn({ ...published, ...fields } as ContentLean).filter((item) => !before.has(item));
   if (introduced.length > 0) return fail(422, "INCOMPLETE", { missing: introduced });
@@ -852,6 +855,45 @@ export async function updateShowcaseTeamResources(input: {
   });
 }
 
+/** A city a page can have: those of the list, by region then name, for the pickers. */
+export function showcaseCityOptions(): { key: string; name: string; region: string }[] {
+  return SHOWCASE_CITIES.map((city) => ({ key: city.key, name: city.name, region: city.region })).sort(
+    (a, b) => a.region.localeCompare(b.region, "fr") || a.name.localeCompare(b.name, "fr"),
+  );
+}
+
+/**
+ * Changes a page's city (owner, 2026-09-18: « the admin chooses it, and the professional can change
+ * it »). A city of the list only; live, like the consultation switches. The professional may change it
+ * once the page has been published, and the team is told as for any live edit.
+ */
+export async function setShowcaseCity(input: {
+  userId: string;
+  cityKey: unknown;
+  actor: ShowcaseActor;
+  byUserId: string;
+}): Promise<ServiceResult<{ cityKey: string; cityName: string }>> {
+  const city = typeof input.cityKey === "string" && isShowcaseCityKey(input.cityKey) ? findShowcaseCity(input.cityKey) : null;
+  if (!city) return fail(400, "INVALID_CITY");
+  const page = await loadPage(input.userId);
+  if (!page) return fail(404, "NOT_FOUND");
+  if (input.actor === "professional") {
+    const decision = decideShowcaseAction(workflowState(page), "edit", "professional");
+    if (!decision.ok) return fail(409, decision.code);
+  }
+  if (page.cityKey === city.key) return success({ cityKey: city.key, cityName: city.name });
+  const updated = await ShowcasePage.findOneAndUpdate(
+    { _id: page._id, cityKey: page.cityKey },
+    { $set: { cityKey: city.key }, $push: historyEntry(input.actor, input.byUserId, "city", `${page.cityKey} > ${city.key}`) },
+    { new: true },
+  )
+    .select("_id")
+    .lean();
+  if (!updated) return fail(409, "CONFLICT");
+  const deferred = input.actor === "professional" ? await changeAlert(page, ["city"], new Date()) : [];
+  return success({ cityKey: city.key, cityName: city.name }, deferred);
+}
+
 export async function updateShowcaseServices(input: {
   userId: string;
   body: unknown;
@@ -903,24 +945,15 @@ export async function publishShowcase(input: {
     .select("firstName lastName email language status")
     .lean();
   if (!user || user.status !== "active") return fail(409, "PROFESSIONAL_NOT_ACTIVE");
-  const profile = await profileFacts(input.userId);
-  const cityKey = officeCityKey(profile);
-  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, profile, cityKey });
-  if (missing.length > 0 || !cityKey) return fail(422, "INCOMPLETE", { missing });
+  // The page's own city stands (2026-09-18): publishing no longer follows the office address.
+  const missing = missingShowcaseRequirements({ draft: page.draft ?? {}, cityKey: page.cityKey });
+  if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
 
-  // The page follows the profile's office address: publishing takes the city it names now.
-  const moving = cityKey !== page.cityKey ? cityKey : null;
   const consentOnRecord = page.consent?.version === SHOWCASE_CONSENT_VERSION;
   const now = new Date();
-  const note = [
-    `revision ${revision}`,
-    moving ? `${page.cityKey} > ${moving}` : null,
-    consentOnRecord ? null : "consent attested",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const note = [`revision ${revision}`, consentOnRecord ? null : "consent attested"].filter(Boolean).join(" · ");
   const updated = (await ShowcasePage.findOneAndUpdate(
-    moving ? { _id: page._id, draftRevision: revision, cityKey: page.cityKey } : { _id: page._id, draftRevision: revision },
+    { _id: page._id, draftRevision: revision },
     {
       $set: {
         published: page.draft,
@@ -940,7 +973,6 @@ export async function publishShowcase(input: {
                 attestedBy: input.adminId,
               },
             }),
-        ...(moving ? { cityKey: moving } : {}),
       },
       $unset: { unpublishedAt: "", unpublishedBy: "" },
       $push: historyEntry("admin", input.adminId, "approve", note),
@@ -1022,18 +1054,15 @@ export async function republishShowcase(input: {
   if (!decision.ok) return fail(409, decision.code);
   const user = await User.findOne({ _id: input.userId, role: "professional" }).select("status").lean();
   if (!user || user.status !== "active") return fail(409, "PROFESSIONAL_NOT_ACTIVE");
-  const profile = await profileFacts(input.userId);
-  const cityKey = officeCityKey(profile);
-  const missing = missingShowcaseRequirements({ draft: page.published ?? {}, profile, cityKey });
-  if (missing.length > 0 || !cityKey) return fail(422, "INCOMPLETE", { missing });
+  const missing = missingShowcaseRequirements({ draft: page.published ?? {}, cityKey: page.cityKey });
+  if (missing.length > 0) return fail(422, "INCOMPLETE", { missing });
 
   const filter: Record<string, unknown> = { _id: page._id, status: "unpublished" };
   if (page.unpublishedBy) filter.unpublishedBy = page.unpublishedBy;
   const updated = await ShowcasePage.findOneAndUpdate(
     filter,
     {
-      // Back online in the city the office address names now.
-      $set: { status: "published", ...(cityKey !== page.cityKey ? { cityKey } : {}) },
+      $set: { status: "published" },
       $unset: { unpublishedAt: "", unpublishedBy: "" },
       $push: historyEntry(input.actor, input.byUserId, "republish"),
     },
@@ -1047,7 +1076,7 @@ export async function republishShowcase(input: {
 
 /**
  * Changes a page's address (www.jechemine.ca/<slug>). A page that was ever public keeps its old
- * slug answering. The city is never set here: it follows the profile's office address.
+ * slug answering. The city is its own setting (setShowcaseCity).
  */
 export async function moveShowcase(input: {
   userId: string;

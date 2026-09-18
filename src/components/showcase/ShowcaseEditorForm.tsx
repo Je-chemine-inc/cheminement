@@ -21,6 +21,7 @@ import {
   type ShowcaseContentJson,
   type ShowcaseEditorJson,
 } from "@/lib/showcase-editor-types";
+import { ShowcaseCityChange } from "@/components/showcase/ShowcaseCityPicker";
 import {
   REQUIRED_SHOWCASE_SECTIONS,
   SHOWCASE_ACCENTS,
@@ -837,7 +838,15 @@ export function ShowcaseEditorForm<V extends ShowcaseEditorJson>({
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">{t("city.title")}</dt>
-              <dd className="text-sm text-foreground">{view.page.cityName}</dd>
+              <dd>
+                <ShowcaseCityChange
+                  apiBase={apiBase}
+                  cityKey={view.page.cityKey}
+                  cityName={view.page.cityName}
+                  options={view.cityOptions}
+                  onChanged={reload}
+                />
+              </dd>
             </div>
           </dl>
         </section>

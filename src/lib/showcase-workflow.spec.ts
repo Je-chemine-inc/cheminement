@@ -15,6 +15,23 @@ import {
 import { SHOWCASE_CONSENT_VERSION } from "@/lib/showcase-constants";
 
 describe("slugs", () => {
+  it("opens with the profession, as Hélène's page does (www.jechemine.ca/psychologue-helene-belzil)", () => {
+    expect(showcaseSlugCandidates("Hélène", "Belzil", "psychologist").slice(0, 3)).toEqual([
+      "psychologue-helene-belzil",
+      "helene-belzil",
+      "helene-belzil-2",
+    ]);
+    expect(showcaseSlugCandidates("Léo", "Barnabé", "psychotherapist")[0]).toBe("psychotherapeute-leo-barnabe");
+    expect(showcaseSlugCandidates("Julie", "Côté", "occupationalTherapistMentalHealth")[0]).toBe("ergotherapeute-julie-cote");
+  });
+
+  it("keeps the name alone for a title that is not the same for everyone, or none", () => {
+    expect(showcaseSlugCandidates("Marc", "Plein", "psychoeducator")[0]).toBe("marc-plein");
+    expect(showcaseSlugCandidates("Marc", "Plein", "Travailleuse sociale")[0]).toBe("marc-plein");
+    expect(showcaseSlugCandidates("Marc", "Plein", null)[0]).toBe("marc-plein");
+    expect(showcaseSlugCandidates("", "", "psychologist")[0]).toBe("professionnel-2");
+  });
+
   it("proposes the full name, then numbered full names (www.jechemine.ca/amel-sassi)", () => {
     const candidates = showcaseSlugCandidates("Amel", "Sassi");
     expect(candidates.slice(0, 3)).toEqual(["amel-sassi", "amel-sassi-2", "amel-sassi-3"]);
@@ -219,40 +236,18 @@ describe("normalizeShowcaseDraft", () => {
   });
 });
 
+/**
+ * A page goes public with its portrait and its name (owner, 2026-09-18: « photo and name only »), in a
+ * city of the list — like Nassima's page, the hero alone. Every section appears once it has content.
+ */
 describe("missingShowcaseRequirements", () => {
-  const complete = {
-    draft: {
-      displayName: "Amel Sassi",
-      headline: { fr: "Psychologue à Mascouche" },
-      bio: { fr: "x".repeat(200) },
-      expertiseIds: ["e1", "e2", "e3"],
-      orderCode: "OPQ",
-      orderLabel: "",
-      photoFileId: "f1",
-    },
-    profile: { specialty: "psychologist", license: "12345-67", modalities: ["Video Call"] },
-    cityKey: "mascouche",
-  };
-
-  it("is empty for a complete page", () => {
-    expect(missingShowcaseRequirements(complete)).toEqual([]);
+  it("asks nothing more of a page with a photo and a name, in a listed city: the hero alone is enough", () => {
+    expect(missingShowcaseRequirements({ draft: { displayName: "Nassima El Haouari", photoFileId: "f1" }, cityKey: "mascouche" })).toEqual([]);
   });
 
-  it("lists everything missing, including what comes from the profile and the city", () => {
-    expect(
-      missingShowcaseRequirements({
-        draft: { bio: { fr: "x".repeat(199) }, expertiseIds: ["e1", "e2"], orderCode: "other", orderLabel: " " },
-        profile: { specialty: "", license: null, modalities: [] },
-        cityKey: "atlantis",
-      }),
-    ).toEqual(["photo", "displayName", "headline", "bio", "expertises", "order", "title", "license", "modalities", "city"]);
-    expect(missingShowcaseRequirements({ ...complete, profile: null })).toEqual(["title", "license", "modalities"]);
-  });
-
-  it("accepts another order when it is named", () => {
-    expect(
-      missingShowcaseRequirements({ ...complete, draft: { ...complete.draft, orderCode: "other", orderLabel: "Ordre X" } }),
-    ).toEqual([]);
+  it("lists the photo, the name and the city when they are missing", () => {
+    expect(missingShowcaseRequirements({ draft: { displayName: "  " }, cityKey: "atlantis" })).toEqual(["photo", "displayName", "city"]);
+    expect(missingShowcaseRequirements({ draft: { displayName: "Amel Sassi", photoFileId: "f1" }, cityKey: null })).toEqual(["city"]);
   });
 });
 

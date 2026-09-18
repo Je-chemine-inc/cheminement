@@ -7565,7 +7565,7 @@
     "statusText": {
       "published": "Votre page est en ligne :",
       "approvedClosed": "Votre page est publiée. Le public la verra dès l'ouverture des pages vitrines.",
-      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. L'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer. La ville de la page suit l'adresse du bureau de votre profil.",
+      "liveEdits": "Vos modifications sont publiées dès que vous les enregistrez. L'adresse de la page et l'ordre professionnel sont gérés par l'équipe : écrivez-nous pour les changer. La ville de la page, vous pouvez la changer vous-même, plus bas.",
       "unpublishedByProfessional": "Vous avez retiré votre page. Vous pouvez la remettre en ligne en tout temps.",
       "unpublishedByAdmin": "L'équipe a retiré votre page. Écrivez-nous pour en savoir plus."
     },
@@ -7576,14 +7576,7 @@
     "missing": {
       "photo": "Une photo",
       "displayName": "Le nom affiché",
-      "headline": "La phrase d'accroche en français",
-      "bio": "Une présentation en français d'au moins 200 caractères",
-      "expertises": "Au moins 3 champs d'expertise",
-      "order": "L'ordre professionnel",
-      "title": "Le titre professionnel, dans le profil",
-      "license": "Le numéro de permis, dans le profil",
-      "modalities": "Les modes de consultation, dans le profil",
-      "city": "Une ville reconnue dans l'adresse du bureau, dans le profil"
+      "city": "La ville de la page"
     },
     "actions": {
       "preview": "Aperçu",
@@ -7683,11 +7676,15 @@
       "otherLabel": "Nom de l'ordre"
     },
     "city": {
-      "title": "Ville de la page"
+      "title": "Ville de la page",
+      "change": "Changer la ville",
+      "choose": "Choisir une ville",
+      "save": "Enregistrer",
+      "hint": "Elle apparaît dans le titre de votre page et dans ses liens. Votre adresse de bureau n'est pas nécessaire."
     },
     "identity": {
       "title": "Ordre professionnel et ville de la page",
-      "hint": "L'ordre est géré par l'équipe Je chemine : écrivez-nous pour le changer. La ville suit l'adresse du bureau de votre profil."
+      "hint": "L'ordre est géré par l'équipe Je chemine : écrivez-nous pour le changer. La ville de votre page, vous pouvez la changer ici."
     },
     "availability": {
       "title": "Disponibilités sur ma page",
@@ -7756,7 +7753,7 @@
       "REVISION_CHANGED": "La page a changé depuis votre lecture. Rechargez-la avant de continuer.",
       "SLUG_TAKEN": "Cette adresse est déjà utilisée.",
       "INVALID_SLUG": "Adresse invalide : lettres minuscules, chiffres et traits d'union seulement.",
-      "OFFICE_CITY_UNKNOWN": "L'adresse du bureau, dans le profil, n'indique pas une ville reconnue. Corrigez-la, puis réessayez.",
+      "INVALID_CITY": "Choisissez une ville de la liste.",
       "ALREADY_INVITED": "Ce professionnel a déjà une page vitrine.",
       "CONFLICT": "La page a été modifiée en même temps. Rechargez-la.",
       "INVALID_ACTION": "Action inconnue.",
@@ -7922,14 +7919,18 @@
     "activate": {
       "title": "Activer la page de {name}",
       "body": "Une page vitrine est créée pour ce professionnel, préremplie avec son profil. Aucun courriel ne lui est envoyé : vous remplissez la page, puis vous la publiez avec son accord.",
-      "cityFromOffice": "Ville de la page : {city}, d'après l'adresse du bureau dans son profil.",
-      "noOfficeCity": "L'adresse du bureau, dans son profil, n'indique pas une ville reconnue. Corrigez-la dans sa fiche avant d'activer la page.",
+      "city": "Ville de la page",
+      "cityHint": "Proposée d'après l'adresse du bureau quand elle en nomme une ; l'adresse n'est pas nécessaire. Le professionnel pourra la changer.",
       "slug": "Adresse de la page (facultatif)",
-      "slugHint": "Laissez vide pour utiliser le prénom et le nom. Lettres minuscules, chiffres et traits d'union seulement.",
+      "slugHint": "Laissez vide pour utiliser l'adresse proposée, avec la profession quand le titre le permet. Lettres minuscules, chiffres et traits d'union seulement.",
       "preview": "Adresse : {url}",
       "submit": "Activer et préparer la page"
     },
+    "city": {
+      "hint": "Elle apparaît dans le titre de la page et dans ses liens. Le professionnel peut aussi la changer."
+    },
     "detail": {
+      "city": "Ville :",
       "back": "Retour aux pages vitrines",
       "notFound": "Ce professionnel n'a pas de page vitrine.",
       "loadError": "Impossible de charger la page vitrine.",
@@ -7972,6 +7973,7 @@
         "republish": "Remise en ligne",
         "move": "Adresse changée",
         "resources": "Ressources Je chemine modifiées",
+        "city": "Ville changée",
         "invite": "Invitation",
         "submit": "Envoyée pour révision",
         "request_changes": "Modifications demandées",

@@ -27,6 +27,8 @@ export const SHOWCASE_HISTORY_ACTIONS = [
   "move",
   // An admin changed the Je chemine resources the page shows (2026-09-18).
   "resources",
+  // The page's city changed, by the admin or the professional (2026-09-18).
+  "city",
   "invite",
   "submit",
   "request_changes",

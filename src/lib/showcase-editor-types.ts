@@ -10,6 +10,13 @@ import type {
   ShowcaseTextKey,
 } from "@/lib/showcase-customization";
 
+/** A city a page can have (showcaseCityOptions): Je chemine's list, by region. */
+export interface ShowcaseCityOption {
+  key: string;
+  name: string;
+  region: string;
+}
+
 /**
  * The showcase editor's data as the browser receives it (dates are strings).
  * Mirrors loadShowcaseEditor / loadShowcaseAdminView in showcase-service.ts.
@@ -85,6 +92,8 @@ export interface ShowcaseEditorJson {
   expertiseOptions: { id: string; labelFr: string; labelEn: string }[];
   consentVersion: string;
   showcaseEnabled: boolean;
+  /** The cities a page can have, for changing it (2026-09-18: the office address is not needed). */
+  cityOptions: ShowcaseCityOption[];
   /**
    * « Disponibilités » on the page (spec 003 phase 3b), for the card that switches it on
    * (`page.services`): the professional's weekly hours, and what the page shows right now.
@@ -161,7 +170,7 @@ export const SHOWCASE_ERROR_CODES = [
   "REVISION_CHANGED",
   "SLUG_TAKEN",
   "INVALID_SLUG",
-  "OFFICE_CITY_UNKNOWN",
+  "INVALID_CITY",
   "ALREADY_INVITED",
   "CONFLICT",
   "INVALID_ACTION",

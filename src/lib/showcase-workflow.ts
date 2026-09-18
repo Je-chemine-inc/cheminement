@@ -38,18 +38,36 @@ function slugPart(value: string | null | undefined): string {
 }
 
 /**
- * Slugs to try, best first: the full name ("amel-sassi"), then the full name
- * numbered ("amel-sassi-2"…). The page lives at www.jechemine.ca/<slug>.
+ * The profession a page's address opens with, as the two first real pages do
+ * (« psychologue-helene-belzil », 2026-09-18) — only for titles written the same
+ * for everyone: « psychoéducateur » is not, so it keeps the name alone.
+ */
+const SLUG_PROFESSION: Readonly<Record<string, string>> = {
+  psychologist: "psychologue",
+  psychotherapist: "psychotherapeute",
+  neuropsychologist: "neuropsychologue",
+  psychiatrist: "psychiatre",
+  occupationalTherapistMentalHealth: "ergotherapeute",
+};
+
+/**
+ * Slugs to try, best first: the profession and the full name
+ * ("psychologue-amel-sassi") when the title allows it, then the full name
+ * ("amel-sassi"), then numbered ("amel-sassi-2"…). The page lives at
+ * www.jechemine.ca/<slug>.
  */
 export function showcaseSlugCandidates(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
+  specialty?: string | null,
 ): string[] {
   const full = slugPart(`${firstName ?? ""} ${lastName ?? ""}`);
   const out: string[] = [];
   const add = (candidate: string) => {
     if (isValidShowcaseSlug(candidate) && !out.includes(candidate)) out.push(candidate);
   };
+  const profession = SLUG_PROFESSION[specialty?.trim() ?? ""];
+  if (profession && full) add(`${profession}-${full}`.slice(0, 60).replace(/-+$/g, ""));
   add(full);
   const base = (full || "professionnel").slice(0, 55).replace(/-+$/g, "");
   for (let i = 2; i <= 99; i++) add(`${base}-${i}`);
@@ -347,53 +365,29 @@ export function normalizeShowcaseDraft(
 
 // ------------------------------------------------------------ completeness
 
-export const SHOWCASE_REQUIREMENTS = [
-  "photo",
-  "displayName",
-  "headline",
-  "bio",
-  "expertises",
-  "order",
-  "title",
-  "license",
-  "modalities",
-  "city",
-] as const;
+/**
+ * What a page needs to go public (owner, 2026-09-18: « photo and name only »): its portrait, its name,
+ * and a city of the list — chosen at activation, so only a page older than that rule can lack one.
+ * Every section appears once it has content.
+ */
+export const SHOWCASE_REQUIREMENTS = ["photo", "displayName", "city"] as const;
 export type ShowcaseRequirement = (typeof SHOWCASE_REQUIREMENTS)[number];
 
 export interface CompletenessInput {
   draft: {
     displayName?: string | null;
-    headline?: { fr?: string | null } | null;
-    bio?: { fr?: string | null } | null;
-    expertiseIds?: readonly unknown[] | null;
-    orderCode?: string | null;
-    orderLabel?: string | null;
     photoFileId?: unknown;
   };
-  profile: {
-    specialty?: string | null;
-    license?: string | null;
-    modalities?: readonly string[] | null;
-  } | null;
+  /** The page's own city (its `cityKey`). */
   cityKey?: string | null;
 }
 
 /** What still keeps a page from being submitted or published. Empty = ready. */
 export function missingShowcaseRequirements(input: CompletenessInput): ShowcaseRequirement[] {
-  const { draft, profile } = input;
+  const { draft } = input;
   const missing: ShowcaseRequirement[] = [];
   if (!draft.photoFileId) missing.push("photo");
   if (!draft.displayName?.trim()) missing.push("displayName");
-  if (!draft.headline?.fr?.trim()) missing.push("headline");
-  if ((draft.bio?.fr?.trim().length ?? 0) < L.bioMin) missing.push("bio");
-  if ((draft.expertiseIds?.length ?? 0) < L.expertisesMin) missing.push("expertises");
-  if (!draft.orderCode || (draft.orderCode === "other" && !draft.orderLabel?.trim())) {
-    missing.push("order");
-  }
-  if (!profile?.specialty?.trim()) missing.push("title");
-  if (!profile?.license?.trim()) missing.push("license");
-  if (!profile?.modalities?.length) missing.push("modalities");
   if (!input.cityKey || !isShowcaseCityKey(input.cityKey)) missing.push("city");
   return missing;
 }
@@ -402,6 +396,7 @@ export function missingShowcaseRequirements(input: CompletenessInput): ShowcaseR
 
 /** What the professional edits on their live page, as the admin alert names it. */
 export const SHOWCASE_EDITABLE_FIELDS = [
+  "city",
   "displayName",
   "headline",
   "intro",
