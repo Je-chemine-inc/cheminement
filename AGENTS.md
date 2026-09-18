@@ -34,7 +34,7 @@ placeholder works; nothing connects at build time:
 `MONGODB_URI=mongodb://127.0.0.1:27017/x STRIPE_SECRET_KEY=sk_test_x pnpm build`.
 Never copy the production env file locally to get around this — it holds live keys.
 
-(`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) The deploy workflow (`.github/workflows/deploy-whc.yml`) runs **only** `next build` — **not** vitest, **not** ESLint. So run `pnpm test` yourself: a logically-broken-but-compiling change ships straight to production, because a green build auto-deploys.
+(`pnpm exec tsc --noEmit` is a faster standalone typecheck — the installed compiler directly, *not* a package.json script. `pnpm seed` is **broken** — points at a non-existent file; see debt-map.) The deploy workflow (`.github/workflows/deploy-whc.yml`) runs `pnpm test` and then `next build`: a failing test or build blocks the deploy, and a green run ships straight to production. It does **not** run ESLint or `tsc --noEmit`, and `next build` ignores type errors in `*.spec.*` files — a type-only assertion in a spec guards nothing at deploy (put compile-time guards in source), so run `pnpm exec tsc --noEmit` yourself.
 
 ## 4. Docs map — which doc for which task
 
