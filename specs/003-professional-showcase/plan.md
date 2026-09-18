@@ -685,3 +685,37 @@ professional sees them but cannot remove them, even by hiding « Ressources ».
   placing and ordering three resources; the page's order, marks and prices; hiding « Ressources »;
   removal and unpublishing; a professional's product refused; the professional unable to change the
   team's list by either route. 15 of 15 mutants killed.
+
+## Phase 3d — the admin creates pages like Hélène's, from the screens (2026-09-18)
+
+The owner: « give the admin the possibility to create exactly pages like Hélène's, with all the
+options we talked about ». Hélène's and Nassima's pages had been written into production by hand
+with database scripts: activation took the city only from the office address (which no admin
+screen sets), and publication demanded a headline, a 200-character presentation, three themes, the
+order, the title, the permit and a way of consulting — Nassima's hero-only page could never be
+published or corrected from the screens.
+
+**Owner's decisions (2026-09-18):** a page goes public with its **photo and its name** (and a city of
+the list); every section appears once it has content. **The office address is not needed:** the admin
+chooses the page's city when activating it, and the professional can change it.
+
+- **Publication rule:** `SHOWCASE_REQUIREMENTS` = photo, display name, city. A professional's live
+  edit is refused only when it would take the name off (the photo cannot be removed anyway).
+- **The city is the page's own setting:** chosen in the activation dialog (`suggestedCityKey` from the
+  office address when it names a listed city, otherwise the admin picks, from Je chemine's list grouped
+  by region); publishing and putting a page back no longer move it. `setShowcaseCity` (routes
+  `PUT /api/admin/showcases/[userId]/city` and `PUT /api/professional/showcase/city`) changes it live,
+  records a `city` history entry, and a professional's change reaches the team like any live edit.
+  Replaces the rule of 2026-09-15 (« the page's city follows the office address »).
+- **Addresses like the real pages:** a new page's slug opens with the profession for titles written
+  the same for everyone (psychologue, psychothérapeute, neuropsychologue, psychiatre, ergothérapeute:
+  `psychologue-helene-belzil`); « psychoéducateur » keeps the name alone. The dialog shows the proposal.
+- **Everything else** Hélène's page has already worked from the admin screens: portrait, office photo,
+  every text, themes, « En bref », « Parcours », the 18 headings, colour and order, the availability
+  switch (hours stay the professional's own), Je chemine resources.
+- **Verified:** 22 browser checks — an admin activates a page for a professional with no office address,
+  choosing Mascouche; the address proposed is `psychologue-camille-roy`; the page is published with the
+  photo and the name only (the hero alone); then filled (headline, presentation, three themes, office
+  photo) and its corrections published; the admin moves it to Québec and the professional to
+  Terrebonne, the title following each time, the team emailed for the professional's change; a city off
+  the list and the admin route refused to the professional. 10 of 10 mutants killed.
