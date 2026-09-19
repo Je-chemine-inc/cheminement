@@ -18,7 +18,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import type { ShowcaseModalityKey, ShowcasePublicProfile } from "@/lib/showcase-public";
+import { SHOWCASE_SHOWN_MODALITIES, type ShowcaseModalityKey, type ShowcasePublicProfile } from "@/lib/showcase-public";
 import { canonicalSiteUrl } from "@/lib/showcase-hosts";
 import {
   VITRINE_ANCHORS,
@@ -67,13 +67,8 @@ const MODALITY_ICONS: Record<ShowcaseModalityKey, LucideIcon> = {
   chat: MessageSquare,
 };
 
-/**
- * The ways of consulting « En bref » names. Booking is centralised — a visitor asks Je chemine for a
- * rendez-vous, and the channel is agreed in the funnel — so the page says where the professional
- * receives and whether they receive remotely, rather than listing every channel their account
- * declares. The account keeps them all: matching and the waitlist still read them.
- */
-const BRIEF_MODALITIES: readonly ShowcaseModalityKey[] = ["inPerson", "video"];
+/** The ways of consulting « En bref » names: see SHOWCASE_SHOWN_MODALITIES. */
+const BRIEF_MODALITIES = SHOWCASE_SHOWN_MODALITIES;
 
 const ROOT_ID = "vitrine";
 const SERIF = "font-[family-name:var(--font-vitrine-serif)]";

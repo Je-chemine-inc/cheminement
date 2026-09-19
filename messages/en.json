@@ -40,7 +40,7 @@
       "title": "For schools and institutions",
       "description": "Give your students and staff supervised access to mental health professionals, with centralized follow-up and billing."
     }
-  },
+  },
   "Common": {
     "notFoundTitle": "Page not found",
     "notFoundBody": "This page doesn't exist or has been removed. It may have moved, or the address may contain a typo.",
@@ -7541,6 +7541,23 @@
       "couple": "Couples session",
       "group": "Group session"
     }
+  },
+  "ShowcaseProfessionals": {
+    "about": {
+      "eyebrow": "Our network",
+      "title": "Some of our professionals",
+      "intro": "Professionals vetted by our team, who support the people on their journey with us every day. Discover their background and approach on their page."
+    },
+    "professional": {
+      "eyebrow": "They walk with us",
+      "title": "A few professionals from our network",
+      "intro": "On Je chemine, every professional can have their own page to present their background, approach and services. Here are a few."
+    },
+    "experience": "{count, plural, one {# year of experience} other {# years of experience}}",
+    "viewPage": "Visit their page",
+    "viewPageLabel": "Visit {name}'s page",
+    "languagesLabel": "Languages",
+    "modalitiesLabel": "Consultation modes"
   },
   "ShowcasePro": {
     "title": "My showcase page",

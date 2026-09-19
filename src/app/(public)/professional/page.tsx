@@ -3,10 +3,14 @@ import MatchingSystemSection from "@/components/sections/professional/MatchingSy
 import PlatformBenefitsSection from "@/components/sections/professional/PlatformBenefitsSection";
 import ProfessionalCTASection from "@/components/sections/professional/ProfessionalCTASection";
 import ColorTransition from "@/components/ui/ColorTransition";
+import ShowcaseProfessionalsSection from "@/components/sections/ShowcaseProfessionalsSection";
 import ProfessionalCollaborationSection from "@/components/sections/professional/ProfessionalCollaborationSection";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
+
+// Read per request: a professional's page published or taken down shows at once.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Seo");
@@ -31,6 +35,7 @@ export default function ProfessionalPage() {
       <MatchingSystemSection />
       <ColorTransition fromColor="background" toColor="muted" />
       <PlatformBenefitsSection />
+      <ShowcaseProfessionalsSection context="professional" />
       <ColorTransition fromColor="muted" toColor="accent" />
       <ProfessionalCTASection />
     </main>
