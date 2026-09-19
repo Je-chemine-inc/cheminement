@@ -40,7 +40,7 @@
       "title": "Pour les établissements scolaires",
       "description": "Offrez à vos élèves et à votre personnel un accès encadré à des professionnels de la santé mentale, avec suivi et facturation centralisés."
     }
-  },
+  },
   "Common": {
     "notFoundTitle": "Page introuvable",
     "notFoundBody": "Cette page n'existe pas ou a été retirée. Elle a peut-être été déplacée, ou l'adresse comporte une erreur.",
@@ -7540,6 +7540,23 @@
       "couple": "Séance de couple",
       "group": "Séance de groupe"
     }
+  },
+  "ShowcaseProfessionals": {
+    "about": {
+      "eyebrow": "Notre réseau",
+      "title": "Quelques-uns de nos professionnels",
+      "intro": "Des professionnels vérifiés par notre équipe, qui accompagnent chaque jour les personnes qui cheminent avec nous. Découvrez leur parcours et leur approche sur leur page."
+    },
+    "professional": {
+      "eyebrow": "Ils cheminent avec nous",
+      "title": "Quelques professionnels de notre réseau",
+      "intro": "Sur Je chemine, chaque professionnel peut avoir sa propre page pour présenter son parcours, son approche et ses services. En voici quelques-unes."
+    },
+    "experience": "{count, plural, one {# an d'expérience} other {# ans d'expérience}}",
+    "viewPage": "Découvrir sa page",
+    "viewPageLabel": "Découvrir la page de {name}",
+    "languagesLabel": "Langues",
+    "modalitiesLabel": "Modes de consultation"
   },
   "ShowcasePro": {
     "title": "Ma page vitrine",

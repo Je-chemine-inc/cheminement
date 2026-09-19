@@ -7,9 +7,13 @@ import {
   PersonalizedJourneySection,
 } from "@/components/sections/about";
 import { EthicsSection } from "@/components/sections/approaches";
+import ShowcaseProfessionalsSection from "@/components/sections/ShowcaseProfessionalsSection";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { SITE_OPEN_GRAPH } from "@/lib/site-metadata";
+
+// Read per request: a professional's page published or taken down shows at once.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Seo");
@@ -32,6 +36,7 @@ export default function WhoWeArePage() {
       <PersonalizedJourneySection />
       <ColorTransition fromColor="background" toColor="muted" />
       <ExpertiseSection />
+      <ShowcaseProfessionalsSection context="about" />
       <ColorTransition fromColor="muted" toColor="background" />
       <EthicsSection />
       <ColorTransition fromColor="background" toColor="background" />

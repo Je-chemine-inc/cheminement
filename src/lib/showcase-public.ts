@@ -35,6 +35,17 @@ export type ShowcaseLanguageKey = (typeof SHOWCASE_LANGUAGE_KEYS)[number];
 export const SHOWCASE_MODALITY_KEYS = ["inPerson", "video", "phone", "chat"] as const;
 export type ShowcaseModalityKey = (typeof SHOWCASE_MODALITY_KEYS)[number];
 
+/**
+ * The ways of consulting the public site names: a professional's page (« En
+ * bref ») and « Quelques-uns de nos professionnels ». Booking is centralised —
+ * a visitor asks Je chemine for a rendez-vous, and the channel is agreed in the
+ * funnel — so the site says where the professional receives and whether they
+ * receive remotely, not every channel their account declares (phone and chat
+ * left the page on 2026-09-17). The account keeps them all: matching and the
+ * waitlist still read them.
+ */
+export const SHOWCASE_SHOWN_MODALITIES: readonly ShowcaseModalityKey[] = ["inPerson", "video"];
+
 export const SHOWCASE_THERAPY_TYPES = ["solo", "couple", "group"] as const;
 export type ShowcaseTherapyType = (typeof SHOWCASE_THERAPY_TYPES)[number];
 

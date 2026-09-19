@@ -38,8 +38,17 @@ export default function ProfessionalCollaborationSection() {
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
                 unoptimized
               />
-              {/* Gradient overlay for better text readability */}
-              <div className="absolute inset-0 bg-linear-to-t from-background/90 via-background/50 to-transparent" />
+              {/* A dark shade under the text only: the photo keeps its colours above it, and white
+                  text reads on it. (A pale veil over the whole image washed the photo out and still
+                  left grey text hard to read.) */}
+              <div
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-[75%] bg-linear-to-t from-[#0F2A31]/90 via-[#0F2A31]/45 to-transparent"
+              />
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-linear-to-r from-[#0F2A31]/35 via-transparent to-transparent"
+              />
 
               {/* Content overlay */}
               <div className="absolute inset-0 flex items-end">
@@ -50,7 +59,7 @@ export default function ProfessionalCollaborationSection() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: 0.2, duration: 0.6 }}
-                      className="text-2xl md:text-3xl lg:text-4xl font-serif font-light text-foreground mb-4 leading-tight"
+                      className="text-2xl md:text-3xl lg:text-4xl font-serif font-normal text-white mb-4 leading-tight [text-shadow:0_2px_12px_rgba(0,0,0,0.25)]"
                     >
                       Rejoignez une communauté de professionnels dédiés
                     </motion.h2>
@@ -59,7 +68,7 @@ export default function ProfessionalCollaborationSection() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: 0.3, duration: 0.6 }}
-                      className="text-base md:text-lg lg:text-xl text-muted-foreground font-light leading-relaxed"
+                      className="text-base md:text-lg lg:text-xl text-white/85 font-normal leading-relaxed"
                     >
                       Ensemble, nous créons un réseau de soutien et de
                       collaboration pour offrir les meilleurs soins à nos
