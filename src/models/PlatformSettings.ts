@@ -7,6 +7,9 @@ export type EmailNotificationType =
   | "password_reset"
   | "appointment_confirmation"
   | "appointment_professional_notification"
+  // An admin assigned a request directly to the pro: already accepted, it waits
+  // in « À planifier ». Its own type so it has its own toggle.
+  | "professional_client_assigned"
   | "appointment_reminder"
   | "appointment_reminder_72h"
   | "appointment_reminder_48h"
@@ -293,6 +296,12 @@ const defaultEmailTemplates: Record<
   appointment_professional_notification: {
     enabled: true,
     subject: "New Appointment Request - Je chemine",
+  },
+  // Not read: the email builds its subject in the pro's language, with the
+  // client's name. Listed for the Settings toggle.
+  professional_client_assigned: {
+    enabled: true,
+    subject: "Un client vous a été assigné — Je chemine",
   },
   appointment_reminder: {
     enabled: true,

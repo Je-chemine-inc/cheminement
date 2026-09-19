@@ -8,7 +8,7 @@ import Appointment from "@/models/Appointment";
 import User from "@/models/User";
 import { calculateAppointmentPricing } from "@/lib/pricing";
 import {
-  sendProfessionalNotification,
+  sendProfessionalAssignedEmail,
   sendJumelageSuccessEmail,
 } from "@/lib/notifications";
 import { routeAppointmentToProfessionals } from "@/lib/appointment-routing";
@@ -301,19 +301,22 @@ export async function POST(
             : undefined,
         }).catch((e) => console.error("[admin assign] jumelage email:", e));
       }
+      // Not the generic « Nouvelle demande » email: that one sends the pro to
+      // « Proposées pour vous », where an assigned request never appears. This
+      // one says the client is assigned and opens « À planifier ».
       if (professional.email) {
-        sendProfessionalNotification({
+        sendProfessionalAssignedEmail({
           clientName:
             `${client?.firstName ?? ""} ${client?.lastName ?? ""}`.trim() ||
             "Client",
           clientEmail: client?.email ?? "",
           professionalName,
           professionalEmail: professional.email,
-          duration: updated.duration || 60,
           type: updated.type as "video" | "in-person" | "phone" | "both",
           isEmergency: Boolean(updated.isEmergency),
           bookingFor: updated.bookingFor,
           lovedOneInfo: updated.lovedOneInfo,
+          locale: professional.language,
         }).catch((e) => console.error("[admin assign] pro notify:", e));
       }
     });

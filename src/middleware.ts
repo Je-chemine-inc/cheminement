@@ -45,6 +45,9 @@ export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  // The query too, so the pro layout's /login redirect keeps an email link's
+  // ?tab=awaiting (see PROFESSIONAL_TO_SCHEDULE_PATH).
+  requestHeaders.set("x-search", request.nextUrl.search);
   // Only this middleware may say a request is for a professional's page.
   requestHeaders.delete(SHOWCASE_PAGE_HEADER);
   if (decision.showcasePage) requestHeaders.set(SHOWCASE_PAGE_HEADER, "1");

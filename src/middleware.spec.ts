@@ -43,6 +43,14 @@ describe("middleware", () => {
     }
   });
 
+  it("passes the query as x-search, so the pro /login redirect keeps ?tab=", () => {
+    const res = run("www.jechemine.ca", "/professional/dashboard/proposals?tab=awaiting", {
+      // A client-sent value is overwritten, never trusted.
+      "x-search": "?tab=forged",
+    });
+    expect(res.headers.get("x-middleware-request-x-search")).toBe("?tab=awaiting");
+  });
+
   it("tells the layout a request is for a professional's page, and never lets a client say so", () => {
     const page = run("www.jechemine.ca", "/amel-sassi");
     expect(page.headers.get("x-middleware-next")).toBe("1");
