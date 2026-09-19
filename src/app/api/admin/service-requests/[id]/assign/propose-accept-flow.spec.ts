@@ -21,6 +21,7 @@ const NEW_PRO_ID = "eeeeeeeeeeeeeeeeeeeeeeee";
 const h = vi.hoisted(() => {
   const notif = {
     sendProfessionalNotification: vi.fn().mockResolvedValue(true),
+    sendProfessionalAssignedEmail: vi.fn().mockResolvedValue(true),
     sendJumelageSuccessEmail: vi.fn().mockResolvedValue(true),
     sendGuestPaymentConfirmation: vi.fn().mockResolvedValue(true),
     sendPaymentInvitation: vi.fn().mockResolvedValue(true),
@@ -224,8 +225,10 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(appt.status).toBe("pending");
     // KEY: a direct assignment IS a jumelage → the client gets the match email
     expect(h.notif.sendJumelageSuccessEmail).toHaveBeenCalledTimes(1);
-    // the assigned pro is notified
-    expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
+    // the assigned pro gets the « client assigné » email (opens À planifier),
+    // not the generic « nouvelle demande » one (opens an empty first tab)
+    expect(h.notif.sendProfessionalAssignedEmail).toHaveBeenCalledTimes(1);
+    expect(h.notif.sendProfessionalNotification).not.toHaveBeenCalled();
   });
 
   it("proposed professional accepts → MATCH only (pending, jumelage, no payment email)", async () => {
@@ -359,7 +362,8 @@ describe("guest booking: admin propose → professional accept", () => {
     expect(appt.firstRdvAdminEscalatedSent).toBe(false);
     // previous pro excluded from re-matching; new pro notified + client emailed
     expect((appt.refusedBy as unknown[]).map(String)).toContain(PRO_ID);
-    expect(h.notif.sendProfessionalNotification).toHaveBeenCalledTimes(1);
+    expect(h.notif.sendProfessionalAssignedEmail).toHaveBeenCalledTimes(1);
+    expect(h.notif.sendProfessionalNotification).not.toHaveBeenCalled();
     expect(h.notif.sendJumelageSuccessEmail).toHaveBeenCalledTimes(1);
   });
 

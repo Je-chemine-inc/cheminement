@@ -284,9 +284,14 @@ export default function ProposalsPage() {
   // Deep-link support: the pro sidebar's "Liste Générale" entry links here with
   // a #general hash. Open the matching tab on mount and on later hash changes
   // (clicking the sidebar item again while already on this page).
+  // Emails link with ?tab= instead (e.g. ?tab=awaiting for « À planifier »): a
+  // query survives the /login redirect, a hash does not.
   useEffect(() => {
     const applyHash = () => {
-      const h = window.location.hash.replace("#", "");
+      const h =
+        window.location.hash.replace("#", "") ||
+        new URLSearchParams(window.location.search).get("tab") ||
+        "";
       if (h === "general" || h === "awaiting" || h === "proposed") {
         setActiveTab(h);
       }

@@ -78,7 +78,7 @@ vi.mock("@/lib/pricing", () => ({
     .mockResolvedValue({ sessionPrice: 120, platformFee: 12, professionalPayout: 108 }),
 }));
 vi.mock("@/lib/notifications", () => ({
-  sendProfessionalNotification: h.sendPro,
+  sendProfessionalAssignedEmail: h.sendPro,
   sendJumelageSuccessEmail: h.sendJumelage,
 }));
 vi.mock("@/lib/provision-guest-as-client", () => ({

@@ -2983,6 +2983,146 @@ export async function sendProfessionalNotification(
 }
 
 /**
+ * The "À planifier" tab of the pro's proposals page, where an accepted request
+ * waits for its first appointment date. The page opens the tab named by
+ * `?tab=`. A query (not a #hash) because the server never sees a hash, so a
+ * logged-out pro would lose it on the way through /login.
+ */
+export const PROFESSIONAL_TO_SCHEDULE_PATH =
+  "/professional/dashboard/proposals?tab=awaiting";
+
+/**
+ * An admin assigned a request directly to this professional (admin → Demandes
+ * de service → « Assigner »).
+ *
+ * Found 2026-09-18: this used to send the generic « Nouvelle demande de
+ * rendez-vous » email, whose button opened the FIRST tab (« Proposées pour
+ * vous »). A direct assignment is already accepted for the pro, so it is never
+ * in that tab: the pro saw an empty list and thought the request was lost. It
+ * waits in « À planifier » for the first appointment date, so that is what the
+ * email says and where its button goes.
+ */
+export async function sendProfessionalAssignedEmail(data: {
+  professionalName: string;
+  professionalEmail: string;
+  clientName: string;
+  clientEmail: string;
+  type: "video" | "in-person" | "phone" | "both";
+  isEmergency?: boolean;
+  bookingFor?: AppointmentEmailData["bookingFor"];
+  lovedOneInfo?: AppointmentEmailData["lovedOneInfo"];
+  locale?: string;
+}): Promise<boolean> {
+  const lang: "fr" | "en" = data.locale === "en" ? "en" : "fr";
+  const branding = await getBranding();
+  const url = `${process.env.NEXTAUTH_URL}${PROFESSIONAL_TO_SCHEDULE_PATH}`;
+  const professionalName = formatProfessionalName(data.professionalName, lang);
+  const appointmentType = formatAppointmentType(data.type, lang);
+  // Loved-one booking: the pro sees who they'll treat, not the requester.
+  const party = resolveProfessionalNotifeeParty({
+    bookingFor: data.bookingFor,
+    lovedOneInfo: data.lovedOneInfo,
+    requesterName: data.clientName,
+    requesterEmail: data.clientEmail,
+  });
+  const isEmergency = Boolean(data.isEmergency);
+
+  const copy = {
+    fr: {
+      subject: `Un client vous a été assigné : ${party.name} — Je chemine`,
+      title: "Un client vous a été assigné",
+      subtitle: "Fixez la date du premier rendez-vous",
+      badge: "📅 À planifier",
+      greeting: `Bonjour ${professionalName},`,
+      intro: `L'équipe Je chemine vous a assigné la demande de <strong>${escapeHtml(party.name)}</strong>. Vous n'avez rien à accepter : elle est déjà à vous. Elle vous attend dans l'onglet <strong>« À planifier »</strong> de vos propositions de clients, où vous fixez la date du premier rendez-vous.`,
+      introText: `L'équipe Je chemine vous a assigné la demande de ${party.name}. Vous n'avez rien à accepter : elle est déjà à vous. Elle vous attend dans l'onglet « À planifier » de vos propositions de clients, où vous fixez la date du premier rendez-vous.`,
+      client: "Client",
+      email: "Courriel",
+      typeLabel: "Type",
+      priority: "Priorité",
+      urgent: "⚠ URGENCE — réponse sous 12 h",
+      urgentBox: {
+        title: "⚠ Consultation ponctuelle rapide",
+        content:
+          "Cette demande est une consultation ponctuelle rapide (urgente). Merci de fixer le premier rendez-vous dans un délai de 12 heures.",
+      },
+      button: "Planifier le premier rendez-vous",
+      outro:
+        "Vous pouvez communiquer avec le client avant de fixer une date officielle.",
+    },
+    en: {
+      subject: `A client was assigned to you: ${party.name} — Je chemine`,
+      title: "A client was assigned to you",
+      subtitle: "Set the first appointment date",
+      badge: "📅 To Schedule",
+      greeting: `Hello ${professionalName},`,
+      intro: `The Je chemine team assigned <strong>${escapeHtml(party.name)}</strong>'s request to you. There is nothing to accept: it is already yours. It is waiting in the <strong>"To Schedule"</strong> tab of your client proposals, where you set the first appointment date.`,
+      introText: `The Je chemine team assigned ${party.name}'s request to you. There is nothing to accept: it is already yours. It is waiting in the "To Schedule" tab of your client proposals, where you set the first appointment date.`,
+      client: "Client",
+      email: "Email",
+      typeLabel: "Type",
+      priority: "Priority",
+      urgent: "⚠ URGENT — reply within 12 h",
+      urgentBox: {
+        title: "⚠ Rapid one-time consultation",
+        content:
+          "This request is a rapid one-time consultation (urgent). Please set the first appointment within 12 hours.",
+      },
+      button: "Schedule the first appointment",
+      outro: "You may contact the client before setting an official date.",
+    },
+  }[lang];
+
+  const html = buildEmailHtml({
+    title: copy.title,
+    subtitle: copy.subtitle,
+    theme: isEmergency ? "warning" : "info",
+    badge: { text: copy.badge, theme: "info" },
+    greeting: copy.greeting,
+    intro: copy.intro,
+    infoBox: isEmergency
+      ? { ...copy.urgentBox, theme: "warning" as const }
+      : undefined,
+    details: [
+      ...(isEmergency ? [{ label: copy.priority, value: copy.urgent }] : []),
+      { label: copy.client, value: party.name },
+      { label: copy.email, value: party.email },
+      { label: copy.typeLabel, value: appointmentType },
+    ],
+    button: { text: copy.button, url },
+    outro: copy.outro,
+    branding,
+    lang,
+  });
+
+  const text = buildEmailText(
+    [
+      copy.title,
+      copy.greeting,
+      copy.introText,
+      isEmergency ? copy.urgentBox.content : "",
+      `${copy.client} : ${party.name}`,
+      `${copy.email} : ${party.email}`,
+      `${copy.typeLabel} : ${appointmentType}`,
+      `${copy.button} : ${url}`,
+    ],
+    lang,
+  );
+
+  // The subject names the client in the pro's language, so it is built here
+  // rather than read from Settings (like the showcase emails).
+  return sendEmail(
+    {
+      to: data.professionalEmail,
+      subject: isEmergency ? `⚠ ${copy.subject}` : copy.subject,
+      html,
+      text,
+    },
+    "professional_client_assigned",
+  );
+}
+
+/**
  * Relance envoyée au professionnel qui a accepté un client (jumelé) mais n'a
  * pas encore confirmé la date du 1er rendez-vous après quelques jours. Le
  * client attend : on rappelle au pro de planifier depuis l'onglet "À planifier".
@@ -2995,7 +3135,8 @@ export async function sendUnscheduledMatchReminder(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
-  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
+  // The email sends the pro to « À planifier »; the bare page opened the first tab.
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}${PROFESSIONAL_TO_SCHEDULE_PATH}`;
   const name =
     data.professionalName?.trim() ||
     (lang === "fr" ? "cher professionnel" : "there");
@@ -7921,7 +8062,13 @@ export async function sendEmergencyProSlaAlert(data: {
 }): Promise<boolean> {
   const branding = await getBranding();
   const lang: "fr" | "en" = data.locale === "fr" ? "fr" : "en";
-  const dashboardUrl = `${process.env.NEXTAUTH_URL}/professional/dashboard/proposals`;
+  // « accept »: the request is still offered (first tab). « takeCharge »: it is
+  // accepted and waits for its first date in « À planifier ».
+  const dashboardUrl = `${process.env.NEXTAUTH_URL}${
+    data.stage === "takeCharge"
+      ? PROFESSIONAL_TO_SCHEDULE_PATH
+      : "/professional/dashboard/proposals"
+  }`;
   const name =
     data.professionalName?.trim() ||
     (lang === "fr" ? "cher professionnel" : "there");

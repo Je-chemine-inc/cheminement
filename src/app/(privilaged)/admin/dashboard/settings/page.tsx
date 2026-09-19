@@ -421,6 +421,12 @@ const EMAIL_TEMPLATE_INFO: Record<
     description: "Envoyé au professionnel pour les nouvelles demandes de rendez-vous",
     category: "Rendez-vous",
   },
+  professional_client_assigned: {
+    name: "Client assigné au professionnel",
+    description:
+      "Envoyé au professionnel quand un administrateur lui assigne une demande. Son bouton ouvre l'onglet « À planifier », où il fixe le premier rendez-vous.",
+    category: "Rendez-vous",
+  },
   appointment_reminder: {
     name: "Rappel de rendez-vous",
     description: "Envoyé avant les rendez-vous planifiés",
