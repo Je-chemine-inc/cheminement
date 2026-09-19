@@ -10,6 +10,7 @@ import connectToDatabase from "@/lib/mongodb";
 import User from "@/models/User";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 import ProfessionalTermsGate from "@/components/legal/ProfessionalTermsGate";
+import { loginRedirectFor } from "@/lib/login-redirect";
 
 export default async function ProfessionalLayout({
   children,
@@ -26,12 +27,7 @@ export default async function ProfessionalLayout({
     // demande" CTA) land on /login and then resume to the requested page after
     // sign-in instead of dropping the pro on a blank/404 screen. The query goes
     // with it: « À planifier » emails link to ?tab=awaiting.
-    const search = headerList.get("x-search") || "";
-    const callback =
-      pathname && pathname.startsWith("/professional")
-        ? `?callbackUrl=${encodeURIComponent(pathname + search)}`
-        : "";
-    redirect(`/login${callback}`);
+    redirect(loginRedirectFor(pathname, headerList.get("x-search") || ""));
   }
 
   await connectToDatabase();
